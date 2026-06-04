@@ -88,7 +88,7 @@ describe("runIngestForAllOrgs", () => {
     mockOrgFindMany.mockResolvedValue([
       {
         id: "org-1",
-        slug: "pink-connections",
+        slug: "rionna",
         metadata: JSON.stringify({ racing: { provider: "mock" } }),
       },
     ]);

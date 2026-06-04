@@ -83,8 +83,8 @@ import { reconcileCircleMembers } from "../reconciliation";
 // Fixtures
 // ──────────────────────────────────────────────
 
-const ORG_ID = "org-pink-connections";
-const ORG = { id: ORG_ID, slug: "pink-connections", name: "Pink Connections", metadata: null };
+const ORG_ID = "org-rionna";
+const ORG = { id: ORG_ID, slug: "rionna", name: "Rionna", metadata: null };
 
 function makeUnprovisionedMember(id: string, userId: string) {
 	return {

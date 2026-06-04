@@ -6,7 +6,7 @@ _This is placeholder content. Final copy will be supplied by the club's legal co
 
 ## 1. Who we are
 
-Rionna / Pink Connections is a shared racehorse ownership club based in Ireland. This policy explains what personal data we collect, how we use it, and the rights you have under GDPR.
+Rionna is a shared racehorse ownership club based in Ireland. This policy explains what personal data we collect, how we use it, and the rights you have under GDPR.
 
 ## 2. What we collect
 

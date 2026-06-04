@@ -58,8 +58,8 @@ WelcomeMember.PreviewProps = {
 	locale: defaultLocale,
 	translations: defaultTranslations,
 	memberName: "John Doe",
-	clubName: "Pink Connections",
-	communityUrl: "https://community.rionna-e53dba.club",
+	clubName: "Rionna",
+	communityUrl: "https://community.rionna.com",
 };
 
 export default WelcomeMember;

@@ -27,10 +27,13 @@ const getLocaleFromRequest = (request?: Request) => {
 };
 
 const appUrl = getBaseUrl(process.env.NEXT_PUBLIC_SAAS_URL, 3000);
+const extraTrustedOrigins = process.env.BETTER_AUTH_TRUSTED_ORIGINS
+	? process.env.BETTER_AUTH_TRUSTED_ORIGINS.split(",").map((s) => s.trim())
+	: [];
 
 export const auth = betterAuth({
 	baseURL: appUrl,
-	trustedOrigins: [appUrl],
+	trustedOrigins: [appUrl, ...extraTrustedOrigins],
 	database: prismaAdapter(db, {
 		provider: "postgresql",
 	}),

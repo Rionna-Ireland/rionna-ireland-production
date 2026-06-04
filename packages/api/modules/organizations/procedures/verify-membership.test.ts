@@ -41,7 +41,7 @@ describe("verifyMembership", () => {
 			session: { id: "session-1" },
 		} as never);
 		vi.mocked(verifyOrganizationMembership).mockResolvedValueOnce({
-			organization: { id: "org-1", name: "Pink Connections", slug: "pink-connections" },
+			organization: { id: "org-1", name: "Rionna", slug: "rionna" },
 			role: "member",
 		} as never);
 

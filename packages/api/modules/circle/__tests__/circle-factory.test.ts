@@ -33,7 +33,7 @@ describe("createCircleService", () => {
 
 		const { createCircleService, MockCircleService } = await import("@repo/payments/lib/circle");
 
-		const service = createCircleService("pink-connections");
+		const service = createCircleService("rionna");
 		expect(service).toBeInstanceOf(MockCircleService);
 	});
 
@@ -42,18 +42,18 @@ describe("createCircleService", () => {
 
 		const { createCircleService, MockServerCircleService } = await import("@repo/payments/lib/circle");
 
-		const service = createCircleService("pink-connections");
+		const service = createCircleService("rionna");
 		expect(service).toBeInstanceOf(MockServerCircleService);
 	});
 
 	it("returns RealCircleService when CIRCLE_MODE=real and env vars are present", async () => {
 		process.env.CIRCLE_MODE = "real";
-		process.env.CIRCLE_APP_TOKEN_PINK_CONNECTIONS = "test-admin-token";
-		process.env.CIRCLE_HEADLESS_AUTH_TOKEN_PINK_CONNECTIONS = "test-headless-token";
+		process.env.CIRCLE_APP_TOKEN_RIONNA = "test-admin-token";
+		process.env.CIRCLE_HEADLESS_AUTH_TOKEN_RIONNA = "test-headless-token";
 
 		const { createCircleService, RealCircleService } = await import("@repo/payments/lib/circle");
 
-		const service = createCircleService("pink-connections");
+		const service = createCircleService("rionna");
 		expect(service).toBeInstanceOf(RealCircleService);
 	});
 
@@ -70,11 +70,11 @@ describe("createCircleService", () => {
 
 	it("fails fast when CIRCLE_MODE=real but tokens are missing", async () => {
 		process.env.CIRCLE_MODE = "real";
-		delete process.env.CIRCLE_APP_TOKEN_PINK_CONNECTIONS;
-		delete process.env.CIRCLE_HEADLESS_AUTH_TOKEN_PINK_CONNECTIONS;
+		delete process.env.CIRCLE_APP_TOKEN_RIONNA;
+		delete process.env.CIRCLE_HEADLESS_AUTH_TOKEN_RIONNA;
 
 		const { createCircleService } = await import("@repo/payments/lib/circle");
-		expect(() => createCircleService("pink-connections")).toThrow(
+		expect(() => createCircleService("rionna")).toThrow(
 			/CIRCLE_MODE=real but tokens are missing/,
 		);
 	});

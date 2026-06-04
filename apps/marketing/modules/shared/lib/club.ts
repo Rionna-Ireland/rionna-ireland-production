@@ -10,7 +10,7 @@ import {
 } from "@repo/database";
 import { cache } from "react";
 
-const DEFAULT_CLUB_SLUG = "pink-connections";
+const DEFAULT_CLUB_SLUG = "rionna";
 
 export type ClubOrganization = {
 	id: string;

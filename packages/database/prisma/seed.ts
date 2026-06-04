@@ -22,17 +22,17 @@ async function main()
     // 1. Organisation
     // ──────────────────────────────────────────────
     const org = await db.organization.upsert({
-        where : { slug : "pink-connections" },
+        where : { slug : "rionna" },
         update : {},
         create : {
-            name : "Pink Connections",
-            slug : "pink-connections",
+            name : "Rionna",
+            slug : "rionna",
             createdAt : new Date(),
             metadata : JSON.stringify({
                 brand : { primaryColor : "#374B6C" },
                 racing : { provider : "mock" },
                 circle : {
-                    communityDomain : "community.rionna-e53dba.club",
+                    communityDomain : "rionna.circle.so",
                     poll : {
                         enabled : false,
                         cadenceMinutes : 5,
@@ -50,7 +50,7 @@ async function main()
                 },
                 contact : {
                     aboutText : "Ireland's premier racing club for women",
-                    contactEmail : "hello@pinkconnections.com",
+                    contactEmail : "hello@rionna.com",
                 },
             } satisfies OrganizationMetadata),
         },
@@ -404,7 +404,7 @@ async function main()
             sortOrder : 1,
             publishedAt : daysAgo(60),
             bio :
-              "Starlight Rose is the jewel of the Pink Connections string — an elegant grey mare with an electric turn of foot that belies her gentle nature. She arrived as a shy two-year-old but quickly showed an extraordinary will to win at morning exercise, catching Willie Mullins' eye on her very first school over hurdles.",
+              "Starlight Rose is the jewel of the Rionna string — an elegant grey mare with an electric turn of foot that belies her gentle nature. She arrived as a shy two-year-old but quickly showed an extraordinary will to win at morning exercise, catching Willie Mullins' eye on her very first school over hurdles.",
             trainerNotes :
               "Thrives on soft ground. Needs a positive ride — she settles beautifully behind horses then produces a devastating finish. Best watched over 2 miles.",
             pedigree : {
@@ -413,7 +413,7 @@ async function main()
                 damSire : "Danehill Dancer"
             },
             ownershipBlurb :
-              "Jointly owned by the Pink Connections membership. Each member holds an equal share in this remarkable mare.",
+              "Jointly owned by the Rionna membership. Each member holds an equal share in this remarkable mare.",
             photos : [
                 photo(1, "Starlight Rose in the parade ring at Leopardstown"),
                 photo(2, "Morning gallop at Ballydoyle, January 2026"),
@@ -729,7 +729,7 @@ async function main()
             featuredImageUrl : "https://picsum.photos/seed/news1/1200/630",
             publishedAt : daysAgo(30),
             contentHtml :
-              `<p>Starlight Rose produced a performance of breathtaking quality at Leopardstown yesterday, winning the Grade 2 Mares Novice Hurdle in a manner that left connections buzzing with excitement.</p><p>Ridden with supreme confidence by Paul Townend, she travelled beautifully throughout the two-mile trip and unleashed a devastating burst of speed in the straight that her rivals simply couldn't live with.</p><p>Trainer Willie Mullins was quick to highlight the performance: "She's a very special mare. The way she picked up when asked was electric — that's a Grade 1 horse in the making."</p><p>The Pink Connections membership were out in force to cheer her home, and the celebrations in the winner's enclosure were memorable. This is exactly why we do this — moments like these are what the club is all about.</p>`,
+              `<p>Starlight Rose produced a performance of breathtaking quality at Leopardstown yesterday, winning the Grade 2 Mares Novice Hurdle in a manner that left connections buzzing with excitement.</p><p>Ridden with supreme confidence by Paul Townend, she travelled beautifully throughout the two-mile trip and unleashed a devastating burst of speed in the straight that her rivals simply couldn't live with.</p><p>Trainer Willie Mullins was quick to highlight the performance: "She's a very special mare. The way she picked up when asked was electric — that's a Grade 1 horse in the making."</p><p>The Rionna membership were out in force to cheer her home, and the celebrations in the winner's enclosure were memorable. This is exactly why we do this — moments like these are what the club is all about.</p>`,
             contentJson : {
                 type : "doc",
                 content : [ {
@@ -791,7 +791,7 @@ async function main()
             featuredImageUrl : "https://picsum.photos/seed/news4/1200/630",
             publishedAt : daysAgo(1),
             contentHtml :
-              `<p>The excitement is building in the Pink Connections camp as Starlight Rose has been confirmed as a runner in the Grade 1 Punchestown Champion Hurdle, which takes place in three days' time.</p><p>Conditions look ideal — the going is forecast as good to yielding, which suits her profile perfectly. Paul Townend keeps the ride and has been in excellent form throughout the spring season.</p><p>Willie Mullins spoke to us this morning from the yard: "She's in great shape. We're very happy with how she's come out of Cheltenham. She's been working brilliantly all week and is ready to run her best race. The ground suits, the trip suits — we have every reason to be optimistic."</p><p>Members are encouraged to come racing if they can make it to Punchestown. Club colours will be on full display and there will be a members' gathering in the parade ring before the race. Full details will be sent by email shortly.</p>`,
+              `<p>The excitement is building in the Rionna camp as Starlight Rose has been confirmed as a runner in the Grade 1 Punchestown Champion Hurdle, which takes place in three days' time.</p><p>Conditions look ideal — the going is forecast as good to yielding, which suits her profile perfectly. Paul Townend keeps the ride and has been in excellent form throughout the spring season.</p><p>Willie Mullins spoke to us this morning from the yard: "She's in great shape. We're very happy with how she's come out of Cheltenham. She's been working brilliantly all week and is ready to run her best race. The ground suits, the trip suits — we have every reason to be optimistic."</p><p>Members are encouraged to come racing if they can make it to Punchestown. Club colours will be on full display and there will be a members' gathering in the parade ring before the race. Full details will be sent by email shortly.</p>`,
             contentJson : {
                 type : "doc",
                 content : [ {
@@ -835,7 +835,7 @@ async function main()
                 nextEntryId : entryStarlightPunch.id,
                 trainerId : willie.id,
                 bio :
-                  "Starlight Rose is the jewel of the Pink Connections string — an elegant grey mare with an electric turn of foot that belies her gentle nature. She arrived as a shy two-year-old but quickly showed an extraordinary will to win at morning exercise, catching Willie Mullins' eye on her very first school over hurdles.",
+                  "Starlight Rose is the jewel of the Rionna string — an elegant grey mare with an electric turn of foot that belies her gentle nature. She arrived as a shy two-year-old but quickly showed an extraordinary will to win at morning exercise, catching Willie Mullins' eye on her very first school over hurdles.",
                 trainerNotes :
                   "Thrives on soft ground. Needs a positive ride — she settles beautifully behind horses then produces a devastating finish. Best watched over 2 miles.",
                 pedigree : {
@@ -844,7 +844,7 @@ async function main()
                     damSire : "Danehill Dancer"
                 },
                 ownershipBlurb :
-                  "Jointly owned by the Pink Connections membership. Each member holds an equal share in this remarkable mare.",
+                  "Jointly owned by the Rionna membership. Each member holds an equal share in this remarkable mare.",
                 photos : [
                     photo(1,
                           "Starlight Rose in the parade ring at Leopardstown"),

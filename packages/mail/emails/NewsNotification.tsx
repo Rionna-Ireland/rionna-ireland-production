@@ -71,10 +71,10 @@ NewsNotification.PreviewProps = {
 	translations: defaultTranslations,
 	title: "Stable Update: New Arrivals",
 	subtitle:
-		"Three exciting new horses have joined the Pink Connections stable.",
+		"Three exciting new horses have joined the Rionna stable.",
 	featuredImageUrl: null,
-	postUrl: "https://app.pinkconnections.com/news/stable-update",
-	clubName: "Pink Connections",
+	postUrl: "https://app.rionna.com/news/stable-update",
+	clubName: "Rionna",
 };
 
 export default NewsNotification;

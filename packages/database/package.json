@@ -8,8 +8,12 @@
 		"generate": "dotenv -c -e ../../.env -- prisma generate --no-hints && node scripts/patch-zod.mjs",
 		"push": "dotenv -c -e ../../.env -- prisma db push",
 		"migrate": "dotenv -c -e ../../.env -- prisma migrate dev",
+		"migrate:staging": "dotenv -e ../../.env.staging -- sh -c 'DATABASE_URL=$DIRECT_URL prisma migrate deploy'",
+		"migrate:production": "dotenv -e ../../.env.production -- sh -c 'DATABASE_URL=$DIRECT_URL prisma migrate deploy'",
 		"seed": "dotenv -c -e ../../.env -- tsx prisma/seed.ts",
-"studio": "dotenv -c -e ../../.env -- prisma studio",
+		"seed:staging": "dotenv -e ../../.env.staging -- tsx prisma/seed.ts",
+		"seed:production": "dotenv -e ../../.env.production -- tsx prisma/seed.ts",
+		"studio": "dotenv -c -e ../../.env -- prisma studio",
 		"type-check": "tsc --noEmit"
 	},
 	"dependencies": {

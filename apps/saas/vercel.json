@@ -1,6 +1,14 @@
 {
 	"crons": [
 		{
+			"path": "/api/cron/circle-poll",
+			"schedule": "* * * * *"
+		},
+		{
+			"path": "/api/cron/ingest",
+			"schedule": "*/15 * * * *"
+		},
+		{
 			"path": "/api/cron/reconcile",
 			"schedule": "0 3 * * *"
 		}

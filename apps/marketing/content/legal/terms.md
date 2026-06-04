@@ -6,7 +6,7 @@ _This is placeholder content. Final copy will be supplied by the club's legal co
 
 ## 1. Membership
 
-A Rionna / Pink Connections membership is a subscription that gives you access to our mobile app, the private members' community, and related content. Membership is personal to you and non-transferable.
+A Rionna membership is a subscription that gives you access to our mobile app, the private members' community, and related content. Membership is personal to you and non-transferable.
 
 ## 2. Payments
 
