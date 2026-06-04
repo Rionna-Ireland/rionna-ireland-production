@@ -30,7 +30,13 @@ export const createCustomerPortalLink = protectedProcedure
 			throw new ORPCError("FORBIDDEN");
 		}
 
-		if (purchase.organizationId) {
+		const isOwnPurchase = purchase.userId === user.id;
+
+		if (!isOwnPurchase) {
+			if (!purchase.organizationId) {
+				throw new ORPCError("FORBIDDEN");
+			}
+
 			const userOrganizationMembership = await getOrganizationMembership(
 				purchase.organizationId,
 				user.id,
@@ -38,10 +44,6 @@ export const createCustomerPortalLink = protectedProcedure
 			if (userOrganizationMembership?.role !== "owner") {
 				throw new ORPCError("FORBIDDEN");
 			}
-		}
-
-		if (purchase.userId && purchase.userId !== user.id) {
-			throw new ORPCError("FORBIDDEN");
 		}
 
 		try {

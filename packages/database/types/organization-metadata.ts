@@ -47,6 +47,11 @@ export interface OrganizationMetadata {
 		};
 	};
 	features?: Record<string, boolean>;
+	appLinks?: {
+		iosUrl?: string;
+		androidUrl?: string;
+		bundleId?: string;
+	};
 }
 
 export function parseOrgMetadata(raw: string | null): OrganizationMetadata {

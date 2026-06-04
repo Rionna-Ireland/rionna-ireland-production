@@ -1,11 +1,11 @@
 import { getSession } from "@auth/lib/server";
 import { ActivePlan } from "@payments/components/ActivePlan";
 import { ChangePlan } from "@payments/components/ChangePlan";
+import { listPurchasesQueryKey } from "@payments/lib/query-keys";
 import { listPurchases } from "@payments/lib/server";
 import { createPurchasesHelper } from "@repo/payments/lib/helper";
 import { PageHeader } from "@shared/components/PageHeader";
 import { SettingsList } from "@shared/components/SettingsList";
-import { orpc } from "@shared/lib/orpc-query-utils";
 import { getServerQueryClient } from "@shared/lib/server";
 import { getTranslations } from "next-intl/server";
 
@@ -24,9 +24,7 @@ export default async function BillingSettingsPage() {
 	const queryClient = getServerQueryClient();
 
 	await queryClient.prefetchQuery({
-		queryKey: orpc.payments.listPurchases.queryKey({
-			input: {},
-		}),
+		queryKey: listPurchasesQueryKey(),
 		queryFn: () => purchases,
 	});
 

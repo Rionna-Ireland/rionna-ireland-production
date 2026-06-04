@@ -1,7 +1,9 @@
 import { authClient } from "@repo/auth/client";
 import { useQuery } from "@tanstack/react-query";
 
-export const sessionQueryKey = ["user", "session"] as const;
+import { sessionQueryKey, userAccountQueryKey } from "./query-keys";
+
+export { sessionQueryKey, userAccountQueryKey } from "./query-keys";
 
 export const useSessionQuery = () => {
 	return useQuery({
@@ -25,7 +27,6 @@ export const useSessionQuery = () => {
 	});
 };
 
-export const userAccountQueryKey = ["user", "accounts"] as const;
 export const useUserAccountsQuery = () => {
 	return useQuery({
 		queryKey: userAccountQueryKey,
@@ -40,4 +41,3 @@ export const useUserAccountsQuery = () => {
 		},
 	});
 };
-

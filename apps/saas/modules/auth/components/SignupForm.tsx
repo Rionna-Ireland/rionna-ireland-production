@@ -72,18 +72,12 @@ export function SignupForm({ prefillEmail }: { prefillEmail?: string }) {
 
 	const onSubmit = form.handleSubmit(async ({ email, password, name }) => {
 		try {
-			const { error } = await (authConfig.enablePasswordLogin
-				? await authClient.signUp.email({
-						email,
-						password,
-						name,
-						callbackURL: redirectPath,
-					})
-				: authClient.signIn.magicLink({
-						email,
-						name,
-						callbackURL: redirectPath,
-					}));
+			const { error } = await authClient.signUp.email({
+				email,
+				password,
+				name,
+				callbackURL: redirectPath,
+			});
 
 			if (error) {
 				throw error;
@@ -166,26 +160,24 @@ export function SignupForm({ prefillEmail }: { prefillEmail?: string }) {
 								)}
 							/>
 
-							{authConfig.enablePasswordLogin && (
-								<FormField
-									control={form.control}
-									name="password"
-									render={({ field }) => (
-										<FormItem>
-											<FormLabel>{t("auth.signup.password")}</FormLabel>
-											<FormControl>
-												<PasswordInput
-													autoComplete="new-password"
-													showGenerateButton
-													showPasswordCriteria
-													{...field}
-												/>
-											</FormControl>
-											<FormMessage />
-										</FormItem>
-									)}
-								/>
-							)}
+							<FormField
+								control={form.control}
+								name="password"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>{t("auth.signup.password")}</FormLabel>
+										<FormControl>
+											<PasswordInput
+												autoComplete="new-password"
+												showGenerateButton
+												showPasswordCriteria
+												{...field}
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
 
 							<Button variant="primary" loading={form.formState.isSubmitting}>
 								{t("auth.signup.submit")}

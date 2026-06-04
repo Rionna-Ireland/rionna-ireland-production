@@ -1,13 +1,13 @@
 import { SessionProvider } from "@auth/components/SessionProvider";
-import { sessionQueryKey } from "@auth/lib/api";
+import { sessionQueryKey } from "@auth/lib/query-keys";
 import { getOrganizationList, getSession } from "@auth/lib/server";
 import { ActiveOrganizationProvider } from "@organizations/components/ActiveOrganizationProvider";
-import { organizationListQueryKey } from "@organizations/lib/api";
+import { organizationListQueryKey } from "@organizations/lib/query-keys";
+import { listPurchasesQueryKey } from "@payments/lib/query-keys";
 import { listPurchases } from "@payments/lib/server";
 import { config as authConfig } from "@repo/auth/config";
 import { config as paymentsConfig } from "@repo/payments/config";
 import { ConfirmationAlertProvider } from "@shared/components/ConfirmationAlertProvider";
-import { orpc } from "@shared/lib/orpc-query-utils";
 import { getServerQueryClient } from "@shared/lib/server";
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
 import { redirect } from "next/navigation";
@@ -39,9 +39,7 @@ export default async function AuthenticatedLayout({ children }: PropsWithChildre
 
 	if (paymentsConfig.billingAttachedTo === "user") {
 		await queryClient.prefetchQuery({
-			queryKey: orpc.payments.listPurchases.queryKey({
-				input: {},
-			}),
+			queryKey: listPurchasesQueryKey(),
 			queryFn: () => listPurchases(),
 		});
 	}

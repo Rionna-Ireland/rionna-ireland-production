@@ -1,4 +1,4 @@
-import { userAccountQueryKey } from "@auth/lib/api";
+import { userAccountQueryKey } from "@auth/lib/query-keys";
 import { getSession, getUserAccounts } from "@auth/lib/server";
 import { config } from "@repo/auth/config";
 import { ActiveSessionsBlock } from "@settings/components/ActiveSessionsBlock";

@@ -1,9 +1,9 @@
 import { getActiveOrganization } from "@auth/lib/server";
-import { activeOrganizationQueryKey } from "@organizations/lib/api";
+import { activeOrganizationQueryKey } from "@organizations/lib/query-keys";
+import { listPurchasesQueryKey } from "@payments/lib/query-keys";
 import { listPurchases } from "@payments/lib/server";
 import { config as paymentsConfig } from "@repo/payments/config";
 import { AppWrapper } from "@shared/components/AppWrapper";
-import { orpc } from "@shared/lib/orpc-query-utils";
 import { getServerQueryClient } from "@shared/lib/server";
 import { notFound } from "next/navigation";
 import type { PropsWithChildren } from "react";
@@ -33,11 +33,7 @@ export default async function OrganizationLayout({
 
 	if (paymentsConfig.billingAttachedTo === "organization") {
 		await queryClient.prefetchQuery({
-			queryKey: orpc.payments.listPurchases.queryKey({
-				input: {
-					organizationId: organization.id,
-				},
-			}),
+			queryKey: listPurchasesQueryKey({ organizationId: organization.id }),
 			queryFn: () => listPurchases(organization.id),
 		});
 	}

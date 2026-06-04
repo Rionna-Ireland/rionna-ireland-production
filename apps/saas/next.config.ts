@@ -1,11 +1,18 @@
+import { fileURLToPath } from "node:url";
+
 // @ts-expect-error - PrismaPlugin is not typed
 import { PrismaPlugin } from "@prisma/nextjs-monorepo-workaround-plugin";
 import type { NextConfig } from "next";
 import nextIntlPlugin from "next-intl/plugin";
 
 const withNextIntl = nextIntlPlugin("./modules/i18n/request.ts");
+const repoRoot = fileURLToPath(new URL("../..", import.meta.url));
 
 const nextConfig: NextConfig = {
+	outputFileTracingRoot: repoRoot,
+	turbopack: {
+		root: repoRoot,
+	},
 	transpilePackages: ["@repo/api", "@repo/auth", "@repo/database", "@repo/ui"],
 	images: {
 		remotePatterns: [

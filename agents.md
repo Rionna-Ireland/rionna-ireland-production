@@ -345,6 +345,33 @@ export function ItemsList() {
 }
 ```
 
+### Server-Side Prefetching
+
+**Do not call `orpc.<…>.queryOptions()` from a Server Component.** The RPC client (`modules/shared/lib/orpc-client.ts`) throws `"RPCLink is not allowed on the server side."` when `typeof window === "undefined"`.
+
+To prefetch on the server, call the procedure's underlying server-callable helper directly and seed the TanStack cache with `queryKey + queryFn`:
+
+```typescript
+// app/.../page.tsx (Server Component)
+import { listPurchases } from "@repo/api/modules/payments/procedures/list-purchases";
+import { orpc } from "@shared/lib/orpc-query-utils";
+import { getServerQueryClient } from "@shared/lib/server";
+
+export default async function Page() {
+	const purchases = await listPurchases();           // direct DB call, no RPC
+	const queryClient = getServerQueryClient();
+
+	await queryClient.prefetchQuery({
+		queryKey: orpc.payments.listPurchases.queryKey({ input: {} }),
+		queryFn: () => purchases,
+	});
+
+	// ... render client subtree that consumes orpc.payments.listPurchases via useQuery
+}
+```
+
+If a procedure's logic isn't exported as a plain function, factor it into a sibling `.impl.ts` (or `queries/…ts`) and have the oRPC handler delegate to it. The procedure file then becomes a thin wrapper that re-exports the helper for server consumers.
+
 ### Notifications
 
 - **Server:** Create notifications with `createNotification` from `@repo/notifications` (`userId`, `type`, optional JSON `data`, optional `link`). User preferences control whether a row is stored (in-app) and whether email is sent (`notification` mail template; `data.headline` / `data.title` / `data.message` drive copy when present).

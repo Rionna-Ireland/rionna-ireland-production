@@ -3,7 +3,20 @@ import { authClient } from "@repo/auth/client";
 import { orpcClient } from "@shared/lib/orpc-client";
 import { useMutation, useQuery } from "@tanstack/react-query";
 
-export const organizationListQueryKey = ["user", "organizations"] as const;
+import {
+	activeOrganizationQueryKey,
+	fullOrganizationQueryKey,
+	organizationListQueryKey,
+	type ActiveOrganizationIdentifier,
+} from "./query-keys";
+
+export {
+	activeOrganizationQueryKey,
+	fullOrganizationQueryKey,
+	organizationListQueryKey,
+	type ActiveOrganizationIdentifier,
+} from "./query-keys";
+
 export const useOrganizationListQuery = () => {
 	return useQuery({
 		queryKey: organizationListQueryKey,
@@ -18,14 +31,6 @@ export const useOrganizationListQuery = () => {
 		},
 	});
 };
-
-export interface ActiveOrganizationIdentifier {
-	slug?: string;
-	id?: string;
-}
-
-export const activeOrganizationQueryKey = (identifier: ActiveOrganizationIdentifier) =>
-	["user", "activeOrganization", identifier.slug ?? identifier.id ?? ""] as const;
 
 export const useActiveOrganizationQuery = (
 	identifier: ActiveOrganizationIdentifier,
@@ -56,7 +61,6 @@ export const useActiveOrganizationQuery = (
 	});
 };
 
-export const fullOrganizationQueryKey = (id: string) => ["fullOrganization", id] as const;
 export const useFullOrganizationQuery = (id: string) => {
 	return useQuery({
 		queryKey: fullOrganizationQueryKey(id),

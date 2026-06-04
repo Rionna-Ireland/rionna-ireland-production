@@ -12,6 +12,7 @@
 			"@admin/*": ["./modules/admin/*"],
 			"@ai/*": ["./modules/ai/*"],
 			"@onboarding/*": ["./modules/onboarding/*"],
+			"@member-hub/*": ["./modules/member-hub/*"],
 			"@platform/*": ["./modules/platform/*"],
 			"@shared/*": ["./modules/shared/*"]
 		}
