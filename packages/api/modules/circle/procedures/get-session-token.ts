@@ -95,7 +95,7 @@ export const getSessionToken = protectedProcedure
 
 		const member = await db.member.findFirst({
 			where: { userId: user.id, organizationId },
-			select: { circleMemberId: true },
+			select: { id: true, circleMemberId: true, circleProfileConfirmedAt: true },
 		});
 		if (!member?.circleMemberId) {
 			throw new ORPCError("FAILED_PRECONDITION", {
@@ -133,10 +133,28 @@ export const getSessionToken = protectedProcedure
 			});
 		}
 		const tokens = tokenOutcome.data;
+
+		// Persist refresh token so logout can revoke it (S6-03).
+		await db.member.update({
+			where: { id: member.id },
+			data: { circleRefreshToken: tokens.refreshToken },
+		});
+		// Lazily confirm Circle profile for members provisioned before S6-03 (idempotent).
+		if (!member.circleProfileConfirmedAt) {
+			const confirm = await service.confirmMemberProfile(member.circleMemberId, user.name ?? user.email);
+			if (confirm.ok) {
+				await db.member.update({
+					where: { id: member.id },
+					data: { circleProfileConfirmedAt: new Date() },
+				});
+			}
+		}
+
 		const metadata = parseOrgMetadata(org.metadata as string | null);
 
 		return {
 			accessToken: tokens.accessToken,
+			expiresAt: tokens.expiresAt,
 			mode: getCircleMode(),
 			communityBaseUrl: getCircleCommunityBaseUrl(metadata.circle?.communityDomain),
 			defaultCommunityUrl: buildCircleCommunityTargetUrl({

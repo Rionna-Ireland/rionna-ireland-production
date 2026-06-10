@@ -66,6 +66,7 @@ describe("MockServerCircleService.getMemberNotifications", () => {
 			data: {
 				accessToken: "jwt-for-member",
 				refreshToken: "refresh",
+				expiresAt: "2026-06-10T12:00:00.000Z",
 			},
 		});
 	});
@@ -384,6 +385,7 @@ describe("MockServerCircleService.getMemberNotifications", () => {
 			data: {
 				accessToken: "jwt",
 				refreshToken: "r",
+				expiresAt: "2026-06-10T12:00:00.000Z",
 			},
 		});
 

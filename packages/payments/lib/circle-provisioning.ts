@@ -79,6 +79,29 @@ export async function provisionCircleMember(
 		},
 	});
 
+	// Pre-confirm the new member's Circle profile so they don't hit the signup
+	// profile gate on their first session. Fail-open: a confirm failure must
+	// never throw or block provisioning — reconciliation/lazy confirm covers it.
+	const confirm = await service.confirmMemberProfile(
+		outcome.data.circleMemberId,
+		user.name ?? user.email,
+	);
+	if (confirm.ok) {
+		await db.member.update({
+			where: { id: member.id },
+			data: { circleProfileConfirmedAt: new Date() },
+		});
+	} else {
+		logger.warn(
+			"[Circle] Profile pre-confirm failed; will retry lazily on first session",
+			{
+				surface: "circle.provisioning",
+				memberId: member.id,
+				reason: confirm.reason,
+			},
+		);
+	}
+
 	logger.info("[Circle] Member provisioned", {
 		memberId: member.id,
 		circleMemberId: outcome.data.circleMemberId,

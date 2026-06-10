@@ -66,6 +66,7 @@ describe("RealCircleService.getMemberNotifications", () => {
 			data: {
 				accessToken: "jwt-for-member",
 				refreshToken: "refresh",
+				expiresAt: "2026-06-10T12:00:00.000Z",
 			},
 		});
 	});
@@ -606,5 +607,247 @@ describe("RealCircleService.getMemberNotifications", () => {
 		if (!outcome.ok) throw new Error("expected ok");
 		expect(outcome.data.items).toEqual([]);
 		expect(outcome.data.nextCursor).toBe("101");
+	});
+});
+
+describe("RealCircleService.confirmMemberProfile", () => {
+	let svc: RealCircleService;
+
+	beforeEach(() => {
+		svc = makeService();
+		vi.stubGlobal("fetch", vi.fn());
+		mockLogger.info.mockClear();
+		mockLogger.warn.mockClear();
+		mockLogger.error.mockClear();
+		// Default: token mint succeeds so the PUT can be issued.
+		vi.spyOn(svc, "getMemberToken").mockResolvedValue({
+			ok: true,
+			data: {
+				accessToken: "jwt-for-member",
+				refreshToken: "refresh",
+				expiresAt: "2026-06-10T12:00:00.000Z",
+			},
+		});
+	});
+
+	afterEach(() => {
+		vi.unstubAllGlobals();
+		vi.restoreAllMocks();
+	});
+
+	it("returns ok on 200 Profile confirmed", async () => {
+		vi.stubGlobal("fetch", mockFetchJson(200, { message: "Profile confirmed!" }));
+
+		const outcome = await svc.confirmMemberProfile("42", "Tom Power");
+
+		expect(outcome).toEqual({ ok: true, data: undefined });
+	});
+
+	it("treats 409 already-confirmed as idempotent success", async () => {
+		vi.stubGlobal(
+			"fetch",
+			mockFetchJson(409, { message: "You already created profile" }),
+		);
+
+		const outcome = await svc.confirmMemberProfile("42", "Tom Power");
+
+		expect(outcome).toEqual({ ok: true, data: undefined });
+	});
+
+	it("sends PUT to /signup/profile with bearer token and community_member name body", async () => {
+		const fetchMock = mockFetchJson(200, { message: "Profile confirmed!" });
+		vi.stubGlobal("fetch", fetchMock);
+
+		await svc.confirmMemberProfile("42", "Tom Power");
+
+		const [url, init] = fetchMock.mock.calls[0] ?? [];
+		expect(String(url)).toBe(
+			"https://app.circle.so/api/headless/v1/signup/profile",
+		);
+		expect(init).toMatchObject({
+			method: "PUT",
+			headers: {
+				Authorization: "Bearer jwt-for-member",
+				"Content-Type": "application/json",
+			},
+		});
+		expect(JSON.parse(String(init?.body))).toEqual({
+			community_member: { name: "Tom Power" },
+		});
+	});
+
+	it("token mint failure propagates (profile PUT not called)", async () => {
+		const fetchMock = vi.fn();
+		vi.stubGlobal("fetch", fetchMock);
+		vi.spyOn(svc, "getMemberToken").mockResolvedValueOnce({
+			ok: false,
+			reason: "server_error",
+			retriable: true,
+			raw: new Error("token mint failed"),
+		});
+
+		const outcome = await svc.confirmMemberProfile("42", "Tom Power");
+
+		expect(outcome).toMatchObject({
+			ok: false,
+			reason: "server_error",
+			retriable: true,
+		});
+		expect(fetchMock).not.toHaveBeenCalled();
+	});
+
+	it("maps non-2xx (non-409) to a classified failure", async () => {
+		vi.stubGlobal("fetch", mockFetchJson(500, { error: "boom" }));
+
+		const outcome = await svc.confirmMemberProfile("42", "Tom Power");
+
+		expect(outcome).toMatchObject({
+			ok: false,
+			reason: "server_error",
+			retriable: true,
+		});
+	});
+
+	it("maps fetch network errors to network / retriable", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn().mockRejectedValueOnce(new Error("ECONNRESET")),
+		);
+
+		const outcome = await svc.confirmMemberProfile("42", "Tom Power");
+
+		expect(outcome).toMatchObject({
+			ok: false,
+			reason: "network",
+			retriable: true,
+		});
+	});
+});
+
+describe("RealCircleService.getMemberToken", () => {
+	let svc: RealCircleService;
+
+	beforeEach(() => {
+		svc = makeService();
+		mockLogger.info.mockClear();
+		mockLogger.warn.mockClear();
+		mockLogger.error.mockClear();
+	});
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it("surfaces accessToken, refreshToken and expiresAt from the SDK result", async () => {
+		// Inject a fake Headless client returning Circle's full token payload,
+		// which includes access_token_expires_at (verified live).
+		(
+			svc as unknown as {
+				headlessClient: {
+					getMemberAPITokenFromCommunityMemberId: () => Promise<unknown>;
+				};
+			}
+		).headlessClient = {
+			getMemberAPITokenFromCommunityMemberId: vi.fn().mockResolvedValue({
+				access_token: "jwt-access",
+				refresh_token: "jwt-refresh",
+				access_token_expires_at: "2026-06-10T12:00:00.000Z",
+			}),
+		};
+
+		const outcome = await svc.getMemberToken("42");
+
+		expect(outcome.ok).toBe(true);
+		if (!outcome.ok) return;
+		expect(outcome.data).toEqual({
+			accessToken: "jwt-access",
+			refreshToken: "jwt-refresh",
+			expiresAt: "2026-06-10T12:00:00.000Z",
+		});
+	});
+});
+
+describe("RealCircleService.revokeMemberSession", () => {
+	let svc: RealCircleService;
+	let revokeMemberAPIToken: ReturnType<
+		typeof vi.fn<(accessToken: string) => Promise<unknown>>
+	>;
+	let revokeRefreshToken: ReturnType<
+		typeof vi.fn<(refreshToken: string) => Promise<unknown>>
+	>;
+
+	function injectHeadless() {
+		(
+			svc as unknown as {
+				headlessClient: {
+					revokeMemberAPIToken: (accessToken: string) => Promise<unknown>;
+					revokeRefreshToken: (refreshToken: string) => Promise<unknown>;
+				};
+			}
+		).headlessClient = {
+			revokeMemberAPIToken,
+			revokeRefreshToken,
+		};
+	}
+
+	beforeEach(() => {
+		svc = makeService();
+		revokeMemberAPIToken = vi.fn().mockResolvedValue(undefined);
+		revokeRefreshToken = vi.fn().mockResolvedValue(undefined);
+		injectHeadless();
+		mockLogger.info.mockClear();
+		mockLogger.warn.mockClear();
+		mockLogger.error.mockClear();
+	});
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it("revokes both access and refresh tokens when both succeed", async () => {
+		const outcome = await svc.revokeMemberSession({
+			accessToken: "access-tok",
+			refreshToken: "refresh-tok",
+		});
+
+		expect(outcome).toEqual({ ok: true, data: undefined });
+		expect(revokeMemberAPIToken).toHaveBeenCalledWith("access-tok");
+		expect(revokeRefreshToken).toHaveBeenCalledWith("refresh-tok");
+	});
+
+	it("revokes only the access token when no refreshToken is given", async () => {
+		const outcome = await svc.revokeMemberSession({ accessToken: "access-tok" });
+
+		expect(outcome).toEqual({ ok: true, data: undefined });
+		expect(revokeMemberAPIToken).toHaveBeenCalledWith("access-tok");
+		expect(revokeRefreshToken).not.toHaveBeenCalled();
+	});
+
+	it("treats a 404 (already gone) revoke as success", async () => {
+		revokeMemberAPIToken.mockRejectedValueOnce(new Error("404 Not Found"));
+
+		const outcome = await svc.revokeMemberSession({
+			accessToken: "access-tok",
+			refreshToken: "refresh-tok",
+		});
+
+		expect(outcome).toEqual({ ok: true, data: undefined });
+		// The refresh revoke must still run despite the access revoke failing.
+		expect(revokeRefreshToken).toHaveBeenCalledWith("refresh-tok");
+	});
+
+	it("returns ok:false on a non-404 error without throwing", async () => {
+		revokeMemberAPIToken.mockRejectedValueOnce(new Error("500 Internal Server Error"));
+
+		const outcome = await svc.revokeMemberSession({
+			accessToken: "access-tok",
+			refreshToken: "refresh-tok",
+		});
+
+		expect(outcome.ok).toBe(false);
+		if (outcome.ok) return;
+		expect(outcome.reason).toBe("server_error");
+		// Refresh revoke is independent and still runs.
+		expect(revokeRefreshToken).toHaveBeenCalledWith("refresh-tok");
 	});
 });

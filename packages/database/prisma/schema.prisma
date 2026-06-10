@@ -183,6 +183,10 @@ model Member {
   circleProvisionedAt DateTime?
   circleStatus        String?
 
+  // Circle session handling (S6-03)
+  circleRefreshToken       String?
+  circleProfileConfirmedAt DateTime?
+
   // Circle notification poller cursor (S6-01)
   circleLastSeenNotificationId String?
   circleLastPolledAt           DateTime?

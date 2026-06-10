@@ -158,6 +158,8 @@ export class MockCircleService implements CircleService {
 			data: {
 				accessToken: `mock-access-token-${circleMemberId}`,
 				refreshToken: `mock-refresh-token-${circleMemberId}`,
+				// Circle access tokens are short-lived (~1h); mirror that here.
+				expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
 			},
 		};
 	}
@@ -184,6 +186,27 @@ export class MockCircleService implements CircleService {
 		});
 
 		return { ok: true, data: { items: slice, nextCursor } };
+	}
+
+	async confirmMemberProfile(
+		circleMemberId: string,
+		name: string,
+	): Promise<CircleCallOutcome<void>> {
+		logger.info("[MockCircle] Confirmed member profile", {
+			circleMemberId,
+			name,
+		});
+		return { ok: true, data: undefined };
+	}
+
+	async revokeMemberSession(params: {
+		accessToken: string;
+		refreshToken?: string;
+	}): Promise<CircleCallOutcome<void>> {
+		logger.info("[MockCircle] Revoked member session", {
+			hasRefreshToken: params.refreshToken !== undefined,
+		});
+		return { ok: true, data: undefined };
 	}
 
 	/** Test helper: get current member count */

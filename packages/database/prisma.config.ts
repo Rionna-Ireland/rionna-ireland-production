@@ -8,6 +8,9 @@ config({ path: "../../.env" });
 export default defineConfig({
 	schema: "./prisma/schema.prisma",
 	datasource: {
-		url: process.env.DATABASE_URL!,
+		// CLI operations (migrate/push/studio) must use the session pooler —
+		// transaction-mode PgBouncer (6543) breaks advisory locks & multi-statement DDL.
+		// The runtime client (prisma/client.ts) independently uses DATABASE_URL.
+		url: process.env.DIRECT_URL ?? process.env.DATABASE_URL!,
 	},
 });

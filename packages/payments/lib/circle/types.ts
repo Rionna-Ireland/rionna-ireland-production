@@ -31,6 +31,8 @@ export interface ReactivateMemberParams {
 export interface MemberTokenResult {
 	accessToken: string;
 	refreshToken: string;
+	/** ISO 8601, from Circle `access_token_expires_at`. */
+	expiresAt: string;
 }
 
 export type CircleNotificationType =
@@ -138,6 +140,36 @@ export interface CircleService {
 		circleMemberId: string,
 		opts: { sinceNotificationId: string | null; limit?: number },
 	): Promise<CircleCallOutcome<CircleNotificationPage>>;
+	/**
+	 * Confirm a community member's signup profile via the Headless API.
+	 *
+	 * Calls `PUT /signup/profile` with a member-scoped access token, setting
+	 * the member's display name. Circle returns 409 when the profile has
+	 * already been confirmed, which we treat as success (idempotent).
+	 *
+	 * @param circleMemberId - Circle community_member_id, numeric id as string.
+	 * @param name - Display name to set on the member profile.
+	 */
+	confirmMemberProfile(
+		circleMemberId: string,
+		name: string,
+	): Promise<CircleCallOutcome<void>>;
+	/**
+	 * Revoke a member's Headless session tokens (logout).
+	 *
+	 * Revokes the access token and, when supplied, the refresh token. The two
+	 * revocations are performed independently so a failure on one does not skip
+	 * the other. A token that is already gone (404 / not-found) is treated as
+	 * success — the desired end-state (token no longer valid) is already met.
+	 * Never throws; failures are surfaced via the CircleCallOutcome.
+	 *
+	 * @param params.accessToken - The member access token to revoke.
+	 * @param params.refreshToken - Optional refresh token to revoke alongside it.
+	 */
+	revokeMemberSession(params: {
+		accessToken: string;
+		refreshToken?: string;
+	}): Promise<CircleCallOutcome<void>>;
 }
 
 export class CircleApiError extends Error {

@@ -266,12 +266,14 @@ export class MockServerCircleService implements CircleService {
 		let data: {
 			access_token: string;
 			refresh_token: string;
+			access_token_expires_at?: string;
 			community_member_id: number | string;
 		};
 		try {
 			data = await this.parseJson<{
 				access_token: string;
 				refresh_token: string;
+				access_token_expires_at?: string;
 				community_member_id: number | string;
 			}>(response);
 		} catch (err) {
@@ -288,6 +290,11 @@ export class MockServerCircleService implements CircleService {
 			data: {
 				accessToken: data.access_token,
 				refreshToken: data.refresh_token,
+				// circle-mock proxies the real Headless payload, but fall back to a
+				// short-lived expiry if it omits access_token_expires_at.
+				expiresAt:
+					data.access_token_expires_at ??
+					new Date(Date.now() + 60 * 60 * 1000).toISOString(),
 			},
 		};
 	}
@@ -381,5 +388,26 @@ export class MockServerCircleService implements CircleService {
 			ok: true,
 			data: applyNotificationsCursor(sortedItems, opts.sinceNotificationId),
 		};
+	}
+
+	async confirmMemberProfile(
+		circleMemberId: string,
+		name: string,
+	): Promise<CircleCallOutcome<void>> {
+		logger.info("[MockServerCircle] Confirmed member profile", {
+			circleMemberId,
+			name,
+		});
+		return { ok: true, data: undefined };
+	}
+
+	async revokeMemberSession(params: {
+		accessToken: string;
+		refreshToken?: string;
+	}): Promise<CircleCallOutcome<void>> {
+		logger.info("[MockServerCircle] Revoked member session", {
+			hasRefreshToken: params.refreshToken !== undefined,
+		});
+		return { ok: true, data: undefined };
 	}
 }

@@ -242,7 +242,11 @@ export class RealCircleService implements CircleService {
 	async getMemberToken(
 		circleMemberId: string,
 	): Promise<CircleCallOutcome<MemberTokenResult>> {
-		let result: { access_token: string; refresh_token: string };
+		let result: {
+			access_token: string;
+			refresh_token: string;
+			access_token_expires_at: string;
+		};
 		try {
 			result = await this.headlessClient.getMemberAPITokenFromCommunityMemberId(
 				Number(circleMemberId),
@@ -276,6 +280,7 @@ export class RealCircleService implements CircleService {
 			data: {
 				accessToken: result.access_token,
 				refreshToken: result.refresh_token,
+				expiresAt: result.access_token_expires_at,
 			},
 		};
 	}
@@ -367,5 +372,95 @@ export class RealCircleService implements CircleService {
 			ok: true,
 			data: applyNotificationsCursor(sortedItems, opts.sinceNotificationId),
 		};
+	}
+
+	/**
+	 * Confirm a member's signup profile via the Headless API.
+	 *
+	 * Idempotent: Circle returns 409 ("You already created profile") when the
+	 * profile was previously confirmed, which we surface as success.
+	 */
+	async confirmMemberProfile(
+		circleMemberId: string,
+		name: string,
+	): Promise<CircleCallOutcome<void>> {
+		const tokenOutcome = await this.getMemberToken(circleMemberId);
+		if (!tokenOutcome.ok) return tokenOutcome;
+		let response: Response;
+		try {
+			response = await fetch(`${CIRCLE_HEADLESS_BASE}/signup/profile`, {
+				method: "PUT",
+				headers: {
+					Authorization: `Bearer ${tokenOutcome.data.accessToken}`,
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({ community_member: { name } }),
+			});
+		} catch (err) {
+			return { ok: false, reason: "network", retriable: true, raw: err };
+		}
+		if (response.status === 409) return { ok: true, data: undefined };
+		if (!response.ok) {
+			const body = await response.text().catch(() => undefined);
+			const { reason, retriable } = classifyStatus(response.status);
+			logger.warn("[Circle] Confirm profile failed", {
+				circleMemberId,
+				status: response.status,
+				body,
+				reason,
+			});
+			return { ok: false, reason, retriable, raw: body };
+		}
+		logger.info("[Circle] Profile confirmed", { circleMemberId });
+		return { ok: true, data: undefined };
+	}
+
+	/**
+	 * Revoke a member's Headless session tokens (logout).
+	 *
+	 * Access and refresh tokens are revoked independently so a failure on one
+	 * does not skip the other. 404 / not-found means the token is already gone,
+	 * which is the desired end-state — treated as success. Never throws.
+	 */
+	async revokeMemberSession(params: {
+		accessToken: string;
+		refreshToken?: string;
+	}): Promise<CircleCallOutcome<void>> {
+		let failure: unknown;
+		try {
+			await this.headlessClient.revokeMemberAPIToken(params.accessToken);
+		} catch (err) {
+			if (
+				!/404|not[_\s]?found/i.test(
+					err instanceof Error ? err.message : String(err),
+				)
+			)
+				failure = err;
+		}
+		if (params.refreshToken) {
+			try {
+				await this.headlessClient.revokeRefreshToken(params.refreshToken);
+			} catch (err) {
+				if (
+					!/404|not[_\s]?found/i.test(
+						err instanceof Error ? err.message : String(err),
+					)
+				)
+					failure = failure ?? err;
+			}
+		}
+		if (failure) {
+			const message =
+				failure instanceof Error ? failure.message : String(failure);
+			logger.warn("[Circle] Revoke session failed", { error: message });
+			const looksAuth = /401|unauthor|403|forbidden/i.test(message);
+			return {
+				ok: false,
+				reason: looksAuth ? "auth" : "server_error",
+				retriable: true,
+				raw: failure,
+			};
+		}
+		return { ok: true, data: undefined };
 	}
 }
