@@ -1,6 +1,7 @@
 import { LocaleLink } from "@i18n/routing";
 import { getBaseUrl } from "@shared/lib/base-url";
 import { getClubNewsPostBySlug } from "@shared/lib/club";
+import { redirectIfWireframeMode } from "@shared/lib/wireframe-mode";
 import { getLocale, getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
 
@@ -47,6 +48,8 @@ export async function generateMetadata(props: { params: Promise<Params> }) {
 export default async function NewsDetailPage(props: { params: Promise<Params> }) {
 	const { slug, locale } = await props.params;
 	setRequestLocale(locale);
+	redirectIfWireframeMode(locale);
+
 	const t = await getTranslations({ locale, namespace: "news" });
 	const activeLocale = await getLocale();
 	const post = await getClubNewsPostBySlug(slug);

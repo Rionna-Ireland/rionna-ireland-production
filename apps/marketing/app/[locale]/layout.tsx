@@ -71,7 +71,8 @@ export default async function MarketingLayout({
 							<ThemeProvider
 								attribute="class"
 								disableTransitionOnChange
-								enableSystem
+								enableSystem={!config.wireframeMode}
+								forcedTheme={config.wireframeMode ? "light" : undefined}
 								defaultTheme={config.defaultTheme}
 								themes={Array.from(config.enabledThemes)}
 							>
@@ -81,8 +82,12 @@ export default async function MarketingLayout({
 
 								<Footer />
 
-								<ConsentBanner />
-								<AnalyticsScript />
+								{!config.wireframeMode && (
+									<>
+										<ConsentBanner />
+										<AnalyticsScript />
+									</>
+								)}
 							</ThemeProvider>
 						</ClientProviders>
 					</NextIntlClientProvider>

@@ -1,3 +1,4 @@
+import { config } from "@config";
 import { LocaleLink } from "@i18n/routing";
 import { getClubOrganization } from "@shared/lib/club";
 import { Logo } from "@repo/ui";
@@ -5,6 +6,30 @@ import { getTranslations } from "next-intl/server";
 
 export async function Footer() {
 	const t = await getTranslations();
+
+	if (config.wireframeMode) {
+		return (
+			<footer className="py-8 text-sm border-t text-foreground/60">
+				<div className="container gap-6 md:flex-row md:items-center md:justify-between flex flex-col">
+					<p className="font-mono text-[10px] tracking-[0.2em] uppercase text-foreground/50">
+						© {new Date().getFullYear()} {config.appName}
+					</p>
+					<div className="gap-4 flex flex-wrap">
+						<LocaleLink href="/legal/privacy-policy" className="block">
+							{t("common.footer.privacyPolicy")}
+						</LocaleLink>
+						<LocaleLink href="/legal/terms" className="block">
+							{t("common.footer.termsAndConditions")}
+						</LocaleLink>
+						<LocaleLink href="/legal/cookie-policy" className="block">
+							{t("common.footer.cookiePolicy")}
+						</LocaleLink>
+					</div>
+				</div>
+			</footer>
+		);
+	}
+
 	const club = await getClubOrganization();
 	const contact = club.metadata.contact ?? {};
 	const social = contact.socialLinks ?? {};

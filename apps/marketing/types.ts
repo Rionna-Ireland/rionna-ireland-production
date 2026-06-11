@@ -24,4 +24,8 @@ export interface MarketingConfig {
 	 * Theme used for first-time visitors before a preference is stored.
 	 */
 	defaultTheme: Theme;
+	/**
+	 * When true, marketing shows a stripped wireframe shell for staging demos.
+	 */
+	wireframeMode: boolean;
 }

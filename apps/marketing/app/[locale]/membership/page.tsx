@@ -1,4 +1,5 @@
 import { config } from "@config";
+import { WireframeMembership } from "@home/components/WireframeMembership";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@repo/ui/components/accordion";
 import { Button } from "@repo/ui/components/button";
 import { ArrowRightIcon, CheckIcon } from "lucide-react";
@@ -27,6 +28,11 @@ const FAQ_KEYS = ["whatIncluded", "howToCancel", "tierChanges", "appSupport"] as
 export default async function MembershipPage(props: { params: Promise<{ locale: string }> }) {
 	const { locale } = await props.params;
 	setRequestLocale(locale);
+
+	if (config.wireframeMode) {
+		return <WireframeMembership />;
+	}
+
 	const t = await getTranslations({ locale, namespace: "membership" });
 
 	const signupUrl = config.saasUrl

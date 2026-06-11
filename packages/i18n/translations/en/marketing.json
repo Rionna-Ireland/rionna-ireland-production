@@ -80,6 +80,10 @@
 					"answer": "iOS and Android, from the App Store and Play Store. Billing stays on the website — nothing goes through Apple or Google."
 				}
 			}
+		},
+		"wireframe": {
+			"badge": "Preview build",
+			"cta": "Join now"
 		}
 	},
 	"news": {
@@ -139,6 +143,11 @@
 			"title": "Ownership, made personal.",
 			"description": "One flat membership. All the horses, all the races, all the moments.",
 			"cta": "Become a member"
+		},
+		"wireframe": {
+			"badge": "Preview build",
+			"joinCta": "Become a member",
+			"signInCta": "Sign in"
 		}
 	},
 	"notFound": {

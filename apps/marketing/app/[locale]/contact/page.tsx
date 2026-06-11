@@ -1,5 +1,6 @@
 import { ContactForm } from "@home/components/ContactForm";
 import { getClubOrganization } from "@shared/lib/club";
+import { redirectIfWireframeMode } from "@shared/lib/wireframe-mode";
 import { MailIcon, MapPinIcon, PhoneIcon } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
@@ -14,6 +15,7 @@ export async function generateMetadata(props: { params: Promise<{ locale: string
 export default async function ContactPage(props: { params: Promise<{ locale: string }> }) {
 	const { locale } = await props.params;
 	setRequestLocale(locale);
+	redirectIfWireframeMode(locale);
 
 	const t = await getTranslations({ locale, namespace: "contact" });
 	const club = await getClubOrganization();

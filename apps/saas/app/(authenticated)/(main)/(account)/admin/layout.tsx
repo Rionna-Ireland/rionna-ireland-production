@@ -28,7 +28,7 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
 				className="mb-6"
 				menuItems={[
 					{
-						avatar: <Logo className="size-8" withLabel={false} />,
+						avatar: <Logo className="h-[1.6rem] w-auto" withLabel={false} />,
 						title: t("title"),
 						items: [
 							{

@@ -49,24 +49,31 @@ export function NavBar() {
 	const menuItems: {
 		label: string;
 		href: string;
-	}[] = [
-		{
-			label: t("common.menu.about"),
-			href: "/about",
-		},
-		{
-			label: t("common.menu.membership"),
-			href: "/membership",
-		},
-		{
-			label: t("common.menu.news"),
-			href: "/news",
-		},
-		{
-			label: t("common.menu.contact"),
-			href: "/contact",
-		},
-	];
+	}[] = config.wireframeMode
+		? [
+				{
+					label: t("common.menu.membership"),
+					href: "/membership",
+				},
+			]
+		: [
+				{
+					label: t("common.menu.about"),
+					href: "/about",
+				},
+				{
+					label: t("common.menu.membership"),
+					href: "/membership",
+				},
+				{
+					label: t("common.menu.news"),
+					href: "/news",
+				},
+				{
+					label: t("common.menu.contact"),
+					href: "/contact",
+				},
+			];
 
 	const isMenuItemActive = (href: string) => localePathname.startsWith(href);
 
@@ -112,7 +119,7 @@ export function NavBar() {
 					</div>
 
 					<div className="gap-3 flex flex-1 items-center justify-end">
-						<ColorModeToggle />
+						{!config.wireframeMode && <ColorModeToggle />}
 						<Suspense>
 							<LocaleSwitch />
 						</Suspense>
