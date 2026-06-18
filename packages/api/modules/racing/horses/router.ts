@@ -6,6 +6,7 @@ import { getHorse } from "./procedures/get-horse";
 import { listHorses } from "./procedures/list-horses";
 import { listTrainers } from "./procedures/list-trainers";
 import { publishHorses } from "./procedures/publish-horses";
+import { retryHorseSpaceProvisioning } from "./procedures/retry-horse-space-provisioning";
 import { syncHorse } from "./procedures/sync-horse";
 import { updateHorse } from "./procedures/update-horse";
 
@@ -17,6 +18,7 @@ export const horsesAdminRouter = {
 	delete: deleteHorse,
 	publish: publishHorses,
 	sync: syncHorse,
+	retryCircleSpace: retryHorseSpaceProvisioning,
 	createPhotoUploadUrl: createPhotoUploadUrl,
 	trainers: {
 		list: listTrainers,

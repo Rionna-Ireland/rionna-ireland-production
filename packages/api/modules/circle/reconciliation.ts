@@ -16,6 +16,7 @@
 import { db } from "@repo/database";
 import { logger } from "@repo/logs";
 import { createCircleService } from "@repo/payments/lib/circle";
+import { provisionHorseSpace } from "@repo/payments/lib/circle-horse-provisioning";
 
 export async function reconcileCircleMembers(
 	organizationId: string,
@@ -209,4 +210,52 @@ export async function reconcileCircleMembers(
 	}
 
 	return { provisioned, deactivated, errors };
+}
+
+/**
+ * Retry horse-space provisioning that the create-horse hot path couldn't
+ * complete (Circle was down, or `metadata.circle.spaceGroupId` wasn't set yet).
+ * Scans horses with no linked space and a null/failed status; each is retried
+ * independently via the fail-safe provisioning fn. (S2-09 surface F.)
+ */
+export async function reconcileCircleHorseSpaces(
+	organizationId: string,
+): Promise<{ provisioned: number; errors: number }> {
+	const horses = await db.horse.findMany({
+		where: {
+			organizationId,
+			circleSpaceId: null,
+			OR: [{ circleSpaceStatus: null }, { circleSpaceStatus: "provisioning_failed" }],
+		},
+		select: { id: true, name: true, organizationId: true },
+	});
+
+	let provisioned = 0;
+	let errors = 0;
+
+	for (const horse of horses) {
+		try {
+			const result = await provisionHorseSpace(horse);
+			if (result.ok) {
+				provisioned++;
+				logger.info("[Reconciliation] Provisioned horse space", {
+					surface: "circle.reconciliation",
+					horseId: horse.id,
+					orgId: organizationId,
+				});
+			} else {
+				errors++;
+			}
+		} catch (error) {
+			errors++;
+			logger.error("[Reconciliation] Failed to provision horse space", {
+				surface: "circle.reconciliation",
+				horseId: horse.id,
+				orgId: organizationId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
+	return { provisioned, errors };
 }

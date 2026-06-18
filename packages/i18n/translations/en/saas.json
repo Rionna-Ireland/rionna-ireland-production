@@ -1,12 +1,74 @@
 {
 	"admin": {
 		"menu": {
+			"dashboard": "Mission Control",
+			"members": "Members",
 			"horses": "Horses",
 			"horseUpdates": "Horse updates",
 			"news": "News",
 			"organizations": "Organizations",
 			"users": "Users",
 			"settings": "Settings"
+		},
+		"dashboard": {
+			"health": {
+				"members": "Members",
+				"activeSubs": "Active subs",
+				"pastDue": "Past due",
+				"circleIssues": "Circle issues"
+			},
+			"audience": {
+				"members": "Members",
+				"public": "Public"
+			},
+			"actions": {
+				"title": "Quick actions",
+				"horseUpdate": "Post a horse update",
+				"news": "Publish website news",
+				"announcement": "Post a community announcement",
+				"event": "Create an event",
+				"poll": "Create a poll in Circle",
+				"soon": "Coming soon"
+			},
+			"recent": {
+				"title": "Recent activity",
+				"updates": "Latest horse updates",
+				"news": "Latest news",
+				"empty": "Nothing yet."
+			},
+			"links": {
+				"title": "Jump to",
+				"stripe": "Open Stripe",
+				"circleAdmin": "Open Circle admin",
+				"community": "Open the community"
+			}
+		},
+		"members": {
+			"title": "Members",
+			"subtitle": "Identity, billing, and community status in one place.",
+			"loading": "Loading members...",
+			"empty": "No members yet.",
+			"columns": {
+				"member": "Member",
+				"subscription": "Subscription",
+				"circle": "Community",
+				"actions": "Actions"
+			},
+			"subscription": {
+				"active": "Active",
+				"trialing": "Trialing",
+				"past_due": "Past due",
+				"canceled": "Canceled",
+				"expired": "Expired",
+				"none": "No subscription"
+			},
+			"circle": {
+				"active": "Active",
+				"provisioning_failed": "Needs attention",
+				"deactivated": "Deactivated"
+			},
+			"openStripe": "Stripe",
+			"openCircle": "Circle"
 		},
 		"updates": {
 			"list": {
@@ -20,6 +82,13 @@
 				"draft": "Draft",
 				"published": "Published",
 				"publish_failed": "Needs attention"
+			},
+			"community": {
+				"createTitle": "Post a community announcement",
+				"editTitle": "Edit community announcement",
+				"audience": "Everyone in the club",
+				"publish": "Post to all members",
+				"published": "Announcement posted to all members."
 			},
 			"form": {
 				"createTitle": "Post a horse update",
@@ -150,10 +219,19 @@
 				"damsire": "Damsire",
 				"photos": "Photos",
 				"photosDisabledHint": "Save the horse first to enable photo uploads.",
-				"publishToggle": "Published",
+				"publishToggle": "Visible to members",
+				"publicProfileToggle": "Show on public website",
 				"publishConfirmTitle": "Publish horse",
 				"publishConfirmMessage": "This will make {name} visible to all members.",
 				"publishConfirmButton": "Publish",
+				"circleSpace": {
+					"active": "Circle space active",
+					"failed": "Circle space couldn't be created.",
+					"pending": "Circle space will be created on save.",
+					"retry": "Retry now",
+					"retrySuccess": "Circle space provisioning retried.",
+					"retryError": "Couldn't reach Circle. It will retry automatically."
+				},
 				"save": "Save",
 				"delete": "Delete",
 				"notifications": {
@@ -232,6 +310,8 @@
 			"form": {
 				"createTitle": "Create news post",
 				"editTitle": "Edit news post",
+				"publicBadge": "🌐 Public website",
+				"publicHint": "Visible to anyone on your public marketing site — not a member-only update.",
 				"titleLabel": "Title",
 				"subtitleLabel": "Subtitle",
 				"slugLabel": "Slug",

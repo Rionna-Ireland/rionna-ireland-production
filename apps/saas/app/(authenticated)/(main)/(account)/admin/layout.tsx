@@ -3,10 +3,12 @@ import { Logo } from "@repo/ui";
 import { SettingsMenu } from "@settings/components/SettingsMenu";
 import { PageHeader } from "@shared/components/PageHeader";
 import {
+	LayoutDashboardIcon,
 	ListIcon,
 	MegaphoneIcon,
 	NewspaperIcon,
 	SettingsIcon,
+	ShieldIcon,
 	UsersIcon,
 } from "lucide-react";
 import { getTranslations } from "next-intl/server";
@@ -38,9 +40,19 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
 						title: t("title"),
 						items: [
 							{
+								title: t("menu.dashboard"),
+								href: "/admin",
+								icon: <LayoutDashboardIcon className="size-4 opacity-50" />,
+							},
+							{
+								title: t("menu.members"),
+								href: "/admin/members",
+								icon: <UsersIcon className="size-4 opacity-50" />,
+							},
+							{
 								title: t("menu.users"),
 								href: "/admin/users",
-								icon: <UsersIcon className="size-4 opacity-50" />,
+								icon: <ShieldIcon className="size-4 opacity-50" />,
 							},
 							{
 								title: t("menu.horses"),

@@ -308,13 +308,22 @@ model Horse {
   pedigree       Json?
   ownershipBlurb String?
 
-  circleSpaceId String?
+  // A horse IS a Circle space (S2-09). Auto-provisioned on create; mirrors the
+  // Member Circle lifecycle. "active" | "provisioning_failed" (cron retries).
+  circleSpaceId            String?
+  circleSpaceStatus        String?
+  circleSpaceProvisionedAt DateTime?
 
   trainerId String?
   trainer   Trainer? @relation(fields: [trainerId], references: [id])
 
-  sortOrder   Int       @default(0)
-  publishedAt DateTime?
+  sortOrder Int @default(0)
+
+  // Two independent visibility gates (S2-09 surface F):
+  //   publishedAt     → members (Stables list, follow, full profile, Circle space)
+  //   publicProfileAt → public marketing site (held until the reveal)
+  publishedAt     DateTime?
+  publicProfileAt DateTime?
 
   latestEntryId String? @unique
   nextEntryId   String? @unique
@@ -328,6 +337,7 @@ model Horse {
   @@unique([organizationId, slug])
   @@unique([organizationId, providerEntityId])
   @@index([organizationId, publishedAt])
+  @@index([organizationId, publicProfileAt])
   @@map("horse")
 }
 

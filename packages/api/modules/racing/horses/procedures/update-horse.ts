@@ -17,9 +17,7 @@ export const updateHorse = adminProcedure
 			horseId: z.string(),
 			name: z.string().min(1).optional(),
 			slug: z.string().optional(),
-			status: z
-				.enum(["PRE_TRAINING", "IN_TRAINING", "REHAB", "RETIRED", "SOLD"])
-				.optional(),
+			status: z.enum(["PRE_TRAINING", "IN_TRAINING", "REHAB", "RETIRED", "SOLD"]).optional(),
 			bio: z.string().nullable().optional(),
 			trainerNotes: z.string().nullable().optional(),
 			ownershipBlurb: z.string().nullable().optional(),
@@ -44,6 +42,7 @@ export const updateHorse = adminProcedure
 			trainerId: z.string().nullable().optional(),
 			sortOrder: z.number().optional(),
 			publishedAt: z.date().nullable().optional(),
+			publicProfileAt: z.date().nullable().optional(),
 			providerEntityId: z.string().nullable().optional(),
 		}),
 	)

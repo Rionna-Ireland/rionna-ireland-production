@@ -55,7 +55,9 @@ export function HorseUpdateList() {
 						{posts.map((post) => (
 							<li key={post.id}>
 								<Link
-									href={getAdminPath(`/updates/${post.id}`)}
+									href={getAdminPath(
+									`${post.audienceType === "community" ? "/announcements" : "/updates"}/${post.id}`,
+								)}
 									className="gap-3 py-3 flex items-center justify-between hover:opacity-80"
 								>
 									<div className="min-w-0">

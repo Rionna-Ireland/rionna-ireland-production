@@ -85,7 +85,7 @@ export type UserNotificationPreferenceScalarFieldEnum = z.infer<typeof UserNotif
 
 // File: HorseScalarFieldEnum.schema.ts
 
-export const HorseScalarFieldEnumSchema = z.enum(['id', 'organizationId', 'slug', 'name', 'providerEntityId', 'providerLastSync', 'status', 'bio', 'trainerNotes', 'photos', 'pedigree', 'ownershipBlurb', 'circleSpaceId', 'trainerId', 'sortOrder', 'publishedAt', 'latestEntryId', 'nextEntryId', 'createdAt', 'updatedAt'])
+export const HorseScalarFieldEnumSchema = z.enum(['id', 'organizationId', 'slug', 'name', 'providerEntityId', 'providerLastSync', 'status', 'bio', 'trainerNotes', 'photos', 'pedigree', 'ownershipBlurb', 'circleSpaceId', 'circleSpaceStatus', 'circleSpaceProvisionedAt', 'trainerId', 'sortOrder', 'publishedAt', 'publicProfileAt', 'latestEntryId', 'nextEntryId', 'createdAt', 'updatedAt'])
 
 export type HorseScalarFieldEnum = z.infer<typeof HorseScalarFieldEnumSchema>;
 
@@ -465,9 +465,12 @@ export const HorseSchema = z.object({
   pedigree: z.unknown().refine((val) => { const getDepth = (obj: unknown, depth: number = 0): number => { if (depth > 10) return depth; if (obj === null || typeof obj !== 'object') return depth; const values = Object.values(obj as Record<string, unknown>); if (values.length === 0) return depth; return Math.max(...values.map(v => getDepth(v, depth + 1))); }; return getDepth(val) <= 10; }, "JSON nesting depth exceeds maximum of 10").nullish(),
   ownershipBlurb: z.string().nullish(),
   circleSpaceId: z.string().nullish(),
+  circleSpaceStatus: z.string().nullish(),
+  circleSpaceProvisionedAt: z.date().nullish(),
   trainerId: z.string().nullish(),
   sortOrder: z.number().int(),
   publishedAt: z.date().nullish(),
+  publicProfileAt: z.date().nullish(),
   latestEntryId: z.string().nullish(),
   nextEntryId: z.string().nullish(),
   createdAt: z.date(),

@@ -10,6 +10,7 @@ import { describe, expect, it } from "vitest";
 
 import {
 	canPublish,
+	canPublishAnnouncement,
 	circleCommunityUrl,
 	isMemberUpdateType,
 	resolvePublishOutcome,
@@ -40,6 +41,14 @@ describe("composer-logic (S2-09)", () => {
 
 		it("is false when there is no body", () => {
 			expect(canPublish({ horseId: "h1", title: "x", hasBody: false })).toBe(false);
+		});
+	});
+
+	describe("canPublishAnnouncement", () => {
+		it("requires a non-blank title and a body (no horse)", () => {
+			expect(canPublishAnnouncement({ title: "Welcome", hasBody: true })).toBe(true);
+			expect(canPublishAnnouncement({ title: "  ", hasBody: true })).toBe(false);
+			expect(canPublishAnnouncement({ title: "Welcome", hasBody: false })).toBe(false);
 		});
 	});
 

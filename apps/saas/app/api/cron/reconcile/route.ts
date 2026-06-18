@@ -8,7 +8,10 @@
  * @see Architecture/specs/S1-06-reconciliation-cron.md
  */
 
-import { reconcileCircleMembers } from "@repo/api/modules/circle/reconciliation";
+import {
+	reconcileCircleHorseSpaces,
+	reconcileCircleMembers,
+} from "@repo/api/modules/circle/reconciliation";
 import { db } from "@repo/database";
 import { parseOrgMetadata } from "@repo/database/types";
 import { logger } from "@repo/logs";
@@ -25,14 +28,26 @@ export async function POST(request: Request) {
 	const orgs = await db.organization.findMany();
 	const results: Record<
 		string,
-		{ provisioned: number; deactivated: number; errors: number }
+		{
+			provisioned: number;
+			deactivated: number;
+			errors: number;
+			horseSpacesProvisioned: number;
+			horseSpaceErrors: number;
+		}
 	> = {};
 
 	for (const org of orgs) {
 		const metadata = parseOrgMetadata(org.metadata);
 		if (!metadata.circle?.communityId) continue;
 
-		const result = await reconcileCircleMembers(org.id);
+		const memberResult = await reconcileCircleMembers(org.id);
+		const horseResult = await reconcileCircleHorseSpaces(org.id);
+		const result = {
+			...memberResult,
+			horseSpacesProvisioned: horseResult.provisioned,
+			horseSpaceErrors: horseResult.errors,
+		};
 		results[org.id] = result;
 
 		logger.info("[Reconciliation Cron] Org complete", {

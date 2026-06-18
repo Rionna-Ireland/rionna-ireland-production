@@ -25,6 +25,14 @@ export function canPublish(input: {
 	return Boolean(input.horseId) && input.title.trim().length > 0 && input.hasBody;
 }
 
+/**
+ * Publish readiness for a community-wide announcement — no horse to pick, so
+ * the gate is just a title and a body.
+ */
+export function canPublishAnnouncement(input: { title: string; hasBody: boolean }): boolean {
+	return input.title.trim().length > 0 && input.hasBody;
+}
+
 /** Normalise a community domain (bare or schemed) to an https origin, or null. */
 export function circleCommunityUrl(communityDomain?: string | null): string | null {
 	if (!communityDomain) return null;

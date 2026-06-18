@@ -1,5 +1,10 @@
 import { ORPCError } from "@orpc/client";
-import { createHorse as createHorseQuery, getHorseByOrgAndSlug } from "@repo/database";
+import {
+	createHorse as createHorseQuery,
+	getHorseById,
+	getHorseByOrgAndSlug,
+} from "@repo/database";
+import { provisionHorseSpace } from "@repo/payments/lib/circle-horse-provisioning";
 import slugify from "@sindresorhus/slugify";
 import { nanoid } from "nanoid";
 import { z } from "zod";
@@ -19,9 +24,7 @@ export const createHorse = adminProcedure
 			organizationId: z.string(),
 			name: z.string().min(1),
 			slug: z.string().optional(),
-			status: z
-				.enum(["PRE_TRAINING", "IN_TRAINING", "REHAB", "RETIRED", "SOLD"])
-				.optional(),
+			status: z.enum(["PRE_TRAINING", "IN_TRAINING", "REHAB", "RETIRED", "SOLD"]).optional(),
 			bio: z.string().optional(),
 			trainerNotes: z.string().optional(),
 			ownershipBlurb: z.string().optional(),
@@ -36,6 +39,7 @@ export const createHorse = adminProcedure
 			trainerId: z.string().optional(),
 			sortOrder: z.number().optional(),
 			publishedAt: z.date().nullable().optional(),
+			publicProfileAt: z.date().nullable().optional(),
 			providerEntityId: z.string().optional(),
 		}),
 	)
@@ -64,7 +68,7 @@ export const createHorse = adminProcedure
 			});
 		}
 
-		return createHorseQuery({
+		const horse = await createHorseQuery({
 			organizationId: input.organizationId,
 			name: input.name,
 			slug,
@@ -74,9 +78,25 @@ export const createHorse = adminProcedure
 			ownershipBlurb: input.ownershipBlurb,
 			pedigree: input.pedigree,
 			circleSpaceId: input.circleSpaceId,
+			circleSpaceStatus: input.circleSpaceId ? "active" : undefined,
 			trainerId: input.trainerId,
 			sortOrder: input.sortOrder,
 			publishedAt: input.publishedAt,
+			publicProfileAt: input.publicProfileAt,
 			providerEntityId: input.providerEntityId,
 		});
+
+		// "A horse IS a Circle space" — auto-provision unless an existing space was
+		// linked manually. Fail-safe: provisioning never throws; a failure lands as
+		// circleSpaceStatus="provisioning_failed" for the reconciliation cron to retry.
+		if (!input.circleSpaceId) {
+			await provisionHorseSpace({
+				id: horse.id,
+				name: horse.name,
+				organizationId: horse.organizationId,
+			});
+			return (await getHorseById(horse.id)) ?? horse;
+		}
+
+		return horse;
 	});
