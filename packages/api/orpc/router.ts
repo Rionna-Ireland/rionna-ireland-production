@@ -3,6 +3,7 @@ import type { RouterClient } from "@orpc/server";
 import { adminRouter } from "../modules/admin/router";
 import { circleRouter } from "../modules/circle/router";
 import { dashboardRouter } from "../modules/dashboard/router";
+import { eventsRouter } from "../modules/events/router";
 import { memberPostsRouter } from "../modules/member-posts/router";
 import { membersRouter } from "../modules/members/router";
 import { newsRouter } from "../modules/news/router";
@@ -20,6 +21,7 @@ export const router = publicProcedure.router({
 	admin: adminRouter,
 	circle: circleRouter,
 	dashboard: dashboardRouter,
+	events: eventsRouter,
 	horses: horsesPublicRouter,
 	memberPosts: memberPostsRouter,
 	members: membersRouter,

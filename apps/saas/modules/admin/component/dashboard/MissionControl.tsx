@@ -89,7 +89,12 @@ export function MissionControl() {
 			href: getAdminPath("/announcements/new"),
 			icon: UsersIcon,
 		},
-		{ key: "event", audience: "members" as const, soon: true, icon: CalendarPlusIcon },
+		{
+			key: "event",
+			audience: "members" as const,
+			href: getAdminPath("/events"),
+			icon: CalendarPlusIcon,
+		},
 		{
 			key: "poll",
 			audience: "members" as const,
@@ -142,29 +147,10 @@ export function MissionControl() {
 								<action.icon className="size-4 shrink-0" />
 								<span className="flex-1 text-left">{label}</span>
 								<AudienceTag audience={action.audience} />
-								{action.external || action.soon ? (
-									action.soon ? null : (
-										<ExternalLinkIcon className="size-3.5" />
-									)
-								) : null}
+								{action.external ? <ExternalLinkIcon className="size-3.5" /> : null}
 							</span>
 						);
 
-						if (action.soon) {
-							return (
-								<Button
-									key={action.key}
-									variant="outline"
-									disabled
-									className="py-3 h-auto"
-								>
-									{inner}
-									<span className="sr-only">
-										{t("admin.dashboard.actions.soon")}
-									</span>
-								</Button>
-							);
-						}
 						if (action.external) {
 							return (
 								<Button

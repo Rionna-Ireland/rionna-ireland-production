@@ -70,6 +70,31 @@
 			"openStripe": "Stripe",
 			"openCircle": "Circle"
 		},
+		"events": {
+			"title": "Create an event",
+			"subtitle": "Posts to your Circle events space — RSVP and reminders are handled by Circle.",
+			"name": "Event name",
+			"description": "Description",
+			"startsAt": "Starts at",
+			"duration": "Duration (minutes)",
+			"location": "Location",
+			"locationTypes": {
+				"tbd": "To be decided",
+				"virtual": "Online",
+				"in_person": "In person"
+			},
+			"create": "Create event",
+			"fallback": {
+				"title": "Couldn't create the event in Circle",
+				"body": "Create this event directly in Circle while we sort the connection.",
+				"openCircle": "Open Circle"
+			},
+			"notifications": {
+				"created": "Event created in Circle.",
+				"failed": "Couldn't create the event — see the fallback below.",
+				"error": "Something went wrong. Please try again."
+			}
+		},
 		"updates": {
 			"list": {
 				"title": "Horse updates",
