@@ -8,6 +8,7 @@
  */
 
 import { logger } from "@repo/logs";
+
 import { MockCircleService } from "./mock";
 import { MockServerCircleService } from "./mock-server";
 import { RealCircleService } from "./real";
@@ -33,9 +34,9 @@ export function getCircleMode(): CircleMode {
 	const explicitMode = process.env.CIRCLE_MODE?.trim();
 
 	if (
-		explicitMode === "mock_service"
-		|| explicitMode === "mock_server"
-		|| explicitMode === "real"
+		explicitMode === "mock_service" ||
+		explicitMode === "mock_server" ||
+		explicitMode === "real"
 	) {
 		return explicitMode;
 	}
@@ -104,9 +105,7 @@ export function createCircleService(orgSlug: string): CircleService {
 
 	const { adminToken, headlessToken } = getRealCircleTokens(orgSlug);
 	if (!adminToken || !headlessToken) {
-		throw new Error(
-			`[Circle] CIRCLE_MODE=real but tokens are missing for org "${orgSlug}"`,
-		);
+		throw new Error(`[Circle] CIRCLE_MODE=real but tokens are missing for org "${orgSlug}"`);
 	}
 
 	return new RealCircleService(adminToken, headlessToken);
@@ -114,10 +113,21 @@ export function createCircleService(orgSlug: string): CircleService {
 
 export type { CircleService } from "./types";
 export type {
+	CircleTiptapBody,
+	CreateEmbedParams,
+	CreateEmbedResult,
+	CreateEventParams,
+	CreateEventResult,
 	CreateMemberParams,
 	CreateMemberResult,
+	CreatePostParams,
+	CreatePostResult,
+	CreateSpaceParams,
+	CreateSpaceResult,
 	MemberTokenResult,
 	ReactivateMemberParams,
+	UploadImageParams,
+	UploadImageResult,
 } from "./types";
 export { CircleApiError } from "./types";
 export { MockCircleService } from "./mock";
