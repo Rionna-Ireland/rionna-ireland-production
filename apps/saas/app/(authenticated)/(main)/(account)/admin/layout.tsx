@@ -3,6 +3,7 @@ import { Logo } from "@repo/ui";
 import { SettingsMenu } from "@settings/components/SettingsMenu";
 import { PageHeader } from "@shared/components/PageHeader";
 import {
+	CalendarIcon,
 	LayoutDashboardIcon,
 	ListIcon,
 	MegaphoneIcon,
@@ -68,6 +69,11 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
 								title: t("menu.news"),
 								href: "/admin/news",
 								icon: <NewspaperIcon className="size-4 opacity-50" />,
+							},
+							{
+								title: t("menu.events"),
+								href: "/admin/events",
+								icon: <CalendarIcon className="size-4 opacity-50" />,
 							},
 							{
 								title: t("menu.settings"),

@@ -1,11 +1,12 @@
 {
 	"admin": {
 		"menu": {
-			"dashboard": "Mission Control",
+			"dashboard": "Overview",
 			"members": "Members",
 			"horses": "Horses",
 			"horseUpdates": "Horse updates",
 			"news": "News",
+			"events": "Events",
 			"organizations": "Organizations",
 			"users": "Users",
 			"settings": "Settings"
