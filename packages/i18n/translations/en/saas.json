@@ -2,10 +2,59 @@
 	"admin": {
 		"menu": {
 			"horses": "Horses",
+			"horseUpdates": "Horse updates",
 			"news": "News",
 			"organizations": "Organizations",
 			"users": "Users",
 			"settings": "Settings"
+		},
+		"updates": {
+			"list": {
+				"title": "Horse updates",
+				"new": "Post an update",
+				"loading": "Loading updates...",
+				"empty": "No updates yet. Post your first horse update.",
+				"communityAudience": "Community"
+			},
+			"status": {
+				"draft": "Draft",
+				"published": "Published",
+				"publish_failed": "Needs attention"
+			},
+			"form": {
+				"createTitle": "Post a horse update",
+				"editTitle": "Edit horse update",
+				"publishedBadge": "Published",
+				"backToList": "Back to updates",
+				"horseLabel": "Horse",
+				"horsePlaceholder": "Choose a horse",
+				"updateTypeLabel": "Update type",
+				"types": {
+					"trainer": "Trainer update",
+					"wellbeing": "Wellbeing / vet update",
+					"general": "General update"
+				},
+				"audienceMembers": "🔒 Members",
+				"chooseHorsePrompt": "Choose a horse first — you pick who sees this before you write.",
+				"titleLabel": "Title",
+				"content": "Update",
+				"videoUrlLabel": "Video URL (optional)",
+				"videoUrlPlaceholder": "Paste a YouTube/Vimeo link to embed",
+				"saveDraft": "Save draft",
+				"publish": "Publish to members",
+				"publishTo": "Post to Members · {horse}",
+				"fallback": {
+					"title": "Couldn't publish to Circle",
+					"body": "Your draft is saved. Post this update directly in Circle while we sort the connection — members won't miss it.",
+					"openCircle": "Open Circle"
+				},
+				"notifications": {
+					"draftSaved": "Draft saved.",
+					"published": "Posted to {horse}'s members.",
+					"publishFailed": "Couldn't publish to Circle — see the fallback below.",
+					"error": "Something went wrong. Please try again."
+				}
+			}
 		},
 		"settings": {
 			"title": "Club Settings",

@@ -1,4 +1,5 @@
 import { createMemberPostDraft } from "./procedures/create-member-post-draft";
+import { createMemberPostImageUploadUrl } from "./procedures/create-member-post-image-upload-url";
 import { getMemberPost } from "./procedures/get-member-post";
 import { listMemberPosts } from "./procedures/list-member-posts";
 import { publishMemberPost } from "./procedures/publish-member-post";
@@ -11,5 +12,6 @@ export const memberPostsRouter = {
 		create: createMemberPostDraft,
 		update: updateMemberPostDraft,
 		publish: publishMemberPost,
+		createImageUploadUrl: createMemberPostImageUploadUrl,
 	},
 };

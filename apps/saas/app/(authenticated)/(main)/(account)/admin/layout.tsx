@@ -2,7 +2,13 @@ import { getSession } from "@auth/lib/server";
 import { Logo } from "@repo/ui";
 import { SettingsMenu } from "@settings/components/SettingsMenu";
 import { PageHeader } from "@shared/components/PageHeader";
-import { ListIcon, NewspaperIcon, SettingsIcon, UsersIcon } from "lucide-react";
+import {
+	ListIcon,
+	MegaphoneIcon,
+	NewspaperIcon,
+	SettingsIcon,
+	UsersIcon,
+} from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 import type { PropsWithChildren } from "react";
@@ -40,6 +46,11 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
 								title: t("menu.horses"),
 								href: "/admin/horses",
 								icon: <ListIcon className="size-4 opacity-50" />,
+							},
+							{
+								title: t("menu.horseUpdates"),
+								href: "/admin/updates",
+								icon: <MegaphoneIcon className="size-4 opacity-50" />,
 							},
 							{
 								title: t("menu.news"),
