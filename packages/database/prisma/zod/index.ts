@@ -131,6 +131,12 @@ export const NewsPostScalarFieldEnumSchema = z.enum(['id', 'organizationId', 'sl
 
 export type NewsPostScalarFieldEnum = z.infer<typeof NewsPostScalarFieldEnumSchema>;
 
+// File: MemberPostScalarFieldEnum.schema.ts
+
+export const MemberPostScalarFieldEnumSchema = z.enum(['id', 'organizationId', 'authorUserId', 'audienceType', 'horseId', 'updateType', 'title', 'bodyJson', 'bodyHtml', 'videoUrl', 'status', 'circleSpaceId', 'circlePostId', 'publishedAt', 'publishError', 'createdAt', 'updatedAt'])
+
+export type MemberPostScalarFieldEnum = z.infer<typeof MemberPostScalarFieldEnumSchema>;
+
 // File: PushTokenScalarFieldEnum.schema.ts
 
 export const PushTokenScalarFieldEnumSchema = z.enum(['id', 'userId', 'expoPushToken', 'deviceLabel', 'platform', 'lastSeenAt', 'createdAt'])
@@ -601,6 +607,31 @@ export const NewsPostSchema = z.object({
 });
 
 export type NewsPostType = z.infer<typeof NewsPostSchema>;
+
+
+// File: MemberPost.schema.ts
+
+export const MemberPostSchema = z.object({
+  id: z.string(),
+  organizationId: z.string(),
+  authorUserId: z.string().nullish(),
+  audienceType: z.string(),
+  horseId: z.string().nullish(),
+  updateType: z.string().nullish(),
+  title: z.string(),
+  bodyJson: z.unknown().refine((val) => { const getDepth = (obj: unknown, depth: number = 0): number => { if (depth > 10) return depth; if (obj === null || typeof obj !== 'object') return depth; const values = Object.values(obj as Record<string, unknown>); if (values.length === 0) return depth; return Math.max(...values.map(v => getDepth(v, depth + 1))); }; return getDepth(val) <= 10; }, "JSON nesting depth exceeds maximum of 10").default("{}"),
+  bodyHtml: z.string().nullish(),
+  videoUrl: z.string().nullish(),
+  status: z.string().default("draft"),
+  circleSpaceId: z.string().nullish(),
+  circlePostId: z.string().nullish(),
+  publishedAt: z.date().nullish(),
+  publishError: z.string().nullish(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
+export type MemberPostType = z.infer<typeof MemberPostSchema>;
 
 
 // File: PushToken.schema.ts

@@ -44,11 +44,12 @@ model User {
   notificationPreferences  UserNotificationPreference[]
 
   // Notification preferences (S1-02)
-  pushEnabled          Boolean  @default(true)
-  pushPreferences      Json     @default("{}")
-  emailPreferences     Json     @default("{}")
-  pushTokens           PushToken[]
-  authoredNewsPosts    NewsPost[]
+  pushEnabled         Boolean      @default(true)
+  pushPreferences     Json         @default("{}")
+  emailPreferences    Json         @default("{}")
+  pushTokens          PushToken[]
+  authoredNewsPosts   NewsPost[]
+  authoredMemberPosts MemberPost[]
 
   @@unique([email])
   @@unique([username])
@@ -155,15 +156,16 @@ model Organization {
   purchases          Purchase[]
 
   // Racing domain (S1-02)
-  horses       Horse[]
-  trainers     Trainer[]
-  jockeys      Jockey[]
-  courses      Course[]
-  meetings     Meeting[]
-  races        Race[]
-  raceEntries  RaceEntry[]
-  newsPosts    NewsPost[]
-  pushLogs     PushLog[]
+  horses      Horse[]
+  trainers    Trainer[]
+  jockeys     Jockey[]
+  courses     Course[]
+  meetings    Meeting[]
+  races       Race[]
+  raceEntries RaceEntry[]
+  newsPosts   NewsPost[]
+  pushLogs    PushLog[]
+  memberPosts MemberPost[]
 
   @@unique([slug])
   @@map("organization")
@@ -288,39 +290,40 @@ enum HorseStatus {
 }
 
 model Horse {
-  id               String       @id @default(cuid())
-  organizationId   String
-  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-  slug             String
-  name             String
+  slug String
+  name String
 
   providerEntityId String?
   providerLastSync DateTime?
 
-  status           HorseStatus  @default(IN_TRAINING)
+  status HorseStatus @default(IN_TRAINING)
 
-  bio              String?      @db.Text
-  trainerNotes     String?      @db.Text
-  photos           Json         @default("[]")
-  pedigree         Json?
-  ownershipBlurb   String?
+  bio            String? @db.Text
+  trainerNotes   String? @db.Text
+  photos         Json    @default("[]")
+  pedigree       Json?
+  ownershipBlurb String?
 
-  circleSpaceId    String?
+  circleSpaceId String?
 
-  trainerId        String?
-  trainer          Trainer?     @relation(fields: [trainerId], references: [id])
+  trainerId String?
+  trainer   Trainer? @relation(fields: [trainerId], references: [id])
 
-  sortOrder        Int          @default(0)
-  publishedAt      DateTime?
+  sortOrder   Int       @default(0)
+  publishedAt DateTime?
 
-  latestEntryId    String?      @unique
-  nextEntryId      String?      @unique
+  latestEntryId String? @unique
+  nextEntryId   String? @unique
 
-  entries          RaceEntry[]
+  entries     RaceEntry[]
+  memberPosts MemberPost[]
 
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([organizationId, slug])
   @@unique([organizationId, providerEntityId])
@@ -380,7 +383,7 @@ model Meeting {
   organizationId   String
   organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   providerEntityId String?
-  courseId          String
+  courseId         String
   course           Course       @relation(fields: [courseId], references: [id])
   date             DateTime
   races            Race[]
@@ -398,8 +401,8 @@ model Race {
   organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   providerEntityId String?
 
-  meetingId        String
-  meeting          Meeting      @relation(fields: [meetingId], references: [id])
+  meetingId String
+  meeting   Meeting @relation(fields: [meetingId], references: [id])
 
   postTime         DateTime
   name             String?
@@ -409,10 +412,10 @@ model Race {
   prizeMoney       Int?
   goingDescription String?
 
-  entries          RaceEntry[]
+  entries RaceEntry[]
 
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([organizationId, providerEntityId])
   @@index([organizationId, postTime])
@@ -429,37 +432,37 @@ enum RaceEntryStatus {
 }
 
 model RaceEntry {
-  id               String          @id @default(cuid())
+  id               String       @id @default(cuid())
   organizationId   String
-  organization     Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   providerEntityId String?
 
-  horseId          String
-  horse            Horse           @relation(fields: [horseId], references: [id], onDelete: Cascade)
+  horseId String
+  horse   Horse  @relation(fields: [horseId], references: [id], onDelete: Cascade)
 
-  raceId           String
-  race             Race            @relation(fields: [raceId], references: [id], onDelete: Cascade)
+  raceId String
+  race   Race   @relation(fields: [raceId], references: [id], onDelete: Cascade)
 
-  status           RaceEntryStatus
+  status RaceEntryStatus
 
-  draw             Int?
-  weightLbs        Int?
-  jockeyId         String?
-  jockey           Jockey?         @relation(fields: [jockeyId], references: [id])
-  trainerId        String?
-  trainer          Trainer?        @relation(fields: [trainerId], references: [id])
+  draw      Int?
+  weightLbs Int?
+  jockeyId  String?
+  jockey    Jockey?  @relation(fields: [jockeyId], references: [id])
+  trainerId String?
+  trainer   Trainer? @relation(fields: [trainerId], references: [id])
 
   finishingPosition Int?
-  beatenLengths    Decimal?        @db.Decimal(5, 2)
-  ratingAchieved   Int?
-  timeformComment  String?         @db.Text
+  beatenLengths     Decimal? @db.Decimal(5, 2)
+  ratingAchieved    Int?
+  timeformComment   String?  @db.Text
   performanceRating Int?
-  starRating       Int?
+  starRating        Int?
 
-  notifiedStates   Json            @default("[]")
+  notifiedStates Json @default("[]")
 
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([organizationId, providerEntityId])
   @@index([organizationId, status])
@@ -473,31 +476,70 @@ model RaceEntry {
 // ──────────────────────────────────────────────
 
 model NewsPost {
-  id                     String       @id @default(cuid())
-  organizationId         String
-  organization           Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-  slug                   String
-  title                  String
-  subtitle               String?
-  featuredImageUrl       String?
+  slug             String
+  title            String
+  subtitle         String?
+  featuredImageUrl String?
 
-  contentJson            Json
-  contentHtml            String       @db.Text
+  contentJson Json
+  contentHtml String @db.Text
 
   publishedAt            DateTime?
-  notifyMembersOnPublish Boolean      @default(false)
+  notifyMembersOnPublish Boolean   @default(false)
   notificationSentAt     DateTime?
 
-  authorUserId           String?
-  author                 User?        @relation(fields: [authorUserId], references: [id], onDelete: SetNull)
+  authorUserId String?
+  author       User?   @relation(fields: [authorUserId], references: [id], onDelete: SetNull)
 
-  createdAt              DateTime     @default(now())
-  updatedAt              DateTime     @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([organizationId, slug])
   @@index([organizationId, publishedAt])
   @@map("news_post")
+}
+
+// MemberPost (S2-09) — native draft-then-publish authoring state for the admin
+// composers. A draft lives locally; on the audience-naming publish click it is
+// posted to Circle (publish-immediately) and the row is kept as a published
+// record. One-directional — we never sync Circle replies/reactions back (D34).
+model MemberPost {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  authorUserId String?
+  author       User?   @relation(fields: [authorUserId], references: [id], onDelete: SetNull)
+
+  // Audience: "horse" posts to a horse's space; "community" posts community-wide.
+  audienceType String // "horse" | "community"
+  horseId      String?
+  horse        Horse?  @relation(fields: [horseId], references: [id], onDelete: SetNull)
+  updateType   String? // "trainer" | "wellbeing" | "general" (horse updates only)
+
+  title    String
+  bodyJson Json    @default("{}") // Novel/TipTap JSONContent (pre-Circle authoring state)
+  bodyHtml String? @db.Text
+  videoUrl String? // paste-a-URL video → one Circle embed node at publish
+
+  // Lifecycle: draft → published (publish-immediately) | publish_failed (fail-safe).
+  status        String    @default("draft") // "draft" | "published" | "publish_failed"
+  circleSpaceId String? // resolved target space, recorded at publish
+  circlePostId  String? // Circle post id once published
+  publishedAt   DateTime?
+  publishError  String?   @db.Text // last failure → drives the "post directly in Circle" fallback
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId, status])
+  @@index([organizationId, publishedAt])
+  @@index([horseId])
+  @@map("member_post")
 }
 
 // ──────────────────────────────────────────────

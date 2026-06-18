@@ -133,3 +133,12 @@ export { CircleApiError } from "./types";
 export { MockCircleService } from "./mock";
 export { MockServerCircleService } from "./mock-server";
 export { RealCircleService } from "./real";
+export { serializeNovelDocToCircle } from "./serialize";
+export type {
+	NovelDoc,
+	SerializeDeps,
+	SerializeFailure,
+	SerializeImageBytes,
+	SerializeOutcome,
+	TiptapNode,
+} from "./serialize";

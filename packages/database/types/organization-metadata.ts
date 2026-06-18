@@ -22,6 +22,8 @@ export interface OrganizationMetadata {
 		communityId?: string;
 		communityDomain?: string;
 		trainerUpdatesSpaceId?: string;
+		/** Space id for community-wide announcements (S2-09 surface C). */
+		communitySpaceId?: string;
 		webhookSecretRef?: string;
 		poll?: {
 			enabled: boolean;
