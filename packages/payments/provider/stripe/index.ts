@@ -37,7 +37,11 @@ export function getStripeClient() {
 		throw new Error("Missing env variable STRIPE_SECRET_KEY");
 	}
 
-	stripeClient = new Stripe(stripeSecretKey);
+	// Pin the API version so webhook event shapes stay stable across SDK bumps
+	// and dashboard-level version changes. Upgrade deliberately, not implicitly.
+	stripeClient = new Stripe(stripeSecretKey, {
+		apiVersion: "2026-03-25.dahlia",
+	});
 
 	return stripeClient;
 }

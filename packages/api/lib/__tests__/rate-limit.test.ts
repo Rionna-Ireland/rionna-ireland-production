@@ -3,7 +3,7 @@
  *
  * Cases:
  *   getClientIp        — x-forwarded-for first hop, x-real-ip fallback, unknown
- *   isSensitivePath    — sign-in / forget-password / magic-link vs other
+ *   classifyAuthPath   — email / signIn / general tiers (incl. /sign-in/magic-link → email)
  *   checkAuthRateLimit — env missing (allow), under limit, over limit (429 + retryAfter),
  *                        distinct IPs isolated, Redis throws (fail open)
  *
@@ -37,8 +37,8 @@ vi.mock("@upstash/ratelimit", () => ({ Ratelimit: mocks.RatelimitCtor }));
 import {
 	__resetRateLimiterForTests,
 	checkAuthRateLimit,
+	classifyAuthPath,
 	getClientIp,
-	isSensitivePath,
 } from "../rate-limit";
 
 beforeEach(() => {
@@ -71,15 +71,24 @@ describe("getClientIp", () => {
 	});
 });
 
-describe("isSensitivePath", () => {
-	it("flags sign-in, forget-password and magic-link", async () => {
-		expect(isSensitivePath("/api/auth/sign-in/email")).toBe(true);
-		expect(isSensitivePath("/api/auth/forget-password")).toBe(true);
-		expect(isSensitivePath("/api/auth/magic-link/verify")).toBe(true);
+describe("classifyAuthPath", () => {
+	it("routes email-sending endpoints to the email tier", async () => {
+		expect(classifyAuthPath("/api/auth/forget-password")).toBe("email");
+		expect(classifyAuthPath("/api/auth/sign-in/magic-link")).toBe("email");
+		expect(classifyAuthPath("/api/auth/send-verification-email")).toBe("email");
+		expect(classifyAuthPath("/api/auth/sign-up/email")).toBe("email");
 	});
 
-	it("does not flag ordinary auth paths", async () => {
-		expect(isSensitivePath("/api/auth/get-session")).toBe(false);
+	it("routes credential / token-consuming endpoints to the signIn tier", async () => {
+		expect(classifyAuthPath("/api/auth/sign-in/email")).toBe("signIn");
+		expect(classifyAuthPath("/api/auth/reset-password")).toBe("signIn");
+		expect(classifyAuthPath("/api/auth/magic-link/verify")).toBe("signIn");
+		expect(classifyAuthPath("/api/auth/verify-email")).toBe("signIn");
+	});
+
+	it("routes everything else (e.g. session reads) to the general tier", async () => {
+		expect(classifyAuthPath("/api/auth/get-session")).toBe("general");
+		expect(classifyAuthPath("/api/auth/list-sessions")).toBe("general");
 	});
 });
 

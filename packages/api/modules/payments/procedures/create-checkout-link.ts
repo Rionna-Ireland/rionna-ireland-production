@@ -12,6 +12,7 @@ import { z } from "zod";
 
 import { localeMiddleware } from "../../../orpc/middleware/locale-middleware";
 import { protectedProcedure } from "../../../orpc/procedures";
+import { resolveSafeRedirectUrl } from "../lib/safe-redirect-url";
 
 export const createCheckoutLink = protectedProcedure
 	.use(localeMiddleware)
@@ -36,6 +37,8 @@ export const createCheckoutLink = protectedProcedure
 			input: { planId, redirectUrl, type, interval, organizationId },
 			context: { user },
 		}) => {
+			const safeRedirectUrl = resolveSafeRedirectUrl(redirectUrl);
+
 			// D29: a user may hold the "member" role in at most one organization.
 			// Block checkout if they already have ANY Member row (regardless of role)
 			// targeting a different org. Platform admins are exempt — they may shop
@@ -99,7 +102,7 @@ export const createCheckoutLink = protectedProcedure
 					priceId,
 					email: user.email,
 					name: user.name ?? "",
-					redirectUrl,
+					redirectUrl: safeRedirectUrl,
 					userId: user.id,
 					...(organizationId ? { organizationId } : {}),
 					trialPeriodDays,

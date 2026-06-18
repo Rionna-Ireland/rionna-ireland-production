@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { localeMiddleware } from "../../../orpc/middleware/locale-middleware";
 import { protectedProcedure } from "../../../orpc/procedures";
+import { resolveSafeRedirectUrl } from "../lib/safe-redirect-url";
 
 export const createCustomerPortalLink = protectedProcedure
 	.use(localeMiddleware)
@@ -24,6 +25,8 @@ export const createCustomerPortalLink = protectedProcedure
 		}),
 	)
 	.handler(async ({ input: { purchaseId, redirectUrl }, context: { user } }) => {
+		const safeRedirectUrl = resolveSafeRedirectUrl(redirectUrl);
+
 		const purchase = await getPurchaseById(purchaseId);
 
 		if (!purchase) {
@@ -50,7 +53,7 @@ export const createCustomerPortalLink = protectedProcedure
 			const customerPortalLink = await createCustomerPortalLinkFn({
 				subscriptionId: purchase.subscriptionId ?? undefined,
 				customerId: purchase.customerId,
-				redirectUrl,
+				redirectUrl: safeRedirectUrl,
 			});
 
 			if (!customerPortalLink) {

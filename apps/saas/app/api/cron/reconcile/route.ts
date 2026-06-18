@@ -14,8 +14,11 @@ import { parseOrgMetadata } from "@repo/database/types";
 import { logger } from "@repo/logs";
 
 export async function POST(request: Request) {
+	// Fail closed: if CRON_SECRET is unset, reject everything rather than
+	// accepting the literal "Bearer undefined".
+	const cronSecret = process.env.CRON_SECRET;
 	const authHeader = request.headers.get("authorization");
-	if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+	if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
 		return new Response("Unauthorized", { status: 401 });
 	}
 
