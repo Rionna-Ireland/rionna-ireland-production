@@ -20,9 +20,15 @@ export default async function MainLayout({ children }: PropsWithChildren) {
 	// send them back there.
 	const isPlatformAdmin = session.user.role === "platformAdmin";
 
+	// Club admins (User.role === "admin") are staff, not paying members, so they bypass the
+	// subscription + onboarding gates too — admin is independent of billing (D29 / S2-09).
+	// Unlike platform admins they hold a real Member row, so they still pass the
+	// requireOrganization gate below normally.
+	const isAdmin = isPlatformAdmin || session.user.role === "admin";
+
 	// Subscription check BEFORE onboarding (per D9: subscribe → then onboard)
 	// Billing is user-scoped (billingAttachedTo: "user"), so query by userId not organizationId
-	if (!isPlatformAdmin && paymentsConfig.requireActiveSubscription) {
+	if (!isAdmin && paymentsConfig.requireActiveSubscription) {
 		const purchases = await listPurchases.callable({
 			context: { headers: await headers() },
 		})({});
@@ -34,7 +40,7 @@ export default async function MainLayout({ children }: PropsWithChildren) {
 		}
 	}
 
-	if (!isPlatformAdmin && authConfig.users.enableOnboarding && !session.user.onboardingComplete) {
+	if (!isAdmin && authConfig.users.enableOnboarding && !session.user.onboardingComplete) {
 		redirect("/onboarding");
 	}
 

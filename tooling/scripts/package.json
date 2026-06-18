@@ -5,6 +5,7 @@
 	"scripts": {
 		"clean": "git clean -xdf .cache .turbo dist node_modules",
 		"create:user": "dotenv -c -e ../../.env -- tsx ./src/create-user.ts",
+		"circle:spike": "dotenv -c -e ../../.env.staging -- tsx ./src/circle-content-spike.ts",
 		"type-check": "tsc --noEmit"
 	},
 	"dependencies": {

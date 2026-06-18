@@ -26,6 +26,16 @@ const nextConfig: NextConfig = {
 				protocol: "https",
 				hostname: "avatars.githubusercontent.com",
 			},
+			{
+				// Supabase Storage — horse/news/brand images (public bucket, D14), all envs
+				protocol: "https",
+				hostname: "*.supabase.co",
+			},
+			{
+				// seed / dev placeholder images
+				protocol: "https",
+				hostname: "picsum.photos",
+			},
 		],
 	},
 	async redirects() {
