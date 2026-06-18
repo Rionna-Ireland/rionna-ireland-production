@@ -295,7 +295,17 @@ describe("handleSubscriptionCreated", () => {
 		mockTransaction.mockImplementation(async (cb: (tx: unknown) => unknown) => {
 			const tx = {
 				purchase: { upsert: mockPurchaseUpsert },
-				member: { upsert: mockMemberUpsert },
+				member: {
+					upsert: mockMemberUpsert,
+					// D29 recheck looks for a conflicting membership in another org;
+					// default to none so the happy path proceeds to the member upsert.
+					findFirst: vi.fn().mockResolvedValue(null),
+				},
+				// S1-08 single-active-subscription guard reads the user's role to
+				// decide whether the D29 recheck applies. A plain member triggers it.
+				user: {
+					findUnique: vi.fn().mockResolvedValue({ role: "member" }),
+				},
 			};
 			mockMemberUpsert.mockResolvedValue(
 				existingMember ?? {

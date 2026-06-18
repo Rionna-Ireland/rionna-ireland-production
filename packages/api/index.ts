@@ -6,6 +6,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger as honoLogger } from "hono/logger";
 
+import { checkAuthRateLimit } from "./lib/rate-limit";
 import { openApiHandler, rpcHandler } from "./orpc/handler";
 
 export { router } from "./orpc/router";
@@ -25,6 +26,19 @@ export const app = new Hono()
 			credentials: true,
 		}),
 	)
+	// Rate limit the auth surface (login, password reset, magic link).
+	// Fails open: if the limiter is unavailable, requests are allowed through.
+	.use("/auth/**", async (c, next) => {
+		const verdict = await checkAuthRateLimit(c.req.path, c.req.raw.headers);
+		if (!verdict.ok) {
+			return c.json(
+				{ error: "rate_limited" },
+				429,
+				verdict.retryAfter ? { "Retry-After": String(verdict.retryAfter) } : undefined,
+			);
+		}
+		return next();
+	})
 	// Auth handler
 	.on(["POST", "GET"], "/auth/**", (c) => auth.handler(c.req.raw))
 	// Payments webhook handler

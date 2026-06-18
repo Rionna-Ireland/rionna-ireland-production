@@ -26,6 +26,8 @@
 		"@repo/utils": "workspace:*",
 		"@scalar/hono-api-reference": "^0.10.6",
 		"@sindresorhus/slugify": "catalog:",
+		"@upstash/ratelimit": "catalog:",
+		"@upstash/redis": "catalog:",
 		"cookie": "catalog:",
 		"expo-server-sdk": "^6.1.0",
 		"hono": "catalog:",
