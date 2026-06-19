@@ -40,6 +40,8 @@
 		"@sindresorhus/slugify": "catalog:",
 		"@tanstack/react-query": "^5.96.2",
 		"@tanstack/react-table": "^8.21.3",
+		"@tiptap/core": "^2.27.2",
+		"@tiptap/react": "^2.27.2",
 		"ai": "catalog:",
 		"better-auth": "catalog:",
 		"boring-avatars": "catalog:",

@@ -58,12 +58,14 @@ export async function getMemberPosts({
 	organizationId,
 	status,
 	horseId,
+	audienceType,
 	limit,
 	offset,
 }: {
 	organizationId: string;
 	status?: string;
 	horseId?: string;
+	audienceType?: string;
 	limit: number;
 	offset: number;
 }) {
@@ -72,6 +74,7 @@ export async function getMemberPosts({
 			organizationId,
 			...(status ? { status } : {}),
 			...(horseId ? { horseId } : {}),
+			...(audienceType ? { audienceType } : {}),
 		},
 		include: { author: authorSelect, horse: horseSelect },
 		orderBy: { createdAt: "desc" },

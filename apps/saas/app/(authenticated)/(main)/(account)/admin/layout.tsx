@@ -3,6 +3,7 @@ import { Logo } from "@repo/ui";
 import { SettingsMenu } from "@settings/components/SettingsMenu";
 import { PageHeader } from "@shared/components/PageHeader";
 import {
+	BellIcon,
 	CalendarIcon,
 	LayoutDashboardIcon,
 	ListIcon,
@@ -64,6 +65,11 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
 								title: t("menu.horseUpdates"),
 								href: "/admin/updates",
 								icon: <MegaphoneIcon className="size-4 opacity-50" />,
+							},
+							{
+								title: t("menu.announcements"),
+								href: "/admin/announcements",
+								icon: <BellIcon className="size-4 opacity-50" />,
 							},
 							{
 								title: t("menu.news"),

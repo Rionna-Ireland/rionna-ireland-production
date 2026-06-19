@@ -59,11 +59,14 @@ export function NewsForm({ newsPostId }: NewsFormProps) {
 
 	const isEdit = !!newsPostId;
 
-	const { data: existingPost } = useQuery(
-		orpc.news.admin.find.queryOptions({
+	const { data: existingPost } = useQuery({
+		...orpc.news.admin.find.queryOptions({
 			input: { newsPostId: newsPostId ?? "" },
 		}),
-	);
+		// Only fetch when editing — on /admin/news/new there's no id yet, so an
+		// unguarded find("") hits NOT_FOUND (matches the updates/announcements forms).
+		enabled: isEdit,
+	});
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const form = useForm<NewsFormValues>({
