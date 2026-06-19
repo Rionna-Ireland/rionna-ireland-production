@@ -99,12 +99,12 @@ export function NewsForm({ newsPostId }: NewsFormProps) {
 		if (!organizationId) return "";
 		setIsUploading(true);
 		try {
-			const { signedUploadUrl, path } = await uploadUrlMutation.mutateAsync({
+			const { signedUploadUrl, publicUrl } = await uploadUrlMutation.mutateAsync({
 				organizationId,
 				filename: `${Date.now()}-${file.name}`,
 			});
 
-			await fetch(signedUploadUrl, {
+			const uploadResponse = await fetch(signedUploadUrl, {
 				method: "PUT",
 				body: file,
 				headers: {
@@ -112,8 +112,12 @@ export function NewsForm({ newsPostId }: NewsFormProps) {
 				},
 			});
 
-			const baseUrl = signedUploadUrl.split("?")[0];
-			return baseUrl ?? path;
+			if (!uploadResponse.ok) {
+				throw new Error("Upload failed");
+			}
+
+			// Public Supabase object URL (public media bucket) — renders in both apps.
+			return publicUrl;
 		} finally {
 			setIsUploading(false);
 		}

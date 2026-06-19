@@ -1,9 +1,5 @@
 "use client";
 
-import { Button } from "@repo/ui/components/button";
-import { Input } from "@repo/ui/components/input";
-import { toastError } from "@repo/ui/components/toast";
-import { orpc } from "@shared/lib/orpc-query-utils";
 import {
 	DndContext,
 	type DragEndEvent,
@@ -19,6 +15,10 @@ import {
 	useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { Button } from "@repo/ui/components/button";
+import { Input } from "@repo/ui/components/input";
+import { toastError } from "@repo/ui/components/toast";
+import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation } from "@tanstack/react-query";
 import { GripVerticalIcon, TrashIcon, UploadIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -61,9 +61,9 @@ function SortablePhoto({
 		<div
 			ref={setNodeRef}
 			style={style}
-			className="flex flex-col gap-2 rounded-md border bg-card p-2"
+			className="gap-2 p-2 flex flex-col rounded-md border bg-card"
 		>
-			<div className="relative flex items-start gap-2">
+			<div className="gap-2 relative flex items-start">
 				<button
 					type="button"
 					className="mt-1 cursor-grab touch-none text-muted-foreground"
@@ -83,7 +83,7 @@ function SortablePhoto({
 					type="button"
 					size="icon"
 					variant="ghost"
-					className="absolute right-0 top-0"
+					className="right-0 top-0 absolute"
 					onClick={() => onRemove(index)}
 				>
 					<TrashIcon className="size-4 text-destructive" />
@@ -104,9 +104,7 @@ export function PhotoGallery({ horseId, photos, onChange }: PhotoGalleryProps) {
 
 	const sensors = useSensors(useSensor(PointerSensor));
 
-	const uploadUrlMutation = useMutation(
-		orpc.admin.horses.createPhotoUploadUrl.mutationOptions(),
-	);
+	const uploadUrlMutation = useMutation(orpc.admin.horses.createPhotoUploadUrl.mutationOptions());
 
 	const onDrop = useCallback(
 		async (acceptedFiles: File[]) => {
@@ -116,12 +114,12 @@ export function PhotoGallery({ horseId, photos, onChange }: PhotoGalleryProps) {
 
 			for (const file of acceptedFiles) {
 				try {
-					const { signedUploadUrl, path } = await uploadUrlMutation.mutateAsync({
+					const { signedUploadUrl, publicUrl } = await uploadUrlMutation.mutateAsync({
 						horseId,
 						filename: file.name,
 					});
 
-					await fetch(signedUploadUrl, {
+					const uploadResponse = await fetch(signedUploadUrl, {
 						method: "PUT",
 						body: file,
 						headers: {
@@ -129,8 +127,12 @@ export function PhotoGallery({ horseId, photos, onChange }: PhotoGalleryProps) {
 						},
 					});
 
-					// Construct the public URL from the path
-					const publicUrl = `/api/media/${path}`;
+					if (!uploadResponse.ok) {
+						throw new Error("Upload failed");
+					}
+
+					// Stored as the public Supabase object URL (public media bucket) so it
+					// renders in both the saas and the public marketing app — no proxy.
 					newPhotos.push({ url: publicUrl, caption: "" });
 				} catch {
 					toastError("Failed to upload photo");
@@ -185,7 +187,7 @@ export function PhotoGallery({ horseId, photos, onChange }: PhotoGalleryProps) {
 						items={photos.map((p) => p.url)}
 						strategy={horizontalListSortingStrategy}
 					>
-						<div className="flex flex-wrap gap-4">
+						<div className="gap-4 flex flex-wrap">
 							{photos.map((photo, index) => (
 								<SortablePhoto
 									key={photo.url}
@@ -207,14 +209,14 @@ export function PhotoGallery({ horseId, photos, onChange }: PhotoGalleryProps) {
 			) : (
 				<div
 					{...getRootProps()}
-					className={`cursor-pointer rounded-md border-2 border-dashed p-8 text-center transition-colors ${
+					className={`p-8 cursor-pointer rounded-md border-2 border-dashed text-center transition-colors ${
 						isDragActive
 							? "border-primary bg-primary/5"
 							: "border-muted-foreground/25 hover:border-primary/50"
 					}`}
 				>
 					<input {...getInputProps()} />
-					<UploadIcon className="mx-auto mb-2 size-8 text-muted-foreground" />
+					<UploadIcon className="mb-2 size-8 mx-auto text-muted-foreground" />
 					<p className="text-sm text-muted-foreground">
 						{isDragActive
 							? "Drop photos here..."

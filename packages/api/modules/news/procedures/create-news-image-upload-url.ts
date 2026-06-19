@@ -1,4 +1,4 @@
-import { getSignedUploadUrl } from "@repo/storage";
+import { getPublicUrl, getSignedUploadUrl } from "@repo/storage";
 import { z } from "zod";
 
 import { adminProcedure } from "../../../orpc/procedures";
@@ -19,8 +19,8 @@ export const createNewsImageUploadUrl = adminProcedure
 	.handler(async ({ input: { organizationId, filename } }) => {
 		const path = `${organizationId}/news/${filename}`;
 		const signedUploadUrl = await getSignedUploadUrl(path, {
-			bucket: "media",
+			bucket: "mediaPublic",
 		});
 
-		return { signedUploadUrl, path };
+		return { signedUploadUrl, path, publicUrl: getPublicUrl("mediaPublic", path) };
 	});

@@ -145,7 +145,7 @@ export function MissionControl() {
 						const inner = (
 							<span className="gap-2 flex w-full items-center">
 								<action.icon className="size-4 shrink-0" />
-								<span className="flex-1 text-left">{label}</span>
+								<span className="flex-1 text-left text-foreground">{label}</span>
 								<AudienceTag audience={action.audience} />
 								{action.external ? <ExternalLinkIcon className="size-3.5" /> : null}
 							</span>
@@ -257,7 +257,7 @@ function RecentList({
 }) {
 	return (
 		<div>
-			<p className="mb-2 font-medium text-xs tracking-wide text-muted-foreground uppercase">
+			<p className="mb-2 font-medium text-xs tracking-wide text-foreground uppercase">
 				{heading}
 			</p>
 			{items.length === 0 ? (
@@ -268,7 +268,7 @@ function RecentList({
 						<li key={item.id}>
 							<Link
 								href={item.href}
-								className="py-2 text-sm block truncate hover:opacity-80"
+								className="py-2 text-sm block truncate text-foreground hover:opacity-80"
 							>
 								{item.title}
 							</Link>

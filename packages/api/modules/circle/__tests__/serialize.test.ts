@@ -5,9 +5,9 @@
  * JSONContent to Circle's `tiptap_body` + post `attachments`. It is the only
  * place a Circle schema change touches, so these tests pin its contract:
  *  - text/marks pass through unchanged
- *  - image nodes are uploaded (bytes fetched via injected fn) → post-level
- *    attachments, and removed from the body (Circle attaches images at the
- *    post level, not inline — proven by the spike)
+ *  - image nodes are uploaded (bytes fetched via injected fn) and rewritten IN
+ *    PLACE as a Circle inline image block `{ type:"image", attrs:{ signed_id,
+ *    content_type, … } }` (post-level attachments do NOT render inline)
  *  - a videoUrl becomes one appended `embed` node carrying the Circle sgid
  *  - any upload/embed/fetch failure fails safe → { ok: false } (the procedure
  *    then surfaces the "post directly in Circle" fallback)
@@ -52,6 +52,12 @@ const PARA = (text: string) => ({
 	content: [{ type: "text", text }],
 });
 
+// The Circle inline image block the serializer rewrites an image node into.
+const IMG = (signedId: string, contentType = "image/jpeg") => ({
+	type: "image",
+	attrs: { signed_id: signedId, content_type: contentType, width: "100%", alignment: "center" },
+});
+
 describe("serializeNovelDocToCircle (S2-09)", () => {
 	it("wraps a plain text doc unchanged with no attachments and no circle calls", async () => {
 		const { deps, uploadImage, createEmbed } = makeDeps();
@@ -68,7 +74,7 @@ describe("serializeNovelDocToCircle (S2-09)", () => {
 		expect(createEmbed).not.toHaveBeenCalled();
 	});
 
-	it("uploads an image node, moves it to attachments, and removes it from the body", async () => {
+	it("uploads an image node and rewrites it in place as an inline image block", async () => {
 		const { deps, uploadImage, fetchImageBytes } = makeDeps();
 		const doc = {
 			type: "doc" as const,
@@ -82,8 +88,12 @@ describe("serializeNovelDocToCircle (S2-09)", () => {
 		const outcome = await serializeNovelDocToCircle(doc, {}, deps);
 
 		if (!outcome.ok) throw new Error("expected ok");
-		expect(outcome.attachments).toEqual(["signed-1"]);
-		expect(outcome.tiptapBody.body.content).toEqual([PARA("Before"), PARA("After")]);
+		expect(outcome.attachments).toEqual([]);
+		expect(outcome.tiptapBody.body.content).toEqual([
+			PARA("Before"),
+			IMG("signed-1"),
+			PARA("After"),
+		]);
 		expect(fetchImageBytes).toHaveBeenCalledWith("https://store/a.jpg");
 		expect(uploadImage).toHaveBeenCalledWith({
 			filename: "a.jpg",
@@ -92,7 +102,7 @@ describe("serializeNovelDocToCircle (S2-09)", () => {
 		});
 	});
 
-	it("uploads multiple images in document order", async () => {
+	it("uploads multiple images in document order, each rewritten in place", async () => {
 		const uploadImage = vi
 			.fn()
 			.mockResolvedValueOnce({ ok: true, data: { signedId: "signed-1" } })
@@ -110,8 +120,12 @@ describe("serializeNovelDocToCircle (S2-09)", () => {
 		const outcome = await serializeNovelDocToCircle(doc, {}, deps);
 
 		if (!outcome.ok) throw new Error("expected ok");
-		expect(outcome.attachments).toEqual(["signed-1", "signed-2"]);
-		expect(outcome.tiptapBody.body.content).toEqual([PARA("Middle")]);
+		expect(outcome.attachments).toEqual([]);
+		expect(outcome.tiptapBody.body.content).toEqual([
+			IMG("signed-1"),
+			PARA("Middle"),
+			IMG("signed-2"),
+		]);
 		expect(uploadImage).toHaveBeenCalledTimes(2);
 	});
 
@@ -147,9 +161,10 @@ describe("serializeNovelDocToCircle (S2-09)", () => {
 		);
 
 		if (!outcome.ok) throw new Error("expected ok");
-		expect(outcome.attachments).toEqual(["signed-1"]);
+		expect(outcome.attachments).toEqual([]);
 		expect(outcome.tiptapBody.body.content).toEqual([
 			PARA("Update"),
+			IMG("signed-1"),
 			{ type: "embed", attrs: { sgid: "sgid-1" } },
 		]);
 	});

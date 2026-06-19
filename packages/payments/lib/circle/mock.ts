@@ -281,7 +281,14 @@ export class MockCircleService implements CircleService {
 			byteSize: params.data.byteLength,
 			contentType: params.contentType,
 		});
-		return { ok: true, data: { signedId, attachableSgid: `mock-sgid-${n}` } };
+		return {
+			ok: true,
+			data: {
+				signedId,
+				attachableSgid: `mock-sgid-${n}`,
+				url: `https://mock.circle.local/uploads/${n}`,
+			},
+		};
 	}
 
 	async createEmbed(params: CreateEmbedParams): Promise<CircleCallOutcome<CreateEmbedResult>> {

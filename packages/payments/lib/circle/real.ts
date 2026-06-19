@@ -562,6 +562,7 @@ export class RealCircleService implements CircleService {
 		let reg: {
 			signed_id?: string;
 			attachable_sgid?: string;
+			url?: string;
 			direct_upload?: { url?: string; headers?: Record<string, string> };
 		};
 		try {
@@ -609,7 +610,7 @@ export class RealCircleService implements CircleService {
 		});
 		return {
 			ok: true,
-			data: { signedId, attachableSgid: reg.attachable_sgid },
+			data: { signedId, attachableSgid: reg.attachable_sgid, url: reg.url },
 		};
 	}
 

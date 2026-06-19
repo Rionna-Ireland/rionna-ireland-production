@@ -50,11 +50,9 @@ const nextConfig: NextConfig = {
 				destination: "/:organizationSlug/settings/general",
 				permanent: true,
 			},
-			{
-				source: "/admin",
-				destination: "/admin/users",
-				permanent: true,
-			},
+			// NOTE: no `/admin` → `/admin/users` redirect. `/admin` is the Mission
+			// Control landing page (S2-09 surface A); redirecting it away shadowed
+			// the dashboard entirely.
 		];
 	},
 	webpack: (config, { webpack, isServer }) => {

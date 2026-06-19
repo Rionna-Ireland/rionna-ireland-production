@@ -152,6 +152,9 @@ export interface UploadImageResult {
 	/** Pass into CreatePostParams.attachments. */
 	signedId: string;
 	attachableSgid?: string;
+	/** Blob URL from the direct-upload response; set on the inline image node so
+	 * Circle renders it (it normalises this to its own assets host on read). */
+	url?: string;
 }
 
 export interface CreateEmbedParams {

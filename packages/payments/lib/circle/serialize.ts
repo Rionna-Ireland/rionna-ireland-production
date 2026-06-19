@@ -2,14 +2,18 @@
  * Novel(TipTap) → Circle serializer (S2-09).
  *
  * THE isolated, thin layer that bridges our editor's JSONContent to Circle's
- * `tiptap_body` + post `attachments`. A Circle schema change touches only this
- * file and the request shapes in real.ts. Kept dependency-injected (no storage
- * or editor imports) so it is trivially unit-testable.
+ * `tiptap_body`. A Circle schema change touches only this file and the request
+ * shapes in real.ts. Kept dependency-injected (no storage or editor imports) so
+ * it is trivially unit-testable.
  *
- * Mapping (proven by the live spike, CIRCLE-SPIKE-NOTES.md):
+ * Mapping (image shape confirmed against the live Circle API + docs,
+ * https://api.circle.so/get-started/concepts/tiptap-editor):
  *  - image nodes → bytes fetched via the injected `fetchImageBytes`, uploaded
- *    through `uploadImage`, collected into POST-LEVEL `attachments`, and removed
- *    from the body (Circle attaches images at the post level, not inline).
+ *    through `uploadImage` (→ `signed_id`), and rewritten IN PLACE as a Circle
+ *    inline image block `{ type:"image", attrs:{ signed_id, content_type, … } }`.
+ *    (Post-level `attachments` does NOT render inline — it silently no-ops; the
+ *    image must carry its `signed_id` inside the body, just as `embed` carries
+ *    its `sgid`. Circle resolves `url` + `inline_attachments` server-side.)
  *  - a `videoUrl` → one `embed` node (carrying the Circle sgid) appended to the
  *    body via `createEmbed`.
  *  - everything else (text, marks, headings, lists) passes through unchanged.
@@ -54,30 +58,44 @@ export type SerializeOutcome =
 
 const IMAGE_NODE_TYPE = "image";
 
+type Failure = { reason: SerializeFailure; raw?: unknown };
+
 export async function serializeNovelDocToCircle(
 	doc: NovelDoc,
 	options: { videoUrl?: string },
 	deps: SerializeDeps,
 ): Promise<SerializeOutcome> {
-	const imageSrcs: string[] = [];
-	const content = filterImages(doc.content ?? [], imageSrcs);
+	// Ref object (not a plain `let`) so TS reads the failure freshly after the
+	// awaited walk rather than narrowing the closure-mutated local to `never`.
+	const failure: { value: Failure | null } = { value: null };
 
-	// Upload images in document order → post-level attachments.
-	const attachments: string[] = [];
-	for (const src of imageSrcs) {
-		let image: SerializeImageBytes;
-		try {
-			image = await deps.fetchImageBytes(src);
-		} catch (err) {
-			return { ok: false, reason: "image_fetch_failed", raw: err };
+	// Walk the doc, replacing each image node in place with a Circle inline image
+	// block carrying the uploaded signed_id. Recurses into child content.
+	const transform = async (nodes: TiptapNode[]): Promise<TiptapNode[]> => {
+		const out: TiptapNode[] = [];
+		for (const node of nodes) {
+			if (failure.value) break;
+			if (node.type === IMAGE_NODE_TYPE) {
+				const inline = await uploadInlineImage(node, deps);
+				if (!inline.ok) {
+					failure.value = { reason: inline.reason, raw: inline.raw };
+					break;
+				}
+				if (inline.node) out.push(inline.node);
+				continue;
+			}
+			if (Array.isArray(node.content)) {
+				out.push({ ...node, content: await transform(node.content) });
+			} else {
+				out.push(node);
+			}
 		}
-		const upload = await deps.circle.uploadImage({
-			filename: image.filename,
-			contentType: image.contentType,
-			data: image.data,
-		});
-		if (!upload.ok) return { ok: false, reason: upload.reason, raw: upload.raw };
-		attachments.push(upload.data.signedId);
+		return out;
+	};
+
+	const content = await transform(doc.content ?? []);
+	if (failure.value) {
+		return { ok: false, reason: failure.value.reason, raw: failure.value.raw };
 	}
 
 	// Optional video → one appended embed node.
@@ -90,28 +108,54 @@ export async function serializeNovelDocToCircle(
 	return {
 		ok: true,
 		tiptapBody: { body: { type: "doc", content } },
-		attachments,
+		attachments: [],
 	};
 }
 
+type InlineImageResult =
+	| { ok: true; node: TiptapNode | null }
+	| { ok: false; reason: SerializeFailure; raw?: unknown };
+
 /**
- * Return a copy of `nodes` with image nodes removed, collecting their `src`
- * (in document order) into `imageSrcs`. Recurses into child content; never
- * mutates the input.
+ * Fetch + upload one image node's bytes and return the Circle inline image block.
+ * An image node with no usable `src` is dropped (`node: null`).
  */
-function filterImages(nodes: TiptapNode[], imageSrcs: string[]): TiptapNode[] {
-	const out: TiptapNode[] = [];
-	for (const node of nodes) {
-		if (node.type === IMAGE_NODE_TYPE) {
-			const src = node.attrs?.src;
-			if (typeof src === "string") imageSrcs.push(src);
-			continue; // drop the image node from the body
-		}
-		if (Array.isArray(node.content)) {
-			out.push({ ...node, content: filterImages(node.content, imageSrcs) });
-		} else {
-			out.push(node);
-		}
+async function uploadInlineImage(
+	node: TiptapNode,
+	deps: SerializeDeps,
+): Promise<InlineImageResult> {
+	const src = node.attrs?.src;
+	if (typeof src !== "string") {
+		return { ok: true, node: null };
 	}
-	return out;
+
+	let image: SerializeImageBytes;
+	try {
+		image = await deps.fetchImageBytes(src);
+	} catch (err) {
+		return { ok: false, reason: "image_fetch_failed", raw: err };
+	}
+
+	const upload = await deps.circle.uploadImage({
+		filename: image.filename,
+		contentType: image.contentType,
+		data: image.data,
+	});
+	if (!upload.ok) {
+		return { ok: false, reason: upload.reason, raw: upload.raw };
+	}
+
+	return {
+		ok: true,
+		node: {
+			type: IMAGE_NODE_TYPE,
+			attrs: {
+				signed_id: upload.data.signedId,
+				content_type: image.contentType,
+				width: "100%",
+				alignment: "center",
+				...(upload.data.url ? { url: upload.data.url } : {}),
+			},
+		},
+	};
 }

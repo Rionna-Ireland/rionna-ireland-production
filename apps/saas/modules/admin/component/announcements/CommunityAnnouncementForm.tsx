@@ -102,12 +102,16 @@ export function CommunityAnnouncementForm({ memberPostId }: CommunityAnnouncemen
 				organizationId,
 				filename: `${Date.now()}-${file.name}`,
 			});
-			await fetch(signedUploadUrl, {
+			const uploadResponse = await fetch(signedUploadUrl, {
 				method: "PUT",
 				body: file,
 				headers: { "Content-Type": file.type },
 			});
-			return signedUploadUrl.split("?")[0] ?? path;
+			if (!uploadResponse.ok) {
+				throw new Error("Upload failed");
+			}
+			// Served via the signed-URL image proxy (private media bucket).
+			return `/image-proxy/media/${path}`;
 		} finally {
 			setIsUploading(false);
 		}
