@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 @import "@repo/tailwind-config/theme.css";
 @import "@repo/tailwind-config/tailwind-animate.css";
 
@@ -34,4 +35,26 @@
 	svg.lucide {
 		stroke-width: 1.5;
 	}
+}
+
+/* Member-post / news composer (Novel/TipTap) image alignment — mirrors Circle's
+   image block (alignment enum + width). Center = full width; left/right float so
+   text wraps, matching the published Circle post. */
+.ProseMirror img {
+	display: block;
+	max-width: 100%;
+	height: auto;
+}
+.ProseMirror img[data-align="center"] {
+	margin-inline: auto;
+}
+.ProseMirror img[data-align="left"] {
+	float: left;
+	max-width: 50%;
+	margin: 0.25rem 1rem 0.5rem 0;
+}
+.ProseMirror img[data-align="right"] {
+	float: right;
+	max-width: 50%;
+	margin: 0.25rem 0 0.5rem 1rem;
 }

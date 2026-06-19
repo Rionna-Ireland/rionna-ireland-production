@@ -215,3 +215,134 @@ describe("serializeNovelDocToCircle (S2-09)", () => {
 		expect(uploadImage).not.toHaveBeenCalled();
 	});
 });
+
+describe("serializeNovelDocToCircle — Circle block allow-list (S2-12)", () => {
+	it("passes through the newly toolbar-exposed blocks unchanged", async () => {
+		const { deps, uploadImage, createEmbed } = makeDeps();
+		const blocks = [
+			{ type: "heading", attrs: { level: 2 }, content: [{ type: "text", text: "H" }] },
+			{ type: "blockquote", content: [PARA("quoted")] },
+			{ type: "codeBlock", attrs: { language: "ts" }, content: [{ type: "text", text: "x" }] },
+			{ type: "horizontalRule" },
+			{
+				type: "bulletList",
+				content: [{ type: "listItem", content: [PARA("a")] }],
+			},
+			{
+				type: "orderedList",
+				attrs: { start: 1 },
+				content: [{ type: "listItem", content: [PARA("b")] }],
+			},
+		];
+		const doc = { type: "doc" as const, content: blocks };
+
+		const outcome = await serializeNovelDocToCircle(doc, {}, deps);
+
+		if (!outcome.ok) throw new Error("expected ok");
+		expect(outcome.tiptapBody.body.content).toEqual(blocks);
+		expect(uploadImage).not.toHaveBeenCalled();
+		expect(createEmbed).not.toHaveBeenCalled();
+	});
+
+	it("mints a Circle sgid for an inline embed node and rewrites it in place", async () => {
+		const { deps, createEmbed } = makeDeps();
+		const doc = {
+			type: "doc" as const,
+			content: [
+				PARA("Watch:"),
+				{ type: "embed", attrs: { url: "https://youtu.be/abc" } },
+				PARA("Nice."),
+			],
+		};
+
+		const outcome = await serializeNovelDocToCircle(doc, {}, deps);
+
+		if (!outcome.ok) throw new Error("expected ok");
+		expect(createEmbed).toHaveBeenCalledWith({ url: "https://youtu.be/abc" });
+		expect(outcome.tiptapBody.body.content).toEqual([
+			PARA("Watch:"),
+			{ type: "embed", attrs: { sgid: "sgid-1" } },
+			PARA("Nice."),
+		]);
+	});
+
+	it("fails safe when an inline embed fails to mint", async () => {
+		const createEmbed = vi
+			.fn()
+			.mockResolvedValue({ ok: false, reason: "invalid_input", retriable: false });
+		const { deps } = makeDeps({ createEmbed });
+		const doc = {
+			type: "doc" as const,
+			content: [{ type: "embed", attrs: { url: "https://bad" } }],
+		};
+
+		const outcome = await serializeNovelDocToCircle(doc, {}, deps);
+
+		expect(outcome).toMatchObject({ ok: false, reason: "invalid_input" });
+	});
+
+	it("downconverts legacy taskList/taskItem to bulletList/listItem (dropping checked)", async () => {
+		const { deps } = makeDeps();
+		const doc = {
+			type: "doc" as const,
+			content: [
+				{
+					type: "taskList",
+					content: [
+						{ type: "taskItem", attrs: { checked: true }, content: [PARA("done")] },
+						{ type: "taskItem", attrs: { checked: false }, content: [PARA("todo")] },
+					],
+				},
+			],
+		};
+
+		const outcome = await serializeNovelDocToCircle(doc, {}, deps);
+
+		if (!outcome.ok) throw new Error("expected ok");
+		expect(outcome.tiptapBody.body.content).toEqual([
+			{
+				type: "bulletList",
+				content: [
+					{ type: "listItem", content: [PARA("done")] },
+					{ type: "listItem", content: [PARA("todo")] },
+				],
+			},
+		]);
+	});
+
+	it("passes a left-aligned image through as half-width left alignment", async () => {
+		const { deps } = makeDeps();
+		const doc = {
+			type: "doc" as const,
+			content: [{ type: "image", attrs: { src: "https://store/a.jpg", alignment: "left" } }],
+		};
+
+		const outcome = await serializeNovelDocToCircle(doc, {}, deps);
+
+		if (!outcome.ok) throw new Error("expected ok");
+		expect(outcome.tiptapBody.body.content).toEqual([
+			{
+				type: "image",
+				attrs: {
+					signed_id: "signed-1",
+					content_type: "image/jpeg",
+					width: "50%",
+					alignment: "left",
+				},
+			},
+		]);
+	});
+
+	it("strips a node outside Circle's renderable set, keeping the rest", async () => {
+		const { deps } = makeDeps();
+		const doc = {
+			type: "doc" as const,
+			content: [PARA("keep"), { type: "callout", content: [PARA("drop me")] }, PARA("also keep")],
+		};
+
+		const outcome = await serializeNovelDocToCircle(doc, {}, deps);
+
+		if (!outcome.ok) throw new Error("expected ok");
+		expect(outcome.tiptapBody.body.content).toEqual([PARA("keep"), PARA("also keep")]);
+	});
+});

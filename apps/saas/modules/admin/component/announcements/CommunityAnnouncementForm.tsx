@@ -34,7 +34,6 @@ import { z } from "zod";
 
 const formSchema = z.object({
 	title: z.string().min(1),
-	videoUrl: z.union([z.string().url(), z.literal("")]).optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -72,14 +71,13 @@ export function CommunityAnnouncementForm({ memberPostId }: CommunityAnnouncemen
 
 	const form = useForm<FormValues>({
 		resolver: zodResolver(formSchema),
-		defaultValues: { title: "", videoUrl: "" },
+		defaultValues: { title: "" },
 	});
 
 	useEffect(() => {
 		if (existingPost) {
 			form.reset({
 				title: existingPost.title,
-				videoUrl: existingPost.videoUrl ?? "",
 			});
 			contentJsonRef.current = existingPost.bodyJson as JSONContent | undefined;
 			contentHtmlRef.current = existingPost.bodyHtml ?? "";
@@ -127,7 +125,6 @@ export function CommunityAnnouncementForm({ memberPostId }: CommunityAnnouncemen
 				title: values.title,
 				bodyJson: contentJsonRef.current,
 				bodyHtml: contentHtmlRef.current || null,
-				videoUrl: values.videoUrl || null,
 			});
 			return memberPostId;
 		}
@@ -137,7 +134,6 @@ export function CommunityAnnouncementForm({ memberPostId }: CommunityAnnouncemen
 			title: values.title,
 			bodyJson: contentJsonRef.current,
 			bodyHtml: contentHtmlRef.current || undefined,
-			videoUrl: values.videoUrl || undefined,
 		});
 		return created.id;
 	};
@@ -246,27 +242,6 @@ export function CommunityAnnouncementForm({ memberPostId }: CommunityAnnouncemen
 								</div>
 							</div>
 
-							<FormField
-								control={form.control}
-								name="videoUrl"
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>
-											{t("admin.updates.form.videoUrlLabel")}
-										</FormLabel>
-										<FormControl>
-											<Input
-												{...field}
-												placeholder={t(
-													"admin.updates.form.videoUrlPlaceholder",
-												)}
-												disabled={isPublished}
-											/>
-										</FormControl>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
 
 							{fallback && (
 								<div className="border-amber-300 bg-amber-50 p-4 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100 rounded-md border">

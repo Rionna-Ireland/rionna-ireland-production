@@ -41,7 +41,6 @@ const formSchema = z.object({
 	horseId: z.string().min(1),
 	updateType: z.enum(MEMBER_UPDATE_TYPES),
 	title: z.string().min(1),
-	videoUrl: z.union([z.string().url(), z.literal("")]).optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -96,7 +95,7 @@ export function HorseUpdateForm({ memberPostId }: HorseUpdateFormProps) {
 
 	const form = useForm<FormValues>({
 		resolver: zodResolver(formSchema),
-		defaultValues: { horseId: "", updateType: "trainer", title: "", videoUrl: "" },
+		defaultValues: { horseId: "", updateType: "trainer", title: "" },
 	});
 
 	useEffect(() => {
@@ -106,7 +105,6 @@ export function HorseUpdateForm({ memberPostId }: HorseUpdateFormProps) {
 				updateType:
 					(existingPost.updateType as FormValues["updateType"] | null) ?? "trainer",
 				title: existingPost.title,
-				videoUrl: existingPost.videoUrl ?? "",
 			});
 			contentJsonRef.current = existingPost.bodyJson as JSONContent | undefined;
 			contentHtmlRef.current = existingPost.bodyHtml ?? "";
@@ -161,7 +159,6 @@ export function HorseUpdateForm({ memberPostId }: HorseUpdateFormProps) {
 				updateType: values.updateType,
 				bodyJson: contentJsonRef.current,
 				bodyHtml: contentHtmlRef.current || null,
-				videoUrl: values.videoUrl || null,
 			});
 			return memberPostId;
 		}
@@ -173,7 +170,6 @@ export function HorseUpdateForm({ memberPostId }: HorseUpdateFormProps) {
 			title: values.title,
 			bodyJson: contentJsonRef.current,
 			bodyHtml: contentHtmlRef.current || undefined,
-			videoUrl: values.videoUrl || undefined,
 		});
 		return created.id;
 	};
@@ -364,28 +360,6 @@ export function HorseUpdateForm({ memberPostId }: HorseUpdateFormProps) {
 									/>
 								</div>
 							</div>
-
-							<FormField
-								control={form.control}
-								name="videoUrl"
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>
-											{t("admin.updates.form.videoUrlLabel")}
-										</FormLabel>
-										<FormControl>
-											<Input
-												{...field}
-												placeholder={t(
-													"admin.updates.form.videoUrlPlaceholder",
-												)}
-												disabled={isPublished}
-											/>
-										</FormControl>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
 
 							{/* Fail-safe: Circle publish failed → post directly in Circle */}
 							{fallback && (

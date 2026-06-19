@@ -90,6 +90,7 @@
 		"@repo/tsconfig": "workspace:*",
 		"@shikijs/rehype": "catalog:",
 		"@tailwindcss/postcss": "catalog:",
+		"@tailwindcss/typography": "^0.5.16",
 		"@types/js-cookie": "catalog:",
 		"@types/mdx": "catalog:",
 		"@types/node": "catalog:",
