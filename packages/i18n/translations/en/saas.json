@@ -5,7 +5,7 @@
 			"members": "Members",
 			"horses": "Horses",
 			"horseUpdates": "Horse updates",
-			"news": "News",
+			"news": "Public news",
 			"events": "Events",
 			"organizations": "Organizations",
 			"users": "Users",
@@ -320,7 +320,7 @@
 			"title": "Manage organizations"
 		},
 		"news": {
-			"title": "News Posts",
+			"title": "Public news",
 			"newPost": "New Post",
 			"loading": "Loading news posts...",
 			"noResults": "No news posts found.",
@@ -341,10 +341,10 @@
 				"published": "Published"
 			},
 			"form": {
-				"createTitle": "Create news post",
-				"editTitle": "Edit news post",
-				"publicBadge": "🌐 Public website",
-				"publicHint": "Visible to anyone on your public marketing site — not a member-only update.",
+				"createTitle": "New public news post",
+				"editTitle": "Edit public news post",
+				"publicBadge": "🌐 Public marketing website",
+				"publicHint": "This publishes to your public marketing website — anyone on the internet can see it. It is NOT a member update and does NOT post to Circle.",
 				"titleLabel": "Title",
 				"subtitleLabel": "Subtitle",
 				"slugLabel": "Slug",
