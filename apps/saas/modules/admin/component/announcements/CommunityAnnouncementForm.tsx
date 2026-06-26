@@ -1,6 +1,7 @@
 "use client";
 
 import { NovelEditor } from "@admin/component/novel-editor";
+import { useCircleVideoUpload } from "@admin/lib/circle-video-upload";
 import {
 	canPublishAnnouncement,
 	resolvePublishOutcome,
@@ -48,6 +49,7 @@ export function CommunityAnnouncementForm({ memberPostId }: CommunityAnnouncemen
 	const queryClient = useQueryClient();
 	const { organizationId: orgId, organization } = useAdminOrganization();
 	const organizationId = orgId ?? "";
+	const uploadVideo = useCircleVideoUpload(organizationId);
 
 	const communityDomain =
 		(organization?.metadata as { circle?: { communityDomain?: string } } | undefined)?.circle
@@ -238,6 +240,7 @@ export function CommunityAnnouncementForm({ memberPostId }: CommunityAnnouncemen
 											);
 										}}
 										onUploadImage={handleUploadImage}
+										onUploadVideo={uploadVideo}
 									/>
 								</div>
 							</div>

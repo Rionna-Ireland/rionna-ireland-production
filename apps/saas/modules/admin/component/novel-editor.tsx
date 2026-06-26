@@ -28,11 +28,15 @@ import { EditorToolbar } from "./novel/editor-toolbar";
 import { ImageBubbleMenu } from "./novel/image-bubble-menu";
 import { Embed } from "./novel/embed-extension";
 import { buildSlashItems } from "./novel/slash-command";
+import { VideoDialog, type VideoUploadHandler } from "./novel/video-dialog";
 
 interface NovelEditorProps {
 	initialContent?: JSONContent;
 	onChange?: (data: { json: JSONContent; html: string }) => void;
 	onUploadImage?: (file: File) => Promise<string>;
+	/** When provided, the video modal offers direct .mp4 upload to Circle (member-post
+	 * composers). Absent (e.g. News) → the video modal is paste-a-URL only. */
+	onUploadVideo?: VideoUploadHandler;
 }
 
 const MAX_IMAGE_MB = 10;
@@ -78,8 +82,14 @@ const ImageWithUpload = TiptapImage.extend({
 	},
 });
 
-export function NovelEditor({ initialContent, onChange, onUploadImage }: NovelEditorProps) {
+export function NovelEditor({
+	initialContent,
+	onChange,
+	onUploadImage,
+	onUploadVideo,
+}: NovelEditorProps) {
 	const [editor, setEditor] = useState<EditorInstance | null>(null);
+	const [videoOpen, setVideoOpen] = useState(false);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
 	// novel's createImageUpload contract: validateFn MUST return a truthy value
@@ -112,7 +122,11 @@ export function NovelEditor({ initialContent, onChange, onUploadImage }: NovelEd
 	// blockquote/codeBlock/horizontalRule/hardBreak. TaskList/TaskItem are removed
 	// (not in Circle's renderable set). Embed is our Circle-aligned video node.
 	const slashItems = useMemo(
-		() => buildSlashItems({ openImagePicker: () => fileInputRef.current?.click() }),
+		() =>
+			buildSlashItems({
+				openImagePicker: () => fileInputRef.current?.click(),
+				openVideoDialog: () => setVideoOpen(true),
+			}),
 		[],
 	);
 
@@ -153,7 +167,17 @@ export function NovelEditor({ initialContent, onChange, onUploadImage }: NovelEd
 				className="hidden"
 				onChange={onPickFile}
 			/>
-			<EditorToolbar editor={editor} openImagePicker={() => fileInputRef.current?.click()} />
+			<EditorToolbar
+				editor={editor}
+				openImagePicker={() => fileInputRef.current?.click()}
+				openVideoDialog={() => setVideoOpen(true)}
+			/>
+			<VideoDialog
+				editor={editor}
+				open={videoOpen}
+				onOpenChange={setVideoOpen}
+				onUploadVideo={onUploadVideo}
+			/>
 			<EditorContent
 				immediatelyRender={false}
 				extensions={extensions}

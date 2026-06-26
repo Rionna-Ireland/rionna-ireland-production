@@ -157,6 +157,26 @@ export interface UploadImageResult {
 	url?: string;
 }
 
+export interface CreateDirectUploadParams {
+	filename: string;
+	contentType: string;
+	byteSize: number;
+	/** Base64-encoded MD5 of the file bytes, computed by the caller (e.g. in-browser). */
+	checksum: string;
+}
+
+export interface CreateDirectUploadResult {
+	/** `signed_id` for the registered blob (e.g. for post attachments). */
+	signedId: string;
+	attachableSgid?: string;
+	/** Presigned S3 URL the caller PUTs the raw bytes to. */
+	uploadUrl: string;
+	/** Headers Circle requires on the PUT (e.g. Content-Type, Content-MD5). */
+	uploadHeaders: Record<string, string>;
+	/** Circle CDN blob url — feed to `createEmbed` to render an inline video player. */
+	cdnUrl?: string;
+}
+
 export interface CreateEmbedParams {
 	/** Video URL (YouTube etc.) to embed. */
 	url: string;
@@ -261,6 +281,15 @@ export interface CircleService {
 	createPost(params: CreatePostParams): Promise<CircleCallOutcome<CreatePostResult>>;
 	/** Register + upload image bytes, returning a signed_id for `attachments`. */
 	uploadImage(params: UploadImageParams): Promise<CircleCallOutcome<UploadImageResult>>;
+	/**
+	 * Register a blob with Circle and return its presigned S3 PUT URL, so a client
+	 * can upload the bytes directly (browser → Circle S3). Used for admin video
+	 * uploads (the bytes never pass through our server). The returned `cdnUrl` is
+	 * fed to `createEmbed` at publish to render an inline player.
+	 */
+	createDirectUpload(
+		params: CreateDirectUploadParams,
+	): Promise<CircleCallOutcome<CreateDirectUploadResult>>;
 	/** Create a video embed, returning an sgid for a TipTap `embed` node. */
 	createEmbed(params: CreateEmbedParams): Promise<CircleCallOutcome<CreateEmbedResult>>;
 	/** Provision a Circle space (the "a horse = a space" auto-provision). */

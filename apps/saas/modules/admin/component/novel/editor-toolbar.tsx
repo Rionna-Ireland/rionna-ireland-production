@@ -1,15 +1,8 @@
 "use client";
 
-import { Button } from "@repo/ui/components/button";
-import { Input } from "@repo/ui/components/input";
-import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from "@repo/ui/components/popover";
 import { cn } from "@repo/ui";
 import { useEditorState } from "@tiptap/react";
-import { type EditorInstance, getUrlFromString } from "novel";
+import type { EditorInstance } from "novel";
 import {
 	BoldIcon,
 	CodeIcon,
@@ -28,7 +21,7 @@ import {
 	UnderlineIcon,
 	VideoIcon,
 } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 
 import { LinkSelector } from "./link-selector";
 
@@ -36,6 +29,8 @@ interface EditorToolbarProps {
 	editor: EditorInstance | null;
 	/** Opens the editor's file picker → existing S2-11 image upload flow. */
 	openImagePicker: () => void;
+	/** Opens the video modal (upload .mp4 or paste a URL). */
+	openVideoDialog: () => void;
 }
 
 function ToolbarButton({
@@ -77,53 +72,7 @@ function Group({ children }: { children: ReactNode }) {
 	return <div className="gap-0.5 flex items-center">{children}</div>;
 }
 
-/** URL popover that inserts an inline video embed node. */
-function EmbedSelector({ editor }: { editor: EditorInstance }) {
-	const [open, setOpen] = useState(false);
-	const [value, setValue] = useState("");
-
-	function apply() {
-		const url = getUrlFromString(value);
-		if (url) {
-			editor.chain().focus().setEmbed({ url }).run();
-			setValue("");
-			setOpen(false);
-		}
-	}
-
-	return (
-		<Popover modal open={open} onOpenChange={setOpen}>
-			<PopoverTrigger asChild>
-				<button
-					type="button"
-					aria-label="Embed video"
-					title="Embed video"
-					className="flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-foreground/10"
-				>
-					<VideoIcon className="size-4" />
-				</button>
-			</PopoverTrigger>
-			<PopoverContent align="start" className="gap-2 flex w-80 p-2">
-				<Input
-					placeholder="YouTube / Vimeo / video URL"
-					value={value}
-					onChange={(e) => setValue(e.target.value)}
-					onKeyDown={(e) => {
-						if (e.key === "Enter") {
-							e.preventDefault();
-							apply();
-						}
-					}}
-				/>
-				<Button type="button" size="sm" onClick={apply}>
-					Embed
-				</Button>
-			</PopoverContent>
-		</Popover>
-	);
-}
-
-export function EditorToolbar({ editor, openImagePicker }: EditorToolbarProps) {
+export function EditorToolbar({ editor, openImagePicker, openVideoDialog }: EditorToolbarProps) {
 	const state = useEditorState({
 		editor,
 		selector: ({ editor }) =>
@@ -263,7 +212,12 @@ export function EditorToolbar({ editor, openImagePicker }: EditorToolbarProps) {
 					disabled={disabled}
 					onClick={openImagePicker}
 				/>
-				{editor && <EmbedSelector editor={editor} />}
+				<ToolbarButton
+					icon={VideoIcon}
+					label="Add video"
+					disabled={disabled}
+					onClick={openVideoDialog}
+				/>
 			</Group>
 		</div>
 	);

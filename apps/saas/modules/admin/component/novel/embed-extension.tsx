@@ -7,13 +7,13 @@ import {
 	ReactNodeViewRenderer,
 } from "@tiptap/react";
 import { Button } from "@repo/ui/components/button";
-import { ExternalLinkIcon, XIcon } from "lucide-react";
+import { ExternalLinkIcon, PlayIcon, XIcon } from "lucide-react";
 
 declare module "@tiptap/core" {
 	interface Commands<ReturnType> {
 		embed: {
-			/** Insert a video / oEmbed block carrying the source url. */
-			setEmbed: (options: { url: string }) => ReturnType;
+			/** Insert a video / oEmbed block carrying the source url (+ optional poster). */
+			setEmbed: (options: { url: string; poster?: string }) => ReturnType;
 		};
 	}
 }
@@ -47,6 +47,7 @@ function toEmbedSrc(url: string): string | null {
 
 function EmbedView({ node, deleteNode, editor }: NodeViewProps) {
 	const url = (node.attrs.url as string) ?? "";
+	const poster = (node.attrs.poster as string) ?? "";
 	const src = toEmbedSrc(url);
 
 	return (
@@ -63,7 +64,19 @@ function EmbedView({ node, deleteNode, editor }: NodeViewProps) {
 					<XIcon className="size-4" />
 				</Button>
 			)}
-			{src ? (
+			{poster ? (
+				// Uploaded video: show a poster thumbnail (not a live player) — the real
+				// player is rendered in the published Circle post.
+				<div className="relative aspect-video w-full overflow-hidden rounded-lg border border-muted bg-black">
+					{/* biome-ignore lint/a11y/useAltText: decorative video poster */}
+					<img src={poster} alt="Video thumbnail" className="size-full object-cover opacity-80" />
+					<div className="absolute inset-0 flex items-center justify-center">
+						<span className="flex size-14 items-center justify-center rounded-full bg-black/60 text-white">
+							<PlayIcon className="size-6" />
+						</span>
+					</div>
+				</div>
+			) : src ? (
 				<div className="aspect-video w-full overflow-hidden rounded-lg border border-muted">
 					<iframe
 						src={src}
@@ -104,6 +117,9 @@ export const Embed = Node.create({
 	addAttributes() {
 		return {
 			url: { default: null },
+			// Editor-only poster thumbnail (data URL) for uploaded videos; not emitted
+			// to Circle (the serializer mints the player from `url`).
+			poster: { default: null, renderHTML: () => ({}) },
 		};
 	},
 
@@ -136,9 +152,9 @@ export const Embed = Node.create({
 	addCommands() {
 		return {
 			setEmbed:
-				({ url }) =>
+				({ url, poster }) =>
 				({ commands }) =>
-					commands.insertContent({ type: this.name, attrs: { url } }),
+					commands.insertContent({ type: this.name, attrs: { url, poster: poster ?? null } }),
 		};
 	},
 });

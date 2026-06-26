@@ -24,6 +24,8 @@ import type {
 	CreatePostResult,
 	CreateSpaceParams,
 	CreateSpaceResult,
+	CreateDirectUploadParams,
+	CreateDirectUploadResult,
 	CreateEmbedParams,
 	CreateEmbedResult,
 	MemberTokenResult,
@@ -287,6 +289,29 @@ export class MockCircleService implements CircleService {
 				signedId,
 				attachableSgid: `mock-sgid-${n}`,
 				url: `https://mock.circle.local/uploads/${n}`,
+			},
+		};
+	}
+
+	async createDirectUpload(
+		params: CreateDirectUploadParams,
+	): Promise<CircleCallOutcome<CreateDirectUploadResult>> {
+		const n = this.nextUploadId++;
+		const signedId = `mock-signed-id-${n}`;
+		logger.info("[MockCircle] Registered direct upload", {
+			signedId,
+			filename: params.filename,
+			byteSize: params.byteSize,
+			contentType: params.contentType,
+		});
+		return {
+			ok: true,
+			data: {
+				signedId,
+				attachableSgid: `mock-sgid-${n}`,
+				uploadUrl: `https://mock.circle.local/direct-upload/${n}`,
+				uploadHeaders: { "Content-Type": params.contentType, "Content-MD5": params.checksum },
+				cdnUrl: `https://mock.circle.local/uploads/${n}`,
 			},
 		};
 	}

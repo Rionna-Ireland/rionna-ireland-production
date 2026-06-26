@@ -1,6 +1,6 @@
 "use client";
 
-import { type SuggestionItem, createSuggestionItems, getUrlFromString } from "novel";
+import { type SuggestionItem, createSuggestionItems } from "novel";
 import {
 	CodeIcon,
 	Heading1Icon,
@@ -18,6 +18,8 @@ import {
 export interface SlashHandlers {
 	/** Open the editor's file picker → existing S2-11 image upload flow. */
 	openImagePicker: () => void;
+	/** Open the video modal (upload .mp4 or paste a URL). */
+	openVideoDialog: () => void;
 }
 
 /**
@@ -112,14 +114,12 @@ export function buildSlashItems(handlers: SlashHandlers): SuggestionItem[] {
 		},
 		{
 			title: "Video",
-			description: "Embed a video by URL",
-			searchTerms: ["embed", "youtube", "vimeo"],
+			description: "Upload or embed a video",
+			searchTerms: ["embed", "youtube", "vimeo", "upload"],
 			icon: <VideoIcon className="size-4" />,
 			command: ({ editor, range }) => {
-				const input = window.prompt("Video URL");
 				editor.chain().focus().deleteRange(range).run();
-				const url = input ? getUrlFromString(input) : null;
-				if (url) editor.chain().focus().setEmbed({ url }).run();
+				handlers.openVideoDialog();
 			},
 		},
 	]);

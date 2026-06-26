@@ -2,6 +2,7 @@
 
 import { NovelEditor } from "@admin/component/novel-editor";
 import { useAdminOrganization } from "@admin/hooks/use-admin-organization";
+import { useCircleVideoUpload } from "@admin/lib/circle-video-upload";
 import { getAdminPath } from "@admin/lib/links";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Badge } from "@repo/ui/components/badge";
@@ -64,6 +65,7 @@ export function HorseUpdateForm({ memberPostId }: HorseUpdateFormProps) {
 	const queryClient = useQueryClient();
 	const { organizationId: orgId, organization } = useAdminOrganization();
 	const organizationId = orgId ?? "";
+	const uploadVideo = useCircleVideoUpload(organizationId);
 
 	const communityDomain =
 		(organization?.metadata as { circle?: { communityDomain?: string } } | undefined)?.circle
@@ -357,6 +359,7 @@ export function HorseUpdateForm({ memberPostId }: HorseUpdateFormProps) {
 											setHasBody(Boolean(stripHtml(html)));
 										}}
 										onUploadImage={handleUploadImage}
+										onUploadVideo={uploadVideo}
 									/>
 								</div>
 							</div>

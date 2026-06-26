@@ -23,6 +23,8 @@ import type {
 	CircleNotification,
 	CircleNotificationPage,
 	CircleService,
+	CreateDirectUploadParams,
+	CreateDirectUploadResult,
 	CreateEventParams,
 	CreateEventResult,
 	CreateMemberParams,
@@ -527,10 +529,11 @@ export class RealCircleService implements CircleService {
 		};
 	}
 
-	async uploadImage(params: UploadImageParams): Promise<CircleCallOutcome<UploadImageResult>> {
-		// Step 1: register the blob. Param is `blob` (not `file` — the spike's
-		// only first-run failure) with a base64-MD5 checksum of the bytes.
-		const checksum = createHash("md5").update(params.data).digest("base64");
+	async createDirectUpload(
+		params: CreateDirectUploadParams,
+	): Promise<CircleCallOutcome<CreateDirectUploadResult>> {
+		// Register the blob. Param is `blob` (not `file` — the spike's only first-run
+		// failure); the caller supplies the base64-MD5 checksum of the bytes.
 		let regRes: Response;
 		try {
 			regRes = await fetch(`${CIRCLE_ADMIN_BASE}/direct_uploads`, {
@@ -539,8 +542,8 @@ export class RealCircleService implements CircleService {
 				body: JSON.stringify({
 					blob: {
 						filename: params.filename,
-						byte_size: params.data.byteLength,
-						checksum,
+						byte_size: params.byteSize,
+						checksum: params.checksum,
 						content_type: params.contentType,
 					},
 				}),
@@ -551,11 +554,7 @@ export class RealCircleService implements CircleService {
 		if (!regRes.ok) {
 			const raw = await regRes.text().catch(() => undefined);
 			const { reason, retriable } = classifyStatus(regRes.status);
-			logger.error("[Circle] direct_uploads failed", {
-				status: regRes.status,
-				raw,
-				reason,
-			});
+			logger.error("[Circle] direct_uploads failed", { status: regRes.status, raw, reason });
 			return { ok: false, reason, retriable, raw };
 		}
 
@@ -570,22 +569,41 @@ export class RealCircleService implements CircleService {
 		} catch (err) {
 			return { ok: false, reason: "server_error", retriable: true, raw: err };
 		}
-		const signedId = reg.signed_id;
-		const upload = reg.direct_upload;
-		if (!signedId || !upload?.url) {
+		if (!reg.signed_id || !reg.direct_upload?.url) {
 			const raw = JSON.stringify(reg).slice(0, 500);
-			logger.error("[Circle] direct_uploads: missing signed_id / upload url", {
-				raw,
-			});
+			logger.error("[Circle] direct_uploads: missing signed_id / upload url", { raw });
 			return { ok: false, reason: "server_error", retriable: false, raw };
 		}
 
-		// Step 2: PUT the bytes to the signed S3 URL with Circle's headers.
+		return {
+			ok: true,
+			data: {
+				signedId: reg.signed_id,
+				attachableSgid: reg.attachable_sgid,
+				uploadUrl: reg.direct_upload.url,
+				uploadHeaders: reg.direct_upload.headers ?? {},
+				cdnUrl: reg.url,
+			},
+		};
+	}
+
+	async uploadImage(params: UploadImageParams): Promise<CircleCallOutcome<UploadImageResult>> {
+		// Register, then PUT the bytes server-side. (Admin video uploads instead PUT
+		// from the browser — see createDirectUpload + the create-circle-video-upload procedure.)
+		const checksum = createHash("md5").update(params.data).digest("base64");
+		const reg = await this.createDirectUpload({
+			filename: params.filename,
+			contentType: params.contentType,
+			byteSize: params.data.byteLength,
+			checksum,
+		});
+		if (!reg.ok) return reg;
+
 		let putRes: Response;
 		try {
-			putRes = await fetch(upload.url, {
+			putRes = await fetch(reg.data.uploadUrl, {
 				method: "PUT",
-				headers: upload.headers ?? {},
+				headers: reg.data.uploadHeaders,
 				// undici accepts a Uint8Array body at runtime; the DOM `BodyInit`
 				// type rejects `Uint8Array<ArrayBufferLike>` (TS 5.7 typed-array
 				// generics), so cast at this single boundary.
@@ -597,20 +615,14 @@ export class RealCircleService implements CircleService {
 		if (!putRes.ok) {
 			const raw = await putRes.text().catch(() => undefined);
 			const { reason, retriable } = classifyStatus(putRes.status);
-			logger.error("[Circle] S3 PUT failed", {
-				status: putRes.status,
-				reason,
-			});
+			logger.error("[Circle] S3 PUT failed", { status: putRes.status, reason });
 			return { ok: false, reason, retriable, raw };
 		}
 
-		logger.info("[Circle] Uploaded image", {
-			signedId,
-			filename: params.filename,
-		});
+		logger.info("[Circle] Uploaded image", { signedId: reg.data.signedId, filename: params.filename });
 		return {
 			ok: true,
-			data: { signedId, attachableSgid: reg.attachable_sgid, url: reg.url },
+			data: { signedId: reg.data.signedId, attachableSgid: reg.data.attachableSgid, url: reg.data.cdnUrl },
 		};
 	}
 

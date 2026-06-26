@@ -17,6 +17,8 @@ import type {
 	CreateEventResult,
 	CreateMemberParams,
 	CreateMemberResult,
+	CreateDirectUploadParams,
+	CreateDirectUploadResult,
 	CreatePostParams,
 	CreatePostResult,
 	CreateSpaceParams,
@@ -461,8 +463,9 @@ export class MockServerCircleService implements CircleService {
 		};
 	}
 
-	async uploadImage(params: UploadImageParams): Promise<CircleCallOutcome<UploadImageResult>> {
-		const checksum = createHash("md5").update(params.data).digest("base64");
+	async createDirectUpload(
+		params: CreateDirectUploadParams,
+	): Promise<CircleCallOutcome<CreateDirectUploadResult>> {
 		let regRes: Response;
 		try {
 			regRes = await fetch(`${this.baseUrl}/api/admin/v2/direct_uploads`, {
@@ -471,8 +474,8 @@ export class MockServerCircleService implements CircleService {
 				body: JSON.stringify({
 					blob: {
 						filename: params.filename,
-						byte_size: params.data.byteLength,
-						checksum,
+						byte_size: params.byteSize,
+						checksum: params.checksum,
 						content_type: params.contentType,
 					},
 				}),
@@ -489,6 +492,7 @@ export class MockServerCircleService implements CircleService {
 		let reg: {
 			signed_id?: string;
 			attachable_sgid?: string;
+			url?: string;
 			direct_upload?: { url?: string; headers?: Record<string, string> };
 		};
 		try {
@@ -496,9 +500,7 @@ export class MockServerCircleService implements CircleService {
 		} catch (err) {
 			return { ok: false, reason: "server_error", retriable: true, raw: err };
 		}
-		const signedId = reg.signed_id;
-		const upload = reg.direct_upload;
-		if (!signedId || !upload?.url) {
+		if (!reg.signed_id || !reg.direct_upload?.url) {
 			return {
 				ok: false,
 				reason: "server_error",
@@ -507,11 +509,33 @@ export class MockServerCircleService implements CircleService {
 			};
 		}
 
+		return {
+			ok: true,
+			data: {
+				signedId: reg.signed_id,
+				attachableSgid: reg.attachable_sgid,
+				uploadUrl: reg.direct_upload.url,
+				uploadHeaders: reg.direct_upload.headers ?? {},
+				cdnUrl: reg.url,
+			},
+		};
+	}
+
+	async uploadImage(params: UploadImageParams): Promise<CircleCallOutcome<UploadImageResult>> {
+		const checksum = createHash("md5").update(params.data).digest("base64");
+		const reg = await this.createDirectUpload({
+			filename: params.filename,
+			contentType: params.contentType,
+			byteSize: params.data.byteLength,
+			checksum,
+		});
+		if (!reg.ok) return reg;
+
 		let putRes: Response;
 		try {
-			putRes = await fetch(upload.url, {
+			putRes = await fetch(reg.data.uploadUrl, {
 				method: "PUT",
-				headers: upload.headers ?? {},
+				headers: reg.data.uploadHeaders,
 				// See RealCircleService.uploadImage: cast at the binary-body boundary.
 				body: params.data as unknown as BodyInit,
 			});
@@ -526,7 +550,7 @@ export class MockServerCircleService implements CircleService {
 
 		return {
 			ok: true,
-			data: { signedId, attachableSgid: reg.attachable_sgid },
+			data: { signedId: reg.data.signedId, attachableSgid: reg.data.attachableSgid, url: reg.data.cdnUrl },
 		};
 	}
 
