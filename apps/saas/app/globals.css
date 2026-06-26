@@ -40,6 +40,10 @@
 /* Member-post / news composer (Novel/TipTap) image alignment — mirrors Circle's
    image block (alignment enum + width). Center = full width; left/right float so
    text wraps, matching the published Circle post. */
+.ProseMirror {
+	/* Contain floated aligned images so the editor height grows with them. */
+	display: flow-root;
+}
 .ProseMirror img {
 	display: block;
 	max-width: 100%;

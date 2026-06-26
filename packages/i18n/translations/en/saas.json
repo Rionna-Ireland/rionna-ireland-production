@@ -8,7 +8,6 @@
 			"news": "Public news",
 			"events": "Events",
 			"organizations": "Organizations",
-			"users": "Users",
 			"settings": "Settings",
 			"announcements": "Announcements"
 		},
@@ -52,9 +51,15 @@
 			"empty": "No members yet.",
 			"columns": {
 				"member": "Member",
+				"role": "Role",
 				"subscription": "Subscription",
 				"circle": "Community",
 				"actions": "Actions"
+			},
+			"role": {
+				"owner": "Owner",
+				"admin": "Admin",
+				"member": "Member"
 			},
 			"subscription": {
 				"active": "Active",

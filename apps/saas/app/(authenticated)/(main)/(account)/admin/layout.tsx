@@ -10,7 +10,6 @@ import {
 	MegaphoneIcon,
 	NewspaperIcon,
 	SettingsIcon,
-	ShieldIcon,
 	UsersIcon,
 } from "lucide-react";
 import { getTranslations } from "next-intl/server";
@@ -50,11 +49,6 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
 								title: t("menu.members"),
 								href: "/admin/members",
 								icon: <UsersIcon className="size-4 opacity-50" />,
-							},
-							{
-								title: t("menu.users"),
-								href: "/admin/users",
-								icon: <ShieldIcon className="size-4 opacity-50" />,
 							},
 							{
 								title: t("menu.horses"),

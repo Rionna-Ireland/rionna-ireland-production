@@ -25,6 +25,13 @@ function circleBadge(status: string | null): BadgeStatus {
 	return undefined;
 }
 
+// Read-only Better-Auth org role (S2-13). Role *changes* live on the org-settings
+// members page, not this day-to-day admin surface.
+function roleBadge(role: string): BadgeStatus {
+	if (role === "owner" || role === "admin") return "info";
+	return undefined;
+}
+
 export function MembersRoster() {
 	const t = useTranslations();
 	const { organizationId: orgId, organization } = useAdminOrganization();
@@ -60,6 +67,9 @@ export function MembersRoster() {
 										{t("admin.members.columns.member")}
 									</th>
 									<th className="py-2 pr-4 font-medium">
+										{t("admin.members.columns.role")}
+									</th>
+									<th className="py-2 pr-4 font-medium">
 										{t("admin.members.columns.subscription")}
 									</th>
 									<th className="py-2 pr-4 font-medium">
@@ -78,6 +88,11 @@ export function MembersRoster() {
 											<div className="text-xs text-muted-foreground">
 												{row.email}
 											</div>
+										</td>
+										<td className="py-3 pr-4">
+											<Badge status={roleBadge(row.memberRole)}>
+												{t(`admin.members.role.${row.memberRole}`)}
+											</Badge>
 										</td>
 										<td className="py-3 pr-4">
 											<Badge
