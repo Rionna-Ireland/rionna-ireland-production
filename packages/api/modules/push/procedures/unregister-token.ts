@@ -15,9 +15,11 @@ export const unregisterPushToken = protectedProcedure
 			expoPushToken: z.string(),
 		}),
 	)
-	.handler(async ({ input }) => {
+	.handler(async ({ input, context: { user } }) => {
+		// Scope to the caller's own token — a session must not be able to delete
+		// another user's push registration by token value.
 		await db.pushToken.deleteMany({
-			where: { expoPushToken: input.expoPushToken },
+			where: { expoPushToken: input.expoPushToken, userId: user.id },
 		});
 
 		return { success: true };
