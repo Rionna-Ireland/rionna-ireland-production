@@ -15,11 +15,11 @@
  * @see Architecture/specs/S1-07-ingest-worker.md
  */
 
+import { isAuthorizedCronRequest } from "@repo/api/lib/cron-auth";
 import { runIngestForAllOrgs } from "@repo/api/modules/racing/ingest/orchestrator";
 
 export async function POST(request: Request) {
-  const authHeader = request.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!isAuthorizedCronRequest(request)) {
     return new Response("Unauthorized", { status: 401 });
   }
 

@@ -8,6 +8,7 @@
  * @see Architecture/specs/S1-06-reconciliation-cron.md
  */
 
+import { isAuthorizedCronRequest } from "@repo/api/lib/cron-auth";
 import {
 	reconcileCircleHorseSpaces,
 	reconcileCircleMembers,
@@ -17,11 +18,7 @@ import { parseOrgMetadata } from "@repo/database/types";
 import { logger } from "@repo/logs";
 
 export async function POST(request: Request) {
-	// Fail closed: if CRON_SECRET is unset, reject everything rather than
-	// accepting the literal "Bearer undefined".
-	const cronSecret = process.env.CRON_SECRET;
-	const authHeader = request.headers.get("authorization");
-	if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+	if (!isAuthorizedCronRequest(request)) {
 		return new Response("Unauthorized", { status: 401 });
 	}
 

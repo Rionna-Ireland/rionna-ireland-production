@@ -19,12 +19,12 @@
  * @see Architecture/specs/S6-01-circle-notifications.md
  */
 
+import { isAuthorizedCronRequest } from "@repo/api/lib/cron-auth";
 import { runCirclePollTick } from "@repo/api/modules/circle/poller";
 import { logger } from "@repo/logs";
 
 export async function POST(request: Request) {
-	const authHeader = request.headers.get("authorization");
-	if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+	if (!isAuthorizedCronRequest(request)) {
 		return new Response("Unauthorized", { status: 401 });
 	}
 
