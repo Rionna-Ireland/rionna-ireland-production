@@ -1,4 +1,5 @@
 import { publishHorses as publishHorsesQuery } from "@repo/database";
+import { logger } from "@repo/logs";
 import { z } from "zod";
 
 import { adminProcedure } from "../../../../orpc/procedures";
@@ -17,8 +18,15 @@ export const publishHorses = adminProcedure
 			publish: z.boolean(),
 		}),
 	)
-	.handler(async ({ input }) => {
+	.handler(async ({ input, context }) => {
 		await publishHorsesQuery(input.horseIds, input.publish);
+
+		logger.info("Admin published/unpublished horses", {
+			event: "admin_horses_published",
+			actorUserId: context.user.id,
+			horseIds: input.horseIds,
+			publish: input.publish,
+		});
 
 		return { success: true };
 	});

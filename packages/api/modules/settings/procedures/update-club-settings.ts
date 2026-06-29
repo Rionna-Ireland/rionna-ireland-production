@@ -1,6 +1,7 @@
 import { ORPCError } from "@orpc/server";
 import { db } from "@repo/database";
 import { parseOrgMetadata } from "@repo/database/types";
+import { logger } from "@repo/logs";
 import { z } from "zod";
 
 import { adminProcedure } from "../../../orpc/procedures";
@@ -40,7 +41,7 @@ export const updateClubSettings = adminProcedure
 		summary: "Update club settings",
 	})
 	.input(updateClubSettingsInput)
-	.handler(async ({ input: { organizationId, brand, contact } }) => {
+	.handler(async ({ input: { organizationId, brand, contact }, context }) => {
 		const organization = await db.organization.findUnique({
 			where: { id: organizationId },
 			select: { metadata: true },
@@ -77,6 +78,12 @@ export const updateClubSettings = adminProcedure
 		await db.organization.update({
 			where: { id: organizationId },
 			data: { metadata: JSON.stringify(merged) },
+		});
+
+		logger.info("Admin updated club settings", {
+			event: "admin_club_settings_updated",
+			actorUserId: context.user.id,
+			organizationId,
 		});
 
 		return merged;

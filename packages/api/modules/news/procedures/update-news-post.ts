@@ -1,5 +1,6 @@
 import { ORPCError } from "@orpc/server";
 import { getNewsPostById, updateNewsPost as updateNewsPostDb } from "@repo/database";
+import { logger } from "@repo/logs";
 import { z } from "zod";
 
 import { adminProcedure } from "../../../orpc/procedures";
@@ -26,7 +27,7 @@ export const updateNewsPost = adminProcedure
 			notifyMembersOnPublish: z.boolean().optional(),
 		}),
 	)
-	.handler(async ({ input }) => {
+	.handler(async ({ input, context }) => {
 		const existingPost = await getNewsPostById(input.newsPostId);
 
 		if (!existingPost) {
@@ -87,6 +88,13 @@ export const updateNewsPost = adminProcedure
 				slug: post.slug,
 			});
 		}
+
+		logger.info("Admin updated news post", {
+			event: "admin_news_post_updated",
+			actorUserId: context.user.id,
+			organizationId: post.organizationId,
+			newsPostId: post.id,
+		});
 
 		return post;
 	});
