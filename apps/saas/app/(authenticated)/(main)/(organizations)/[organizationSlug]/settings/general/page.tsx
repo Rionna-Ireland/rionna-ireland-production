@@ -29,7 +29,7 @@ export default async function OrganizationSettingsPage({
 		return notFound();
 	}
 
-	const canManageDeletion = isOrganizationAdmin(organization, session?.user);
+	const isOrgAdmin = isOrganizationAdmin(organization, session?.user);
 
 	const t = await getTranslations("organizations.settings");
 
@@ -38,9 +38,9 @@ export default async function OrganizationSettingsPage({
 			<PageHeader title={t("title")} subtitle={t("subtitle")} />
 
 			<SettingsList>
-				<OrganizationLogoForm />
+				{isOrgAdmin && <OrganizationLogoForm />}
 				<ChangeOrganizationNameForm />
-				{canManageDeletion && <DeleteOrganizationForm />}
+				{isOrgAdmin && <DeleteOrganizationForm />}
 			</SettingsList>
 		</>
 	);
