@@ -75,7 +75,35 @@
 				"deactivated": "Deactivated"
 			},
 			"openStripe": "Stripe",
-			"openCircle": "Circle"
+			"openCircle": "Circle",
+			"remove": {
+				"action": "Remove",
+				"title": "Remove {name} from membership?",
+				"intro": "This cancels their subscription and removes their access across all systems.",
+				"blastStripe": "Their Stripe subscription is cancelled immediately.",
+				"blastCircle": "Their community access is removed — posts and history are preserved, not deleted.",
+				"blastApp": "They are removed from the club roster and lose app access.",
+				"gdprNote": "This is not a full GDPR account deletion (erasing their data) — that is a separate, heavier action.",
+				"confirmLabel": "Type {name} to confirm",
+				"cancel": "Cancel",
+				"submit": "Remove from membership",
+				"removing": "Removing…",
+				"errorTitle": "Couldn't complete the removal",
+				"successTitle": "{name} removed",
+				"summaryTitle": "Removal summary",
+				"stepStripe": "Subscription",
+				"stepCircle": "Community access",
+				"stepApp": "Membership",
+				"status": {
+					"ok": "Done",
+					"skipped": "Skipped",
+					"failed": "Failed"
+				},
+				"verifyStripe": "Verify in Stripe ↗",
+				"verifyCircle": "Verify in Circle ↗",
+				"partialNote": "Some steps didn't complete. You can safely run the removal again to finish.",
+				"close": "Close"
+			}
 		},
 		"events": {
 			"title": "Create an event",

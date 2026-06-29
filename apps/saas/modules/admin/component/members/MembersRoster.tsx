@@ -1,6 +1,7 @@
 "use client";
 
 import { useAdminOrganization } from "@admin/hooks/use-admin-organization";
+import { useSession } from "@auth/hooks/use-session";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@repo/ui/components/card";
@@ -8,8 +9,17 @@ import { orpc } from "@shared/lib/orpc-query-utils";
 import { useQuery } from "@tanstack/react-query";
 import { ExternalLinkIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useState } from "react";
+
+import { RemoveMemberDialog } from "./RemoveMemberDialog";
 
 type BadgeStatus = "success" | "info" | "warning" | "error" | undefined;
+
+interface RemoveTarget {
+	memberId: string;
+	name: string;
+	email: string;
+}
 
 function subscriptionBadge(status: string): BadgeStatus {
 	if (status === "active") return "success";
@@ -34,12 +44,15 @@ function roleBadge(role: string): BadgeStatus {
 
 export function MembersRoster() {
 	const t = useTranslations();
+	const { user } = useSession();
 	const { organizationId: orgId, organization } = useAdminOrganization();
 	const organizationId = orgId ?? "";
 
 	const communityDomain =
 		(organization?.metadata as { circle?: { communityDomain?: string } } | undefined)?.circle
 			?.communityDomain ?? null;
+
+	const [removeTarget, setRemoveTarget] = useState<RemoveTarget | null>(null);
 
 	const { data, isLoading } = useQuery({
 		...orpc.members.admin.roster.queryOptions({ input: { organizationId } }),
@@ -136,6 +149,22 @@ export function MembersRoster() {
 														</a>
 													</Button>
 												)}
+												{row.userId !== user?.id && (
+													<Button
+														variant="ghost"
+														size="sm"
+														className="text-destructive hover:text-destructive"
+														onClick={() =>
+															setRemoveTarget({
+																memberId: row.memberId,
+																name: row.name,
+																email: row.email,
+															})
+														}
+													>
+														{t("admin.members.remove.action")}
+													</Button>
+												)}
 											</div>
 										</td>
 									</tr>
@@ -145,6 +174,18 @@ export function MembersRoster() {
 					</div>
 				)}
 			</CardContent>
+
+			{removeTarget && (
+				<RemoveMemberDialog
+					organizationId={organizationId}
+					member={removeTarget}
+					communityDomain={communityDomain}
+					open={!!removeTarget}
+					onOpenChange={(next) => {
+						if (!next) setRemoveTarget(null);
+					}}
+				/>
+			)}
 		</Card>
 	);
 }

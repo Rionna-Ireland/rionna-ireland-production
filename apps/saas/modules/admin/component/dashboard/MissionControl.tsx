@@ -221,7 +221,7 @@ export function MissionControl() {
 							<Button
 								key={link.key}
 								asChild
-								variant=""
+								variant="link"
 								className="justify-between"
 							>
 								<a href={link.href} target="_blank" rel="noopener noreferrer">

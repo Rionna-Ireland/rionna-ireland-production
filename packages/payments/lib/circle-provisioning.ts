@@ -110,16 +110,21 @@ export async function provisionCircleMember(
 
 /**
  * Deactivate a member in Circle (preserves their posts).
- * Called on subscription.deleted.
+ * Called on subscription.deleted and from the guided-removal flow (S2-10).
+ *
+ * Returns true when the member was deactivated, false when it failed (and was
+ * deferred to reconciliation). The webhook caller ignores the result; the
+ * guided-removal orchestration uses it to decide whether to proceed to the
+ * irreversible Member-row delete.
  */
 export async function deactivateCircleMember(
 	member: { id: string; circleMemberId: string },
-): Promise<void> {
+): Promise<boolean> {
 	const dbMember = await db.member.findUnique({
 		where: { id: member.id },
 		include: { organization: true },
 	});
-	if (!dbMember?.organization?.slug) return;
+	if (!dbMember?.organization?.slug) return false;
 
 	const service = createCircleService(dbMember.organization.slug);
 	const outcome = await service.deactivateMember(member.circleMemberId);
@@ -137,7 +142,7 @@ export async function deactivateCircleMember(
 				retriable: outcome.retriable,
 			},
 		);
-		return;
+		return false;
 	}
 
 	await db.member.update({
@@ -149,6 +154,8 @@ export async function deactivateCircleMember(
 		memberId: member.id,
 		circleMemberId: member.circleMemberId,
 	});
+
+	return true;
 }
 
 /**
