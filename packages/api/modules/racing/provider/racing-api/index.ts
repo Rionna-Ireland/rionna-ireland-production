@@ -9,6 +9,7 @@
  * @see Architecture/specs/S2-15-racing-data-horse-connection.md (Implementation shape)
  */
 
+import { logger } from "@repo/logs";
 import type {
 	ProviderEntry,
 	ProviderHorse,
@@ -54,6 +55,8 @@ export class TheRacingApiProvider implements RacingDataProvider {
 	): Promise<ProviderEntry[]> {
 		// Declaration window is today + tomorrow; lookAheadDays beyond that is
 		// empty (declarations only publish ~24-48h out). See D37.
+		// NOTE: instance memoization assumes the per-org ingest loop is sequential
+		// (ingest-org.ts); parallelizing horses would double-fetch racecards.
 		const linked = new Set([providerHorseId]);
 		const cards = [
 			...(await this.racecardsForDay("today")),
@@ -68,7 +71,10 @@ export class TheRacingApiProvider implements RacingDataProvider {
 				`/v1/results/${encodeURIComponent(providerRaceId)}`,
 			);
 			return mapResult(data);
-		} catch {
+		} catch (error) {
+			logger.warn(`Racing API getRaceResult failed for ${providerRaceId}`, {
+				error,
+			});
 			return null;
 		}
 	}
