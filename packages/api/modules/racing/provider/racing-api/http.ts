@@ -63,10 +63,16 @@ export class RacingApiHttp {
 		await this.bucket.take();
 		const res = await fetch(`${BASE_URL}${path}`, {
 			headers: { Authorization: this.authHeader, "User-Agent": "Rionna/1.0" },
+			signal: AbortSignal.timeout(15000),
 		});
 		if (!res.ok) {
 			throw new Error(`Racing API ${path} -> HTTP ${res.status}`);
 		}
-		return (await res.json()) as T;
+		const text = await res.text();
+		try {
+			return JSON.parse(text) as T;
+		} catch {
+			throw new Error(`Racing API ${path} -> invalid JSON response`);
+		}
 	}
 }
