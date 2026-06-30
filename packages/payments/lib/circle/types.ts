@@ -110,18 +110,122 @@ export type CircleCallOutcome<T> =
 	| { ok: true; data: T }
 	| { ok: false; reason: CircleCallFailure; retriable: boolean; raw?: unknown };
 
+// ---------------------------------------------------------------------------
+// Publishing surface (S2-09) — native admin composers post INTO Circle.
+// Each method is a thin pass-through: the Novel→tiptap_body serialization and
+// media-node resolution live in a separate layer (the composer), not here, so
+// a Circle schema change stays a one-file fix. Shapes proven by the live spike
+// (tooling/scripts/CIRCLE-SPIKE-NOTES.md).
+// ---------------------------------------------------------------------------
+
+/** A Circle `tiptap_body` payload: the editor doc wrapped in `{ body }`. */
+export interface CircleTiptapBody {
+	body: { type: "doc"; content: unknown[] };
+}
+
+export interface CreatePostParams {
+	/** Circle space id (numeric-as-string), e.g. a horse's space. */
+	spaceId: string;
+	/** Post title. */
+	name: string;
+	tiptapBody: CircleTiptapBody;
+	/** `signed_id`s from uploadImage, attached to the post. */
+	attachments?: string[];
+	/** Optional dedup key; a retry with the same key must not double-post. */
+	idempotencyKey?: string;
+}
+
+export interface CreatePostResult {
+	circlePostId: string;
+	/** Circle returns `status: "published"` — posts publish immediately. */
+	status?: string;
+}
+
+export interface UploadImageParams {
+	filename: string;
+	contentType: string;
+	/** Raw image bytes; byte size + base64-MD5 checksum are derived internally. */
+	data: Uint8Array;
+}
+
+export interface UploadImageResult {
+	/** Pass into CreatePostParams.attachments. */
+	signedId: string;
+	attachableSgid?: string;
+	/** Blob URL from the direct-upload response; set on the inline image node so
+	 * Circle renders it (it normalises this to its own assets host on read). */
+	url?: string;
+}
+
+export interface CreateDirectUploadParams {
+	filename: string;
+	contentType: string;
+	byteSize: number;
+	/** Base64-encoded MD5 of the file bytes, computed by the caller (e.g. in-browser). */
+	checksum: string;
+}
+
+export interface CreateDirectUploadResult {
+	/** `signed_id` for the registered blob (e.g. for post attachments). */
+	signedId: string;
+	attachableSgid?: string;
+	/** Presigned S3 URL the caller PUTs the raw bytes to. */
+	uploadUrl: string;
+	/** Headers Circle requires on the PUT (e.g. Content-Type, Content-MD5). */
+	uploadHeaders: Record<string, string>;
+	/** Circle CDN blob url — feed to `createEmbed` to render an inline video player. */
+	cdnUrl?: string;
+}
+
+export interface CreateEmbedParams {
+	/** Video URL (YouTube etc.) to embed. */
+	url: string;
+}
+
+export interface CreateEmbedResult {
+	/** Use in a TipTap `{ type: "embed", attrs: { sgid } }` node. */
+	sgid: string;
+	embedType?: string;
+}
+
+export interface CreateSpaceParams {
+	name: string;
+	/** Circle space-group id the new space is nested under. */
+	spaceGroupId: string;
+	/** Defaults to "basic"; "event" for event spaces. */
+	spaceType?: "basic" | "event";
+	/** Defaults to true — horse spaces are members-only. */
+	isPrivate?: boolean;
+	idempotencyKey?: string;
+}
+
+export interface CreateSpaceResult {
+	circleSpaceId: string;
+}
+
+export interface CreateEventParams {
+	/** An event-type Circle space id. */
+	spaceId: string;
+	name: string;
+	tiptapBody: CircleTiptapBody;
+	/** ISO 8601 start time. */
+	startsAt: string;
+	durationInSeconds: number;
+	/** Defaults to "tbd" (simplest; virtual/in_person need more fields). */
+	locationType?: "tbd" | "virtual" | "in_person";
+	idempotencyKey?: string;
+}
+
+export interface CreateEventResult {
+	circleEventId: string;
+}
+
 export interface CircleService {
-	createMember(
-		params: CreateMemberParams,
-	): Promise<CircleCallOutcome<CreateMemberResult>>;
+	createMember(params: CreateMemberParams): Promise<CircleCallOutcome<CreateMemberResult>>;
 	deactivateMember(circleMemberId: string): Promise<CircleCallOutcome<void>>;
-	reactivateMember(
-		params: ReactivateMemberParams,
-	): Promise<CircleCallOutcome<void>>;
+	reactivateMember(params: ReactivateMemberParams): Promise<CircleCallOutcome<void>>;
 	deleteMember(circleMemberId: string): Promise<CircleCallOutcome<void>>;
-	getMemberToken(
-		circleMemberId: string,
-	): Promise<CircleCallOutcome<MemberTokenResult>>;
+	getMemberToken(circleMemberId: string): Promise<CircleCallOutcome<MemberTokenResult>>;
 	/**
 	 * Fetch notifications for a community member, newer than the given cursor.
 	 *
@@ -150,10 +254,7 @@ export interface CircleService {
 	 * @param circleMemberId - Circle community_member_id, numeric id as string.
 	 * @param name - Display name to set on the member profile.
 	 */
-	confirmMemberProfile(
-		circleMemberId: string,
-		name: string,
-	): Promise<CircleCallOutcome<void>>;
+	confirmMemberProfile(circleMemberId: string, name: string): Promise<CircleCallOutcome<void>>;
 	/**
 	 * Revoke a member's Headless session tokens (logout).
 	 *
@@ -170,6 +271,31 @@ export interface CircleService {
 		accessToken: string;
 		refreshToken?: string;
 	}): Promise<CircleCallOutcome<void>>;
+
+	// --- Publishing surface (S2-09) -----------------------------------------
+	// Native admin composers publish INTO Circle. Every call returns a
+	// CircleCallOutcome so callers can fail safe (surface a "post directly in
+	// Circle" fallback) rather than throw. Shapes proven by the live spike.
+
+	/** Create a rich-text post in a space (a horse's space, or community-wide). */
+	createPost(params: CreatePostParams): Promise<CircleCallOutcome<CreatePostResult>>;
+	/** Register + upload image bytes, returning a signed_id for `attachments`. */
+	uploadImage(params: UploadImageParams): Promise<CircleCallOutcome<UploadImageResult>>;
+	/**
+	 * Register a blob with Circle and return its presigned S3 PUT URL, so a client
+	 * can upload the bytes directly (browser → Circle S3). Used for admin video
+	 * uploads (the bytes never pass through our server). The returned `cdnUrl` is
+	 * fed to `createEmbed` at publish to render an inline player.
+	 */
+	createDirectUpload(
+		params: CreateDirectUploadParams,
+	): Promise<CircleCallOutcome<CreateDirectUploadResult>>;
+	/** Create a video embed, returning an sgid for a TipTap `embed` node. */
+	createEmbed(params: CreateEmbedParams): Promise<CircleCallOutcome<CreateEmbedResult>>;
+	/** Provision a Circle space (the "a horse = a space" auto-provision). */
+	createSpace(params: CreateSpaceParams): Promise<CircleCallOutcome<CreateSpaceResult>>;
+	/** Create an event (RSVP + reminders built into Circle events). */
+	createEvent(params: CreateEventParams): Promise<CircleCallOutcome<CreateEventResult>>;
 }
 
 export class CircleApiError extends Error {

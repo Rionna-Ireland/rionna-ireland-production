@@ -50,10 +50,16 @@ const nextConfig: NextConfig = {
 				destination: "/:organizationSlug/settings/general",
 				permanent: true,
 			},
+			// NOTE: no `/admin` → `/admin/users` redirect. `/admin` is the Mission
+			// Control landing page (S2-09 surface A); redirecting it away shadowed
+			// the dashboard entirely.
 			{
-				source: "/admin",
-				destination: "/admin/users",
-				permanent: true,
+				// S2-13: `/admin/users` merged into the unified members roster.
+				// `permanent: false` (307) on purpose — a `permanent: true` 308 gets
+				// hard-cached in-browser, which has bitten this project before.
+				source: "/admin/users",
+				destination: "/admin/members",
+				permanent: false,
 			},
 		];
 	},

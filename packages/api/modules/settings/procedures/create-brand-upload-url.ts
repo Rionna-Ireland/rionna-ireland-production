@@ -1,6 +1,6 @@
 import { ORPCError } from "@orpc/server";
 import { db } from "@repo/database";
-import { getSignedUploadUrl } from "@repo/storage";
+import { getPublicUrl, getSignedUploadUrl } from "@repo/storage";
 import { z } from "zod";
 
 import { adminProcedure } from "../../../orpc/procedures";
@@ -30,8 +30,8 @@ export const createBrandUploadUrl = adminProcedure
 
 		const path = `${organizationId}/brand/${filename}`;
 		const signedUploadUrl = await getSignedUploadUrl(path, {
-			bucket: "media",
+			bucket: "mediaPublic",
 		});
 
-		return { signedUploadUrl, path };
+		return { signedUploadUrl, path, publicUrl: getPublicUrl("mediaPublic", path) };
 	});

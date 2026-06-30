@@ -157,18 +157,22 @@ export function ClubSettingsForm() {
 		const filename = `logo.${ext}`;
 
 		try {
-			const { signedUploadUrl, path } = await uploadUrlMutation.mutateAsync({
+			const { signedUploadUrl, publicUrl } = await uploadUrlMutation.mutateAsync({
 				organizationId,
 				filename,
 			});
 
-			await fetch(signedUploadUrl, {
+			const uploadResponse = await fetch(signedUploadUrl, {
 				method: "PUT",
 				body: file,
 				headers: { "Content-Type": file.type },
 			});
 
-			form.setValue("brand.logoUrl", path, { shouldDirty: true });
+			if (!uploadResponse.ok) {
+				throw new Error("Upload failed");
+			}
+
+			form.setValue("brand.logoUrl", publicUrl, { shouldDirty: true });
 			toastSuccess(t("admin.settings.brand.logoUploaded"));
 		} catch {
 			toastError(t("admin.settings.brand.logoUploadError"));

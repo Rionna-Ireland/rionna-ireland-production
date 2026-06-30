@@ -10,15 +10,28 @@
  */
 
 import { logger } from "@repo/logs";
+
 import type {
 	CircleCallOutcome,
 	CircleNotification,
 	CircleNotificationPage,
 	CircleService,
+	CreateEventParams,
+	CreateEventResult,
 	CreateMemberParams,
 	CreateMemberResult,
+	CreatePostParams,
+	CreatePostResult,
+	CreateSpaceParams,
+	CreateSpaceResult,
+	CreateDirectUploadParams,
+	CreateDirectUploadResult,
+	CreateEmbedParams,
+	CreateEmbedResult,
 	MemberTokenResult,
 	ReactivateMemberParams,
+	UploadImageParams,
+	UploadImageResult,
 } from "./types";
 
 interface MockMember {
@@ -28,15 +41,45 @@ interface MockMember {
 	status: "active" | "deactivated";
 }
 
+interface MockPost {
+	spaceId: string;
+	name: string;
+	attachments: string[];
+}
+
+interface MockSpace {
+	name: string;
+	spaceGroupId: string;
+	isPrivate: boolean;
+}
+
+interface MockEvent {
+	spaceId: string;
+	name: string;
+	startsAt: string;
+}
+
 export class MockCircleService implements CircleService {
 	private members = new Map<string, MockMember>();
 	private idempotencyKeys = new Map<string, string>();
 	private notifications = new Map<string, CircleNotification[]>();
 	private nextId = 90001;
 
-	async createMember(
-		params: CreateMemberParams,
-	): Promise<CircleCallOutcome<CreateMemberResult>> {
+	// Publishing surface (S2-09) — separate stores + per-entity counters so
+	// generated ids are deterministic and independent of member creation.
+	private posts = new Map<string, MockPost>();
+	private spaces = new Map<string, MockSpace>();
+	private events = new Map<string, MockEvent>();
+	private postIdempotencyKeys = new Map<string, string>();
+	private spaceIdempotencyKeys = new Map<string, string>();
+	private eventIdempotencyKeys = new Map<string, string>();
+	private nextPostId = 1;
+	private nextSpaceId = 1;
+	private nextEmbedId = 1;
+	private nextUploadId = 1;
+	private nextEventId = 1;
+
+	async createMember(params: CreateMemberParams): Promise<CircleCallOutcome<CreateMemberResult>> {
 		// Idempotency: return existing member if key was already used
 		const existingId = this.idempotencyKeys.get(params.idempotencyKey);
 		if (existingId) {
@@ -67,9 +110,7 @@ export class MockCircleService implements CircleService {
 		return { ok: true, data: { circleMemberId } };
 	}
 
-	async deactivateMember(
-		circleMemberId: string,
-	): Promise<CircleCallOutcome<void>> {
+	async deactivateMember(circleMemberId: string): Promise<CircleCallOutcome<void>> {
 		const member = this.members.get(circleMemberId);
 		if (!member) {
 			return {
@@ -96,13 +137,9 @@ export class MockCircleService implements CircleService {
 		return { ok: true, data: undefined };
 	}
 
-	async reactivateMember(
-		params: ReactivateMemberParams,
-	): Promise<CircleCallOutcome<void>> {
+	async reactivateMember(params: ReactivateMemberParams): Promise<CircleCallOutcome<void>> {
 		// Find member by ssoUserId (re-provisioning with same SSO ID)
-		const entry = [...this.members.entries()].find(
-			([, m]) => m.ssoUserId === params.ssoUserId,
-		);
+		const entry = [...this.members.entries()].find(([, m]) => m.ssoUserId === params.ssoUserId);
 
 		if (entry) {
 			const [id, member] = entry;
@@ -128,9 +165,7 @@ export class MockCircleService implements CircleService {
 		return { ok: true, data: undefined };
 	}
 
-	async deleteMember(
-		circleMemberId: string,
-	): Promise<CircleCallOutcome<void>> {
+	async deleteMember(circleMemberId: string): Promise<CircleCallOutcome<void>> {
 		const member = this.members.get(circleMemberId);
 		if (!member) {
 			return {
@@ -149,9 +184,7 @@ export class MockCircleService implements CircleService {
 		return { ok: true, data: undefined };
 	}
 
-	async getMemberToken(
-		circleMemberId: string,
-	): Promise<CircleCallOutcome<MemberTokenResult>> {
+	async getMemberToken(circleMemberId: string): Promise<CircleCallOutcome<MemberTokenResult>> {
 		logger.info("[MockCircle] Minted member token", { circleMemberId });
 		return {
 			ok: true,
@@ -175,8 +208,7 @@ export class MockCircleService implements CircleService {
 		const limit = opts.limit ?? 50;
 		const slice = all.slice(startIdx, startIdx + limit);
 		// Per CircleNotificationPage JSDoc: nextCursor is null if the page is empty.
-		const nextCursor =
-			slice.length > 0 ? (slice[slice.length - 1]?.id ?? null) : null;
+		const nextCursor = slice.length > 0 ? (slice[slice.length - 1]?.id ?? null) : null;
 
 		logger.info("[MockCircle] Fetched member notifications", {
 			circleMemberId,
@@ -209,9 +241,158 @@ export class MockCircleService implements CircleService {
 		return { ok: true, data: undefined };
 	}
 
+	// --- Publishing surface (S2-09) -----------------------------------------
+
+	async createPost(params: CreatePostParams): Promise<CircleCallOutcome<CreatePostResult>> {
+		if (params.idempotencyKey) {
+			const existing = this.postIdempotencyKeys.get(params.idempotencyKey);
+			if (existing) {
+				logger.info("[MockCircle] Idempotent duplicate post — returning existing", {
+					circlePostId: existing,
+					idempotencyKey: params.idempotencyKey,
+				});
+				return { ok: true, data: { circlePostId: existing, status: "published" } };
+			}
+		}
+
+		const circlePostId = `mock-post-${this.nextPostId++}`;
+		this.posts.set(circlePostId, {
+			spaceId: params.spaceId,
+			name: params.name,
+			attachments: params.attachments ?? [],
+		});
+		if (params.idempotencyKey) {
+			this.postIdempotencyKeys.set(params.idempotencyKey, circlePostId);
+		}
+
+		logger.info("[MockCircle] Created post", {
+			circlePostId,
+			spaceId: params.spaceId,
+			name: params.name,
+			attachments: params.attachments?.length ?? 0,
+		});
+		return { ok: true, data: { circlePostId, status: "published" } };
+	}
+
+	async uploadImage(params: UploadImageParams): Promise<CircleCallOutcome<UploadImageResult>> {
+		const n = this.nextUploadId++;
+		const signedId = `mock-signed-id-${n}`;
+		logger.info("[MockCircle] Uploaded image", {
+			signedId,
+			filename: params.filename,
+			byteSize: params.data.byteLength,
+			contentType: params.contentType,
+		});
+		return {
+			ok: true,
+			data: {
+				signedId,
+				attachableSgid: `mock-sgid-${n}`,
+				url: `https://mock.circle.local/uploads/${n}`,
+			},
+		};
+	}
+
+	async createDirectUpload(
+		params: CreateDirectUploadParams,
+	): Promise<CircleCallOutcome<CreateDirectUploadResult>> {
+		const n = this.nextUploadId++;
+		const signedId = `mock-signed-id-${n}`;
+		logger.info("[MockCircle] Registered direct upload", {
+			signedId,
+			filename: params.filename,
+			byteSize: params.byteSize,
+			contentType: params.contentType,
+		});
+		return {
+			ok: true,
+			data: {
+				signedId,
+				attachableSgid: `mock-sgid-${n}`,
+				uploadUrl: `https://mock.circle.local/direct-upload/${n}`,
+				uploadHeaders: { "Content-Type": params.contentType, "Content-MD5": params.checksum },
+				cdnUrl: `https://mock.circle.local/uploads/${n}`,
+			},
+		};
+	}
+
+	async createEmbed(params: CreateEmbedParams): Promise<CircleCallOutcome<CreateEmbedResult>> {
+		const sgid = `mock-embed-sgid-${this.nextEmbedId++}`;
+		logger.info("[MockCircle] Created embed", { sgid, url: params.url });
+		return { ok: true, data: { sgid, embedType: "video" } };
+	}
+
+	async createSpace(params: CreateSpaceParams): Promise<CircleCallOutcome<CreateSpaceResult>> {
+		if (params.idempotencyKey) {
+			const existing = this.spaceIdempotencyKeys.get(params.idempotencyKey);
+			if (existing) {
+				return { ok: true, data: { circleSpaceId: existing } };
+			}
+		}
+
+		const circleSpaceId = `mock-space-${this.nextSpaceId++}`;
+		this.spaces.set(circleSpaceId, {
+			name: params.name,
+			spaceGroupId: params.spaceGroupId,
+			isPrivate: params.isPrivate ?? true,
+		});
+		if (params.idempotencyKey) {
+			this.spaceIdempotencyKeys.set(params.idempotencyKey, circleSpaceId);
+		}
+
+		logger.info("[MockCircle] Created space", {
+			circleSpaceId,
+			name: params.name,
+			spaceGroupId: params.spaceGroupId,
+		});
+		return { ok: true, data: { circleSpaceId } };
+	}
+
+	async createEvent(params: CreateEventParams): Promise<CircleCallOutcome<CreateEventResult>> {
+		if (params.idempotencyKey) {
+			const existing = this.eventIdempotencyKeys.get(params.idempotencyKey);
+			if (existing) {
+				return { ok: true, data: { circleEventId: existing } };
+			}
+		}
+
+		const circleEventId = `mock-event-${this.nextEventId++}`;
+		this.events.set(circleEventId, {
+			spaceId: params.spaceId,
+			name: params.name,
+			startsAt: params.startsAt,
+		});
+		if (params.idempotencyKey) {
+			this.eventIdempotencyKeys.set(params.idempotencyKey, circleEventId);
+		}
+
+		logger.info("[MockCircle] Created event", {
+			circleEventId,
+			spaceId: params.spaceId,
+			name: params.name,
+			startsAt: params.startsAt,
+		});
+		return { ok: true, data: { circleEventId } };
+	}
+
 	/** Test helper: get current member count */
 	getMemberCount(): number {
 		return this.members.size;
+	}
+
+	/** Test helper: published post count */
+	getPostCount(): number {
+		return this.posts.size;
+	}
+
+	/** Test helper: created space count */
+	getSpaceCount(): number {
+		return this.spaces.size;
+	}
+
+	/** Test helper: created event count */
+	getEventCount(): number {
+		return this.events.size;
 	}
 
 	/** Test helper: get a member's current status */
@@ -227,17 +408,13 @@ export class MockCircleService implements CircleService {
 	 * Callers should pass items in oldest→newest order; the mock preserves
 	 * the order and treats the cursor as exclusive.
 	 */
-	seedNotifications(
-		circleMemberId: string,
-		items: Array<Partial<CircleNotification>>,
-	): void {
+	seedNotifications(circleMemberId: string, items: Array<Partial<CircleNotification>>): void {
 		this.notifications.set(
 			circleMemberId,
 			items.map((it, i) => ({
 				id: it.id ?? `mock-n-${i}`,
 				type: it.type ?? "post",
-				createdAt:
-					it.createdAt ?? new Date(Date.now() + i * 1000).toISOString(),
+				createdAt: it.createdAt ?? new Date(Date.now() + i * 1000).toISOString(),
 				actor: it.actor ?? { id: "mock-actor", name: "Mock Actor" },
 				subject: it.subject ?? {
 					kind: "post",

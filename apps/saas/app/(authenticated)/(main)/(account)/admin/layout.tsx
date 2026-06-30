@@ -2,7 +2,16 @@ import { getSession } from "@auth/lib/server";
 import { Logo } from "@repo/ui";
 import { SettingsMenu } from "@settings/components/SettingsMenu";
 import { PageHeader } from "@shared/components/PageHeader";
-import { ListIcon, NewspaperIcon, SettingsIcon, UsersIcon } from "lucide-react";
+import {
+	BellIcon,
+	CalendarIcon,
+	LayoutDashboardIcon,
+	ListIcon,
+	MegaphoneIcon,
+	NewspaperIcon,
+	SettingsIcon,
+	UsersIcon,
+} from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 import type { PropsWithChildren } from "react";
@@ -32,8 +41,13 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
 						title: t("title"),
 						items: [
 							{
-								title: t("menu.users"),
-								href: "/admin/users",
+								title: t("menu.dashboard"),
+								href: "/admin",
+								icon: <LayoutDashboardIcon className="size-4 opacity-50" />,
+							},
+							{
+								title: t("menu.members"),
+								href: "/admin/members",
 								icon: <UsersIcon className="size-4 opacity-50" />,
 							},
 							{
@@ -42,9 +56,24 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
 								icon: <ListIcon className="size-4 opacity-50" />,
 							},
 							{
+								title: t("menu.horseUpdates"),
+								href: "/admin/updates",
+								icon: <MegaphoneIcon className="size-4 opacity-50" />,
+							},
+							{
+								title: t("menu.announcements"),
+								href: "/admin/announcements",
+								icon: <BellIcon className="size-4 opacity-50" />,
+							},
+							{
 								title: t("menu.news"),
 								href: "/admin/news",
 								icon: <NewspaperIcon className="size-4 opacity-50" />,
+							},
+							{
+								title: t("menu.events"),
+								href: "/admin/events",
+								icon: <CalendarIcon className="size-4 opacity-50" />,
 							},
 							{
 								title: t("menu.settings"),

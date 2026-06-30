@@ -238,6 +238,8 @@ export const auth = betterAuth({
 			});
 		},
 	},
+	// D36: signup is intentionally open (config.enableSignup); the paywall is the
+	// real gate, so no invitation-only signup plugin is wired in here.
 	plugins: [
 		admin(),
 		magicLink({

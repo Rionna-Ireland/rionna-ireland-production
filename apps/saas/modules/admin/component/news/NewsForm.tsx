@@ -4,6 +4,7 @@ import { NovelEditor } from "@admin/component/novel-editor";
 import { useAdminOrganization } from "@admin/hooks/use-admin-organization";
 import { getAdminPath } from "@admin/lib/links";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@repo/ui/components/card";
 import {
@@ -22,10 +23,10 @@ import { useConfirmationAlert } from "@shared/components/ConfirmationAlertProvid
 import { useRouter } from "@shared/hooks/router";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { JSONContent } from "novel";
 import { ArrowLeftIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
+import type { JSONContent } from "novel";
 import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -58,11 +59,14 @@ export function NewsForm({ newsPostId }: NewsFormProps) {
 
 	const isEdit = !!newsPostId;
 
-	const { data: existingPost } = useQuery(
-		orpc.news.admin.find.queryOptions({
+	const { data: existingPost } = useQuery({
+		...orpc.news.admin.find.queryOptions({
 			input: { newsPostId: newsPostId ?? "" },
 		}),
-	);
+		// Only fetch when editing — on /admin/news/new there's no id yet, so an
+		// unguarded find("") hits NOT_FOUND (matches the updates/announcements forms).
+		enabled: isEdit,
+	});
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const form = useForm<NewsFormValues>({
@@ -98,12 +102,12 @@ export function NewsForm({ newsPostId }: NewsFormProps) {
 		if (!organizationId) return "";
 		setIsUploading(true);
 		try {
-			const { signedUploadUrl, path } = await uploadUrlMutation.mutateAsync({
+			const { signedUploadUrl, publicUrl } = await uploadUrlMutation.mutateAsync({
 				organizationId,
 				filename: `${Date.now()}-${file.name}`,
 			});
 
-			await fetch(signedUploadUrl, {
+			const uploadResponse = await fetch(signedUploadUrl, {
 				method: "PUT",
 				body: file,
 				headers: {
@@ -111,8 +115,12 @@ export function NewsForm({ newsPostId }: NewsFormProps) {
 				},
 			});
 
-			const baseUrl = signedUploadUrl.split("?")[0];
-			return baseUrl ?? path;
+			if (!uploadResponse.ok) {
+				throw new Error("Upload failed");
+			}
+
+			// Public Supabase object URL (public media bucket) — renders in both apps.
+			return publicUrl;
 		} finally {
 			setIsUploading(false);
 		}
@@ -177,7 +185,7 @@ export function NewsForm({ newsPostId }: NewsFormProps) {
 	});
 
 	const handlePublish = form.handleSubmit(async (values) => {
-		if (values.notifyMembersOnPublish && !(existingPost?.notificationSentAt)) {
+		if (values.notifyMembersOnPublish && !existingPost?.notificationSentAt) {
 			confirm({
 				title: t("admin.news.form.confirmPublishNotifyTitle"),
 				message: t("admin.news.form.confirmPublishNotify"),
@@ -205,12 +213,18 @@ export function NewsForm({ newsPostId }: NewsFormProps) {
 			</div>
 
 			<Card>
-				<CardHeader>
-					<CardTitle>
-						{isEdit
-							? t("admin.news.form.editTitle")
-							: t("admin.news.form.createTitle")}
-					</CardTitle>
+				<CardHeader className="gap-2 flex flex-row items-center justify-between">
+					<div>
+						<CardTitle>
+							{isEdit
+								? t("admin.news.form.editTitle")
+								: t("admin.news.form.createTitle")}
+						</CardTitle>
+						<p className="mt-1 text-sm text-muted-foreground">
+							{t("admin.news.form.publicHint")}
+						</p>
+					</div>
+					<Badge status="warning">{t("admin.news.form.publicBadge")}</Badge>
 				</CardHeader>
 				<CardContent>
 					<Form {...form}>
@@ -283,7 +297,9 @@ export function NewsForm({ newsPostId }: NewsFormProps) {
 												{field.value && (
 													<Input
 														value={field.value}
-														onChange={(e) => field.onChange(e.target.value)}
+														onChange={(e) =>
+															field.onChange(e.target.value)
+														}
 														placeholder="Image URL"
 													/>
 												)}
@@ -319,12 +335,14 @@ export function NewsForm({ newsPostId }: NewsFormProps) {
 										control={form.control}
 										name="notifyMembersOnPublish"
 										render={({ field }) => (
-											<FormItem className="flex items-center gap-3">
+											<FormItem className="gap-3 flex items-center">
 												<FormControl>
 													<Switch
 														checked={field.value}
 														onCheckedChange={field.onChange}
-														disabled={!!existingPost?.notificationSentAt}
+														disabled={
+															!!existingPost?.notificationSentAt
+														}
 													/>
 												</FormControl>
 												<FormLabel className="!mt-0">
@@ -337,7 +355,7 @@ export function NewsForm({ newsPostId }: NewsFormProps) {
 								</CardContent>
 							</Card>
 
-							<div className="flex justify-end gap-3">
+							<div className="gap-3 flex justify-end">
 								<Button
 									type="button"
 									variant="outline"
@@ -346,11 +364,7 @@ export function NewsForm({ newsPostId }: NewsFormProps) {
 								>
 									{t("admin.news.form.saveDraft")}
 								</Button>
-								<Button
-									type="button"
-									onClick={handlePublish}
-									loading={isPending}
-								>
+								<Button type="button" onClick={handlePublish} loading={isPending}>
 									{t("admin.news.form.publish")}
 								</Button>
 							</div>

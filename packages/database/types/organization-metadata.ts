@@ -22,6 +22,12 @@ export interface OrganizationMetadata {
 		communityId?: string;
 		communityDomain?: string;
 		trainerUpdatesSpaceId?: string;
+		/** Space id for community-wide announcements (S2-09 surface C). */
+		communitySpaceId?: string;
+		/** Space group the per-horse spaces are created under (S2-09 surface F). */
+		spaceGroupId?: string;
+		/** Event-type space new events are created in (S2-09 surface E). */
+		eventsSpaceId?: string;
 		webhookSecretRef?: string;
 		poll?: {
 			enabled: boolean;

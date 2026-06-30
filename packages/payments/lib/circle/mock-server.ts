@@ -1,4 +1,7 @@
+import { createHash } from "node:crypto";
+
 import { logger } from "@repo/logs";
+
 import {
 	applyNotificationsCursor,
 	classifyStatus,
@@ -10,10 +13,22 @@ import type {
 	CircleNotification,
 	CircleNotificationPage,
 	CircleService,
+	CreateEventParams,
+	CreateEventResult,
 	CreateMemberParams,
 	CreateMemberResult,
+	CreateDirectUploadParams,
+	CreateDirectUploadResult,
+	CreatePostParams,
+	CreatePostResult,
+	CreateSpaceParams,
+	CreateSpaceResult,
+	CreateEmbedParams,
+	CreateEmbedResult,
 	MemberTokenResult,
 	ReactivateMemberParams,
+	UploadImageParams,
+	UploadImageResult,
 } from "./types";
 
 type MockServerCircleServiceOptions = {
@@ -46,9 +61,7 @@ export class MockServerCircleService implements CircleService {
 		}
 	}
 
-	async createMember(
-		params: CreateMemberParams,
-	): Promise<CircleCallOutcome<CreateMemberResult>> {
+	async createMember(params: CreateMemberParams): Promise<CircleCallOutcome<CreateMemberResult>> {
 		let response: Response;
 		try {
 			response = await fetch(`${this.baseUrl}/api/admin/v2/community_members`, {
@@ -88,9 +101,7 @@ export class MockServerCircleService implements CircleService {
 		return { ok: true, data: { circleMemberId: String(data.id) } };
 	}
 
-	async deactivateMember(
-		circleMemberId: string,
-	): Promise<CircleCallOutcome<void>> {
+	async deactivateMember(circleMemberId: string): Promise<CircleCallOutcome<void>> {
 		let response: Response;
 		try {
 			response = await fetch(
@@ -119,9 +130,7 @@ export class MockServerCircleService implements CircleService {
 		return { ok: true, data: undefined };
 	}
 
-	async reactivateMember(
-		params: ReactivateMemberParams,
-	): Promise<CircleCallOutcome<void>> {
+	async reactivateMember(params: ReactivateMemberParams): Promise<CircleCallOutcome<void>> {
 		let tokenResponse: Response;
 		try {
 			tokenResponse = await fetch(`${this.baseUrl}/api/v1/headless/auth_token`, {
@@ -204,9 +213,7 @@ export class MockServerCircleService implements CircleService {
 		return { ok: true, data: undefined };
 	}
 
-	async deleteMember(
-		circleMemberId: string,
-	): Promise<CircleCallOutcome<void>> {
+	async deleteMember(circleMemberId: string): Promise<CircleCallOutcome<void>> {
 		let response: Response;
 		try {
 			response = await fetch(
@@ -231,9 +238,7 @@ export class MockServerCircleService implements CircleService {
 		return { ok: true, data: undefined };
 	}
 
-	async getMemberToken(
-		circleMemberId: string,
-	): Promise<CircleCallOutcome<MemberTokenResult>> {
+	async getMemberToken(circleMemberId: string): Promise<CircleCallOutcome<MemberTokenResult>> {
 		let response: Response;
 		try {
 			response = await fetch(`${this.baseUrl}/api/v1/headless/auth_token`, {
@@ -255,10 +260,7 @@ export class MockServerCircleService implements CircleService {
 		}
 
 		if (!response.ok) {
-			const raw = await this.readError(
-				response,
-				"Mock server get member token failed",
-			);
+			const raw = await this.readError(response, "Mock server get member token failed");
 			const { reason, retriable } = classifyStatus(response.status);
 			return { ok: false, reason, retriable, raw };
 		}
@@ -314,13 +316,10 @@ export class MockServerCircleService implements CircleService {
 	): Promise<CircleCallOutcome<CircleNotificationPage>> {
 		const tokenOutcome = await this.getMemberToken(circleMemberId);
 		if (!tokenOutcome.ok) {
-			logger.error(
-				"[MockServerCircle] getMemberToken failed for notifications poll",
-				{
-					circleMemberId,
-					reason: tokenOutcome.reason,
-				},
-			);
+			logger.error("[MockServerCircle] getMemberToken failed for notifications poll", {
+				circleMemberId,
+				reason: tokenOutcome.reason,
+			});
 			return tokenOutcome;
 		}
 		const accessToken = tokenOutcome.data.accessToken;
@@ -409,5 +408,252 @@ export class MockServerCircleService implements CircleService {
 			hasRefreshToken: params.refreshToken !== undefined,
 		});
 		return { ok: true, data: undefined };
+	}
+
+	// --- Publishing surface (S2-09) -----------------------------------------
+	// Routed at circle-mock's Admin API v2 surface; mirrors RealCircleService
+	// request shapes so the sibling circle-mock can serve matching endpoints.
+
+	private adminHeaders(): Record<string, string> {
+		return {
+			Authorization: `Bearer ${this.adminToken}`,
+			"Content-Type": "application/json",
+		};
+	}
+
+	async createPost(params: CreatePostParams): Promise<CircleCallOutcome<CreatePostResult>> {
+		const body: Record<string, unknown> = {
+			space_id: Number(params.spaceId),
+			name: params.name,
+			tiptap_body: params.tiptapBody,
+		};
+		if (params.attachments && params.attachments.length > 0) {
+			body.attachments = params.attachments;
+		}
+
+		let response: Response;
+		try {
+			response = await fetch(`${this.baseUrl}/api/admin/v2/posts`, {
+				method: "POST",
+				headers: this.adminHeaders(),
+				body: JSON.stringify(body),
+			});
+		} catch (err) {
+			return { ok: false, reason: "network", retriable: true, raw: err };
+		}
+		if (!response.ok) {
+			const raw = await this.readError(response, "Mock server create post failed");
+			const { reason, retriable } = classifyStatus(response.status);
+			return { ok: false, reason, retriable, raw };
+		}
+
+		let data: { post?: { id?: number | string; status?: string }; id?: number | string };
+		try {
+			data = await this.parseJson<typeof data>(response);
+		} catch (err) {
+			return { ok: false, reason: "server_error", retriable: true, raw: err };
+		}
+		const id = data.post?.id ?? data.id;
+		if (id === undefined) {
+			return { ok: false, reason: "server_error", retriable: false, raw: "missing post id" };
+		}
+		return {
+			ok: true,
+			data: { circlePostId: String(id), status: data.post?.status },
+		};
+	}
+
+	async createDirectUpload(
+		params: CreateDirectUploadParams,
+	): Promise<CircleCallOutcome<CreateDirectUploadResult>> {
+		let regRes: Response;
+		try {
+			regRes = await fetch(`${this.baseUrl}/api/admin/v2/direct_uploads`, {
+				method: "POST",
+				headers: this.adminHeaders(),
+				body: JSON.stringify({
+					blob: {
+						filename: params.filename,
+						byte_size: params.byteSize,
+						checksum: params.checksum,
+						content_type: params.contentType,
+					},
+				}),
+			});
+		} catch (err) {
+			return { ok: false, reason: "network", retriable: true, raw: err };
+		}
+		if (!regRes.ok) {
+			const raw = await this.readError(regRes, "Mock server direct_uploads failed");
+			const { reason, retriable } = classifyStatus(regRes.status);
+			return { ok: false, reason, retriable, raw };
+		}
+
+		let reg: {
+			signed_id?: string;
+			attachable_sgid?: string;
+			url?: string;
+			direct_upload?: { url?: string; headers?: Record<string, string> };
+		};
+		try {
+			reg = await this.parseJson<typeof reg>(regRes);
+		} catch (err) {
+			return { ok: false, reason: "server_error", retriable: true, raw: err };
+		}
+		if (!reg.signed_id || !reg.direct_upload?.url) {
+			return {
+				ok: false,
+				reason: "server_error",
+				retriable: false,
+				raw: "missing signed_id / upload url",
+			};
+		}
+
+		return {
+			ok: true,
+			data: {
+				signedId: reg.signed_id,
+				attachableSgid: reg.attachable_sgid,
+				uploadUrl: reg.direct_upload.url,
+				uploadHeaders: reg.direct_upload.headers ?? {},
+				cdnUrl: reg.url,
+			},
+		};
+	}
+
+	async uploadImage(params: UploadImageParams): Promise<CircleCallOutcome<UploadImageResult>> {
+		const checksum = createHash("md5").update(params.data).digest("base64");
+		const reg = await this.createDirectUpload({
+			filename: params.filename,
+			contentType: params.contentType,
+			byteSize: params.data.byteLength,
+			checksum,
+		});
+		if (!reg.ok) return reg;
+
+		let putRes: Response;
+		try {
+			putRes = await fetch(reg.data.uploadUrl, {
+				method: "PUT",
+				headers: reg.data.uploadHeaders,
+				// See RealCircleService.uploadImage: cast at the binary-body boundary.
+				body: params.data as unknown as BodyInit,
+			});
+		} catch (err) {
+			return { ok: false, reason: "network", retriable: true, raw: err };
+		}
+		if (!putRes.ok) {
+			const raw = await this.readError(putRes, "Mock server S3 PUT failed");
+			const { reason, retriable } = classifyStatus(putRes.status);
+			return { ok: false, reason, retriable, raw };
+		}
+
+		return {
+			ok: true,
+			data: { signedId: reg.data.signedId, attachableSgid: reg.data.attachableSgid, url: reg.data.cdnUrl },
+		};
+	}
+
+	async createEmbed(params: CreateEmbedParams): Promise<CircleCallOutcome<CreateEmbedResult>> {
+		let response: Response;
+		try {
+			response = await fetch(`${this.baseUrl}/api/admin/v2/embeds`, {
+				method: "POST",
+				headers: this.adminHeaders(),
+				body: JSON.stringify({ url: params.url }),
+			});
+		} catch (err) {
+			return { ok: false, reason: "network", retriable: true, raw: err };
+		}
+		if (!response.ok) {
+			const raw = await this.readError(response, "Mock server create embed failed");
+			const { reason, retriable } = classifyStatus(response.status);
+			return { ok: false, reason, retriable, raw };
+		}
+
+		let data: { sgid?: string; embed_type?: string };
+		try {
+			data = await this.parseJson<typeof data>(response);
+		} catch (err) {
+			return { ok: false, reason: "server_error", retriable: true, raw: err };
+		}
+		if (!data.sgid) {
+			return { ok: false, reason: "server_error", retriable: false, raw: "missing sgid" };
+		}
+		return { ok: true, data: { sgid: data.sgid, embedType: data.embed_type } };
+	}
+
+	async createSpace(params: CreateSpaceParams): Promise<CircleCallOutcome<CreateSpaceResult>> {
+		let response: Response;
+		try {
+			response = await fetch(`${this.baseUrl}/api/admin/v2/spaces`, {
+				method: "POST",
+				headers: this.adminHeaders(),
+				body: JSON.stringify({
+					name: params.name,
+					space_group_id: Number(params.spaceGroupId),
+					space_type: params.spaceType ?? "basic",
+					is_private: params.isPrivate ?? true,
+				}),
+			});
+		} catch (err) {
+			return { ok: false, reason: "network", retriable: true, raw: err };
+		}
+		if (!response.ok) {
+			const raw = await this.readError(response, "Mock server create space failed");
+			const { reason, retriable } = classifyStatus(response.status);
+			return { ok: false, reason, retriable, raw };
+		}
+
+		let data: { space?: { id?: number | string }; id?: number | string };
+		try {
+			data = await this.parseJson<typeof data>(response);
+		} catch (err) {
+			return { ok: false, reason: "server_error", retriable: true, raw: err };
+		}
+		const id = data.space?.id ?? data.id;
+		if (id === undefined) {
+			return { ok: false, reason: "server_error", retriable: false, raw: "missing space id" };
+		}
+		return { ok: true, data: { circleSpaceId: String(id) } };
+	}
+
+	async createEvent(params: CreateEventParams): Promise<CircleCallOutcome<CreateEventResult>> {
+		let response: Response;
+		try {
+			response = await fetch(`${this.baseUrl}/api/admin/v2/events`, {
+				method: "POST",
+				headers: this.adminHeaders(),
+				body: JSON.stringify({
+					space_id: Number(params.spaceId),
+					name: params.name,
+					tiptap_body: params.tiptapBody,
+					event_setting_attributes: {
+						starts_at: params.startsAt,
+						duration_in_seconds: params.durationInSeconds,
+						location_type: params.locationType ?? "tbd",
+					},
+				}),
+			});
+		} catch (err) {
+			return { ok: false, reason: "network", retriable: true, raw: err };
+		}
+		if (!response.ok) {
+			const raw = await this.readError(response, "Mock server create event failed");
+			const { reason, retriable } = classifyStatus(response.status);
+			return { ok: false, reason, retriable, raw };
+		}
+
+		let data: { event?: { id?: number | string }; id?: number | string };
+		try {
+			data = await this.parseJson<typeof data>(response);
+		} catch (err) {
+			return { ok: false, reason: "server_error", retriable: true, raw: err };
+		}
+		const id = data.event?.id ?? data.id;
+		if (id === undefined) {
+			return { ok: false, reason: "server_error", retriable: false, raw: "missing event id" };
+		}
+		return { ok: true, data: { circleEventId: String(id) } };
 	}
 }

@@ -36,6 +36,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { PhotoGallery } from "./PhotoGallery";
+import { ProviderHorseSearch } from "./ProviderHorseSearch";
 import { TrainerModal } from "./TrainerModal";
 
 const horseFormSchema = z.object({
@@ -53,6 +54,7 @@ const horseFormSchema = z.object({
 	dam: z.string().optional(),
 	damsire: z.string().optional(),
 	published: z.boolean().default(false),
+	publicProfile: z.boolean().default(false),
 });
 
 type HorseFormValues = z.infer<typeof horseFormSchema>;
@@ -92,6 +94,9 @@ export function HorseForm({ horseId }: HorseFormProps) {
 	const updateMutation = useMutation(orpc.admin.horses.update.mutationOptions());
 	const deleteMutation = useMutation(orpc.admin.horses.delete.mutationOptions());
 	const syncMutation = useMutation(orpc.admin.horses.sync.mutationOptions());
+	const retryCircleSpaceMutation = useMutation(
+		orpc.admin.horses.retryCircleSpace.mutationOptions(),
+	);
 
 	const pedigree = horse?.pedigree as
 		| { sire?: string; dam?: string; damsire?: string }
@@ -116,6 +121,7 @@ export function HorseForm({ horseId }: HorseFormProps) {
 			dam: "",
 			damsire: "",
 			published: false,
+			publicProfile: false,
 		},
 	});
 
@@ -136,6 +142,7 @@ export function HorseForm({ horseId }: HorseFormProps) {
 				dam: pedigree?.dam ?? "",
 				damsire: pedigree?.damsire ?? "",
 				published: !!horse.publishedAt,
+				publicProfile: !!horse.publicProfileAt,
 			});
 			setPhotos(
 				Array.isArray(horse.photos)
@@ -168,6 +175,9 @@ export function HorseForm({ horseId }: HorseFormProps) {
 					pedigree: pedigreeData ?? null,
 					photos: photos.length > 0 ? photos : null,
 					publishedAt: values.published ? (horse?.publishedAt ?? new Date()) : null,
+					publicProfileAt: values.publicProfile
+						? (horse?.publicProfileAt ?? new Date())
+						: null,
 				});
 
 				await queryClient.invalidateQueries({
@@ -190,6 +200,7 @@ export function HorseForm({ horseId }: HorseFormProps) {
 					ownershipBlurb: values.ownershipBlurb || undefined,
 					pedigree: pedigreeData,
 					publishedAt: values.published ? new Date() : null,
+					publicProfileAt: values.publicProfile ? new Date() : null,
 				});
 
 				toastSuccess(t("admin.horses.form.notifications.created"));
@@ -266,27 +277,73 @@ export function HorseForm({ horseId }: HorseFormProps) {
 			);
 		}
 		const lastSync = new Date(horse.providerLastSync);
-		const hoursSinceSync =
-			(Date.now() - lastSync.getTime()) / (1000 * 60 * 60);
+		const hoursSinceSync = (Date.now() - lastSync.getTime()) / (1000 * 60 * 60);
 		if (hoursSinceSync < 24) {
 			return (
-				<span className="flex items-center gap-1 text-sm text-green-600">
+				<span className="gap-1 text-sm text-green-600 flex items-center">
 					<CircleIcon className="size-2 fill-current" />
 					{t("admin.horses.form.syncStatusLinked")}
 				</span>
 			);
 		}
 		return (
-			<span className="flex items-center gap-1 text-sm text-amber-600">
+			<span className="gap-1 text-sm text-amber-600 flex items-center">
 				<CircleIcon className="size-2 fill-current" />
 				{t("admin.horses.form.syncStatusStale")}
 			</span>
 		);
 	};
 
+	const handleRetryCircleSpace = async () => {
+		if (!horseId) return;
+		try {
+			await retryCircleSpaceMutation.mutateAsync({ horseId });
+			await queryClient.invalidateQueries({
+				queryKey: orpc.admin.horses.find.key({ input: { horseId } }),
+			});
+			toastSuccess(t("admin.horses.form.circleSpace.retrySuccess"));
+		} catch {
+			toastError(t("admin.horses.form.circleSpace.retryError"));
+		}
+	};
+
+	const getCircleSpaceStatusIndicator = () => {
+		if (!isEdit) return null;
+		if (horse?.circleSpaceId) {
+			return (
+				<span className="gap-1 text-sm text-green-600 flex items-center">
+					<CircleIcon className="size-2 fill-current" />
+					{t("admin.horses.form.circleSpace.active")}
+				</span>
+			);
+		}
+		if (horse?.circleSpaceStatus === "provisioning_failed") {
+			return (
+				<div className="gap-2 text-sm text-amber-600 flex items-center">
+					<CircleIcon className="size-2 fill-current" />
+					{t("admin.horses.form.circleSpace.failed")}
+					<Button
+						type="button"
+						variant="outline"
+						size="sm"
+						onClick={handleRetryCircleSpace}
+						loading={retryCircleSpaceMutation.isPending}
+					>
+						{t("admin.horses.form.circleSpace.retry")}
+					</Button>
+				</div>
+			);
+		}
+		return (
+			<span className="text-sm text-muted-foreground">
+				{t("admin.horses.form.circleSpace.pending")}
+			</span>
+		);
+	};
+
 	if (isEdit && horseLoading) {
 		return (
-			<div className="flex items-center justify-center py-12">
+			<div className="py-12 flex items-center justify-center">
 				<Loader2Icon className="size-6 animate-spin text-muted-foreground" />
 			</div>
 		);
@@ -306,15 +363,13 @@ export function HorseForm({ horseId }: HorseFormProps) {
 					<Form {...form}>
 						<form onSubmit={onSubmit} className="gap-6 grid grid-cols-1">
 							{/* Core Fields */}
-							<div className="gap-4 grid grid-cols-1 md:grid-cols-2">
+							<div className="gap-4 md:grid-cols-2 grid grid-cols-1">
 								<FormField
 									control={form.control}
 									name="name"
 									render={({ field }) => (
 										<FormItem>
-											<FormLabel>
-												{t("admin.horses.form.name")}
-											</FormLabel>
+											<FormLabel>{t("admin.horses.form.name")}</FormLabel>
 											<FormControl>
 												<Input {...field} />
 											</FormControl>
@@ -328,9 +383,7 @@ export function HorseForm({ horseId }: HorseFormProps) {
 									name="slug"
 									render={({ field }) => (
 										<FormItem>
-											<FormLabel>
-												{t("admin.horses.form.slug")}
-											</FormLabel>
+											<FormLabel>{t("admin.horses.form.slug")}</FormLabel>
 											<FormControl>
 												<Input {...field} />
 											</FormControl>
@@ -344,9 +397,7 @@ export function HorseForm({ horseId }: HorseFormProps) {
 									name="status"
 									render={({ field }) => (
 										<FormItem>
-											<FormLabel>
-												{t("admin.horses.form.status")}
-											</FormLabel>
+											<FormLabel>{t("admin.horses.form.status")}</FormLabel>
 											<Select
 												value={field.value}
 												onValueChange={field.onChange}
@@ -358,14 +409,10 @@ export function HorseForm({ horseId }: HorseFormProps) {
 												</FormControl>
 												<SelectContent>
 													<SelectItem value="PRE_TRAINING">
-														{t(
-															"admin.horses.status.PRE_TRAINING",
-														)}
+														{t("admin.horses.status.PRE_TRAINING")}
 													</SelectItem>
 													<SelectItem value="IN_TRAINING">
-														{t(
-															"admin.horses.status.IN_TRAINING",
-														)}
+														{t("admin.horses.status.IN_TRAINING")}
 													</SelectItem>
 													<SelectItem value="REHAB">
 														{t("admin.horses.status.REHAB")}
@@ -388,9 +435,7 @@ export function HorseForm({ horseId }: HorseFormProps) {
 									name="trainerId"
 									render={({ field }) => (
 										<FormItem>
-											<FormLabel>
-												{t("admin.horses.form.trainer")}
-											</FormLabel>
+											<FormLabel>{t("admin.horses.form.trainer")}</FormLabel>
 											<Select
 												value={field.value || "none"}
 												onValueChange={(value) => {
@@ -419,9 +464,7 @@ export function HorseForm({ horseId }: HorseFormProps) {
 														</SelectItem>
 													))}
 													<SelectItem value="add_new">
-														{t(
-															"admin.horses.form.addTrainer",
-														)}
+														{t("admin.horses.form.addTrainer")}
 													</SelectItem>
 												</SelectContent>
 											</Select>
@@ -455,34 +498,29 @@ export function HorseForm({ horseId }: HorseFormProps) {
 									render={({ field }) => (
 										<FormItem>
 											<FormLabel>
-												{t(
-													"admin.horses.form.providerEntityId",
-												)}
+												{t("admin.horses.form.providerEntityId")}
 											</FormLabel>
 											<FormDescription>
-												{t(
-													"admin.horses.form.providerEntityIdHint",
-												)}
+												{t("admin.horses.form.providerEntityIdHint")}
 											</FormDescription>
-											<div className="flex gap-2">
+											<div className="gap-2 flex">
 												<FormControl>
-													<Input {...field} />
+													<ProviderHorseSearch
+														value={field.value ?? ""}
+														onChange={field.onChange}
+													/>
 												</FormControl>
 												{isEdit && field.value && (
 													<Button
 														type="button"
 														variant="outline"
 														onClick={handleSync}
-														disabled={
-															syncMutation.isPending
-														}
+														disabled={syncMutation.isPending}
 													>
 														{syncMutation.isPending ? (
 															<Loader2Icon className="mr-1.5 size-4 animate-spin" />
 														) : null}
-														{t(
-															"admin.horses.form.syncNow",
-														)}
+														{t("admin.horses.form.syncNow")}
 													</Button>
 												)}
 											</div>
@@ -508,6 +546,7 @@ export function HorseForm({ horseId }: HorseFormProps) {
 										<FormControl>
 											<Input {...field} />
 										</FormControl>
+										{getCircleSpaceStatusIndicator()}
 										<FormMessage />
 									</FormItem>
 								)}
@@ -533,9 +572,7 @@ export function HorseForm({ horseId }: HorseFormProps) {
 								name="trainerNotes"
 								render={({ field }) => (
 									<FormItem>
-										<FormLabel>
-											{t("admin.horses.form.trainerNotes")}
-										</FormLabel>
+										<FormLabel>{t("admin.horses.form.trainerNotes")}</FormLabel>
 										<FormControl>
 											<Textarea rows={3} {...field} />
 										</FormControl>
@@ -565,15 +602,13 @@ export function HorseForm({ horseId }: HorseFormProps) {
 								<h3 className="mb-3 font-medium">
 									{t("admin.horses.form.pedigree")}
 								</h3>
-								<div className="gap-4 grid grid-cols-1 md:grid-cols-3">
+								<div className="gap-4 md:grid-cols-3 grid grid-cols-1">
 									<FormField
 										control={form.control}
 										name="sire"
 										render={({ field }) => (
 											<FormItem>
-												<FormLabel>
-													{t("admin.horses.form.sire")}
-												</FormLabel>
+												<FormLabel>{t("admin.horses.form.sire")}</FormLabel>
 												<FormControl>
 													<Input {...field} />
 												</FormControl>
@@ -586,9 +621,7 @@ export function HorseForm({ horseId }: HorseFormProps) {
 										name="dam"
 										render={({ field }) => (
 											<FormItem>
-												<FormLabel>
-													{t("admin.horses.form.dam")}
-												</FormLabel>
+												<FormLabel>{t("admin.horses.form.dam")}</FormLabel>
 												<FormControl>
 													<Input {...field} />
 												</FormControl>
@@ -631,7 +664,7 @@ export function HorseForm({ horseId }: HorseFormProps) {
 								control={form.control}
 								name="published"
 								render={({ field }) => (
-									<FormItem className="flex items-center gap-3">
+									<FormItem className="gap-3 flex items-center">
 										<FormControl>
 											<Switch
 												checked={field.value}
@@ -640,6 +673,25 @@ export function HorseForm({ horseId }: HorseFormProps) {
 										</FormControl>
 										<FormLabel className="!mt-0">
 											{t("admin.horses.form.publishToggle")}
+										</FormLabel>
+									</FormItem>
+								)}
+							/>
+
+							{/* Public Website Toggle */}
+							<FormField
+								control={form.control}
+								name="publicProfile"
+								render={({ field }) => (
+									<FormItem className="gap-3 flex items-center">
+										<FormControl>
+											<Switch
+												checked={field.value}
+												onCheckedChange={field.onChange}
+											/>
+										</FormControl>
+										<FormLabel className="!mt-0">
+											{t("admin.horses.form.publicProfileToggle")}
 										</FormLabel>
 									</FormItem>
 								)}
@@ -661,10 +713,7 @@ export function HorseForm({ horseId }: HorseFormProps) {
 								</div>
 								<Button
 									type="submit"
-									loading={
-										createMutation.isPending ||
-										updateMutation.isPending
-									}
+									loading={createMutation.isPending || updateMutation.isPending}
 								>
 									{t("admin.horses.form.save")}
 								</Button>

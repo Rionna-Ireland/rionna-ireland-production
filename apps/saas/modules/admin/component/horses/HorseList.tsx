@@ -234,6 +234,14 @@ export function HorseList() {
 										</TableCell>
 										<TableCell className="py-2 font-medium">
 											{horse.name}
+											{!horse.providerEntityId && (
+												<Badge
+													status="info"
+													className="ml-2 bg-muted text-muted-foreground"
+												>
+													{t("admin.horses.noRacingData")}
+												</Badge>
+											)}
 										</TableCell>
 										<TableCell className="py-2">
 											<Badge

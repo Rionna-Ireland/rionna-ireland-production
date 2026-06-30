@@ -7,8 +7,11 @@
  * @see Architecture/specs/S1-05-circle-provisioning.md
  */
 
+import { createHash } from "node:crypto";
+
 import { createClient } from "@circleco/headless-server-sdk";
 import { logger } from "@repo/logs";
+
 import {
 	applyNotificationsCursor,
 	classifyStatus,
@@ -20,10 +23,22 @@ import type {
 	CircleNotification,
 	CircleNotificationPage,
 	CircleService,
+	CreateDirectUploadParams,
+	CreateDirectUploadResult,
+	CreateEventParams,
+	CreateEventResult,
 	CreateMemberParams,
 	CreateMemberResult,
+	CreatePostParams,
+	CreatePostResult,
+	CreateSpaceParams,
+	CreateSpaceResult,
+	CreateEmbedParams,
+	CreateEmbedResult,
 	MemberTokenResult,
 	ReactivateMemberParams,
+	UploadImageParams,
+	UploadImageResult,
 } from "./types";
 
 const CIRCLE_ADMIN_BASE = "https://app.circle.so/api/admin/v2";
@@ -41,9 +56,7 @@ export class RealCircleService implements CircleService {
 		this.headlessClient = createClient({ appToken: headlessAuthToken });
 	}
 
-	async createMember(
-		params: CreateMemberParams,
-	): Promise<CircleCallOutcome<CreateMemberResult>> {
+	async createMember(params: CreateMemberParams): Promise<CircleCallOutcome<CreateMemberResult>> {
 		let response: Response;
 		try {
 			response = await fetch(`${CIRCLE_ADMIN_BASE}/community_members`, {
@@ -117,20 +130,15 @@ export class RealCircleService implements CircleService {
 		return { ok: true, data: { circleMemberId } };
 	}
 
-	async deactivateMember(
-		circleMemberId: string,
-	): Promise<CircleCallOutcome<void>> {
+	async deactivateMember(circleMemberId: string): Promise<CircleCallOutcome<void>> {
 		let response: Response;
 		try {
-			response = await fetch(
-				`${CIRCLE_ADMIN_BASE}/community_members/${circleMemberId}`,
-				{
-					method: "DELETE",
-					headers: {
-						Authorization: `Bearer ${this.adminToken}`,
-					},
+			response = await fetch(`${CIRCLE_ADMIN_BASE}/community_members/${circleMemberId}`, {
+				method: "DELETE",
+				headers: {
+					Authorization: `Bearer ${this.adminToken}`,
 				},
-			);
+			});
 		} catch (err) {
 			logger.warn("[Circle] Deactivate member fetch failed (network)", {
 				circleMemberId,
@@ -156,9 +164,7 @@ export class RealCircleService implements CircleService {
 		return { ok: true, data: undefined };
 	}
 
-	async reactivateMember(
-		params: ReactivateMemberParams,
-	): Promise<CircleCallOutcome<void>> {
+	async reactivateMember(params: ReactivateMemberParams): Promise<CircleCallOutcome<void>> {
 		// Circle doesn't have a dedicated reactivate endpoint.
 		// Re-provision with the same SSO ID — Circle matches the existing member.
 		let response: Response;
@@ -200,9 +206,7 @@ export class RealCircleService implements CircleService {
 		return { ok: true, data: undefined };
 	}
 
-	async deleteMember(
-		circleMemberId: string,
-	): Promise<CircleCallOutcome<void>> {
+	async deleteMember(circleMemberId: string): Promise<CircleCallOutcome<void>> {
 		let response: Response;
 		try {
 			response = await fetch(
@@ -239,9 +243,7 @@ export class RealCircleService implements CircleService {
 		return { ok: true, data: undefined };
 	}
 
-	async getMemberToken(
-		circleMemberId: string,
-	): Promise<CircleCallOutcome<MemberTokenResult>> {
+	async getMemberToken(circleMemberId: string): Promise<CircleCallOutcome<MemberTokenResult>> {
 		let result: {
 			access_token: string;
 			refresh_token: string;
@@ -430,28 +432,19 @@ export class RealCircleService implements CircleService {
 		try {
 			await this.headlessClient.revokeMemberAPIToken(params.accessToken);
 		} catch (err) {
-			if (
-				!/404|not[_\s]?found/i.test(
-					err instanceof Error ? err.message : String(err),
-				)
-			)
+			if (!/404|not[_\s]?found/i.test(err instanceof Error ? err.message : String(err)))
 				failure = err;
 		}
 		if (params.refreshToken) {
 			try {
 				await this.headlessClient.revokeRefreshToken(params.refreshToken);
 			} catch (err) {
-				if (
-					!/404|not[_\s]?found/i.test(
-						err instanceof Error ? err.message : String(err),
-					)
-				)
+				if (!/404|not[_\s]?found/i.test(err instanceof Error ? err.message : String(err)))
 					failure = failure ?? err;
 			}
 		}
 		if (failure) {
-			const message =
-				failure instanceof Error ? failure.message : String(failure);
+			const message = failure instanceof Error ? failure.message : String(failure);
 			logger.warn("[Circle] Revoke session failed", { error: message });
 			const looksAuth = /401|unauthor|403|forbidden/i.test(message);
 			return {
@@ -462,5 +455,310 @@ export class RealCircleService implements CircleService {
 			};
 		}
 		return { ok: true, data: undefined };
+	}
+
+	// --- Publishing surface (S2-09) -----------------------------------------
+	// Request shapes proven by the live spike (CIRCLE-SPIKE-NOTES.md). Keep
+	// these thin: any Novel→tiptap_body serialization is the composer's job.
+
+	private adminHeaders(idempotencyKey?: string): Record<string, string> {
+		return {
+			Authorization: `Bearer ${this.adminToken}`,
+			"Content-Type": "application/json",
+			...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
+		};
+	}
+
+	async createPost(params: CreatePostParams): Promise<CircleCallOutcome<CreatePostResult>> {
+		const body: Record<string, unknown> = {
+			space_id: Number(params.spaceId),
+			name: params.name,
+			tiptap_body: params.tiptapBody,
+		};
+		if (params.attachments && params.attachments.length > 0) {
+			body.attachments = params.attachments;
+		}
+
+		let response: Response;
+		try {
+			response = await fetch(`${CIRCLE_ADMIN_BASE}/posts`, {
+				method: "POST",
+				headers: this.adminHeaders(params.idempotencyKey),
+				body: JSON.stringify(body),
+			});
+		} catch (err) {
+			logger.warn("[Circle] Create post fetch failed (network)", {
+				spaceId: params.spaceId,
+				error: err instanceof Error ? err.message : String(err),
+			});
+			return { ok: false, reason: "network", retriable: true, raw: err };
+		}
+
+		if (!response.ok) {
+			const raw = await response.text().catch(() => undefined);
+			const { reason, retriable } = classifyStatus(response.status);
+			logger.error("[Circle] Create post failed", {
+				status: response.status,
+				raw,
+				spaceId: params.spaceId,
+				reason,
+			});
+			return { ok: false, reason, retriable, raw };
+		}
+
+		let data: { post?: { id?: number; status?: string }; id?: number };
+		try {
+			data = (await response.json()) as typeof data;
+		} catch (err) {
+			return { ok: false, reason: "server_error", retriable: true, raw: err };
+		}
+		const id = data.post?.id ?? data.id;
+		if (id === undefined) {
+			const raw = JSON.stringify(data).slice(0, 500);
+			logger.error("[Circle] Create post: id missing from response", { raw });
+			return { ok: false, reason: "server_error", retriable: false, raw };
+		}
+
+		logger.info("[Circle] Created post", {
+			circlePostId: String(id),
+			spaceId: params.spaceId,
+		});
+		return {
+			ok: true,
+			data: { circlePostId: String(id), status: data.post?.status },
+		};
+	}
+
+	async createDirectUpload(
+		params: CreateDirectUploadParams,
+	): Promise<CircleCallOutcome<CreateDirectUploadResult>> {
+		// Register the blob. Param is `blob` (not `file` — the spike's only first-run
+		// failure); the caller supplies the base64-MD5 checksum of the bytes.
+		let regRes: Response;
+		try {
+			regRes = await fetch(`${CIRCLE_ADMIN_BASE}/direct_uploads`, {
+				method: "POST",
+				headers: this.adminHeaders(),
+				body: JSON.stringify({
+					blob: {
+						filename: params.filename,
+						byte_size: params.byteSize,
+						checksum: params.checksum,
+						content_type: params.contentType,
+					},
+				}),
+			});
+		} catch (err) {
+			return { ok: false, reason: "network", retriable: true, raw: err };
+		}
+		if (!regRes.ok) {
+			const raw = await regRes.text().catch(() => undefined);
+			const { reason, retriable } = classifyStatus(regRes.status);
+			logger.error("[Circle] direct_uploads failed", { status: regRes.status, raw, reason });
+			return { ok: false, reason, retriable, raw };
+		}
+
+		let reg: {
+			signed_id?: string;
+			attachable_sgid?: string;
+			url?: string;
+			direct_upload?: { url?: string; headers?: Record<string, string> };
+		};
+		try {
+			reg = (await regRes.json()) as typeof reg;
+		} catch (err) {
+			return { ok: false, reason: "server_error", retriable: true, raw: err };
+		}
+		if (!reg.signed_id || !reg.direct_upload?.url) {
+			const raw = JSON.stringify(reg).slice(0, 500);
+			logger.error("[Circle] direct_uploads: missing signed_id / upload url", { raw });
+			return { ok: false, reason: "server_error", retriable: false, raw };
+		}
+
+		return {
+			ok: true,
+			data: {
+				signedId: reg.signed_id,
+				attachableSgid: reg.attachable_sgid,
+				uploadUrl: reg.direct_upload.url,
+				uploadHeaders: reg.direct_upload.headers ?? {},
+				cdnUrl: reg.url,
+			},
+		};
+	}
+
+	async uploadImage(params: UploadImageParams): Promise<CircleCallOutcome<UploadImageResult>> {
+		// Register, then PUT the bytes server-side. (Admin video uploads instead PUT
+		// from the browser — see createDirectUpload + the create-circle-video-upload procedure.)
+		const checksum = createHash("md5").update(params.data).digest("base64");
+		const reg = await this.createDirectUpload({
+			filename: params.filename,
+			contentType: params.contentType,
+			byteSize: params.data.byteLength,
+			checksum,
+		});
+		if (!reg.ok) return reg;
+
+		let putRes: Response;
+		try {
+			putRes = await fetch(reg.data.uploadUrl, {
+				method: "PUT",
+				headers: reg.data.uploadHeaders,
+				// undici accepts a Uint8Array body at runtime; the DOM `BodyInit`
+				// type rejects `Uint8Array<ArrayBufferLike>` (TS 5.7 typed-array
+				// generics), so cast at this single boundary.
+				body: params.data as unknown as BodyInit,
+			});
+		} catch (err) {
+			return { ok: false, reason: "network", retriable: true, raw: err };
+		}
+		if (!putRes.ok) {
+			const raw = await putRes.text().catch(() => undefined);
+			const { reason, retriable } = classifyStatus(putRes.status);
+			logger.error("[Circle] S3 PUT failed", { status: putRes.status, reason });
+			return { ok: false, reason, retriable, raw };
+		}
+
+		logger.info("[Circle] Uploaded image", { signedId: reg.data.signedId, filename: params.filename });
+		return {
+			ok: true,
+			data: { signedId: reg.data.signedId, attachableSgid: reg.data.attachableSgid, url: reg.data.cdnUrl },
+		};
+	}
+
+	async createEmbed(params: CreateEmbedParams): Promise<CircleCallOutcome<CreateEmbedResult>> {
+		let response: Response;
+		try {
+			response = await fetch(`${CIRCLE_ADMIN_BASE}/embeds`, {
+				method: "POST",
+				headers: this.adminHeaders(),
+				body: JSON.stringify({ url: params.url }),
+			});
+		} catch (err) {
+			return { ok: false, reason: "network", retriable: true, raw: err };
+		}
+		if (!response.ok) {
+			const raw = await response.text().catch(() => undefined);
+			const { reason, retriable } = classifyStatus(response.status);
+			logger.error("[Circle] Create embed failed", {
+				status: response.status,
+				url: params.url,
+				reason,
+			});
+			return { ok: false, reason, retriable, raw };
+		}
+
+		let data: { sgid?: string; embed_type?: string };
+		try {
+			data = (await response.json()) as typeof data;
+		} catch (err) {
+			return { ok: false, reason: "server_error", retriable: true, raw: err };
+		}
+		if (!data.sgid) {
+			const raw = JSON.stringify(data).slice(0, 500);
+			logger.error("[Circle] Create embed: sgid missing from response", { raw });
+			return { ok: false, reason: "server_error", retriable: false, raw };
+		}
+
+		logger.info("[Circle] Created embed", { sgid: data.sgid, url: params.url });
+		return { ok: true, data: { sgid: data.sgid, embedType: data.embed_type } };
+	}
+
+	async createSpace(params: CreateSpaceParams): Promise<CircleCallOutcome<CreateSpaceResult>> {
+		let response: Response;
+		try {
+			response = await fetch(`${CIRCLE_ADMIN_BASE}/spaces`, {
+				method: "POST",
+				headers: this.adminHeaders(params.idempotencyKey),
+				body: JSON.stringify({
+					name: params.name,
+					space_group_id: Number(params.spaceGroupId),
+					space_type: params.spaceType ?? "basic",
+					is_private: params.isPrivate ?? true,
+				}),
+			});
+		} catch (err) {
+			return { ok: false, reason: "network", retriable: true, raw: err };
+		}
+		if (!response.ok) {
+			const raw = await response.text().catch(() => undefined);
+			const { reason, retriable } = classifyStatus(response.status);
+			logger.error("[Circle] Create space failed", {
+				status: response.status,
+				name: params.name,
+				reason,
+			});
+			return { ok: false, reason, retriable, raw };
+		}
+
+		let data: { space?: { id?: number }; id?: number };
+		try {
+			data = (await response.json()) as typeof data;
+		} catch (err) {
+			return { ok: false, reason: "server_error", retriable: true, raw: err };
+		}
+		const id = data.space?.id ?? data.id;
+		if (id === undefined) {
+			const raw = JSON.stringify(data).slice(0, 500);
+			logger.error("[Circle] Create space: id missing from response", { raw });
+			return { ok: false, reason: "server_error", retriable: false, raw };
+		}
+
+		logger.info("[Circle] Created space", {
+			circleSpaceId: String(id),
+			name: params.name,
+		});
+		return { ok: true, data: { circleSpaceId: String(id) } };
+	}
+
+	async createEvent(params: CreateEventParams): Promise<CircleCallOutcome<CreateEventResult>> {
+		let response: Response;
+		try {
+			response = await fetch(`${CIRCLE_ADMIN_BASE}/events`, {
+				method: "POST",
+				headers: this.adminHeaders(params.idempotencyKey),
+				body: JSON.stringify({
+					space_id: Number(params.spaceId),
+					name: params.name,
+					tiptap_body: params.tiptapBody,
+					event_setting_attributes: {
+						starts_at: params.startsAt,
+						duration_in_seconds: params.durationInSeconds,
+						location_type: params.locationType ?? "tbd",
+					},
+				}),
+			});
+		} catch (err) {
+			return { ok: false, reason: "network", retriable: true, raw: err };
+		}
+		if (!response.ok) {
+			const raw = await response.text().catch(() => undefined);
+			const { reason, retriable } = classifyStatus(response.status);
+			logger.error("[Circle] Create event failed", {
+				status: response.status,
+				name: params.name,
+				reason,
+			});
+			return { ok: false, reason, retriable, raw };
+		}
+
+		let data: { event?: { id?: number }; id?: number };
+		try {
+			data = (await response.json()) as typeof data;
+		} catch (err) {
+			return { ok: false, reason: "server_error", retriable: true, raw: err };
+		}
+		const id = data.event?.id ?? data.id;
+		if (id === undefined) {
+			const raw = JSON.stringify(data).slice(0, 500);
+			logger.error("[Circle] Create event: id missing from response", { raw });
+			return { ok: false, reason: "server_error", retriable: false, raw };
+		}
+
+		logger.info("[Circle] Created event", {
+			circleEventId: String(id),
+			name: params.name,
+		});
+		return { ok: true, data: { circleEventId: String(id) } };
 	}
 }

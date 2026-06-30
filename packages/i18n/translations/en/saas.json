@@ -1,11 +1,195 @@
 {
 	"admin": {
 		"menu": {
+			"dashboard": "Overview",
+			"members": "Members",
 			"horses": "Horses",
-			"news": "News",
+			"horseUpdates": "Horse updates",
+			"news": "Public news",
+			"events": "Events",
 			"organizations": "Organizations",
-			"users": "Users",
-			"settings": "Settings"
+			"settings": "Settings",
+			"announcements": "Announcements"
+		},
+		"dashboard": {
+			"health": {
+				"members": "Members",
+				"activeSubs": "Active subs",
+				"pastDue": "Past due",
+				"circleIssues": "Circle issues"
+			},
+			"audience": {
+				"members": "Members",
+				"public": "Public"
+			},
+			"actions": {
+				"title": "Quick actions",
+				"horseUpdate": "Post a horse update",
+				"news": "Publish website news",
+				"announcement": "Post a community announcement",
+				"event": "Create an event",
+				"poll": "Create a poll in Circle",
+				"soon": "Coming soon"
+			},
+			"recent": {
+				"title": "Recent activity",
+				"updates": "Latest horse updates",
+				"news": "Latest news",
+				"empty": "Nothing yet."
+			},
+			"links": {
+				"title": "Jump to",
+				"stripe": "Open Stripe",
+				"circleAdmin": "Open Circle admin",
+				"community": "Open the community"
+			}
+		},
+		"members": {
+			"title": "Members",
+			"subtitle": "Identity, billing, and community status in one place.",
+			"loading": "Loading members...",
+			"empty": "No members yet.",
+			"columns": {
+				"member": "Member",
+				"role": "Role",
+				"subscription": "Subscription",
+				"circle": "Community",
+				"actions": "Actions"
+			},
+			"role": {
+				"owner": "Owner",
+				"admin": "Admin",
+				"member": "Member"
+			},
+			"subscription": {
+				"active": "Active",
+				"trialing": "Trialing",
+				"past_due": "Past due",
+				"canceled": "Canceled",
+				"expired": "Expired",
+				"none": "No subscription"
+			},
+			"circle": {
+				"active": "Active",
+				"provisioning_failed": "Needs attention",
+				"deactivated": "Deactivated"
+			},
+			"openStripe": "Stripe",
+			"openCircle": "Circle",
+			"remove": {
+				"action": "Remove",
+				"title": "Remove {name} from membership?",
+				"intro": "This cancels their subscription and removes their access across all systems.",
+				"blastStripe": "Their Stripe subscription is cancelled immediately.",
+				"blastCircle": "Their community access is removed — posts and history are preserved, not deleted.",
+				"blastApp": "They are removed from the club roster and lose app access.",
+				"gdprNote": "This is not a full GDPR account deletion (erasing their data) — that is a separate, heavier action.",
+				"confirmLabel": "Type {name} to confirm",
+				"cancel": "Cancel",
+				"submit": "Remove from membership",
+				"removing": "Removing…",
+				"errorTitle": "Couldn't complete the removal",
+				"successTitle": "{name} removed",
+				"summaryTitle": "Removal summary",
+				"stepStripe": "Subscription",
+				"stepCircle": "Community access",
+				"stepApp": "Membership",
+				"status": {
+					"ok": "Done",
+					"skipped": "Skipped",
+					"failed": "Failed"
+				},
+				"verifyStripe": "Verify in Stripe ↗",
+				"verifyCircle": "Verify in Circle ↗",
+				"partialNote": "Some steps didn't complete. You can safely run the removal again to finish.",
+				"close": "Close"
+			}
+		},
+		"events": {
+			"title": "Create an event",
+			"subtitle": "Posts to your Circle events space — RSVP and reminders are handled by Circle.",
+			"name": "Event name",
+			"description": "Description",
+			"startsAt": "Starts at",
+			"duration": "Duration (minutes)",
+			"location": "Location",
+			"locationTypes": {
+				"tbd": "To be decided",
+				"virtual": "Online",
+				"in_person": "In person"
+			},
+			"create": "Create event",
+			"fallback": {
+				"title": "Couldn't create the event in Circle",
+				"body": "Create this event directly in Circle while we sort the connection.",
+				"openCircle": "Open Circle"
+			},
+			"notifications": {
+				"created": "Event created in Circle.",
+				"failed": "Couldn't create the event — see the fallback below.",
+				"error": "Something went wrong. Please try again."
+			}
+		},
+		"updates": {
+			"list": {
+				"title": "Horse updates",
+				"new": "Post an update",
+				"loading": "Loading updates...",
+				"empty": "No updates yet. Post your first horse update.",
+				"communityAudience": "Community"
+			},
+			"status": {
+				"draft": "Draft",
+				"published": "Published",
+				"publish_failed": "Needs attention"
+			},
+			"community": {
+				"createTitle": "Post a community announcement",
+				"editTitle": "Edit community announcement",
+				"audience": "Everyone in the club",
+				"publish": "Post to all members",
+				"published": "Announcement posted to all members.",
+				"list": {
+					"title": "Community announcements",
+					"new": "New announcement",
+					"loading": "Loading…",
+					"empty": "No announcements yet."
+				}
+			},
+			"form": {
+				"createTitle": "Post a horse update",
+				"editTitle": "Edit horse update",
+				"publishedBadge": "Published",
+				"backToList": "Back to updates",
+				"horseLabel": "Horse",
+				"horsePlaceholder": "Choose a horse",
+				"updateTypeLabel": "Update type",
+				"types": {
+					"trainer": "Trainer update",
+					"wellbeing": "Wellbeing / vet update",
+					"general": "General update"
+				},
+				"audienceMembers": "🔒 Members",
+				"chooseHorsePrompt": "Choose a horse first — you pick who sees this before you write.",
+				"titleLabel": "Title",
+				"content": "Update",
+				"videoUrlLabel": "Video URL (optional)",
+				"videoUrlPlaceholder": "Paste a YouTube/Vimeo link to embed",
+				"saveDraft": "Save draft",
+				"publish": "Publish to members",
+				"publishTo": "Post to Members · {horse}",
+				"fallback": {
+					"title": "Couldn't publish to Circle",
+					"body": "Your draft is saved. Post this update directly in Circle while we sort the connection — members won't miss it.",
+					"openCircle": "Open Circle"
+				},
+				"notifications": {
+					"draftSaved": "Draft saved.",
+					"published": "Posted to {horse}'s members.",
+					"publishFailed": "Couldn't publish to Circle — see the fallback below.",
+					"error": "Something went wrong. Please try again."
+				}
+			}
 		},
 		"settings": {
 			"title": "Club Settings",
@@ -56,6 +240,7 @@
 			"addHorse": "Add Horse",
 			"backToList": "Back to horses",
 			"noResults": "No horses found.",
+			"noRacingData": "No racing data",
 			"columns": {
 				"photo": "Photo",
 				"name": "Name",
@@ -84,8 +269,14 @@
 				"trainer": "Trainer",
 				"addTrainer": "+ Add trainer",
 				"sortOrder": "Sort order",
-				"providerEntityId": "Timeform ID",
-				"providerEntityIdHint": "Paste the Timeform ID to connect live race data.",
+				"providerEntityId": "Racing data link",
+				"providerEntityIdHint": "Search The Racing API by horse name and pick the match. Leave blank for horses not yet in training or not in the racing database.",
+				"searchPlaceholder": "Search racing database by name…",
+				"searchMinChars": "Type at least 3 characters",
+				"searchNoResults": "No horses found",
+				"linkedTo": "Linked to {name}",
+				"linkedPedigree": "sire {sire} × dam {dam}",
+				"unlink": "Unlink",
 				"syncNow": "Sync Now",
 				"syncStatusLinked": "Synced",
 				"syncStatusStale": "Sync stale",
@@ -101,10 +292,19 @@
 				"damsire": "Damsire",
 				"photos": "Photos",
 				"photosDisabledHint": "Save the horse first to enable photo uploads.",
-				"publishToggle": "Published",
+				"publishToggle": "Visible to members",
+				"publicProfileToggle": "Show on public website",
 				"publishConfirmTitle": "Publish horse",
 				"publishConfirmMessage": "This will make {name} visible to all members.",
 				"publishConfirmButton": "Publish",
+				"circleSpace": {
+					"active": "Circle space active",
+					"failed": "Circle space couldn't be created.",
+					"pending": "Circle space will be created on save.",
+					"retry": "Retry now",
+					"retrySuccess": "Circle space provisioning retried.",
+					"retryError": "Couldn't reach Circle. It will retry automatically."
+				},
 				"save": "Save",
 				"delete": "Delete",
 				"notifications": {
@@ -160,7 +360,7 @@
 			"title": "Manage organizations"
 		},
 		"news": {
-			"title": "News Posts",
+			"title": "Public news",
 			"newPost": "New Post",
 			"loading": "Loading news posts...",
 			"noResults": "No news posts found.",
@@ -181,8 +381,10 @@
 				"published": "Published"
 			},
 			"form": {
-				"createTitle": "Create news post",
-				"editTitle": "Edit news post",
+				"createTitle": "New public news post",
+				"editTitle": "Edit public news post",
+				"publicBadge": "🌐 Public marketing website",
+				"publicHint": "This publishes to your public marketing website — anyone on the internet can see it. It is NOT a member update and does NOT post to Circle.",
 				"titleLabel": "Title",
 				"subtitleLabel": "Subtitle",
 				"slugLabel": "Slug",

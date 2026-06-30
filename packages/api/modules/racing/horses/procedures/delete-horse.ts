@@ -1,5 +1,6 @@
 import { ORPCError } from "@orpc/client";
 import { deleteHorse as deleteHorseQuery, getHorseById } from "@repo/database";
+import { logger } from "@repo/logs";
 import { z } from "zod";
 
 import { adminProcedure } from "../../../../orpc/procedures";
@@ -17,7 +18,7 @@ export const deleteHorse = adminProcedure
 			horseId: z.string(),
 		}),
 	)
-	.handler(async ({ input }) => {
+	.handler(async ({ input, context }) => {
 		const existing = await getHorseById(input.horseId);
 
 		if (!existing) {
@@ -25,6 +26,13 @@ export const deleteHorse = adminProcedure
 		}
 
 		await deleteHorseQuery(input.horseId);
+
+		logger.info("Admin deleted horse", {
+			event: "admin_horse_deleted",
+			actorUserId: context.user.id,
+			organizationId: existing.organizationId,
+			horseId: input.horseId,
+		});
 
 		return { success: true };
 	});

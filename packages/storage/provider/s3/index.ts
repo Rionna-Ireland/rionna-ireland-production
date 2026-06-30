@@ -5,6 +5,8 @@ import { logger } from "@repo/logs";
 import { config } from "../../config";
 import type { GetSignedUploadUrlHandler, GetSignedUrlHander } from "../../types";
 
+export { getPublicUrl } from "./public-url";
+
 let s3Client: S3Client | null = null;
 
 const getS3Client = () => {

@@ -21,7 +21,9 @@ export async function getVisiblePurchases({
 
 	const membership = await getOrganizationMembership(organizationId, userId);
 
-	if (membership) {
+	// Org-wide purchases expose every member's billing/subscription rows, so
+	// gate them on a privileged role. A plain `member` only ever sees their own.
+	if (membership?.role === "owner" || membership?.role === "admin") {
 		return getPurchasesByOrganizationId(organizationId);
 	}
 

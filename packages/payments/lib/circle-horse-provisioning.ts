@@ -1,0 +1,90 @@
+/**
+ * Circle Horse-Space Provisioning (S2-09 surface F)
+ *
+ * "A horse IS a Circle space." On horse create we auto-provision a private
+ * space under the club's space group and link it (`Horse.circleSpaceId`). This
+ * mirrors member provisioning (circle-provisioning.ts): fail-safe — it never
+ * throws; any problem records `circleSpaceStatus="provisioning_failed"` so the
+ * reconciliation cron retries it (S6-02 invariant I4).
+ *
+ * @see Architecture/specs/S2-09-admin-mission-control.md
+ */
+
+import { db, parseOrgMetadata } from "@repo/database";
+import { logger } from "@repo/logs";
+
+import { createCircleService } from "./circle/index";
+
+export async function provisionHorseSpace(horse: {
+	id: string;
+	name: string;
+	organizationId: string;
+}): Promise<{ ok: boolean }> {
+	const org = await db.organization.findUnique({
+		where: { id: horse.organizationId },
+	});
+	if (!org?.slug) {
+		logger.warn("[Circle] Organization not found for horse-space provisioning", {
+			organizationId: horse.organizationId,
+			horseId: horse.id,
+		});
+		return { ok: false };
+	}
+
+	const spaceGroupId = parseOrgMetadata(org.metadata).circle?.spaceGroupId;
+	if (!spaceGroupId) {
+		// Can't create a space without a group. Defer — once the operator sets
+		// metadata.circle.spaceGroupId, reconciliation picks it up.
+		await db.horse.update({
+			where: { id: horse.id },
+			data: { circleSpaceStatus: "provisioning_failed" },
+		});
+		logger.error("[Circle] No spaceGroupId configured; horse-space provisioning deferred", {
+			surface: "circle.horse_provisioning",
+			horseId: horse.id,
+			organizationId: horse.organizationId,
+		});
+		return { ok: false };
+	}
+
+	const service = createCircleService(org.slug);
+	const outcome = await service.createSpace({
+		name: horse.name,
+		spaceGroupId,
+		spaceType: "basic",
+		isPrivate: true,
+		// Stable across retries so Circle deduplicates rather than creating dupes
+		// (there is no delete-space API to clean them up).
+		idempotencyKey: `horse-space-${horse.id}`,
+	});
+
+	if (!outcome.ok) {
+		await db.horse.update({
+			where: { id: horse.id },
+			data: { circleSpaceStatus: "provisioning_failed" },
+		});
+		logger.error("[Circle] Horse-space provisioning failed; deferring to reconciliation", {
+			surface: "circle.horse_provisioning",
+			horseId: horse.id,
+			organizationId: horse.organizationId,
+			reason: outcome.reason,
+			retriable: outcome.retriable,
+		});
+		return { ok: false };
+	}
+
+	await db.horse.update({
+		where: { id: horse.id },
+		data: {
+			circleSpaceId: outcome.data.circleSpaceId,
+			circleSpaceStatus: "active",
+			circleSpaceProvisionedAt: new Date(),
+		},
+	});
+
+	logger.info("[Circle] Horse space provisioned", {
+		horseId: horse.id,
+		circleSpaceId: outcome.data.circleSpaceId,
+	});
+	return { ok: true };
+}

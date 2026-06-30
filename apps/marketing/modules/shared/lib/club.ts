@@ -1,8 +1,7 @@
 import "server-only";
-
 import {
 	getOrganizationBySlug,
-	getPublishedHorses,
+	getPublicHorses,
 	getPublishedNewsPosts,
 	getPublishedNewsPostBySlug,
 	type OrganizationMetadata,
@@ -36,37 +35,35 @@ export const getClubOrganization = cache(async (): Promise<ClubOrganization> => 
 		id: org.id,
 		name: org.name,
 		slug: org.slug ?? slug,
-		metadata: parseOrgMetadata(
-			typeof org.metadata === "string" ? org.metadata : null,
-		),
+		metadata: parseOrgMetadata(typeof org.metadata === "string" ? org.metadata : null),
 	};
 });
 
+// Public marketing site uses the publicProfileAt gate (S2-09 surface F) — a
+// horse can be live for members (publishedAt) while its public reveal is held.
 export const getClubHorses = cache(async () => {
 	const org = await getClubOrganization();
 	if (!org.id) return [];
-	return getPublishedHorses(org.id);
+	return getPublicHorses(org.id);
 });
 
-export const getClubNewsPosts = cache(
-	async (opts: { limit?: number; cursor?: string } = {}) => {
-		const org = await getClubOrganization();
-		if (!org.id) return { items: [], nextCursor: undefined as string | undefined };
+export const getClubNewsPosts = cache(async (opts: { limit?: number; cursor?: string } = {}) => {
+	const org = await getClubOrganization();
+	if (!org.id) return { items: [], nextCursor: undefined as string | undefined };
 
-		const limit = opts.limit ?? 12;
-		const posts = await getPublishedNewsPosts({
-			organizationId: org.id,
-			limit,
-			cursor: opts.cursor,
-		});
+	const limit = opts.limit ?? 12;
+	const posts = await getPublishedNewsPosts({
+		organizationId: org.id,
+		limit,
+		cursor: opts.cursor,
+	});
 
-		const hasMore = posts.length > limit;
-		const items = hasMore ? posts.slice(0, limit) : posts;
-		const nextCursor = hasMore ? items[items.length - 1]?.id : undefined;
+	const hasMore = posts.length > limit;
+	const items = hasMore ? posts.slice(0, limit) : posts;
+	const nextCursor = hasMore ? items[items.length - 1]?.id : undefined;
 
-		return { items, nextCursor };
-	},
-);
+	return { items, nextCursor };
+});
 
 export const getClubNewsPostBySlug = cache(async (slug: string) => {
 	const org = await getClubOrganization();

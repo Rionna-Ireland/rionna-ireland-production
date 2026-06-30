@@ -22,10 +22,17 @@ export function SettingsMenu({
 }) {
 	const pathname = usePathname();
 
-	const isActiveMenuItem = (href: string) => pathname.includes(href);
-
 	// Flatten all items from all menu sections into a single array
 	const allItems = menuItems.flatMap((item) => item.items);
+
+	// Active = the most specific matching href (longest prefix wins), so a
+	// parent like "/admin" doesn't light up on every "/admin/*" child page.
+	const activeHref = allItems
+		.map((item) => item.href)
+		.filter((href) => pathname === href || pathname.startsWith(`${href}/`))
+		.sort((a, b) => b.length - a.length)[0];
+
+	const isActiveMenuItem = (href: string) => href === activeHref;
 
 	return (
 		<div className={cn("relative border-b", className)}>

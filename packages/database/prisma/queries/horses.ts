@@ -1,5 +1,5 @@
-import type { HorseStatus, Prisma } from "../generated/client";
 import { db } from "../client";
+import type { HorseStatus, Prisma } from "../generated/client";
 
 export async function getHorses({
 	organizationId,
@@ -74,9 +74,11 @@ export async function createHorse(data: {
 	pedigree?: Prisma.InputJsonValue;
 	ownershipBlurb?: string;
 	circleSpaceId?: string;
+	circleSpaceStatus?: string;
 	trainerId?: string;
 	sortOrder?: number;
 	publishedAt?: Date | null;
+	publicProfileAt?: Date | null;
 	providerEntityId?: string;
 }) {
 	return db.horse.create({
@@ -89,10 +91,7 @@ export async function createHorse(data: {
 	});
 }
 
-export async function updateHorse(
-	horseId: string,
-	data: Prisma.HorseUncheckedUpdateInput,
-) {
+export async function updateHorse(horseId: string, data: Prisma.HorseUncheckedUpdateInput) {
 	return db.horse.update({
 		where: { id: horseId },
 		data,
@@ -122,6 +121,27 @@ export async function getPublishedHorses(organizationId: string) {
 		where: {
 			organizationId,
 			publishedAt: { not: null },
+		},
+		include: {
+			trainer: {
+				select: { id: true, name: true },
+			},
+		},
+		orderBy: { sortOrder: "asc" },
+	});
+}
+
+/**
+ * Public marketing-site horse list — gated on `publicProfileAt` (the second,
+ * independent visibility gate from `publishedAt`, which controls member
+ * visibility). S2-09 surface F: a horse can be live for members while its
+ * public reveal is held.
+ */
+export async function getPublicHorses(organizationId: string) {
+	return db.horse.findMany({
+		where: {
+			organizationId,
+			publicProfileAt: { not: null },
 		},
 		include: {
 			trainer: {
@@ -180,10 +200,7 @@ export async function getNextRun(organizationId: string) {
 }
 
 // Latest finished results
-export async function getLatestResults(
-	organizationId: string,
-	limit: number = 3,
-) {
+export async function getLatestResults(organizationId: string, limit: number = 3) {
 	return db.raceEntry.findMany({
 		where: {
 			organizationId,

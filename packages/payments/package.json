@@ -14,6 +14,7 @@
 		"./lib/circle": "./lib/circle/index.ts",
 		"./lib/circle/types": "./lib/circle/types.ts",
 		"./lib/circle-provisioning": "./lib/circle-provisioning.ts",
+		"./lib/circle-horse-provisioning": "./lib/circle-horse-provisioning.ts",
 		"./lib/customer": "./lib/customer.ts",
 		"./lib/provider-price-ids": "./lib/provider-price-ids.ts",
 		"./lib/stripe-dedup": "./lib/stripe-dedup.ts",
