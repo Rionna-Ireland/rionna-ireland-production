@@ -25,16 +25,29 @@ interface VideoDialogProps {
 	onUploadVideo?: VideoUploadHandler;
 }
 
-/** Best-effort first-frame poster, drawn client-side. Returns undefined on failure. */
+/**
+ * Best-effort first-frame poster, drawn client-side. Returns undefined on failure.
+ *
+ * Poster generation is strictly best-effort — it must NEVER block the video
+ * insert. Some containers/codecs (e.g. .mov, HEVC) fire neither `loadeddata`/
+ * `seeked` nor `error`, so a hard timeout guarantees this resolves and the
+ * upload modal can proceed without a poster.
+ */
 function generatePoster(file: File): Promise<string | undefined> {
 	return new Promise((resolve) => {
+		const objectUrl = URL.createObjectURL(file);
+		let settled = false;
+		const done = (out?: string) => {
+			if (settled) return;
+			settled = true;
+			clearTimeout(timer);
+			URL.revokeObjectURL(objectUrl);
+			resolve(out);
+		};
+		// Never let a slow/undecodable video hang the insert.
+		const timer = setTimeout(() => done(undefined), 4000);
 		try {
 			const video = document.createElement("video");
-			const objectUrl = URL.createObjectURL(file);
-			const done = (out?: string) => {
-				URL.revokeObjectURL(objectUrl);
-				resolve(out);
-			};
 			video.preload = "metadata";
 			video.muted = true;
 			video.src = objectUrl;
@@ -56,7 +69,7 @@ function generatePoster(file: File): Promise<string | undefined> {
 			};
 			video.onerror = () => done();
 		} catch {
-			resolve(undefined);
+			done(undefined);
 		}
 	});
 }
