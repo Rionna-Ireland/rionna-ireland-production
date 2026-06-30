@@ -599,9 +599,12 @@ export function HorseForm({ horseId }: HorseFormProps) {
 
 							{/* Pedigree */}
 							<div>
-								<h3 className="mb-3 font-medium">
+								<h3 className="mb-1 font-medium">
 									{t("admin.horses.form.pedigree")}
 								</h3>
+								<p className="text-muted-foreground mb-3 text-sm">
+									{t("admin.horses.form.pedigreeHint")}
+								</p>
 								<div className="gap-4 md:grid-cols-3 grid grid-cols-1">
 									<FormField
 										control={form.control}
