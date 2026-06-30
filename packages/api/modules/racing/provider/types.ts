@@ -84,4 +84,7 @@ export interface RacingDataProvider {
 
   /** Horse profile data for initial linking / enrichment */
   getHorseProfile(providerHorseId: string): Promise<ProviderHorse>;
+
+  /** Search the provider's horse database by name (for admin linking) */
+  searchHorses(query: string): Promise<ProviderHorse[]>;
 }

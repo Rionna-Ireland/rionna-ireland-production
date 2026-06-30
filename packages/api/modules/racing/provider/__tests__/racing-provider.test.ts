@@ -467,3 +467,33 @@ describe("createRacingProvider factory", () => {
     expect(provider).toBeInstanceOf(ManualProvider);
   });
 });
+
+// ---------------------------------------------------------------------------
+// searchHorses (S2-15 §3)
+// ---------------------------------------------------------------------------
+
+describe("MockRacingDataProvider — searchHorses", () => {
+  it("returns matching horses by case-insensitive name substring", async () => {
+    const provider = new MockRacingDataProvider();
+    const results = await provider.searchHorses("pink");
+    expect(results.length).toBeGreaterThan(0);
+    expect(results.every((h) => h.name.toLowerCase().includes("pink"))).toBe(true);
+  });
+
+  it("returns an empty array when nothing matches", async () => {
+    const provider = new MockRacingDataProvider();
+    expect(await provider.searchHorses("zzzznomatch")).toEqual([]);
+  });
+
+  it("returns an empty array for a blank query", async () => {
+    const provider = new MockRacingDataProvider();
+    expect(await provider.searchHorses("  ")).toEqual([]);
+  });
+});
+
+describe("ManualProvider — searchHorses", () => {
+  it("returns an empty array", async () => {
+    const provider = new ManualProvider();
+    expect(await provider.searchHorses("anything")).toEqual([]);
+  });
+});

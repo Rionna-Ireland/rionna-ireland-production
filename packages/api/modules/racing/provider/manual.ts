@@ -32,4 +32,8 @@ export class ManualProvider implements RacingDataProvider {
   async getHorseProfile(_providerHorseId: string): Promise<ProviderHorse> {
     throw new Error("Manual provider has no horse profiles");
   }
+
+  async searchHorses(_query: string): Promise<ProviderHorse[]> {
+    return [];
+  }
 }
