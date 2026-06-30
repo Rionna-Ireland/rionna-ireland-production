@@ -7,6 +7,7 @@
  * @see Architecture/specs/S1-03-racing-data-provider.md
  */
 
+import { logger } from "@repo/logs";
 import type { RacingDataProvider } from "./types";
 import { MockRacingDataProvider } from "./mock";
 import { ManualProvider } from "./manual";
@@ -27,7 +28,12 @@ export function createRacingProvider(
     case "racing_api": {
       const username = process.env.RACING_API_USER;
       const password = process.env.RACING_API_PASSWORD;
-      if (!username || !password) return new ManualProvider();
+      if (!username || !password) {
+        logger.warn(
+          "[Racing] racing_api selected but RACING_API_USER/PASSWORD missing — falling back to ManualProvider",
+        );
+        return new ManualProvider();
+      }
       return new TheRacingApiProvider(new RacingApiHttp({ username, password }));
     }
     // case "timeform":
