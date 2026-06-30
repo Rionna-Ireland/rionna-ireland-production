@@ -10,8 +10,9 @@
 import type { RacingDataProvider } from "./types";
 import { MockRacingDataProvider } from "./mock";
 import { ManualProvider } from "./manual";
+import { RacingApiHttp } from "./racing-api/http";
+import { TheRacingApiProvider } from "./racing-api";
 // import { TimeformProvider } from "./timeform";     // future
-// import { RacingAPIProvider } from "./racing-api";   // future
 
 export type ProviderName = "mock" | "timeform" | "racing_api" | "manual";
 
@@ -23,10 +24,14 @@ export function createRacingProvider(
       return new MockRacingDataProvider();
     case "manual":
       return new ManualProvider();
+    case "racing_api": {
+      const username = process.env.RACING_API_USER;
+      const password = process.env.RACING_API_PASSWORD;
+      if (!username || !password) return new ManualProvider();
+      return new TheRacingApiProvider(new RacingApiHttp({ username, password }));
+    }
     // case "timeform":
     //   return new TimeformProvider(apiKey);
-    // case "racing_api":
-    //   return new RacingAPIProvider(apiKey);
     default:
       return new ManualProvider();
   }
@@ -40,3 +45,4 @@ export type {
 } from "./types";
 export { MockRacingDataProvider } from "./mock";
 export { ManualProvider } from "./manual";
+export { TheRacingApiProvider } from "./racing-api";

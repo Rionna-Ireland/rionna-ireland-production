@@ -19,6 +19,7 @@ import { MockRacingDataProvider } from "../mock";
 import { ManualProvider } from "../manual";
 import { createRacingProvider } from "../index";
 import { mockFixtures } from "../mock-fixtures";
+import { TheRacingApiProvider } from "../racing-api";
 import type { RacingDataProvider } from "../types";
 
 // ---------------------------------------------------------------------------
@@ -495,5 +496,28 @@ describe("ManualProvider — searchHorses", () => {
   it("returns an empty array", async () => {
     const provider = new ManualProvider();
     expect(await provider.searchHorses("anything")).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// createRacingProvider — racing_api
+// ---------------------------------------------------------------------------
+
+describe("createRacingProvider — racing_api", () => {
+  const OLD = { ...process.env };
+  afterEach(() => {
+    process.env = { ...OLD };
+  });
+
+  it("returns a TheRacingApiProvider when env creds are present", () => {
+    process.env.RACING_API_USER = "u";
+    process.env.RACING_API_PASSWORD = "p";
+    expect(createRacingProvider("racing_api")).toBeInstanceOf(TheRacingApiProvider);
+  });
+
+  it("falls back to ManualProvider when env creds are missing", () => {
+    delete process.env.RACING_API_USER;
+    delete process.env.RACING_API_PASSWORD;
+    expect(createRacingProvider("racing_api")).toBeInstanceOf(ManualProvider);
   });
 });
