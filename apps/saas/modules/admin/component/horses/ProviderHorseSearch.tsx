@@ -19,6 +19,7 @@ export function ProviderHorseSearch({ value, onChange }: ProviderHorseSearchProp
 	const t = useTranslations();
 	const { organizationId } = useAdminOrganization();
 	const [term, setTerm] = useState("");
+	const [selectedName, setSelectedName] = useState<string | null>(null);
 	const debounced = useDebounce(term, 350);
 	const trimmed = debounced.trim();
 
@@ -34,13 +35,17 @@ export function ProviderHorseSearch({ value, onChange }: ProviderHorseSearchProp
 			<div className="flex items-center justify-between rounded-md border p-3 text-sm">
 				<span className="flex items-center gap-2">
 					<LinkIcon className="size-4" />{" "}
-					{t("admin.horses.form.linkedTo", { name: value })}
+					{t("admin.horses.form.linkedTo", { name: selectedName ?? value })}
 				</span>
 				<Button
 					type="button"
 					variant="ghost"
 					size="sm"
-					onClick={() => onChange("")}
+					onClick={() => {
+						setSelectedName(null);
+						setTerm("");
+						onChange("");
+					}}
 				>
 					<XIcon className="mr-1 size-4" /> {t("admin.horses.form.unlink")}
 				</Button>
@@ -60,37 +65,42 @@ export function ProviderHorseSearch({ value, onChange }: ProviderHorseSearchProp
 					<Loader2Icon className="absolute right-2 top-2.5 size-4 animate-spin" />
 				)}
 			</div>
-			{trimmed.length > 0 && trimmed.length < 3 && (
-				<p className="text-muted-foreground text-xs">
-					{t("admin.horses.form.searchMinChars")}
-				</p>
-			)}
-			{results && results.length === 0 && (
-				<p className="text-muted-foreground text-xs">
-					{t("admin.horses.form.searchNoResults")}
-				</p>
-			)}
-			{results && results.length > 0 && (
-				<ul className="divide-y rounded-md border">
-					{results.map((horse) => (
-						<li key={horse.id}>
-							<button
-								type="button"
-								className="hover:bg-muted flex w-full flex-col items-start px-3 py-2 text-left"
-								onClick={() => onChange(horse.id)}
-							>
-								<span className="font-medium">{horse.name}</span>
-								<span className="text-muted-foreground text-xs">
-									{t("admin.horses.form.linkedPedigree", {
-										sire: horse.sire ?? "?",
-										dam: horse.dam ?? "?",
-									})}
-								</span>
-							</button>
-						</li>
-					))}
-				</ul>
-			)}
+			<div role="status" aria-live="polite" className="space-y-2">
+				{trimmed.length > 0 && trimmed.length < 3 && (
+					<p className="text-muted-foreground text-xs">
+						{t("admin.horses.form.searchMinChars")}
+					</p>
+				)}
+				{results && results.length === 0 && (
+					<p className="text-muted-foreground text-xs">
+						{t("admin.horses.form.searchNoResults")}
+					</p>
+				)}
+				{results && results.length > 0 && (
+					<ul className="divide-y rounded-md border">
+						{results.map((horse) => (
+							<li key={horse.id}>
+								<button
+									type="button"
+									className="hover:bg-muted flex w-full flex-col items-start px-3 py-2 text-left"
+									onClick={() => {
+										setSelectedName(horse.name);
+										onChange(horse.id);
+									}}
+								>
+									<span className="font-medium">{horse.name}</span>
+									<span className="text-muted-foreground text-xs">
+										{t("admin.horses.form.linkedPedigree", {
+											sire: horse.sire ?? "?",
+											dam: horse.dam ?? "?",
+										})}
+									</span>
+								</button>
+							</li>
+						))}
+					</ul>
+				)}
+			</div>
 		</div>
 	);
 }
