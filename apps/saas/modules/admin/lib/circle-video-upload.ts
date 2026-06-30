@@ -25,16 +25,38 @@ function putWithProgress(
 ): Promise<void> {
 	return new Promise((resolve, reject) => {
 		const xhr = new XMLHttpRequest();
+		let settled = false;
+		let responseTimer: ReturnType<typeof setTimeout> | undefined;
+		const settle = (fn: () => void) => {
+			if (settled) return;
+			settled = true;
+			clearTimeout(responseTimer);
+			fn();
+		};
 		xhr.open("PUT", url);
 		for (const [k, v] of Object.entries(headers)) xhr.setRequestHeader(k, v);
 		xhr.upload.onprogress = (e) => {
 			if (e.lengthComputable) onProgress?.(Math.round((e.loaded / e.total) * 100));
 		};
+		// Once the bytes are fully sent, bound the wait for the server's response.
+		// The upload itself is intentionally not time-capped (large files over slow
+		// links are fine); this only guards against a response that never arrives.
+		xhr.upload.onload = () => {
+			responseTimer = setTimeout(() => {
+				settle(() =>
+					reject(new Error("Upload timed out waiting for server response")),
+				);
+				xhr.abort();
+			}, 30000);
+		};
 		xhr.onload = () =>
-			xhr.status >= 200 && xhr.status < 300
-				? resolve()
-				: reject(new Error(`Upload failed (${xhr.status})`));
-		xhr.onerror = () => reject(new Error("Upload network error"));
+			settle(() =>
+				xhr.status >= 200 && xhr.status < 300
+					? resolve()
+					: reject(new Error(`Upload failed (${xhr.status})`)),
+			);
+		xhr.onerror = () => settle(() => reject(new Error("Upload network error")));
+		xhr.onabort = () => settle(() => reject(new Error("Upload aborted")));
 		xhr.send(file);
 	});
 }
