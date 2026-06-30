@@ -240,6 +240,7 @@
 			"addHorse": "Add Horse",
 			"backToList": "Back to horses",
 			"noResults": "No horses found.",
+			"noRacingData": "No racing data",
 			"columns": {
 				"photo": "Photo",
 				"name": "Name",
