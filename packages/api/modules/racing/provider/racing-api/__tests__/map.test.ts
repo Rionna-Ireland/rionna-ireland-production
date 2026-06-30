@@ -84,7 +84,7 @@ describe("mapRacecardToEntries", () => {
 	});
 
 	it("returns [] when the racecard omits runners", () => {
-		const { runners, ...noRunners } = racecard;
+		const { runners: _runners, ...noRunners } = racecard;
 		expect(
 			mapRacecardToEntries(noRunners, new Set(["hrs_45568460"])),
 		).toEqual([]);
