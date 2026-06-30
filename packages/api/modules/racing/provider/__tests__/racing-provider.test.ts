@@ -19,6 +19,7 @@ import { MockRacingDataProvider } from "../mock";
 import { ManualProvider } from "../manual";
 import { createRacingProvider } from "../index";
 import { mockFixtures } from "../mock-fixtures";
+import { TheRacingApiProvider } from "../racing-api";
 import type { RacingDataProvider } from "../types";
 
 // ---------------------------------------------------------------------------
@@ -465,5 +466,58 @@ describe("createRacingProvider factory", () => {
     // Cast to bypass TypeScript to simulate a runtime unknown value.
     const provider = createRacingProvider("timeform" as "mock");
     expect(provider).toBeInstanceOf(ManualProvider);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// searchHorses (S2-15 §3)
+// ---------------------------------------------------------------------------
+
+describe("MockRacingDataProvider — searchHorses", () => {
+  it("returns matching horses by case-insensitive name substring", async () => {
+    const provider = new MockRacingDataProvider();
+    const results = await provider.searchHorses("pink");
+    expect(results.length).toBeGreaterThan(0);
+    expect(results.every((h) => h.name.toLowerCase().includes("pink"))).toBe(true);
+  });
+
+  it("returns an empty array when nothing matches", async () => {
+    const provider = new MockRacingDataProvider();
+    expect(await provider.searchHorses("zzzznomatch")).toEqual([]);
+  });
+
+  it("returns an empty array for a blank query", async () => {
+    const provider = new MockRacingDataProvider();
+    expect(await provider.searchHorses("  ")).toEqual([]);
+  });
+});
+
+describe("ManualProvider — searchHorses", () => {
+  it("returns an empty array", async () => {
+    const provider = new ManualProvider();
+    expect(await provider.searchHorses("anything")).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// createRacingProvider — racing_api
+// ---------------------------------------------------------------------------
+
+describe("createRacingProvider — racing_api", () => {
+  const OLD = { ...process.env };
+  afterEach(() => {
+    process.env = { ...OLD };
+  });
+
+  it("returns a TheRacingApiProvider when env creds are present", () => {
+    process.env.RACING_API_USER = "u";
+    process.env.RACING_API_PASSWORD = "p";
+    expect(createRacingProvider("racing_api")).toBeInstanceOf(TheRacingApiProvider);
+  });
+
+  it("falls back to ManualProvider when env creds are missing", () => {
+    delete process.env.RACING_API_USER;
+    delete process.env.RACING_API_PASSWORD;
+    expect(createRacingProvider("racing_api")).toBeInstanceOf(ManualProvider);
   });
 });

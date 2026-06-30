@@ -1,8 +1,10 @@
 import { ORPCError } from "@orpc/client";
 import { db, parseOrgMetadata } from "@repo/database";
+import { logger } from "@repo/logs";
 import { z } from "zod";
 
 import { adminProcedure } from "../../../../orpc/procedures";
+import { ingestHorse } from "../../ingest/ingest-horse";
 import { createRacingProvider } from "../../provider/index";
 
 export const syncHorse = adminProcedure
@@ -59,6 +61,17 @@ export const syncHorse = adminProcedure
 				},
 			},
 		});
+
+		// S2-15 §4: run an immediate ingest for this horse so a freshly-linked
+		// horse shows declarations without waiting for the next cron tick.
+		try {
+			await ingestHorse(horse.organizationId, updated, provider);
+		} catch (error) {
+			logger.error(
+				`Immediate ingest after sync failed for horse ${horse.id}`,
+				{ error },
+			);
+		}
 
 		return updated;
 	});

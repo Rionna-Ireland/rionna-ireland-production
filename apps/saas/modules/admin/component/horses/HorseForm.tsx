@@ -36,6 +36,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { PhotoGallery } from "./PhotoGallery";
+import { ProviderHorseSearch } from "./ProviderHorseSearch";
 import { TrainerModal } from "./TrainerModal";
 
 const horseFormSchema = z.object({
@@ -504,7 +505,10 @@ export function HorseForm({ horseId }: HorseFormProps) {
 											</FormDescription>
 											<div className="gap-2 flex">
 												<FormControl>
-													<Input {...field} />
+													<ProviderHorseSearch
+														value={field.value ?? ""}
+														onChange={field.onChange}
+													/>
 												</FormControl>
 												{isEdit && field.value && (
 													<Button

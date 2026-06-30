@@ -71,6 +71,14 @@ export class MockRacingDataProvider implements RacingDataProvider {
     return horse.profile;
   }
 
+  async searchHorses(query: string): Promise<ProviderHorse[]> {
+    const q = query.trim().toLowerCase();
+    if (q.length === 0) return [];
+    return mockFixtures.horses
+      .map((h) => h.profile)
+      .filter((p) => p.name.toLowerCase().includes(q));
+  }
+
   private deriveStatus(
     postTime: Date,
     now: Date,
