@@ -41,7 +41,7 @@ export interface ApiRacecard {
 	race_class?: string;
 	going?: string;
 	region?: string;
-	runners: ApiRunner[];
+	runners?: ApiRunner[] | null;
 }
 
 export interface ApiResultRunner {
@@ -54,10 +54,10 @@ export interface ApiResultRunner {
 
 export interface ApiResult {
 	race_id: string;
-	runners: ApiResultRunner[];
+	runners?: ApiResultRunner[] | null;
 }
 
-function num(v: string | undefined | null): number | undefined {
+export function num(v: string | undefined | null): number | undefined {
 	if (v == null) {
 		return undefined;
 	}
@@ -83,7 +83,7 @@ export function mapRacecardToEntries(
 	rc: ApiRacecard,
 	linkedHorseIds: Set<string>,
 ): ProviderEntry[] {
-	return rc.runners
+	return (rc.runners ?? [])
 		.filter((r) => linkedHorseIds.has(r.horse_id))
 		.map((r) => ({
 			providerHorseId: r.horse_id,
@@ -119,7 +119,7 @@ export function mapRacecardToEntries(
 export function mapResult(res: ApiResult): ProviderResult {
 	return {
 		providerRaceId: res.race_id,
-		entries: res.runners.map((r) => ({
+		entries: (res.runners ?? []).map((r) => ({
 			providerEntryId: entryId(res.race_id, r.horse_id),
 			finishingPosition: num(r.position),
 			beatenLengths: num(r.btn),

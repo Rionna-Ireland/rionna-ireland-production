@@ -1,5 +1,17 @@
 import { describe, it, expect } from "vitest";
-import { mapSearchHorse, mapRacecardToEntries, mapResult } from "../map";
+import { mapSearchHorse, mapRacecardToEntries, mapResult, num } from "../map";
+
+describe("num", () => {
+	it.each([
+		[undefined, undefined],
+		[null, undefined],
+		["0", 0],
+		["1.5", 1.5],
+		["PU", undefined],
+	])("num(%o) === %o", (input, expected) => {
+		expect(num(input)).toBe(expected);
+	});
+});
 
 describe("mapSearchHorse", () => {
 	it("maps a search result to a ProviderHorse (pedigree only)", () => {
@@ -69,6 +81,13 @@ describe("mapRacecardToEntries", () => {
 
 	it("returns [] when no runner matches the linked set", () => {
 		expect(mapRacecardToEntries(racecard, new Set(["hrs_none"]))).toEqual([]);
+	});
+
+	it("returns [] when the racecard omits runners", () => {
+		const { runners, ...noRunners } = racecard;
+		expect(
+			mapRacecardToEntries(noRunners, new Set(["hrs_45568460"])),
+		).toEqual([]);
 	});
 });
 
