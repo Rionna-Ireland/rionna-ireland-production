@@ -40,6 +40,19 @@ vi.mock("@repo/database", () => ({
 		organization: { findUnique: mockOrgFindUnique },
 		user: { findUnique: mockUserFindUnique },
 		member: { update: mockMemberUpdate },
+		horse: { findMany: vi.fn().mockResolvedValue([]) },
+		horseFollow: { createMany: vi.fn() },
+	},
+	// S6-07 Surface D: real parser so the horse auto-follow step (default true
+	// when metadata is unset) exercises its normal fail-safe path in this test
+	// rather than throwing on an unmocked import.
+	parseOrgMetadata: (raw: string | null) => {
+		if (!raw) return {};
+		try {
+			return JSON.parse(raw);
+		} catch {
+			return {};
+		}
 	},
 }));
 
