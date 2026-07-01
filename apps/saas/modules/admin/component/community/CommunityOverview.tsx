@@ -16,6 +16,7 @@ import {
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
+import { HorseFollowersDrawer } from "./HorseFollowersDrawer";
 
 export function CommunityOverview() {
 	const t = useTranslations();
@@ -142,6 +143,7 @@ export function CommunityOverview() {
 								<TableHead>{t("admin.community.visibility")}</TableHead>
 								<TableHead>{t("admin.community.members")}</TableHead>
 								<TableHead>{t("admin.community.posts")}</TableHead>
+								<TableHead>{t("admin.community.followers")}</TableHead>
 							</TableRow>
 						</TableHeader>
 						<TableBody>
@@ -173,11 +175,17 @@ export function CommunityOverview() {
 										</TableCell>
 										<TableCell className="py-2">{horse.membersCount ?? "—"}</TableCell>
 										<TableCell className="py-2">{horse.postsCount ?? "—"}</TableCell>
+										<TableCell className="py-2">
+											<HorseFollowersDrawer
+												horseId={horse.horseId}
+												horseName={horse.name}
+											/>
+										</TableCell>
 									</TableRow>
 								))
 							) : (
 								<TableRow>
-									<TableCell colSpan={5} className="h-24 text-center">
+									<TableCell colSpan={6} className="h-24 text-center">
 										<p>{t("admin.horses.noResults")}</p>
 									</TableCell>
 								</TableRow>
