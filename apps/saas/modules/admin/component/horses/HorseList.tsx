@@ -189,6 +189,7 @@ export function HorseList() {
 							<TableHead>{t("admin.horses.columns.status")}</TableHead>
 							<TableHead>{t("admin.horses.columns.trainer")}</TableHead>
 							<TableHead>{t("admin.horses.columns.published")}</TableHead>
+							<TableHead>{t("admin.community.visibility")}</TableHead>
 							<TableHead className="w-20">
 								{t("admin.horses.columns.sortOrder")}
 							</TableHead>
@@ -266,6 +267,34 @@ export function HorseList() {
 												: "-"}
 										</TableCell>
 										<TableCell className="py-2">
+											{horse.circleSpaceId ? (
+												<Badge
+													status={
+														horse.circleSpaceVisibility ===
+														"member_public"
+															? "success"
+															: "warning"
+													}
+												>
+													{horse.circleSpaceVisibility ===
+													"member_public"
+														? t(
+																"admin.community.visibilityPublic",
+															)
+														: t(
+																"admin.community.visibilityPrivate",
+															)}
+												</Badge>
+											) : (
+												<Badge
+													status="info"
+													className="bg-muted text-muted-foreground"
+												>
+													{t("admin.community.noCircleSpace")}
+												</Badge>
+											)}
+										</TableCell>
+										<TableCell className="py-2">
 											{horse.sortOrder}
 										</TableCell>
 									</TableRow>
@@ -273,7 +302,7 @@ export function HorseList() {
 							})
 						) : (
 							<TableRow>
-								<TableCell colSpan={7} className="h-24 text-center">
+								<TableCell colSpan={8} className="h-24 text-center">
 									{isLoading ? (
 										<div className="flex h-full items-center justify-center">
 											<Spinner className="mr-2 size-4 text-primary" />

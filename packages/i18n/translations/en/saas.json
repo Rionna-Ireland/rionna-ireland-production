@@ -344,6 +344,8 @@
 			"visibility": "Visibility",
 			"visibilityPublic": "Public to members",
 			"visibilityPrivate": "Private (admins only)",
+			"visibilityHelp": "Private = hidden from members while you build content. Public = appears in every member's Circle sidebar.",
+			"visibilityError": "Couldn't change visibility. Try again or use the Circle dashboard.",
 			"noCircleSpace": "No Circle space",
 			"followers": "Followers",
 			"followersTitle": "{horse} — followers",
