@@ -78,6 +78,8 @@ export async function provisionHorseSpace(horse: {
 		data: {
 			circleSpaceId: outcome.data.circleSpaceId,
 			circleSpaceStatus: "active",
+			// S6-07: open-space model — private until admin publishes it
+			circleSpaceVisibility: "private",
 			circleSpaceProvisionedAt: new Date(),
 		},
 	});
