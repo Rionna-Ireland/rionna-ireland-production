@@ -73,3 +73,17 @@ describe("listHorseFollowers", () => {
 		expect(rows[0]).toMatchObject({ userId: "u-1", name: "Alice", email: "a@x.com" });
 	});
 });
+
+describe("listFollowedHorses", () => {
+	it("returns the user's follow rows with horse+trainer included, newest-first", async () => {
+		mockFindMany.mockResolvedValue([{ id: "hf-1", horse: { id: "h-1", name: "A" } }]);
+		const rows = await listFollowedHorses({ organizationId: "org-1", userId: "u-1" });
+		expect(mockFindMany).toHaveBeenCalledWith(
+			expect.objectContaining({
+				where: { organizationId: "org-1", userId: "u-1" },
+				orderBy: { createdAt: "desc" },
+			}),
+		);
+		expect(rows).toHaveLength(1);
+	});
+});
