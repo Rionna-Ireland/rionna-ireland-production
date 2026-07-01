@@ -27,12 +27,12 @@
 	"dependencies": {
 		"@circleco/headless-server-sdk": "^0.0.5",
 		"@lemonsqueezy/lemonsqueezy.js": "^4.0.0",
-		"@polar-sh/sdk": "^0.47.0",
+		"@polar-sh/sdk": "^0.48.1",
 		"@repo/database": "workspace:*",
 		"@repo/logs": "workspace:*",
 		"@repo/mail": "workspace:*",
-		"dodopayments": "^2.26.0",
-		"stripe": "^22.0.0",
+		"dodopayments": "^2.40.1",
+		"stripe": "^22.3.0",
 		"ufo": "catalog:",
 		"zod": "catalog:"
 	},
