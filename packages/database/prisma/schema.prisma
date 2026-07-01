@@ -316,6 +316,10 @@ model Horse {
   circleSpaceStatus        String?
   circleSpaceProvisionedAt DateTime?
 
+  // S6-07: access model (i) — the visibility toggle IS the access control.
+  // "private" (provisioning default; pre-announcement) | "member_public" (whole member community).
+  circleSpaceVisibility String? @default("private")
+
   trainerId String?
   trainer   Trainer? @relation(fields: [trainerId], references: [id])
 
