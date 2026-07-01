@@ -3,6 +3,12 @@ import { createPhotoUploadUrl } from "./procedures/create-photo-upload-url";
 import { createTrainer } from "./procedures/create-trainer";
 import { deleteHorse } from "./procedures/delete-horse";
 import { getHorse } from "./procedures/get-horse";
+import {
+	addFollowerProcedure,
+	followAllMembersProcedure,
+	listFollowersProcedure,
+	removeFollowerProcedure,
+} from "./procedures/horse-followers-admin";
 import { listHorses } from "./procedures/list-horses";
 import { listTrainers } from "./procedures/list-trainers";
 import { publishHorses } from "./procedures/publish-horses";
@@ -24,6 +30,10 @@ export const horsesAdminRouter = {
 	retryCircleSpace: retryHorseSpaceProvisioning,
 	setSpaceVisibility: setHorseSpaceVisibility,
 	createPhotoUploadUrl: createPhotoUploadUrl,
+	listFollowers: listFollowersProcedure,
+	addFollower: addFollowerProcedure,
+	removeFollower: removeFollowerProcedure,
+	followAllMembers: followAllMembersProcedure,
 	trainers: {
 		list: listTrainers,
 		create: createTrainer,
