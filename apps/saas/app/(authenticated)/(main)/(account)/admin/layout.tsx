@@ -8,6 +8,7 @@ import {
 	LayoutDashboardIcon,
 	ListIcon,
 	MegaphoneIcon,
+	MessagesSquareIcon,
 	NewspaperIcon,
 	SettingsIcon,
 	UsersIcon,
@@ -54,6 +55,11 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
 								title: t("menu.horses"),
 								href: "/admin/horses",
 								icon: <ListIcon className="size-4 opacity-50" />,
+							},
+							{
+								title: t("menu.community"),
+								href: "/admin/community",
+								icon: <MessagesSquareIcon className="size-4 opacity-50" />,
 							},
 							{
 								title: t("menu.horseUpdates"),
