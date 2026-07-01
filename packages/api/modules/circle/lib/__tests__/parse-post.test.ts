@@ -77,4 +77,25 @@ describe("toPostDetail", () => {
 		expect(post.bodyText).toBe("This is the video ^");
 		expect(post.imageUrl).toBe("https://img/thumb.jpg");
 	});
+
+	it("exposes the tiptap doc + embed map for rich rendering", () => {
+		const videoPost = {
+			id: 34087789,
+			name: "Video",
+			body: { html: "<div><strong>Update available</strong></div>" },
+			tiptap_body: {
+				body: {
+					type: "doc",
+					content: [
+						{ type: "embed", attrs: { sgid: "sg1" } },
+						{ type: "paragraph", content: [{ type: "text", text: "This is the video ^" }] },
+					],
+				},
+				sgids_to_object_map: { sg1: { embed_type: "video", html: "<iframe></iframe>" } },
+			},
+		};
+		const post = toPostDetail(videoPost, {});
+		expect((post.tiptapDoc as { content: unknown[] }).content).toHaveLength(2);
+		expect(post.embeds).toMatchObject({ sg1: { embed_type: "video" } });
+	});
 });

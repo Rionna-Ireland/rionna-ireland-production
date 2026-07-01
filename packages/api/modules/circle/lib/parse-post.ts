@@ -22,6 +22,10 @@ export interface CirclePostDetail {
 	bodyHtml: string | null;
 	bodyText: string | null;
 	imageUrl: string | null;
+	/** Circle TipTap document (`tiptap_body.body`) for rich read-only rendering, or null. */
+	tiptapDoc: unknown | null;
+	/** `tiptap_body.sgids_to_object_map` — resolves embed nodes (video/oEmbed) by sgid. */
+	embeds: Record<string, unknown>;
 	authorName: string | null;
 	authorAvatarUrl: string | null;
 	spaceName: string | null;
@@ -287,6 +291,7 @@ export function toPostDetail(post: Record<string, unknown>, opts: ParseOpts = {}
 		slug: textValue(post.slug),
 		spaceSlug: extractSpaceSlug(post),
 	});
+	const tiptap = objectValue(post.tiptap_body);
 	return {
 		id,
 		spaceId: extractSpaceId(post),
@@ -294,6 +299,8 @@ export function toPostDetail(post: Record<string, unknown>, opts: ParseOpts = {}
 		bodyHtml: extractBodyHtml(post),
 		bodyText: extractPostText(post),
 		imageUrl: extractPostImageUrl(post),
+		tiptapDoc: tiptap ? (tiptap.body ?? null) : null,
+		embeds: objectValue(tiptap?.sgids_to_object_map) ?? {},
 		authorName: extractAuthorName(post),
 		authorAvatarUrl: extractAuthorAvatar(post),
 		spaceName: extractSpaceName(post),

@@ -1,4 +1,5 @@
 import { getActiveOrganization } from "@auth/lib/server";
+import { CirclePostBody, circleDocHasContent } from "@member-hub/components/CirclePostBody";
 import { formatFeedDate } from "@member-hub/lib/feed-format";
 import { getMemberPost } from "@repo/api/modules/circle/procedures/get-member-post";
 import { PageHeader } from "@shared/components/PageHeader";
@@ -60,25 +61,26 @@ export default async function MemberPostPage({ params }: { params: Promise<Param
 					) : null}
 				</header>
 
-				{post.imageUrl ? (
-					<div className="mt-10 overflow-hidden rounded-2xl bg-secondary">
-						{/* biome-ignore lint/a11y/useAltText: title used as alt */}
-						<img src={post.imageUrl} alt={post.title} className="h-auto w-full object-cover" />
-					</div>
-				) : null}
-
-				{post.bodyHtml ? (
-					<div
-						className="prose prose-neutral dark:prose-invert mt-10 max-w-none prose-headings:font-display prose-headings:font-medium"
-						// biome-ignore lint/security/noDangerouslySetInnerHtml: Circle-sanitised member content, read-only
-						dangerouslySetInnerHTML={{ __html: post.bodyHtml }}
-					/>
-				) : post.bodyText ? (
-					<div className="prose prose-neutral dark:prose-invert mt-10 max-w-none">
-						<p className="whitespace-pre-line text-foreground/85">{post.bodyText}</p>
-					</div>
+				{circleDocHasContent(post.tiptapDoc) ? (
+					// Rich render from the TipTap doc — text, images, and video/oEmbed.
+					<CirclePostBody doc={post.tiptapDoc} embeds={post.embeds} />
 				) : (
-					<p className="mt-10 text-muted-foreground">This update is best viewed in the app.</p>
+					<>
+						{post.imageUrl ? (
+							<div className="mt-10 overflow-hidden rounded-2xl bg-secondary">
+								{/* biome-ignore lint/a11y/useAltText: title used as alt */}
+								<img src={post.imageUrl} alt={post.title} className="h-auto w-full object-cover" />
+							</div>
+						) : null}
+
+						{post.bodyText ? (
+							<div className="prose prose-neutral dark:prose-invert mt-10 max-w-none">
+								<p className="whitespace-pre-line text-foreground/85">{post.bodyText}</p>
+							</div>
+						) : (
+							<p className="mt-10 text-muted-foreground">This update is best viewed in the app.</p>
+						)}
+					</>
 				)}
 			</article>
 		</div>
