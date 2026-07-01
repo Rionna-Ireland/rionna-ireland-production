@@ -28,6 +28,12 @@ vi.mock("../send-push", () => ({
   sendPush: (...args: unknown[]) => mockSendPush(...args),
 }));
 
+// Mock postRaceUpdateToCircle
+const mockPostToCircle = vi.fn().mockResolvedValue(undefined);
+vi.mock("../post-to-circle", () => ({
+  postRaceUpdateToCircle: (...args: unknown[]) => mockPostToCircle(...args),
+}));
+
 import { handleStatusTransition } from "../transitions";
 
 const mockHorse = { id: "horse-1", name: "Pink Jasmine" };
@@ -233,5 +239,35 @@ describe("handleStatusTransition", () => {
       "DECLARED",
     );
     expect(mockHorseUpdate).not.toHaveBeenCalled();
+  });
+
+  // ── Circle posting (S6-08) ────────────────────────────────────────
+
+  it("DECLARED both pushes and posts to Circle", async () => {
+    await handleStatusTransition(
+      "org-1",
+      mockHorse,
+      mockRace,
+      makeEntry("DECLARED"),
+      "ENTERED",
+    );
+    expect(mockSendPush).toHaveBeenCalledOnce();
+    expect(mockPostToCircle).toHaveBeenCalledOnce();
+    expect(mockPostToCircle.mock.calls[0][0]).toMatchObject({
+      organizationId: "org-1",
+      status: "DECLARED",
+    });
+  });
+
+  it("already-notified bare status short-circuits both push and post", async () => {
+    const entry = {
+      id: "entry-1",
+      status: "DECLARED" as const,
+      notifiedStates: ["DECLARED"],
+      finishingPosition: null,
+    };
+    await handleStatusTransition("org-1", mockHorse, mockRace, entry, "ENTERED");
+    expect(mockSendPush).not.toHaveBeenCalled();
+    expect(mockPostToCircle).not.toHaveBeenCalled();
   });
 });
