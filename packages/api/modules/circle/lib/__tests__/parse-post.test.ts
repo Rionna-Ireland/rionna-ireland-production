@@ -47,7 +47,7 @@ describe("toFeedItem", () => {
 });
 
 describe("toPostDetail", () => {
-	it("prefers body.html and carries author/space/date", () => {
+	it("prefers real body.html and carries author/space/date", () => {
 		const post = toPostDetail(REAL_POST, { communityDomain: "community.rionna.com" });
 		expect(post).toMatchObject({
 			id: "34130292",
@@ -59,5 +59,22 @@ describe("toPostDetail", () => {
 			spaceName: "Laska",
 			createdAt: "2026-07-01T09:00:00.000Z",
 		});
+	});
+
+	it("nulls the 'Update available' placeholder body.html and keeps the real plain text", () => {
+		// This is what the headless API actually returns for most posts.
+		const placeholderPost = {
+			id: 34087789,
+			name: "Video",
+			body: { html: "<div><strong>Update available</strong><br>Please update the app to view this post.</div>" },
+			body_plain_text: "This is the video ^",
+			space: { id: 2711304, name: "My Boy Harry", slug: "my-boy-harry" },
+			cardview_image: "https://img/thumb.jpg",
+			created_at: "2026-07-01T10:00:00.000Z",
+		};
+		const post = toPostDetail(placeholderPost, {});
+		expect(post.bodyHtml).toBeNull();
+		expect(post.bodyText).toBe("This is the video ^");
+		expect(post.imageUrl).toBe("https://img/thumb.jpg");
 	});
 });

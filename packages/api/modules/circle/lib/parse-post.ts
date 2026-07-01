@@ -21,6 +21,7 @@ export interface CirclePostDetail {
 	title: string;
 	bodyHtml: string | null;
 	bodyText: string | null;
+	imageUrl: string | null;
 	authorName: string | null;
 	authorAvatarUrl: string | null;
 	spaceName: string | null;
@@ -190,7 +191,13 @@ function extractAuthorAvatar(post: Record<string, unknown>): string | null {
 
 export function extractBodyHtml(post: Record<string, unknown>): string | null {
 	const body = objectValue(post.body);
-	return textValue(body?.html);
+	const raw = textValue(body?.html);
+	if (!raw) return null;
+	// The headless API returns "Update available / Please update the app to view this post."
+	// as body.html for posts it won't render server-side (real content is in body_plain_text /
+	// tiptap_body). cleanTextValue returns null for that exact placeholder (and empty html), so
+	// treat those as "no renderable html" and let the caller fall back to the plain text.
+	return cleanTextValue(raw) === null ? null : raw;
 }
 
 function numberValue(value: unknown): number {
@@ -286,6 +293,7 @@ export function toPostDetail(post: Record<string, unknown>, opts: ParseOpts = {}
 		title: extractTitle(post),
 		bodyHtml: extractBodyHtml(post),
 		bodyText: extractPostText(post),
+		imageUrl: extractPostImageUrl(post),
 		authorName: extractAuthorName(post),
 		authorAvatarUrl: extractAuthorAvatar(post),
 		spaceName: extractSpaceName(post),

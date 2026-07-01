@@ -60,6 +60,13 @@ export default async function MemberPostPage({ params }: { params: Promise<Param
 					) : null}
 				</header>
 
+				{post.imageUrl ? (
+					<div className="mt-10 overflow-hidden rounded-2xl bg-secondary">
+						{/* biome-ignore lint/a11y/useAltText: title used as alt */}
+						<img src={post.imageUrl} alt={post.title} className="h-auto w-full object-cover" />
+					</div>
+				) : null}
+
 				{post.bodyHtml ? (
 					<div
 						className="prose prose-neutral dark:prose-invert mt-10 max-w-none prose-headings:font-display prose-headings:font-medium"
@@ -67,8 +74,12 @@ export default async function MemberPostPage({ params }: { params: Promise<Param
 						dangerouslySetInnerHTML={{ __html: post.bodyHtml }}
 					/>
 				) : post.bodyText ? (
-					<p className="mt-10 whitespace-pre-line text-foreground/85">{post.bodyText}</p>
-				) : null}
+					<div className="prose prose-neutral dark:prose-invert mt-10 max-w-none">
+						<p className="whitespace-pre-line text-foreground/85">{post.bodyText}</p>
+					</div>
+				) : (
+					<p className="mt-10 text-muted-foreground">This update is best viewed in the app.</p>
+				)}
 			</article>
 		</div>
 	);
