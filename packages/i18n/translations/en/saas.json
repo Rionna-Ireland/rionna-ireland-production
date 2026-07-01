@@ -334,8 +334,18 @@
 		"community": {
 			"title": "Community",
 			"subtitle": "Manage your Circle community spaces and horse following.",
+			"loading": "Loading community...",
 			"spaceGroups": "Space groups",
 			"horseSpaces": "Horse spaces",
+			"columns": {
+				"name": "Name",
+				"status": "Status"
+			},
+			"status": {
+				"active": "Active",
+				"provisioning_failed": "Provisioning failed",
+				"none": "Not provisioned"
+			},
 			"circleUnavailable": "Circle is unavailable — showing last known local data. Counts may be missing.",
 			"openCircleAdmin": "Open Circle admin",
 			"retryProvisioning": "Retry",
