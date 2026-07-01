@@ -44,12 +44,13 @@ model User {
   notificationPreferences  UserNotificationPreference[]
 
   // Notification preferences (S1-02)
-  pushEnabled         Boolean      @default(true)
-  pushPreferences     Json         @default("{}")
-  emailPreferences    Json         @default("{}")
+  pushEnabled         Boolean       @default(true)
+  pushPreferences     Json          @default("{}")
+  emailPreferences    Json          @default("{}")
   pushTokens          PushToken[]
   authoredNewsPosts   NewsPost[]
   authoredMemberPosts MemberPost[]
+  follows             HorseFollow[]
 
   @@unique([email])
   @@unique([username])
@@ -156,16 +157,17 @@ model Organization {
   purchases          Purchase[]
 
   // Racing domain (S1-02)
-  horses      Horse[]
-  trainers    Trainer[]
-  jockeys     Jockey[]
-  courses     Course[]
-  meetings    Meeting[]
-  races       Race[]
-  raceEntries RaceEntry[]
-  newsPosts   NewsPost[]
-  pushLogs    PushLog[]
-  memberPosts MemberPost[]
+  horses       Horse[]
+  trainers     Trainer[]
+  jockeys      Jockey[]
+  courses      Course[]
+  meetings     Meeting[]
+  races        Race[]
+  raceEntries  RaceEntry[]
+  newsPosts    NewsPost[]
+  pushLogs     PushLog[]
+  memberPosts  MemberPost[]
+  horseFollows HorseFollow[]
 
   @@unique([slug])
   @@map("organization")
@@ -314,6 +316,10 @@ model Horse {
   circleSpaceStatus        String?
   circleSpaceProvisionedAt DateTime?
 
+  // S6-07: access model (i) — the visibility toggle IS the access control.
+  // "private" (provisioning default; pre-announcement) | "member_public" (whole member community).
+  circleSpaceVisibility String? @default("private")
+
   trainerId String?
   trainer   Trainer? @relation(fields: [trainerId], references: [id])
 
@@ -330,6 +336,7 @@ model Horse {
 
   entries     RaceEntry[]
   memberPosts MemberPost[]
+  followers   HorseFollow[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -339,6 +346,23 @@ model Horse {
   @@index([organizationId, publishedAt])
   @@index([organizationId, publicProfileAt])
   @@map("horse")
+}
+
+model HorseFollow {
+  id             String   @id @default(cuid())
+  organizationId String
+  userId         String
+  horseId        String
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  horse        Horse        @relation(fields: [horseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, horseId])
+  @@index([horseId])
+  @@index([organizationId, userId])
+  @@map("horse_follow")
 }
 
 model Trainer {

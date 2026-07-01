@@ -19,6 +19,7 @@ export interface AudienceRequest {
 	organizationId: string;
 	triggerType: PushTriggerType;
 	targetUserId?: string;
+	followersOfHorseId?: string;
 }
 
 /**
@@ -73,7 +74,7 @@ export async function getAudienceTokens(
 		},
 	});
 
-	return tokens
+	const filteredTokens = tokens
 		.filter((t) => {
 			if (!prefKey) return true; // SYSTEM pushes go to everyone
 			const prefs =
@@ -84,4 +85,18 @@ export async function getAudienceTokens(
 			expoPushToken: t.expoPushToken,
 			userId: t.userId,
 		}));
+
+	if (request.followersOfHorseId) {
+		const follows = await db.horseFollow.findMany({
+			where: {
+				organizationId: request.organizationId,
+				horseId: request.followersOfHorseId,
+			},
+			select: { userId: true },
+		});
+		const followerIds = new Set(follows.map((f) => f.userId));
+		return filteredTokens.filter((t) => followerIds.has(t.userId));
+	}
+
+	return filteredTokens;
 }

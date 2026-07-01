@@ -25,6 +25,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@repo/ui/components/select";
+import { Switch } from "@repo/ui/components/switch";
 import { Textarea } from "@repo/ui/components/textarea";
 import { toastError, toastSuccess } from "@repo/ui/components/toast";
 import { orpc } from "@shared/lib/orpc-query-utils";
@@ -52,6 +53,7 @@ const clubSettingsSchema = z.object({
 			facebook: z.string().optional(),
 		}),
 	}),
+	horseAutoFollow: z.boolean(),
 });
 
 type ClubSettingsValues = z.infer<typeof clubSettingsSchema>;
@@ -103,6 +105,7 @@ export function ClubSettingsForm() {
 					facebook: "",
 				},
 			},
+			horseAutoFollow: true,
 		},
 	});
 
@@ -126,6 +129,7 @@ export function ClubSettingsForm() {
 						facebook: settings.contact?.socialLinks?.facebook ?? "",
 					},
 				},
+				horseAutoFollow: settings.horseAutoFollow ?? true,
 			});
 		}
 	}, [settings, form]);
@@ -141,6 +145,7 @@ export function ClubSettingsForm() {
 					...values.contact,
 					socialLinks: values.contact.socialLinks,
 				},
+				horseAutoFollow: values.horseAutoFollow,
 			});
 
 			toastSuccess(t("admin.settings.notifications.success"));
@@ -449,6 +454,37 @@ export function ClubSettingsForm() {
 											<Input {...field} value={field.value ?? ""} />
 										</FormControl>
 										<FormMessage />
+									</FormItem>
+								)}
+							/>
+						</CardContent>
+					</Card>
+
+					{/* Community */}
+					<Card>
+						<CardHeader>
+							<CardTitle>{t("admin.community.title")}</CardTitle>
+						</CardHeader>
+						<CardContent className="gap-4 grid grid-cols-1">
+							<FormField
+								control={form.control}
+								name="horseAutoFollow"
+								render={({ field }) => (
+									<FormItem className="gap-3 flex items-center">
+										<FormControl>
+											<Switch
+												checked={field.value}
+												onCheckedChange={field.onChange}
+											/>
+										</FormControl>
+										<div>
+											<FormLabel className="!mt-0">
+												{t("admin.community.autoFollowLabel")}
+											</FormLabel>
+											<p className="text-muted-foreground text-sm">
+												{t("admin.community.autoFollowHint")}
+											</p>
+										</div>
 									</FormItem>
 								)}
 							/>

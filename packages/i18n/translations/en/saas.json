@@ -9,7 +9,8 @@
 			"events": "Events",
 			"organizations": "Organizations",
 			"settings": "Settings",
-			"announcements": "Announcements"
+			"announcements": "Announcements",
+			"community": "Community"
 		},
 		"dashboard": {
 			"health": {
@@ -329,6 +330,44 @@
 					"error": "Could not create trainer. Please try again."
 				}
 			}
+		},
+		"community": {
+			"title": "Community",
+			"subtitle": "Manage your Circle community spaces and horse following.",
+			"loading": "Loading community...",
+			"spaceGroups": "Space groups",
+			"horseSpaces": "Horse spaces",
+			"columns": {
+				"name": "Name",
+				"status": "Status"
+			},
+			"status": {
+				"active": "Active",
+				"provisioning_failed": "Provisioning failed",
+				"none": "Not provisioned"
+			},
+			"circleUnavailable": "Circle is unavailable — showing last known local data. Counts may be missing.",
+			"openCircleAdmin": "Open Circle admin",
+			"retryProvisioning": "Retry",
+			"members": "Members",
+			"posts": "Posts",
+			"visibility": "Visibility",
+			"visibilityPublic": "Public to members",
+			"visibilityPrivate": "Private (admins only)",
+			"visibilityHelp": "Private = hidden from members while you build content. Public = appears in every member's Circle sidebar.",
+			"visibilityError": "Couldn't change visibility. Try again or use the Circle dashboard.",
+			"noCircleSpace": "No Circle space",
+			"followers": "Followers",
+			"followersTitle": "{horse} — followers",
+			"addFollower": "Add follower",
+			"removeFollower": "Remove",
+			"followAllMembers": "Follow all members",
+			"followAllConfirm": "Add every current member as a follower of this horse?",
+			"followersAdded": "Added {count} followers",
+			"noFollowers": "No followers yet.",
+			"provisioningFailed": "Provisioning failed",
+			"autoFollowLabel": "Auto-follow all horses for new members",
+			"autoFollowHint": "When on, each new member automatically follows every published horse."
 		},
 		"organizations": {
 			"backToList": "Back to organizations",

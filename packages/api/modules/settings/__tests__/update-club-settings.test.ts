@@ -67,3 +67,34 @@ describe("updateClubSettings — audit logging (S5-07)", () => {
 		);
 	});
 });
+
+describe("updateClubSettings — horseAutoFollow (S6-07 Surface D)", () => {
+	it("persists horseAutoFollow: false into the metadata write, merged with existing metadata", async () => {
+		mockParseOrgMetadata.mockReturnValue({ brand: { primaryColor: "#000" } });
+
+		await call(
+			updateClubSettings,
+			{ organizationId: "org1", horseAutoFollow: false },
+			ctx,
+		);
+
+		expect(mockUpdate).toHaveBeenCalledWith({
+			where: { id: "org1" },
+			data: {
+				metadata: JSON.stringify({
+					brand: { primaryColor: "#000" },
+					horseAutoFollow: false,
+				}),
+			},
+		});
+	});
+
+	it("does not clobber horseAutoFollow when not supplied in the input", async () => {
+		mockParseOrgMetadata.mockReturnValue({ horseAutoFollow: false });
+
+		await call(updateClubSettings, { organizationId: "org1" }, ctx);
+
+		const call1 = mockUpdate.mock.calls[0][0];
+		expect(JSON.parse(call1.data.metadata)).toMatchObject({ horseAutoFollow: false });
+	});
+});

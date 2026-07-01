@@ -58,6 +58,11 @@ export interface OrganizationMetadata {
 		androidUrl?: string;
 		bundleId?: string;
 	};
+	/**
+	 * S6-07 Surface D: when a new member is provisioned, auto-follow them to
+	 * every published horse in the org. Defaults to true when unset.
+	 */
+	horseAutoFollow?: boolean;
 }
 
 export function parseOrgMetadata(raw: string | null): OrganizationMetadata {

@@ -16,6 +16,8 @@ import type {
 	CircleNotification,
 	CircleNotificationPage,
 	CircleService,
+	CircleSpaceGroupSummary,
+	CircleSpaceSummary,
 	CreateEventParams,
 	CreateEventResult,
 	CreateMemberParams,
@@ -78,6 +80,21 @@ export class MockCircleService implements CircleService {
 	private nextEmbedId = 1;
 	private nextUploadId = 1;
 	private nextEventId = 1;
+
+	// Admin community overview (S6-07) — seeded test fixtures, distinct from
+	// the `spaces` provisioning map above (which tracks createSpace calls).
+	private spaceGroupSummaries: CircleSpaceGroupSummary[] = [];
+	private spaceSummaries: CircleSpaceSummary[] = [];
+
+	/** Test-only seeder: adds a space group to be returned by listSpaceGroups. */
+	__seedSpaceGroup(group: CircleSpaceGroupSummary): void {
+		this.spaceGroupSummaries.push(group);
+	}
+
+	/** Test-only seeder: adds a space to be returned by listSpaces. */
+	__seedSpace(space: CircleSpaceSummary): void {
+		this.spaceSummaries.push(space);
+	}
 
 	async createMember(params: CreateMemberParams): Promise<CircleCallOutcome<CreateMemberResult>> {
 		// Idempotency: return existing member if key was already used
@@ -373,6 +390,37 @@ export class MockCircleService implements CircleService {
 			startsAt: params.startsAt,
 		});
 		return { ok: true, data: { circleEventId } };
+	}
+
+	// --- Admin community overview (S6-07) -----------------------------------
+
+	async listSpaceGroups(): Promise<CircleCallOutcome<CircleSpaceGroupSummary[]>> {
+		return { ok: true, data: [...this.spaceGroupSummaries] };
+	}
+
+	async listSpaces(params?: {
+		spaceGroupId?: string;
+	}): Promise<CircleCallOutcome<CircleSpaceSummary[]>> {
+		const data = params?.spaceGroupId
+			? this.spaceSummaries.filter((s) => s.spaceGroupId === params.spaceGroupId)
+			: [...this.spaceSummaries];
+		return { ok: true, data };
+	}
+
+	async setSpaceVisibility(params: {
+		spaceId: string;
+		isPrivate: boolean;
+	}): Promise<CircleCallOutcome<{ circleSpaceId: string; isPrivate: boolean }>> {
+		const space = this.spaceSummaries.find((s) => s.id === params.spaceId);
+		if (!space) {
+			return { ok: false, reason: "not_found", retriable: false };
+		}
+		space.isPrivate = params.isPrivate;
+		logger.info("[MockCircle] Set space visibility", {
+			circleSpaceId: params.spaceId,
+			isPrivate: params.isPrivate,
+		});
+		return { ok: true, data: { circleSpaceId: params.spaceId, isPrivate: params.isPrivate } };
 	}
 
 	/** Test helper: get current member count */

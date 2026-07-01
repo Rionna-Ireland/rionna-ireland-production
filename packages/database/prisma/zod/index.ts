@@ -85,9 +85,15 @@ export type UserNotificationPreferenceScalarFieldEnum = z.infer<typeof UserNotif
 
 // File: HorseScalarFieldEnum.schema.ts
 
-export const HorseScalarFieldEnumSchema = z.enum(['id', 'organizationId', 'slug', 'name', 'providerEntityId', 'providerLastSync', 'status', 'bio', 'trainerNotes', 'photos', 'pedigree', 'ownershipBlurb', 'circleSpaceId', 'circleSpaceStatus', 'circleSpaceProvisionedAt', 'trainerId', 'sortOrder', 'publishedAt', 'publicProfileAt', 'latestEntryId', 'nextEntryId', 'createdAt', 'updatedAt'])
+export const HorseScalarFieldEnumSchema = z.enum(['id', 'organizationId', 'slug', 'name', 'providerEntityId', 'providerLastSync', 'status', 'bio', 'trainerNotes', 'photos', 'pedigree', 'ownershipBlurb', 'circleSpaceId', 'circleSpaceStatus', 'circleSpaceProvisionedAt', 'circleSpaceVisibility', 'trainerId', 'sortOrder', 'publishedAt', 'publicProfileAt', 'latestEntryId', 'nextEntryId', 'createdAt', 'updatedAt'])
 
 export type HorseScalarFieldEnum = z.infer<typeof HorseScalarFieldEnumSchema>;
+
+// File: HorseFollowScalarFieldEnum.schema.ts
+
+export const HorseFollowScalarFieldEnumSchema = z.enum(['id', 'organizationId', 'userId', 'horseId', 'createdAt'])
+
+export type HorseFollowScalarFieldEnum = z.infer<typeof HorseFollowScalarFieldEnumSchema>;
 
 // File: TrainerScalarFieldEnum.schema.ts
 
@@ -467,6 +473,7 @@ export const HorseSchema = z.object({
   circleSpaceId: z.string().nullish(),
   circleSpaceStatus: z.string().nullish(),
   circleSpaceProvisionedAt: z.date().nullish(),
+  circleSpaceVisibility: z.string().default("private").nullish(),
   trainerId: z.string().nullish(),
   sortOrder: z.number().int(),
   publishedAt: z.date().nullish(),
@@ -478,6 +485,19 @@ export const HorseSchema = z.object({
 });
 
 export type HorseType = z.infer<typeof HorseSchema>;
+
+
+// File: HorseFollow.schema.ts
+
+export const HorseFollowSchema = z.object({
+  id: z.string(),
+  organizationId: z.string(),
+  userId: z.string(),
+  horseId: z.string(),
+  createdAt: z.date(),
+});
+
+export type HorseFollowType = z.infer<typeof HorseFollowSchema>;
 
 
 // File: Trainer.schema.ts

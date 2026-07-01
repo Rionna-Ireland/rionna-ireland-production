@@ -35,6 +35,7 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { HorseVisibilityToggle } from "./HorseVisibilityToggle";
 import { PhotoGallery } from "./PhotoGallery";
 import { ProviderHorseSearch } from "./ProviderHorseSearch";
 import { TrainerModal } from "./TrainerModal";
@@ -699,6 +700,20 @@ export function HorseForm({ horseId }: HorseFormProps) {
 									</FormItem>
 								)}
 							/>
+
+							{/* Circle Space Visibility (immediate action, not a form field) */}
+							{isEdit && horse?.circleSpaceId && (
+								<div className="space-y-1.5">
+									<FormLabel>{t("admin.community.visibility")}</FormLabel>
+									<HorseVisibilityToggle
+										horseId={horse.id}
+										visibility={horse.circleSpaceVisibility}
+									/>
+									<p className="text-muted-foreground text-sm">
+										{t("admin.community.visibilityHelp")}
+									</p>
+								</div>
+							)}
 
 							{/* Actions */}
 							<div className="flex justify-between">

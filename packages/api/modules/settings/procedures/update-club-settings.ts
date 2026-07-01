@@ -31,6 +31,7 @@ const updateClubSettingsInput = z.object({
 				.optional(),
 		})
 		.optional(),
+	horseAutoFollow: z.boolean().optional(),
 });
 
 export const updateClubSettings = adminProcedure
@@ -41,7 +42,7 @@ export const updateClubSettings = adminProcedure
 		summary: "Update club settings",
 	})
 	.input(updateClubSettingsInput)
-	.handler(async ({ input: { organizationId, brand, contact }, context }) => {
+	.handler(async ({ input: { organizationId, brand, contact, horseAutoFollow }, context }) => {
 		const organization = await db.organization.findUnique({
 			where: { id: organizationId },
 			select: { metadata: true },
@@ -73,6 +74,7 @@ export const updateClubSettings = adminProcedure
 							: existing.contact?.socialLinks,
 					}
 				: existing.contact,
+			horseAutoFollow: horseAutoFollow ?? existing.horseAutoFollow,
 		};
 
 		await db.organization.update({

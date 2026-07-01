@@ -2,6 +2,7 @@ import { getPublishedHorses } from "@repo/database";
 import { z } from "zod";
 
 import { protectedProcedure } from "../../../../orpc/procedures";
+import { getFollowedHorseIds } from "../lib/horse-follows";
 
 export const listPublishedHorses = protectedProcedure
 	.route({
@@ -16,6 +17,12 @@ export const listPublishedHorses = protectedProcedure
 			organizationId: z.string(),
 		}),
 	)
-	.handler(async ({ input }) => {
-		return getPublishedHorses(input.organizationId);
+	.handler(async ({ input, context }) => {
+		const horses = await getPublishedHorses(input.organizationId);
+		const followed = await getFollowedHorseIds({
+			organizationId: input.organizationId,
+			userId: context.user.id,
+		});
+
+		return horses.map((horse) => ({ ...horse, isFollowing: followed.has(horse.id) }));
 	});

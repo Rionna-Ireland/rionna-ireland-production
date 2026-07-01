@@ -74,6 +74,7 @@ describe("provisionHorseSpace (S2-09 surface F)", () => {
 				circleSpaceId: "777",
 				circleSpaceStatus: "active",
 				circleSpaceProvisionedAt: expect.any(Date),
+				circleSpaceVisibility: "private",
 			},
 		});
 	});

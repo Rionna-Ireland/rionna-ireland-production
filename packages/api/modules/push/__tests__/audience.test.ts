@@ -12,10 +12,14 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Mock @repo/database
 const mockFindMany = vi.fn();
+const mockHorseFollowFindMany = vi.fn();
 
 vi.mock("@repo/database", () => ({
 	db: {
 		pushToken: { findMany: (...args: unknown[]) => mockFindMany(...args) },
+		horseFollow: {
+			findMany: (...args: unknown[]) => mockHorseFollowFindMany(...args),
+		},
 	},
 }));
 
@@ -70,6 +74,57 @@ describe("getPrefKey", () => {
 describe("getAudienceTokens", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+	});
+
+	it("restricts to followers when followersOfHorseId is set", async () => {
+		mockFindMany.mockResolvedValue([
+			{
+				expoPushToken: "tok-1",
+				userId: "u-1",
+				user: { pushPreferences: {} },
+			},
+			{
+				expoPushToken: "tok-2",
+				userId: "u-2",
+				user: { pushPreferences: {} },
+			},
+		]);
+		mockHorseFollowFindMany.mockResolvedValue([{ userId: "u-1" }]);
+
+		const tokens = await getAudienceTokens({
+			organizationId: "org-1",
+			triggerType: "HORSE_DECLARED",
+			followersOfHorseId: "h-1",
+		});
+
+		expect(tokens.map((t) => t.expoPushToken)).toEqual(["tok-1"]);
+		expect(mockHorseFollowFindMany).toHaveBeenCalledWith({
+			where: { organizationId: "org-1", horseId: "h-1" },
+			select: { userId: true },
+		});
+	});
+
+	it("is org-wide (unchanged) when followersOfHorseId is omitted", async () => {
+		mockFindMany.mockResolvedValue([
+			{
+				expoPushToken: "tok-1",
+				userId: "u-1",
+				user: { pushPreferences: {} },
+			},
+			{
+				expoPushToken: "tok-2",
+				userId: "u-2",
+				user: { pushPreferences: {} },
+			},
+		]);
+
+		const tokens = await getAudienceTokens({
+			organizationId: "org-1",
+			triggerType: "HORSE_DECLARED",
+		});
+
+		expect(tokens).toHaveLength(2);
+		expect(mockHorseFollowFindMany).not.toHaveBeenCalled();
 	});
 
 	it("returns tokens for users with pushEnabled and default preferences", async () => {

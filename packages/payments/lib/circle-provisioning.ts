@@ -8,7 +8,7 @@
  * @see Architecture/specs/S1-05-circle-provisioning.md
  */
 
-import { db } from "@repo/database";
+import { db, parseOrgMetadata } from "@repo/database";
 import { logger } from "@repo/logs";
 
 import { createCircleService } from "./circle/index";
@@ -100,6 +100,43 @@ export async function provisionCircleMember(
 				reason: confirm.reason,
 			},
 		);
+	}
+
+	// S6-07 Surface D: auto-follow the new member to every published horse in
+	// the org unless the admin has turned it off (metadata.horseAutoFollow,
+	// default true when unset). Fail-safe: wrapped in try/catch so any error
+	// is logged and swallowed — provisioning has already succeeded above and
+	// must not be blocked or rolled back by this step.
+	//
+	// NOTE: the DRY follow helpers live in @repo/api
+	// (modules/racing/horses/lib/horse-follows.ts) but are intentionally NOT
+	// imported here — @repo/payments must not depend on @repo/api, that would
+	// create a package import cycle. The single createMany call is inlined.
+	try {
+		const horseAutoFollow = parseOrgMetadata(org.metadata ?? null).horseAutoFollow;
+		if (horseAutoFollow !== false) {
+			const publishedHorses = await db.horse.findMany({
+				where: { organizationId: member.organizationId, publishedAt: { not: null } },
+				select: { id: true },
+			});
+			if (publishedHorses.length > 0) {
+				await db.horseFollow.createMany({
+					data: publishedHorses.map((horse) => ({
+						organizationId: member.organizationId,
+						userId: member.userId,
+						horseId: horse.id,
+					})),
+					skipDuplicates: true,
+				});
+			}
+		}
+	} catch (error) {
+		logger.warn("[Circle] Horse auto-follow failed; continuing without blocking provisioning", {
+			surface: "circle.provisioning",
+			memberId: member.id,
+			organizationId: member.organizationId,
+			error: error instanceof Error ? error.message : String(error),
+		});
 	}
 
 	logger.info("[Circle] Member provisioned", {

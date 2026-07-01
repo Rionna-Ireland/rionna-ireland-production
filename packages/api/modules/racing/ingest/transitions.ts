@@ -9,6 +9,7 @@
 
 import { db } from "@repo/database";
 import type { RaceEntryStatus } from "@repo/database";
+import { postRaceUpdateToCircle } from "./post-to-circle";
 import { buildPushContent } from "./push-content";
 import { sendPush } from "./send-push";
 
@@ -73,6 +74,19 @@ export async function handleStatusTransition(
     data: {
       notifiedStates: [...notifiedStates, newStatus],
     },
+  });
+
+  await postRaceUpdateToCircle({
+    organizationId,
+    status: newStatus,
+    horse: { id: horse.id, name: horse.name },
+    race: { id: race.id, name: race.name, postTime: race.postTime, courseName: race.courseName },
+    raceEntry: {
+      id: raceEntry.id,
+      finishingPosition: raceEntry.finishingPosition,
+      notifiedStates: [...notifiedStates, newStatus],
+    },
+    // fieldSize not available on TransitionRace — omit; copy drops the "of N" clause.
   });
 
   // Update denormalized fields on Horse

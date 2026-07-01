@@ -203,6 +203,25 @@ export interface CreateSpaceResult {
 	circleSpaceId: string;
 }
 
+/** S6-07: a Circle space group summarised for the admin community overview. */
+export interface CircleSpaceGroupSummary {
+	id: string;
+	name: string;
+	/** Undefined when Circle's payload omits it — never fabricate a count. */
+	spacesCount?: number;
+	membersCount?: number;
+}
+
+/** S6-07: a Circle space summarised for the admin community overview. */
+export interface CircleSpaceSummary {
+	id: string;
+	name: string;
+	spaceGroupId?: string;
+	isPrivate: boolean;
+	membersCount?: number;
+	postsCount?: number;
+}
+
 export interface CreateEventParams {
 	/** An event-type Circle space id. */
 	spaceId: string;
@@ -296,6 +315,21 @@ export interface CircleService {
 	createSpace(params: CreateSpaceParams): Promise<CircleCallOutcome<CreateSpaceResult>>;
 	/** Create an event (RSVP + reminders built into Circle events). */
 	createEvent(params: CreateEventParams): Promise<CircleCallOutcome<CreateEventResult>>;
+
+	// --- Admin community overview (S6-07) -----------------------------------
+	// Read-only listings + a visibility toggle for the admin community overview
+	// and horse-space visibility control. Fail-safe: every method returns a
+	// CircleCallOutcome rather than throwing.
+
+	/** List all Circle space groups (paginated upstream; one page is fetched). */
+	listSpaceGroups(): Promise<CircleCallOutcome<CircleSpaceGroupSummary[]>>;
+	/** List Circle spaces, optionally scoped to a single space group. */
+	listSpaces(params?: { spaceGroupId?: string }): Promise<CircleCallOutcome<CircleSpaceSummary[]>>;
+	/** Toggle a space's public/private visibility (Circle's `is_private` field). */
+	setSpaceVisibility(params: {
+		spaceId: string;
+		isPrivate: boolean;
+	}): Promise<CircleCallOutcome<{ circleSpaceId: string; isPrivate: boolean }>>;
 }
 
 export class CircleApiError extends Error {
