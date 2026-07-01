@@ -34,6 +34,7 @@ import {
 	MenuIcon,
 	PanelLeftCloseIcon,
 	PanelLeftOpenIcon,
+	RssIcon,
 	SettingsIcon,
 	ShieldUserIcon,
 	UserCogIcon,
@@ -353,6 +354,16 @@ export function NavBar() {
 				icon: HomeIcon,
 				isActive: pathname === "/" || pathname === basePath,
 			},
+			...(activeOrganization
+				? [
+						{
+							label: t("app.menu.feed"),
+							href: `${basePath}/feed`,
+							icon: RssIcon,
+							isActive: pathname.startsWith(`${basePath}/feed`),
+						},
+					]
+				: []),
 			...(organizationSubItems
 				? [
 						{
