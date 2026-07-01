@@ -8,6 +8,7 @@ import { listTrainers } from "./procedures/list-trainers";
 import { publishHorses } from "./procedures/publish-horses";
 import { retryHorseSpaceProvisioning } from "./procedures/retry-horse-space-provisioning";
 import { searchProvider } from "./procedures/search-provider";
+import { setHorseSpaceVisibility } from "./procedures/set-horse-space-visibility";
 import { syncHorse } from "./procedures/sync-horse";
 import { updateHorse } from "./procedures/update-horse";
 
@@ -21,6 +22,7 @@ export const horsesAdminRouter = {
 	sync: syncHorse,
 	searchProvider: searchProvider,
 	retryCircleSpace: retryHorseSpaceProvisioning,
+	setSpaceVisibility: setHorseSpaceVisibility,
 	createPhotoUploadUrl: createPhotoUploadUrl,
 	trainers: {
 		list: listTrainers,
