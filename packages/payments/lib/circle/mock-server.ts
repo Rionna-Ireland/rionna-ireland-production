@@ -13,6 +13,8 @@ import type {
 	CircleNotification,
 	CircleNotificationPage,
 	CircleService,
+	CircleSpaceGroupSummary,
+	CircleSpaceSummary,
 	CreateEventParams,
 	CreateEventResult,
 	CreateMemberParams,
@@ -616,6 +618,106 @@ export class MockServerCircleService implements CircleService {
 			return { ok: false, reason: "server_error", retriable: false, raw: "missing space id" };
 		}
 		return { ok: true, data: { circleSpaceId: String(id) } };
+	}
+
+	// --- Admin community overview (S6-07) -----------------------------------
+
+	async listSpaceGroups(): Promise<CircleCallOutcome<CircleSpaceGroupSummary[]>> {
+		let response: Response;
+		try {
+			response = await fetch(`${this.baseUrl}/api/admin/v2/space_groups?per_page=100`, {
+				headers: this.adminHeaders(),
+			});
+		} catch (err) {
+			return { ok: false, reason: "network", retriable: true, raw: err };
+		}
+		if (!response.ok) {
+			const raw = await this.readError(response, "Mock server list space groups failed");
+			const { reason, retriable } = classifyStatus(response.status);
+			return { ok: false, reason, retriable, raw };
+		}
+
+		let json: { records?: unknown };
+		try {
+			json = await this.parseJson<typeof json>(response);
+		} catch (err) {
+			return { ok: false, reason: "server_error", retriable: true, raw: err };
+		}
+		const records = Array.isArray(json.records) ? json.records : [];
+		const data: CircleSpaceGroupSummary[] = records.map((record) => {
+			const r = (record ?? {}) as Record<string, unknown>;
+			return {
+				id: String(r.id),
+				name: String(r.name ?? ""),
+				spacesCount: typeof r.spaces_count === "number" ? r.spaces_count : undefined,
+				membersCount: typeof r.members_count === "number" ? r.members_count : undefined,
+			};
+		});
+		return { ok: true, data };
+	}
+
+	async listSpaces(params?: {
+		spaceGroupId?: string;
+	}): Promise<CircleCallOutcome<CircleSpaceSummary[]>> {
+		let url = `${this.baseUrl}/api/admin/v2/spaces?per_page=100`;
+		if (params?.spaceGroupId) {
+			url += `&space_group_id=${encodeURIComponent(params.spaceGroupId)}`;
+		}
+
+		let response: Response;
+		try {
+			response = await fetch(url, { headers: this.adminHeaders() });
+		} catch (err) {
+			return { ok: false, reason: "network", retriable: true, raw: err };
+		}
+		if (!response.ok) {
+			const raw = await this.readError(response, "Mock server list spaces failed");
+			const { reason, retriable } = classifyStatus(response.status);
+			return { ok: false, reason, retriable, raw };
+		}
+
+		let json: { records?: unknown };
+		try {
+			json = await this.parseJson<typeof json>(response);
+		} catch (err) {
+			return { ok: false, reason: "server_error", retriable: true, raw: err };
+		}
+		const records = Array.isArray(json.records) ? json.records : [];
+		const data: CircleSpaceSummary[] = records.map((record) => {
+			const r = (record ?? {}) as Record<string, unknown>;
+			return {
+				id: String(r.id),
+				name: String(r.name ?? ""),
+				spaceGroupId: r.space_group_id != null ? String(r.space_group_id) : undefined,
+				isPrivate: Boolean(r.is_private),
+				membersCount: typeof r.members_count === "number" ? r.members_count : undefined,
+				postsCount: typeof r.posts_count === "number" ? r.posts_count : undefined,
+			};
+		});
+		return { ok: true, data };
+	}
+
+	async setSpaceVisibility(params: {
+		spaceId: string;
+		isPrivate: boolean;
+	}): Promise<CircleCallOutcome<{ circleSpaceId: string; isPrivate: boolean }>> {
+		let response: Response;
+		try {
+			response = await fetch(`${this.baseUrl}/api/admin/v2/spaces/${params.spaceId}`, {
+				method: "PUT",
+				headers: this.adminHeaders(),
+				body: JSON.stringify({ is_private: params.isPrivate }),
+			});
+		} catch (err) {
+			return { ok: false, reason: "network", retriable: true, raw: err };
+		}
+		if (!response.ok) {
+			const raw = await this.readError(response, "Mock server set space visibility failed");
+			const { reason, retriable } = classifyStatus(response.status);
+			return { ok: false, reason, retriable, raw };
+		}
+
+		return { ok: true, data: { circleSpaceId: params.spaceId, isPrivate: params.isPrivate } };
 	}
 
 	async createEvent(params: CreateEventParams): Promise<CircleCallOutcome<CreateEventResult>> {

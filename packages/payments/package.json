@@ -23,6 +23,8 @@
 	},
 	"scripts": {
 		"clean": "git clean -xdf .cache .turbo dist node_modules",
+		"test": "vitest run",
+		"test:watch": "vitest",
 		"type-check": "tsc --noEmit"
 	},
 	"dependencies": {
@@ -40,6 +42,7 @@
 	"devDependencies": {
 		"@repo/tsconfig": "workspace:*",
 		"@types/node": "catalog:",
-		"tsx": "catalog:"
+		"tsx": "catalog:",
+		"vitest": "catalog:"
 	}
 }
