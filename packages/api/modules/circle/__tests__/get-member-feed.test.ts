@@ -79,6 +79,19 @@ describe("getMemberFeed", () => {
 		expect(res).toMatchObject({ ok: false, items: [], hasNextPage: false });
 	});
 
+	it("returns ok:true items:[] on a 401 (member has no accessible home feed)", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn().mockResolvedValue({
+				ok: false,
+				status: 401,
+				json: async () => ({ success: false, message: "Home page feature not applicable" }),
+			}),
+		);
+		const res = await call(getMemberFeed, { organizationId: ORG_ID, page: 1, perPage: 15 }, ctx);
+		expect(res).toMatchObject({ ok: true, items: [], hasNextPage: false });
+	});
+
 	it("returns ok:true items:[] when the member has no circleMemberId", async () => {
 		mockMemberFindFirst.mockResolvedValue(null);
 		const res = await call(getMemberFeed, { organizationId: ORG_ID, page: 1, perPage: 15 }, ctx);

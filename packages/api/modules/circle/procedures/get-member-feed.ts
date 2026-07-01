@@ -68,6 +68,18 @@ export const getMemberFeed = protectedProcedure
 			return fail();
 		}
 		if (!response.ok) {
+			// 401/403 = this member has no accessible home feed (e.g. not onboarded / joined no
+			// spaces — Circle responds 401 "Home page feature not applicable"). That is a stable
+			// "empty feed", not a transient error, so render the quiet empty state, not the banner.
+			if (response.status === 401 || response.status === 403) {
+				logger.info("[Circle] Member feed: no accessible home feed for member", {
+					surface: "circle.member_feed",
+					userId: user.id,
+					organizationId: input.organizationId,
+					status: response.status,
+				});
+				return { ok: true, items: [], page: input.page, hasNextPage: false };
+			}
 			logger.warn("[Circle] Member feed: home fetch failed", {
 				surface: "circle.member_feed",
 				status: response.status,
