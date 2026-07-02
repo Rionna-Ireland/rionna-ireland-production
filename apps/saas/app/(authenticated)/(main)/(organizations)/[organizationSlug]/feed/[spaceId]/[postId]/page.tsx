@@ -1,5 +1,6 @@
 import { getActiveOrganization } from "@auth/lib/server";
-import { CirclePostBody, circleDocHasContent } from "@member-hub/components/CirclePostBody";
+import { CircleTiptapRenderer, circleDocHasContent } from "@member-hub/tiptap/CircleTiptapRenderer";
+import { hydrateCircleDoc } from "@repo/payments/lib/circle/hydrate";
 import { formatFeedDate } from "@member-hub/lib/feed-format";
 import { getMemberPost } from "@repo/api/modules/circle/procedures/get-member-post";
 import { PageHeader } from "@shared/components/PageHeader";
@@ -62,8 +63,10 @@ export default async function MemberPostPage({ params }: { params: Promise<Param
 				</header>
 
 				{circleDocHasContent(post.tiptapDoc) ? (
-					// Rich render from the TipTap doc — text, images, and video/oEmbed.
-					<CirclePostBody doc={post.tiptapDoc} embeds={post.embeds} />
+					// Rich render from the TipTap doc — text, images, video/oEmbed, polls.
+					<CircleTiptapRenderer
+						doc={hydrateCircleDoc({ body: post.tiptapDoc, sgids_to_object_map: post.embeds })}
+					/>
 				) : (
 					<>
 						{post.imageUrl ? (
