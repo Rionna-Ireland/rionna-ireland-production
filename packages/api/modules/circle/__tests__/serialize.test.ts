@@ -15,6 +15,7 @@
 
 import { serializeNovelDocToCircle } from "@repo/payments/lib/circle";
 import type { SerializeDeps } from "@repo/payments/lib/circle";
+import { circleNodeTypes } from "@repo/payments/lib/circle/blocks";
 import { describe, expect, it, vi } from "vitest";
 
 function bytes(...n: number[]) {
@@ -344,5 +345,14 @@ describe("serializeNovelDocToCircle — Circle block allow-list (S2-12)", () => 
 
 		if (!outcome.ok) throw new Error("expected ok");
 		expect(outcome.tiptapBody.body.content).toEqual([PARA("keep"), PARA("also keep")]);
+	});
+});
+
+describe("serializer ↔ registry agreement", () => {
+	it("registry node set includes every block the serializer preserves", () => {
+		const nodes = circleNodeTypes();
+		for (const t of ["image", "embed", "poll", "codeBlock", "blockquote"]) {
+			expect(nodes.has(t)).toBe(true);
+		}
 	});
 });
