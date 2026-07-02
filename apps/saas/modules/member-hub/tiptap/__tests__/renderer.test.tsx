@@ -22,6 +22,7 @@ describe("CircleTiptapRenderer", () => {
 			content: [{ type: "image", attrs: { url: "https://x/i.jpg", alignment: "right" } }],
 		});
 		expect(html).toContain('data-align="right"');
+		expect(html).toContain("float-right");
 	});
 
 	it("renders a read-only poll: question + all options", () => {

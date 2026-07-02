@@ -95,9 +95,24 @@ function renderNode(node: HydratedNode, key: string): ReactNode {
 				node.attrs?.alignment === "left" || node.attrs?.alignment === "right"
 					? (node.attrs.alignment as string)
 					: "center";
+			// Mirror the serializer's width intent: centered images are full-width;
+			// left/right float at half width so surrounding text wraps. Self-contained
+			// classes (not .ProseMirror CSS) so alignment actually renders in the read view.
+			const alignClass =
+				align === "left"
+					? "float-left mr-4 w-1/2"
+					: align === "right"
+						? "float-right ml-4 w-1/2"
+						: "w-full";
 			// biome-ignore lint/a11y/useAltText: alt derived from attrs when present
 			return (
-				<img key={key} src={src} alt={str(node.attrs?.alt) ?? ""} data-align={align} className="rounded-xl" />
+				<img
+					key={key}
+					src={src}
+					alt={str(node.attrs?.alt) ?? ""}
+					data-align={align}
+					className={`rounded-xl ${alignClass}`}
+				/>
 			);
 		}
 		case "embed": {
@@ -139,6 +154,9 @@ function renderNode(node: HydratedNode, key: string): ReactNode {
 				</div>
 			);
 		}
+		// NOTE(S2-18): `mention` and `file` are Circle-authored (authorable:false in the
+		// block registry) and not yet rendered — they fall through to `default` and render
+		// nothing. Tracked follow-up: render an @mention chip and a file-download link.
 		default:
 			return node.content ? <Fragment key={key}>{children()}</Fragment> : null;
 	}
