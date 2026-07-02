@@ -6,6 +6,7 @@ import type { EditorInstance } from "novel";
 import {
 	BoldIcon,
 	CodeIcon,
+	FileImageIcon,
 	Heading1Icon,
 	Heading2Icon,
 	Heading3Icon,
@@ -17,6 +18,7 @@ import {
 	type LucideIcon,
 	PilcrowIcon,
 	QuoteIcon,
+	SmileIcon,
 	StrikethroughIcon,
 	UnderlineIcon,
 	VideoIcon,
@@ -217,6 +219,21 @@ export function EditorToolbar({ editor, openImagePicker, openVideoDialog }: Edit
 					label="Add video"
 					disabled={disabled}
 					onClick={openVideoDialog}
+				/>
+				<ToolbarButton
+					icon={SmileIcon}
+					label="Insert emoji"
+					disabled={disabled}
+					onClick={() => editor?.chain().focus().insertContent("🎉").run()}
+				/>
+				<ToolbarButton
+					icon={FileImageIcon}
+					label="Insert GIF by URL"
+					disabled={disabled}
+					onClick={() => {
+						const url = window.prompt("GIF URL");
+						if (url) editor?.chain().focus().setImage({ src: url }).run();
+					}}
 				/>
 			</Group>
 		</div>
