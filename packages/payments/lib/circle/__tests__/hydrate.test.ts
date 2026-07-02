@@ -47,7 +47,30 @@ describe("hydrateCircleDoc", () => {
 			sgids_to_object_map: { S1: { html: "<iframe></iframe>", url: "https://x", embed_type: "video" } },
 		});
 		const embed = firstChild(doc);
-		expect((embed.attrs?._resolved as { html: string }).html).toContain("iframe");
+		const resolved = embed.attrs?._resolved as { html: string };
+		expect(resolved.html).toContain("iframe");
+	});
+
+	it("resolves an image via attrs.url (fast path)", () => {
+		const doc = hydrateCircleDoc({
+			body: {
+				type: "doc",
+				content: [{ type: "image", attrs: { url: "https://cdn/x.jpg", signed_id: "sig1" } }],
+			},
+		});
+		const img = firstChild(doc);
+		expect(img.attrs?.url).toBe("https://cdn/x.jpg");
+	});
+
+	it("resolves an image by matching inline_attachments on signed_id", () => {
+		const doc = hydrateCircleDoc({
+			body: { type: "doc", content: [{ type: "image", attrs: { signed_id: "sig1" } }] },
+			inline_attachments: [{ signed_id: "sig1", url: "https://cdn/from-attachment.jpg" }],
+		});
+		const img = firstChild(doc);
+		expect(img.attrs?.url).toBe("https://cdn/from-attachment.jpg");
+		const resolved = img.attrs?._resolved as { signed_id: string };
+		expect(resolved.signed_id).toBe("sig1");
 	});
 
 	it("leaves plain nodes untouched and recurses into children", () => {

@@ -46,7 +46,7 @@ export function hydrateCircleDoc(tiptapBody: unknown): HydratedNode | null {
 			const signedId = node.attrs?.signed_id;
 			const match = inline.find((a) => a.signed_id === signedId);
 			const url = node.attrs?.url ?? match?.url;
-			if (url) attrs = { ...node.attrs, url, _resolved: match ?? null };
+			if (url !== undefined) attrs = { ...node.attrs, url, _resolved: match ?? null };
 		}
 
 		const next: HydratedNode = attrs === node.attrs ? { ...node } : { ...node, attrs };
