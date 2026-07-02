@@ -16,8 +16,7 @@ describe("localDocToHydrated", () => {
 			type: "doc",
 			content: [{ type: "embed", attrs: { url: "https://youtu.be/x" } }],
 		});
-		expect((out?.content?.[0]?.attrs?._resolved as { url: string }).url).toBe(
-			"https://youtu.be/x",
-		);
+		const resolved = out?.content?.[0]?.attrs?._resolved as { url: string };
+		expect(resolved.url).toBe("https://youtu.be/x");
 	});
 });
