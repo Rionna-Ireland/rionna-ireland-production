@@ -12,15 +12,18 @@
 import { logger } from "@repo/logs";
 import type {
 	ProviderEntry,
+	ProviderHistoricalRun,
 	ProviderHorse,
 	ProviderResult,
 	RacingDataProvider,
 } from "../types";
 import type { RacingApiHttp } from "./http";
 import {
+	type ApiHorseHistory,
 	type ApiRacecard,
 	type ApiResult,
 	type ApiSearchHorse,
+	mapHorseHistory,
 	mapRacecardToEntries,
 	mapResult,
 	mapSearchHorse,
@@ -76,6 +79,22 @@ export class TheRacingApiProvider implements RacingDataProvider {
 				error,
 			});
 			return null;
+		}
+	}
+
+	async getHorseHistory(
+		providerHorseId: string,
+	): Promise<ProviderHistoricalRun[]> {
+		try {
+			const data = await this.http.getJson<ApiHorseHistory>(
+				`/v1/horses/${encodeURIComponent(providerHorseId)}/results`,
+			);
+			return mapHorseHistory(data, providerHorseId);
+		} catch (error) {
+			logger.warn(`Racing API getHorseHistory failed for ${providerHorseId}`, {
+				error,
+			});
+			return [];
 		}
 	}
 

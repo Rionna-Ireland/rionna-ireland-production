@@ -59,6 +59,16 @@ export interface ProviderResult {
   }>;
 }
 
+/** Full past-race history for one horse (for backfill on link). */
+export interface ProviderHistoricalRun extends ProviderEntry {
+  result: {
+    finishingPosition?: number;
+    beatenLengths?: number;
+    ratingAchieved?: number;
+    timeformComment?: string;
+  };
+}
+
 export interface ProviderHorse {
   providerHorseId: string;
   name: string;
@@ -87,4 +97,7 @@ export interface RacingDataProvider {
 
   /** Search the provider's horse database by name (for admin linking) */
   searchHorses(query: string): Promise<ProviderHorse[]>;
+
+  /** Full past-race history for one horse (for backfill on link). */
+  getHorseHistory(providerHorseId: string): Promise<ProviderHistoricalRun[]>;
 }

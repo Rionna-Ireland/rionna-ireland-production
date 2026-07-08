@@ -4,6 +4,7 @@ import { logger } from "@repo/logs";
 import { z } from "zod";
 
 import { adminProcedure } from "../../../../orpc/procedures";
+import { backfillHorseHistory } from "../../ingest/backfill-horse-history";
 import { ingestHorse } from "../../ingest/ingest-horse";
 import { createRacingProvider } from "../../provider/index";
 
@@ -69,6 +70,18 @@ export const syncHorse = adminProcedure
 		} catch (error) {
 			logger.error(
 				`Immediate ingest after sync failed for horse ${horse.id}`,
+				{ error },
+			);
+		}
+
+		// S8-02: backfill career history in the background — covers both a
+		// freshly-linked horse and pressing Sync again on an existing one.
+		// Never allowed to fail the sync response.
+		try {
+			await backfillHorseHistory(horse.organizationId, updated, provider);
+		} catch (error) {
+			logger.error(
+				`Race history backfill failed for horse ${horse.id}`,
 				{ error },
 			);
 		}

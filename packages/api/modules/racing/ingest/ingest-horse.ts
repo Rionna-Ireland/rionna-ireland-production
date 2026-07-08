@@ -80,8 +80,10 @@ export async function ingestHorse(
               name: race.name,
               postTime: race.postTime,
               courseName: course.name,
+              distanceFurlongs: race.distanceFurlongs,
+              goingDescription: race.goingDescription,
             },
-            raceEntry,
+            { ...raceEntry, jockeyName: entry.entry.jockeyName ?? null },
             previousStatus,
           );
         } catch (error) {

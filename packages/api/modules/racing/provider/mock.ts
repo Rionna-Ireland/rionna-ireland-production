@@ -17,6 +17,7 @@ import type {
   ProviderEntry,
   ProviderResult,
   ProviderHorse,
+  ProviderHistoricalRun,
 } from "./types";
 import { mockFixtures } from "./mock-fixtures";
 
@@ -77,6 +78,13 @@ export class MockRacingDataProvider implements RacingDataProvider {
     return mockFixtures.horses
       .map((h) => h.profile)
       .filter((p) => p.name.toLowerCase().includes(q));
+  }
+
+  /** No fixture data for career history — mock org has nothing to backfill. */
+  async getHorseHistory(
+    _providerHorseId: string,
+  ): Promise<ProviderHistoricalRun[]> {
+    return [];
   }
 
   private deriveStatus(

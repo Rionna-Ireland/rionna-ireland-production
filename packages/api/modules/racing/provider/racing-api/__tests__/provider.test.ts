@@ -95,6 +95,44 @@ describe("TheRacingApiProvider", () => {
 		});
 	});
 
+	it("getHorseHistory maps /v1/horses/{id}/results", async () => {
+		const http = fakeHttp({
+			"/v1/horses/hrs_A/results": {
+				results: [
+					{
+						race_id: "rac_9",
+						date: "2025-05-10",
+						course: "Ascot",
+						course_id: "crs_5",
+						off_dt: "2025-05-10T19:20:00+01:00",
+						dist_f: "22f",
+						going: "Good",
+						runners: [
+							{ horse_id: "hrs_A", position: "1", btn: "0", or: "75" },
+						],
+					},
+				],
+			},
+		});
+		const provider = new TheRacingApiProvider(http as never);
+		const runs = await provider.getHorseHistory("hrs_A");
+		expect(runs).toHaveLength(1);
+		expect(runs[0]).toMatchObject({
+			providerHorseId: "hrs_A",
+			entry: { providerEntryId: "rac_9_hrs_A", status: "RAN" },
+			result: { finishingPosition: 1 },
+		});
+	});
+
+	it("getHorseHistory returns [] and logs a warning on fetch failure", async () => {
+		const http = {
+			getJson: vi.fn().mockRejectedValue(new Error("network down")),
+		};
+		const provider = new TheRacingApiProvider(http as never);
+		const runs = await provider.getHorseHistory("hrs_A");
+		expect(runs).toEqual([]);
+	});
+
 	it("getHorseProfile maps /v1/horses/{id}/standard", async () => {
 		const http = fakeHttp({
 			"/v1/horses/hrs_A/standard": {

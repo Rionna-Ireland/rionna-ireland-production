@@ -48,6 +48,7 @@ export type {
   ProviderEntry,
   ProviderResult,
   ProviderHorse,
+  ProviderHistoricalRun,
 } from "./types";
 export { MockRacingDataProvider } from "./mock";
 export { ManualProvider } from "./manual";
