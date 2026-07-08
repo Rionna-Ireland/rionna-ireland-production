@@ -6,7 +6,6 @@ import type { EditorInstance } from "novel";
 import {
 	BoldIcon,
 	CodeIcon,
-	FileImageIcon,
 	Heading1Icon,
 	Heading2Icon,
 	Heading3Icon,
@@ -18,13 +17,13 @@ import {
 	type LucideIcon,
 	PilcrowIcon,
 	QuoteIcon,
-	SmileIcon,
 	StrikethroughIcon,
 	UnderlineIcon,
 	VideoIcon,
 } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { EmojiPicker } from "./emoji-picker";
 import { LinkSelector } from "./link-selector";
 
 interface EditorToolbarProps {
@@ -220,21 +219,7 @@ export function EditorToolbar({ editor, openImagePicker, openVideoDialog }: Edit
 					disabled={disabled}
 					onClick={openVideoDialog}
 				/>
-				<ToolbarButton
-					icon={SmileIcon}
-					label="Insert emoji"
-					disabled={disabled}
-					onClick={() => editor?.chain().focus().insertContent("🎉").run()}
-				/>
-				<ToolbarButton
-					icon={FileImageIcon}
-					label="Insert GIF by URL"
-					disabled={disabled}
-					onClick={() => {
-						const url = window.prompt("GIF URL");
-						if (url) editor?.chain().focus().setImage({ src: url }).run();
-					}}
-				/>
+				{editor && <EmojiPicker editor={editor} disabled={disabled} />}
 			</Group>
 		</div>
 	);
