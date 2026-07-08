@@ -29,6 +29,8 @@ interface TransitionRace {
   name: string | null;
   postTime: Date;
   courseName: string;
+  distanceFurlongs?: number | null;
+  goingDescription?: string | null;
 }
 
 interface TransitionRaceEntry {
@@ -36,6 +38,7 @@ interface TransitionRaceEntry {
   status: RaceEntryStatus;
   notifiedStates: unknown;
   finishingPosition: number | null;
+  jockeyName?: string | null;
 }
 
 export async function handleStatusTransition(
@@ -80,10 +83,18 @@ export async function handleStatusTransition(
     organizationId,
     status: newStatus,
     horse: { id: horse.id, name: horse.name },
-    race: { id: race.id, name: race.name, postTime: race.postTime, courseName: race.courseName },
+    race: {
+      id: race.id,
+      name: race.name,
+      postTime: race.postTime,
+      courseName: race.courseName,
+      distanceFurlongs: race.distanceFurlongs ?? null,
+      goingDescription: race.goingDescription ?? null,
+    },
     raceEntry: {
       id: raceEntry.id,
       finishingPosition: raceEntry.finishingPosition,
+      jockeyName: raceEntry.jockeyName ?? null,
       notifiedStates: [...notifiedStates, newStatus],
     },
     // fieldSize not available on TransitionRace — omit; copy drops the "of N" clause.

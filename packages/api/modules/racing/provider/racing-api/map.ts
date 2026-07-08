@@ -7,7 +7,12 @@
  *   providerEntryId   = `${race_id}_${horse_id}`
  */
 
-import type { ProviderEntry, ProviderHorse, ProviderResult } from "../types";
+import type {
+	ProviderEntry,
+	ProviderHistoricalRun,
+	ProviderHorse,
+	ProviderResult,
+} from "../types";
 
 export interface ApiSearchHorse {
 	id: string;
@@ -65,6 +70,27 @@ export function num(v: string | undefined | null): number | undefined {
 	return Number.isFinite(n) ? n : undefined;
 }
 
+/**
+ * Race.distanceFurlongs is an Int column, but the API reports half-furlong
+ * trips (e.g. "16.5"/"16.5f") — round to the nearest whole furlong so the
+ * race upsert doesn't throw.
+ */
+export function roundFurlongs(v: number | undefined): number | undefined {
+	return v == null ? undefined : Math.round(v);
+}
+
+/**
+ * The /horses/{id}/results endpoint reports distance as `dist_f` — a string
+ * with a trailing "f" (e.g. "22f") — unlike racecards' bare `distance_f`.
+ * Strip the unit before reusing `num()`, then round (Int column).
+ */
+export function parseDistF(v: string | undefined | null): number | undefined {
+	if (v == null) {
+		return undefined;
+	}
+	return roundFurlongs(num(v.replace(/f$/i, "")));
+}
+
 export function entryId(raceId: string, horseId: string): string {
 	return `${raceId}_${horseId}`;
 }
@@ -99,7 +125,7 @@ export function mapRacecardToEntries(
 				postTime: new Date(rc.off_dt),
 				name: rc.race_name,
 				raceType: rc.type,
-				distanceFurlongs: num(rc.distance_f),
+				distanceFurlongs: roundFurlongs(num(rc.distance_f)),
 				className: rc.race_class,
 				goingDescription: rc.going,
 			},
@@ -114,6 +140,102 @@ export function mapRacecardToEntries(
 				providerTrainerId: r.trainer_id,
 			},
 		}));
+}
+
+// ---------------------------------------------------------------------------
+// GET /v1/horses/{id}/results — full career history for one horse.
+// Field names differ from both racecards and /results (e.g. `dist_f` not
+// `distance_f`/`distance_f`, `class` not `race_class`, `weight_lbs` not `lbs`).
+// Money/odds fields (`prize`, `sp`, `sp_dec`, `bsp`) are present on the real
+// payload but deliberately not typed or read here — out of scope per D37/spec.
+// ---------------------------------------------------------------------------
+
+export interface ApiHistoryRunner {
+	horse_id: string;
+	horse?: string;
+	position?: string;
+	btn?: string;
+	or?: string;
+	comment?: string;
+	weight_lbs?: string;
+	jockey?: string;
+	jockey_claim_lbs?: string;
+	jockey_id?: string;
+	trainer?: string;
+	trainer_id?: string;
+	headgear?: string;
+	time?: string;
+}
+
+export interface ApiHistoryRace {
+	race_id: string;
+	date: string;
+	course: string;
+	course_id: string;
+	off?: string;
+	off_dt: string;
+	race_name?: string;
+	type?: string;
+	class?: string;
+	dist_f?: string;
+	going?: string;
+	region?: string;
+	runners?: ApiHistoryRunner[] | null;
+}
+
+export interface ApiHorseHistory {
+	results?: ApiHistoryRace[] | null;
+}
+
+export function mapHorseHistory(
+	data: ApiHorseHistory,
+	providerHorseId: string,
+): ProviderHistoricalRun[] {
+	const runs: ProviderHistoricalRun[] = [];
+
+	for (const race of data.results ?? []) {
+		const runner = (race.runners ?? []).find(
+			(r) => r.horse_id === providerHorseId,
+		);
+		if (!runner) continue;
+
+		runs.push({
+			providerHorseId,
+			meeting: {
+				providerMeetingId: `${race.course_id}_${race.date}`,
+				providerCourseId: race.course_id,
+				courseName: race.course,
+				courseCountry: race.region,
+				date: new Date(race.date),
+			},
+			race: {
+				providerRaceId: race.race_id,
+				postTime: new Date(race.off_dt),
+				name: race.race_name,
+				raceType: race.type,
+				distanceFurlongs: parseDistF(race.dist_f),
+				className: race.class,
+				goingDescription: race.going,
+			},
+			entry: {
+				providerEntryId: entryId(race.race_id, providerHorseId),
+				status: "RAN" as const,
+				weightLbs: num(runner.weight_lbs),
+				jockeyName: runner.jockey,
+				providerJockeyId: runner.jockey_id,
+				trainerName: runner.trainer,
+				providerTrainerId: runner.trainer_id,
+			},
+			result: {
+				finishingPosition: num(runner.position),
+				beatenLengths: num(runner.btn),
+				ratingAchieved: num(runner.or),
+				timeformComment: runner.comment,
+			},
+		});
+	}
+
+	return runs;
 }
 
 export function mapResult(res: ApiResult): ProviderResult {

@@ -20,10 +20,13 @@ export interface CirclePostContentRace {
 	name: string | null;
 	postTime: Date;
 	courseName: string;
+	distanceFurlongs: number | null;
+	goingDescription: string | null;
 }
 
 export interface CirclePostContentEntry {
 	finishingPosition: number | null;
+	jockeyName: string | null;
 }
 
 export interface CirclePostContent {
@@ -37,6 +40,15 @@ const POSTABLE_STATUSES: PostableStatus[] = ["DECLARED", "RAN"];
 
 function isPostableStatus(status: string): status is PostableStatus {
 	return (POSTABLE_STATUSES as string[]).includes(status);
+}
+
+/** Furlongs -> "Xm Yf" race-going shorthand, e.g. 22 -> "2m6f", 7 -> "7f". */
+export function formatDistance(furlongs: number): string {
+	const miles = Math.floor(furlongs / 8);
+	const remainder = furlongs % 8;
+	if (miles === 0) return `${remainder}f`;
+	if (remainder === 0) return `${miles}m`;
+	return `${miles}m${remainder}f`;
 }
 
 function formatPostTime(date: Date): string {
@@ -76,7 +88,20 @@ export function buildCirclePostContent(
 	const courseName = race.courseName;
 
 	if (status === "DECLARED") {
-		const body = `\u{1F3C7} ${horse.name} runs in the ${raceName} at ${courseName}, ${formatPostTime(race.postTime)}.`;
+		let body = `\u{1F3C7} ${horse.name} runs in the ${raceName} at ${courseName}, ${formatPostTime(race.postTime)}.`;
+		if (entry.jockeyName) {
+			body += ` ${entry.jockeyName} rides.`;
+		}
+		const details: string[] = [];
+		if (race.distanceFurlongs != null) {
+			details.push(formatDistance(race.distanceFurlongs));
+		}
+		if (race.goingDescription) {
+			details.push(`going ${race.goingDescription}`);
+		}
+		if (details.length > 0) {
+			body += ` ${details.join(", ")}.`;
+		}
 		return { title: `${horse.name} is declared`, body };
 	}
 

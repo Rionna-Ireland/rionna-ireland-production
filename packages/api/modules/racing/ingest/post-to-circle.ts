@@ -32,6 +32,7 @@ export interface PostRaceUpdateToCircleInput {
 	raceEntry: {
 		id: string;
 		finishingPosition: number | null;
+		jockeyName?: string | null;
 		notifiedStates: string[];
 	};
 	fieldSize?: number;
@@ -65,7 +66,10 @@ export async function postRaceUpdateToCircle(input: PostRaceUpdateToCircleInput)
 			status,
 			horse,
 			race,
-			{ finishingPosition: raceEntry.finishingPosition } satisfies CirclePostContentEntry,
+			{
+				finishingPosition: raceEntry.finishingPosition,
+				jockeyName: raceEntry.jockeyName ?? null,
+			} satisfies CirclePostContentEntry,
 			fieldSize,
 		);
 		if (!content) return;

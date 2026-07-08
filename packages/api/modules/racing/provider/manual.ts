@@ -13,6 +13,7 @@ import type {
   ProviderEntry,
   ProviderResult,
   ProviderHorse,
+  ProviderHistoricalRun,
 } from "./types";
 
 export class ManualProvider implements RacingDataProvider {
@@ -34,6 +35,12 @@ export class ManualProvider implements RacingDataProvider {
   }
 
   async searchHorses(_query: string): Promise<ProviderHorse[]> {
+    return [];
+  }
+
+  async getHorseHistory(
+    _providerHorseId: string,
+  ): Promise<ProviderHistoricalRun[]> {
     return [];
   }
 }

@@ -47,6 +47,8 @@ const race = {
 	name: "Novice Stakes",
 	postTime: new Date("2026-07-01T13:45:00Z"),
 	courseName: "Brighton",
+	distanceFurlongs: null,
+	goingDescription: null,
 };
 
 function baseInput(overrides: Partial<Parameters<typeof postRaceUpdateToCircle>[0]> = {}) {
