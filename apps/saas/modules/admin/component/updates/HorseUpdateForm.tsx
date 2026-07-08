@@ -5,6 +5,8 @@ import { useAdminOrganization } from "@admin/hooks/use-admin-organization";
 import { useCircleVideoUpload } from "@admin/lib/circle-video-upload";
 import { getAdminPath } from "@admin/lib/links";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { CircleTiptapRenderer } from "@member-hub/tiptap/CircleTiptapRenderer";
+import { localDocToHydrated } from "@member-hub/tiptap/local-doc";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@repo/ui/components/card";
@@ -74,6 +76,7 @@ export function HorseUpdateForm({ memberPostId }: HorseUpdateFormProps) {
 	const contentJsonRef = useRef<JSONContent | undefined>(undefined);
 	const contentHtmlRef = useRef<string>("");
 	const [hasBody, setHasBody] = useState(false);
+	const [previewDoc, setPreviewDoc] = useState<JSONContent | undefined>(undefined);
 	const [isUploading, setIsUploading] = useState(false);
 	const [fallback, setFallback] = useState<{ circleUrl: string | null } | null>(null);
 
@@ -357,11 +360,20 @@ export function HorseUpdateForm({ memberPostId }: HorseUpdateFormProps) {
 											contentJsonRef.current = json;
 											contentHtmlRef.current = html;
 											setHasBody(Boolean(stripHtml(html)));
+											setPreviewDoc(json);
 										}}
 										onUploadImage={handleUploadImage}
 										onUploadVideo={uploadVideo}
 									/>
 								</div>
+								{previewDoc ? (
+									<div className="mt-6 rounded-md border border-muted p-4">
+										<p className="mb-2 font-mono text-muted-foreground text-xs uppercase tracking-wide">
+											Member preview (approximate — media finalises on publish)
+										</p>
+										<CircleTiptapRenderer doc={localDocToHydrated(previewDoc)} />
+									</div>
+								) : null}
 							</div>
 
 							{/* Fail-safe: Circle publish failed → post directly in Circle */}

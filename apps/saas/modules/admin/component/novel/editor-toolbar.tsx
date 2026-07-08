@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { EmojiPicker } from "./emoji-picker";
 import { LinkSelector } from "./link-selector";
 
 interface EditorToolbarProps {
@@ -218,6 +219,7 @@ export function EditorToolbar({ editor, openImagePicker, openVideoDialog }: Edit
 					disabled={disabled}
 					onClick={openVideoDialog}
 				/>
+				{editor && <EmojiPicker editor={editor} disabled={disabled} />}
 			</Group>
 		</div>
 	);

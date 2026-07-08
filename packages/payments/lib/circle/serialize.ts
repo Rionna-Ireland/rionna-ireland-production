@@ -26,6 +26,7 @@
  * caller can surface the "post directly in Circle" fallback.
  */
 
+import { CIRCLE_DOWNCONVERT, isCircleNode } from "./blocks";
 import type { CircleCallFailure, CircleService, CircleTiptapBody } from "./types";
 
 export interface TiptapNode {
@@ -62,42 +63,6 @@ export type SerializeOutcome =
 
 const IMAGE_NODE_TYPE = "image";
 const EMBED_NODE_TYPE = "embed";
-
-/**
- * The block/inline node types Circle's TipTap renderer accepts in a post body
- * (https://api.circle.so/get-started/concepts/tiptap-editor). Any node NOT in
- * this set is stripped during serialization so a stray block (e.g. a future
- * editor extension we forgot to gate) can never break the publish path.
- */
-const CIRCLE_NODE_TYPES = new Set<string>([
-	"doc",
-	"paragraph",
-	"heading",
-	"text",
-	"hardBreak",
-	"blockquote",
-	"bulletList",
-	"orderedList",
-	"listItem",
-	"image",
-	"embed",
-	"codeBlock",
-	"horizontalRule",
-	"mention",
-	"file",
-	"entity",
-	"poll",
-]);
-
-/**
- * Editor node types that aren't in Circle's set but map cleanly onto one that is.
- * Downconverted (rather than stripped) so legacy drafts authored before the
- * Circle-block allow-list still publish with their content intact.
- */
-const DOWNCONVERT: Record<string, string> = {
-	taskList: "bulletList",
-	taskItem: "listItem",
-};
 
 type Failure = { reason: SerializeFailure; raw?: unknown };
 
@@ -141,8 +106,8 @@ export async function serializeNovelDocToCircle(
 
 			// Strip anything Circle can't render (unless it downconverts) so a stray
 			// block never reaches the API and breaks publish.
-			const mapped = DOWNCONVERT[node.type];
-			if (!mapped && !CIRCLE_NODE_TYPES.has(node.type)) {
+			const mapped = CIRCLE_DOWNCONVERT[node.type];
+			if (!mapped && !isCircleNode(node.type)) {
 				continue;
 			}
 

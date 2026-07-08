@@ -13,6 +13,8 @@
 		"./lib/helper": "./lib/helper.ts",
 		"./lib/circle": "./lib/circle/index.ts",
 		"./lib/circle/types": "./lib/circle/types.ts",
+		"./lib/circle/blocks": "./lib/circle/blocks.ts",
+		"./lib/circle/hydrate": "./lib/circle/hydrate.ts",
 		"./lib/circle-provisioning": "./lib/circle-provisioning.ts",
 		"./lib/circle-horse-provisioning": "./lib/circle-horse-provisioning.ts",
 		"./lib/customer": "./lib/customer.ts",
