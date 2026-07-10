@@ -219,7 +219,7 @@ export function NovelEditor({
 						return true;
 					},
 					attributes: {
-						class: "prose prose-sm dark:prose-invert prose-headings:font-title focus:outline-none max-w-full min-h-[300px] px-4 py-3",
+						class: "prose prose-sm dark:prose-invert prose-headings:font-title focus:outline-none max-w-full min-h-[300px] px-4 py-3 text-foreground caret-foreground [&>p]:block [&>p]:min-w-px",
 					},
 				}}
 			>
