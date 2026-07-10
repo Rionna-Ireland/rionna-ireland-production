@@ -12,6 +12,7 @@ import { db, parseOrgMetadata } from "@repo/database";
 import { logger } from "@repo/logs";
 
 import { createCircleService } from "./circle/index";
+import { syncCircleSpaceMembership } from "./circle-space-membership";
 
 /**
  * Provision a new member in Circle.
@@ -112,6 +113,11 @@ export async function provisionCircleMember(
 	// (modules/racing/horses/lib/horse-follows.ts) but are intentionally NOT
 	// imported here — @repo/payments must not depend on @repo/api, that would
 	// create a package import cycle. The single createMany call is inlined.
+	//
+	// S8-03 §3: also join the new member to each followed horse's Circle
+	// space (same package, direct import — no cycle). Best-effort/sequential,
+	// stays inside this same catch-all; a join failure never blocks or
+	// unwinds provisioning.
 	try {
 		const horseAutoFollow = parseOrgMetadata(org.metadata ?? null).horseAutoFollow;
 		if (horseAutoFollow !== false) {
@@ -128,6 +134,15 @@ export async function provisionCircleMember(
 					})),
 					skipDuplicates: true,
 				});
+
+				for (const horse of publishedHorses) {
+					await syncCircleSpaceMembership({
+						organizationId: member.organizationId,
+						userId: member.userId,
+						horseId: horse.id,
+						action: "join",
+					});
+				}
 			}
 		}
 	} catch (error) {

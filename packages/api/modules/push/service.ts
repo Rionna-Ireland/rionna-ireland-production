@@ -33,6 +33,8 @@ export interface PushRequest {
 	badge?: number;
 	/** If set, only push to this user. Otherwise, push to all org members with relevant prefs. */
 	targetUserId?: string;
+	/** If set, restrict the audience to followers of this horse (S8-03 §2). Omit for org-wide pushes. */
+	followersOfHorseId?: string;
 }
 
 function isUniqueConstraintError(error: unknown): error is { code: string } {
@@ -98,6 +100,7 @@ export async function sendPush(request: PushRequest): Promise<void> {
 		organizationId: request.organizationId,
 		triggerType: request.triggerType as PushTriggerType,
 		targetUserId: request.targetUserId,
+		followersOfHorseId: request.followersOfHorseId,
 	});
 
 	if (tokens.length === 0) {

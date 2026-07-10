@@ -513,6 +513,23 @@
 			"aria": {
 				"open": "Open notifications"
 			}
+		},
+		"dashboard": {
+			"myHorses": {
+				"title": "My horses",
+				"emptyHint": "Follow horses to see their updates in your feed.",
+				"followError": "Couldn't update your follow. Please try again.",
+				"toggleLabel": "Follow {name}",
+				"trainer": "Trainer: {name}",
+				"nextRun": "Next run declared",
+				"recentResults": "Recent results",
+				"noResults": "No runs yet",
+				"pedigree": {
+					"sire": "Sire",
+					"dam": "Dam",
+					"damsire": "Damsire"
+				}
+			}
 		}
 	},
 	"auth": {

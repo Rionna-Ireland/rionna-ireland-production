@@ -59,7 +59,7 @@ export default async function OrganizationPage({
 		<div>
 			<PageHeader title="Your membership" />
 
-			<MemberDashboard />
+			<MemberDashboard organizationId={activeOrganization.id} />
 		</div>
 	);
 }

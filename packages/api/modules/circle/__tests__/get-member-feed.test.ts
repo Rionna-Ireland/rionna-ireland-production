@@ -1,11 +1,20 @@
 import { call } from "@orpc/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockGetSession, mockOrgFindUnique, mockMemberFindFirst, mockGetMemberToken } = vi.hoisted(() => ({
+const {
+	mockGetSession,
+	mockOrgFindUnique,
+	mockMemberFindFirst,
+	mockGetMemberToken,
+	mockHorseFindMany,
+	mockGetFollowedHorseIds,
+} = vi.hoisted(() => ({
 	mockGetSession: vi.fn(),
 	mockOrgFindUnique: vi.fn(),
 	mockMemberFindFirst: vi.fn(),
 	mockGetMemberToken: vi.fn(),
+	mockHorseFindMany: vi.fn(),
+	mockGetFollowedHorseIds: vi.fn(),
 }));
 
 vi.mock("@repo/auth", () => ({
@@ -16,8 +25,13 @@ vi.mock("@repo/database", () => ({
 	db: {
 		organization: { findUnique: mockOrgFindUnique },
 		member: { findFirst: mockMemberFindFirst },
+		horse: { findMany: mockHorseFindMany },
 	},
 	parseOrgMetadata: vi.fn(() => ({ circle: { communityDomain: "community.rionna.com" } })),
+}));
+
+vi.mock("../../racing/horses/lib/horse-follows", () => ({
+	getFollowedHorseIds: mockGetFollowedHorseIds,
 }));
 
 vi.mock("@repo/logs", () => ({
@@ -72,6 +86,8 @@ describe("getMemberFeed (spaces aggregation)", () => {
 		mockOrgFindUnique.mockResolvedValue({ id: ORG_ID, slug: "rionna", metadata: null });
 		mockMemberFindFirst.mockResolvedValue({ circleMemberId: "82236270" });
 		mockGetMemberToken.mockResolvedValue({ ok: true, data: { accessToken: "jwt" } });
+		mockHorseFindMany.mockResolvedValue([]);
+		mockGetFollowedHorseIds.mockResolvedValue(new Set());
 	});
 
 	it("merges posts across the member's post spaces, newest first", async () => {
@@ -110,5 +126,56 @@ describe("getMemberFeed (spaces aggregation)", () => {
 		vi.stubGlobal("fetch", routeFetch());
 		const res = await call(getMemberFeed, { organizationId: ORG_ID, page: 1, perPage: 15 }, ctx);
 		expect(res).toMatchObject({ ok: true, items: [] });
+	});
+});
+
+describe("getMemberFeed (horse follow filter)", () => {
+	// Space 9 ("Laska") is a horse space (horse "horse-1"); space 10 ("Announcements") is not a horse space.
+	beforeEach(() => {
+		vi.clearAllMocks();
+		mockGetSession.mockResolvedValue({ user: USER, session: SESSION });
+		mockOrgFindUnique.mockResolvedValue({ id: ORG_ID, slug: "rionna", metadata: null });
+		mockMemberFindFirst.mockResolvedValue({ circleMemberId: "82236270" });
+		mockGetMemberToken.mockResolvedValue({ ok: true, data: { accessToken: "jwt" } });
+		mockHorseFindMany.mockResolvedValue([{ id: "horse-1", circleSpaceId: "9" }]);
+	});
+
+	it("excludes posts from an unfollowed horse space", async () => {
+		mockGetFollowedHorseIds.mockResolvedValue(new Set());
+		vi.stubGlobal("fetch", routeFetch());
+		const res = await call(getMemberFeed, { organizationId: ORG_ID, page: 1, perPage: 15 }, ctx);
+		expect(res.ok).toBe(true);
+		expect(res.items.map((i) => i.id)).toEqual(["2"]); // space 10 only; space 9 dropped
+	});
+
+	it("includes posts from a followed horse space", async () => {
+		mockGetFollowedHorseIds.mockResolvedValue(new Set(["horse-1"]));
+		vi.stubGlobal("fetch", routeFetch());
+		const res = await call(getMemberFeed, { organizationId: ORG_ID, page: 1, perPage: 15 }, ctx);
+		expect(res.ok).toBe(true);
+		expect(res.items.map((i) => i.id).sort()).toEqual(["1", "2"]);
+	});
+
+	it("always includes non-horse spaces regardless of follows", async () => {
+		mockGetFollowedHorseIds.mockResolvedValue(new Set());
+		vi.stubGlobal("fetch", routeFetch());
+		const res = await call(getMemberFeed, { organizationId: ORG_ID, page: 1, perPage: 15 }, ctx);
+		expect(res.items.some((i) => i.id === "2")).toBe(true); // space 10 (non-horse) always present
+	});
+
+	it("falls back to the unfiltered feed when the follow lookup throws", async () => {
+		mockGetFollowedHorseIds.mockRejectedValue(new Error("db down"));
+		vi.stubGlobal("fetch", routeFetch());
+		const res = await call(getMemberFeed, { organizationId: ORG_ID, page: 1, perPage: 15 }, ctx);
+		expect(res.ok).toBe(true);
+		expect(res.items.map((i) => i.id).sort()).toEqual(["1", "2"]);
+	});
+
+	it("coerces numeric Circle space ids against string-stored horse.circleSpaceId", async () => {
+		// SPACES has { id: 9, ... } (numeric); horse.circleSpaceId is stored as the string "9".
+		mockGetFollowedHorseIds.mockResolvedValue(new Set()); // not followed -> space 9 must be dropped
+		vi.stubGlobal("fetch", routeFetch());
+		const res = await call(getMemberFeed, { organizationId: ORG_ID, page: 1, perPage: 15 }, ctx);
+		expect(res.items.some((i) => i.spaceId === "9")).toBe(false);
 	});
 });

@@ -193,4 +193,39 @@ describe("sendPush", () => {
 			}),
 		});
 	});
+
+	// ── followersOfHorseId targeting (S8-03) ─────────────────────────
+
+	it("forwards followersOfHorseId to getAudienceTokens when provided", async () => {
+		mockGetAudienceTokens.mockResolvedValue([]);
+
+		await sendPush({
+			organizationId: "org-1",
+			triggerType: "HORSE_DECLARED",
+			triggerRefId: "entry-1",
+			title: "Declared",
+			body: "Body",
+			followersOfHorseId: "horse-1",
+		});
+
+		expect(mockGetAudienceTokens).toHaveBeenCalledWith(
+			expect.objectContaining({ followersOfHorseId: "horse-1" }),
+		);
+	});
+
+	it("omits followersOfHorseId from getAudienceTokens when not provided (org-wide unchanged)", async () => {
+		mockGetAudienceTokens.mockResolvedValue([]);
+
+		await sendPush({
+			organizationId: "org-1",
+			triggerType: "TRAINER_POST",
+			triggerRefId: "notif-1",
+			title: "New trainer update",
+			body: "Body",
+		});
+
+		expect(mockGetAudienceTokens).toHaveBeenCalledWith(
+			expect.objectContaining({ followersOfHorseId: undefined }),
+		);
+	});
 });

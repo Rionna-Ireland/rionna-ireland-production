@@ -22,6 +22,7 @@ const {
 	mockLoggerInfo,
 	mockLoggerWarn,
 	mockLoggerError,
+	mockSyncCircleSpaceMembership,
 } = vi.hoisted(() => ({
 	mockOrgFindUnique: vi.fn(),
 	mockUserFindUnique: vi.fn(),
@@ -34,6 +35,7 @@ const {
 	mockLoggerInfo: vi.fn(),
 	mockLoggerWarn: vi.fn(),
 	mockLoggerError: vi.fn(),
+	mockSyncCircleSpaceMembership: vi.fn(),
 }));
 
 vi.mock("@repo/database", () => ({
@@ -56,6 +58,10 @@ vi.mock("../circle/index", () => ({
 		createMember: mockCreateMember,
 		confirmMemberProfile: mockConfirmMemberProfile,
 	})),
+}));
+
+vi.mock("../circle-space-membership", () => ({
+	syncCircleSpaceMembership: mockSyncCircleSpaceMembership,
 }));
 
 import { provisionCircleMember } from "../circle-provisioning";
@@ -81,6 +87,7 @@ describe("provisionCircleMember — horse auto-follow (S6-07 Surface D)", () => 
 		mockParseOrgMetadata.mockReturnValue({});
 		mockHorseFindMany.mockResolvedValue(PUBLISHED_HORSES);
 		mockHorseFollowCreateMany.mockResolvedValue({ count: 2 });
+		mockSyncCircleSpaceMembership.mockResolvedValue({ ok: true });
 	});
 
 	it("auto-follows every published horse when horseAutoFollow is unset (defaults true)", async () => {
@@ -152,5 +159,52 @@ describe("provisionCircleMember — horse auto-follow (S6-07 Surface D)", () => 
 		await provisionCircleMember(MEMBER, "idem-key");
 
 		expect(mockHorseFollowCreateMany).not.toHaveBeenCalled();
+	});
+
+	describe("Circle space-membership sync (S8-03 §3)", () => {
+		it("joins each published horse's Circle space for the new member", async () => {
+			await provisionCircleMember(MEMBER, "idem-key");
+
+			expect(mockSyncCircleSpaceMembership).toHaveBeenCalledWith({
+				organizationId: ORG_ID,
+				userId: "u1",
+				horseId: "h1",
+				action: "join",
+			});
+			expect(mockSyncCircleSpaceMembership).toHaveBeenCalledWith({
+				organizationId: ORG_ID,
+				userId: "u1",
+				horseId: "h2",
+				action: "join",
+			});
+		});
+
+		it("does not attempt joins when there are no published horses", async () => {
+			mockHorseFindMany.mockResolvedValue([]);
+
+			await provisionCircleMember(MEMBER, "idem-key");
+
+			expect(mockSyncCircleSpaceMembership).not.toHaveBeenCalled();
+		});
+
+		it("does not attempt joins when horseAutoFollow is false", async () => {
+			mockParseOrgMetadata.mockReturnValue({ horseAutoFollow: false });
+
+			await provisionCircleMember(MEMBER, "idem-key");
+
+			expect(mockSyncCircleSpaceMembership).not.toHaveBeenCalled();
+		});
+
+		it("is fail-safe: a rejected join sync never blocks provisioning", async () => {
+			mockSyncCircleSpaceMembership.mockRejectedValue(new Error("circle down"));
+
+			await expect(provisionCircleMember(MEMBER, "idem-key")).resolves.toBeUndefined();
+		});
+
+		it("is fail-safe: a failed join outcome never blocks provisioning", async () => {
+			mockSyncCircleSpaceMembership.mockResolvedValue({ ok: false });
+
+			await expect(provisionCircleMember(MEMBER, "idem-key")).resolves.toBeUndefined();
+		});
 	});
 });
