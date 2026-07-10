@@ -43,6 +43,44 @@
 .ProseMirror {
 	/* Contain floated aligned images so the editor height grows with them. */
 	display: flow-root;
+	position: relative;
+	outline: none;
+	color: var(--foreground);
+	caret-color: var(--foreground);
+	word-wrap: break-word;
+	white-space: pre-wrap;
+}
+
+/* Empty blocks collapse to zero width in some browsers (notably Firefox), hiding
+   the caret until the user types. Keep a sliver of width for the blinker. */
+.ProseMirror p,
+.ProseMirror h1,
+.ProseMirror h2,
+.ProseMirror h3,
+.ProseMirror blockquote,
+.ProseMirror li {
+	min-width: 1px;
+}
+
+/* TipTap Placeholder extension — without this the placeholder never renders and
+   empty-editor caret visibility can break in Firefox. */
+.ProseMirror p.is-editor-empty:first-child::before,
+.ProseMirror .is-empty::before {
+	content: attr(data-placeholder);
+	float: left;
+	color: var(--muted-foreground);
+	pointer-events: none;
+	height: 0;
+}
+
+/* StarterKit's trailingBreak keeps empty paragraphs technically non-empty; hide it
+   so the caret renders at the start instead of after an invisible break. */
+.ProseMirror p.is-editor-empty:first-child > br.ProseMirror-trailingBreak {
+	display: none;
+}
+
+.ProseMirror p.is-editor-empty:first-child {
+	caret-color: var(--foreground);
 }
 .ProseMirror img {
 	display: block;

@@ -9,11 +9,21 @@
  */
 
 import { db } from "@repo/database";
+import type { RaceEntryStatus } from "@repo/database";
 import type { ProviderEntry } from "../provider/types";
 
 function courseProviderEntityId(meeting: ProviderEntry["meeting"]): string {
   return meeting.providerCourseId;
 }
+
+/**
+ * Statuses that must never be overwritten by a stale/earlier-stage status
+ * from a later ingest tick (e.g. a same-day racecard fetch still reporting
+ * DECLARED for a race that has already run).
+ *
+ * @see Architecture/specs/S5-09-fable-audit-hardening.md Task 1.1
+ */
+const TERMINAL_STATUSES: RaceEntryStatus[] = ["RAN", "NON_RUNNER"];
 
 export async function upsertCourse(
   organizationId: string,
@@ -138,6 +148,15 @@ export async function upsertRaceEntry(
 
   const previousStatus = existing?.status ?? null;
 
+  // Guard against a provider re-emitting a stale (earlier-stage) status for
+  // a race entry that has already reached a terminal status. Without this,
+  // a same-day racecard fetch that still lists a finished race as DECLARED
+  // would flip a RAN/NON_RUNNER entry back on the next ingest tick.
+  const keepExistingStatus =
+    existing != null &&
+    TERMINAL_STATUSES.includes(existing.status) &&
+    !TERMINAL_STATUSES.includes(entry.status);
+
   const raceEntry = await db.raceEntry.upsert({
     where: {
       organizationId_providerEntityId: {
@@ -158,7 +177,7 @@ export async function upsertRaceEntry(
       notifiedStates: [],
     },
     update: {
-      status: entry.status,
+      ...(keepExistingStatus ? {} : { status: entry.status }),
       draw: entry.draw ?? null,
       weightLbs: entry.weightLbs ?? null,
       jockeyId: jockeyId ?? null,
