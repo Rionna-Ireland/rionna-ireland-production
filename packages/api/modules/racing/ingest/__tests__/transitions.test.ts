@@ -270,4 +270,31 @@ describe("handleStatusTransition", () => {
     expect(mockSendPush).not.toHaveBeenCalled();
     expect(mockPostToCircle).not.toHaveBeenCalled();
   });
+
+  it("passes fieldSize through to postRaceUpdateToCircle when provided", async () => {
+    await handleStatusTransition(
+      "org-1",
+      mockHorse,
+      mockRace,
+      makeEntry("RAN", [], 4),
+      "DECLARED",
+      8,
+    );
+    expect(mockPostToCircle).toHaveBeenCalledOnce();
+    expect(mockPostToCircle.mock.calls[0][0]).toMatchObject({
+      fieldSize: 8,
+    });
+  });
+
+  it("omits fieldSize from postRaceUpdateToCircle when not provided", async () => {
+    await handleStatusTransition(
+      "org-1",
+      mockHorse,
+      mockRace,
+      makeEntry("RAN", [], 4),
+      "DECLARED",
+    );
+    expect(mockPostToCircle).toHaveBeenCalledOnce();
+    expect(mockPostToCircle.mock.calls[0][0].fieldSize).toBeUndefined();
+  });
 });

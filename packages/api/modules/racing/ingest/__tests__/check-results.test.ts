@@ -164,4 +164,78 @@ describe("checkForResults", () => {
       },
     });
   });
+
+  it("passes fieldSize (provider runner count), distance/going and jockey name to handleStatusTransition", async () => {
+    mockRaceFindMany.mockResolvedValue([
+      {
+        id: "race-1",
+        providerEntityId: "provider-race-1",
+        name: "Race 1",
+        postTime: new Date("2026-04-13T10:00:00Z"),
+        distanceFurlongs: 22,
+        goingDescription: "Soft",
+        meeting: { course: { name: "Leopardstown" } },
+        entries: [
+          {
+            id: "entry-1",
+            providerEntityId: "provider-entry-1",
+            status: "DECLARED",
+            finishingPosition: null,
+            beatenLengths: null,
+            ratingAchieved: null,
+            timeformComment: null,
+            performanceRating: null,
+            starRating: null,
+            notifiedStates: [],
+            horse: { id: "horse-1", name: "Pink Jasmine" },
+            jockey: { name: "Eoghan Finegan" },
+          },
+        ],
+      },
+    ]);
+
+    mockRaceEntryUpdate.mockResolvedValueOnce({
+      id: "entry-1",
+      status: "RAN",
+      finishingPosition: 6,
+      notifiedStates: [],
+    });
+
+    mockHorseFindUnique.mockResolvedValue({
+      nextEntryId: null,
+      latestEntryId: null,
+    });
+
+    mockHandleStatusTransition.mockResolvedValueOnce(undefined);
+
+    const provider = {
+      getRaceResult: vi.fn().mockResolvedValue({
+        providerRaceId: "provider-race-1",
+        entries: [
+          { providerEntryId: "provider-entry-1", finishingPosition: 6 },
+          { providerEntryId: "provider-entry-other-1" },
+          { providerEntryId: "provider-entry-other-2" },
+          { providerEntryId: "provider-entry-other-3" },
+          { providerEntryId: "provider-entry-other-4" },
+          { providerEntryId: "provider-entry-other-5" },
+          { providerEntryId: "provider-entry-other-6" },
+          { providerEntryId: "provider-entry-other-7" },
+        ],
+      }),
+    };
+
+    await checkForResults("org-1", provider as never);
+
+    expect(mockHandleStatusTransition).toHaveBeenCalledOnce();
+    const [, , racePassed, raceEntryPassed, , fieldSizePassed] =
+      mockHandleStatusTransition.mock.calls[0];
+    expect(fieldSizePassed).toBe(8);
+    expect(racePassed).toMatchObject({
+      distanceFurlongs: 22,
+      goingDescription: "Soft",
+    });
+    expect(raceEntryPassed).toMatchObject({
+      jockeyName: "Eoghan Finegan",
+    });
+  });
 });

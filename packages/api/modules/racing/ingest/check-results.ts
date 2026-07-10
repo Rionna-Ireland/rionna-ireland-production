@@ -28,7 +28,7 @@ export async function checkForResults(
       },
     },
     include: {
-      entries: { include: { horse: true } },
+      entries: { include: { horse: true, jockey: true } },
       meeting: { include: { course: true } },
     },
   });
@@ -75,12 +75,16 @@ export async function checkForResults(
               name: race.name,
               postTime: race.postTime,
               courseName: race.meeting.course.name,
+              distanceFurlongs: race.distanceFurlongs ?? null,
+              goingDescription: race.goingDescription ?? null,
             },
             {
               ...updated,
               finishingPosition: entryResult.finishingPosition ?? null,
+              jockeyName: raceEntry.jockey?.name ?? null,
             },
             raceEntry.status,
+            result.entries.length,
           );
         } catch (error) {
           try {

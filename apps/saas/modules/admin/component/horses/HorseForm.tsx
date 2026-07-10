@@ -60,6 +60,16 @@ const horseFormSchema = z.object({
 
 type HorseFormValues = z.infer<typeof horseFormSchema>;
 
+function slugify(value: string): string {
+	return value
+		.toLowerCase()
+		.trim()
+		.replace(/[^a-z0-9\s-]/g, "")
+		.replace(/\s+/g, "-")
+		.replace(/-+/g, "-")
+		.replace(/^-|-$/g, "");
+}
+
 interface HorseFormProps {
 	horseId?: string;
 }
@@ -125,6 +135,19 @@ export function HorseForm({ horseId }: HorseFormProps) {
 			publicProfile: false,
 		},
 	});
+
+	const nameValue = form.watch("name");
+	const slugDirty = form.formState.dirtyFields.slug;
+
+	useEffect(() => {
+		if (isEdit || slugDirty) {
+			return;
+		}
+		const suggested = slugify(nameValue ?? "");
+		if (suggested) {
+			form.setValue("slug", suggested, { shouldValidate: false, shouldDirty: false });
+		}
+	}, [nameValue, slugDirty, isEdit, form]);
 
 	useEffect(() => {
 		if (horse) {
