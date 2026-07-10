@@ -21,7 +21,7 @@ import {
 	UploadImagesPlugin,
 	Placeholder,
 } from "novel";
-import { useMemo, useRef, useState } from "react";
+import { memo, useMemo, useRef, useState } from "react";
 
 import { EditorBubbleMenu } from "./novel/editor-bubble-menu";
 import { EditorToolbar } from "./novel/editor-toolbar";
@@ -37,6 +37,7 @@ interface NovelEditorProps {
 	/** When provided, the video modal offers direct .mp4 upload to Circle (member-post
 	 * composers). Absent (e.g. News) → the video modal is paste-a-URL only. */
 	onUploadVideo?: VideoUploadHandler;
+	editable?: boolean;
 }
 
 const MAX_IMAGE_MB = 10;
@@ -82,11 +83,12 @@ const ImageWithUpload = TiptapImage.extend({
 	},
 });
 
-export function NovelEditor({
+export const NovelEditor = memo(function NovelEditor({
 	initialContent,
 	onChange,
 	onUploadImage,
 	onUploadVideo,
+	editable = true,
 }: NovelEditorProps) {
 	const [editor, setEditor] = useState<EditorInstance | null>(null);
 	const [videoOpen, setVideoOpen] = useState(false);
@@ -149,6 +151,46 @@ export function NovelEditor({
 		onChange?.({ json: editor.getJSON() as JSONContent, html: editor.getHTML() });
 	};
 
+	const editorProps = useMemo(
+		() => ({
+			handleDOMEvents: {
+				keydown: (_view: unknown, event: KeyboardEvent) => handleCommandNavigation(event),
+			},
+			handlePaste: (view: unknown, event: ClipboardEvent) => {
+				const file = event.clipboardData?.files?.[0];
+				if (!file) return false;
+				event.preventDefault();
+				const target = view as DropTargetView;
+				uploadFn(
+					file,
+					view as never,
+					clampInsertPos(target, target.state.selection.from),
+				);
+				return true;
+			},
+			handleDrop: (view: unknown, event: DragEvent, _slice: unknown, moved: boolean) => {
+				const file = event.dataTransfer?.files?.[0];
+				if (moved || !file) return false;
+				event.preventDefault();
+				const target = view as DropTargetView;
+				const dropped = target.posAtCoords({
+					left: event.clientX,
+					top: event.clientY,
+				});
+				uploadFn(
+					file,
+					view as never,
+					clampInsertPos(target, dropped?.pos ?? target.state.doc.content.size),
+				);
+				return true;
+			},
+			attributes: {
+				class: "prose prose-sm dark:prose-invert prose-headings:font-title focus:outline-none max-w-full min-h-[300px] px-4 py-3 text-foreground caret-foreground [&>p]:block [&>p]:min-w-px",
+			},
+		}),
+		[uploadFn],
+	);
+
 	const onPickFile = (event: React.ChangeEvent<HTMLInputElement>) => {
 		const file = event.target.files?.[0];
 		if (file && editor) {
@@ -182,46 +224,11 @@ export function NovelEditor({
 				immediatelyRender={false}
 				extensions={extensions}
 				initialContent={initialContent}
+				editable={editable}
 				onCreate={({ editor }: { editor: EditorInstance }) => setEditor(editor)}
 				onUpdate={({ editor }: { editor: EditorInstance }) => handleUpdate(editor)}
-				className="rounded-b-md border border-muted"
-				editorProps={{
-					handleDOMEvents: {
-						keydown: (_view: unknown, event: KeyboardEvent) =>
-							handleCommandNavigation(event),
-					},
-					handlePaste: (view: unknown, event: ClipboardEvent) => {
-						const file = event.clipboardData?.files?.[0];
-						if (!file) return false;
-						event.preventDefault();
-						const target = view as DropTargetView;
-						uploadFn(
-							file,
-							view as never,
-							clampInsertPos(target, target.state.selection.from),
-						);
-						return true;
-					},
-					handleDrop: (view: unknown, event: DragEvent, _slice: unknown, moved: boolean) => {
-						const file = event.dataTransfer?.files?.[0];
-						if (moved || !file) return false;
-						event.preventDefault();
-						const target = view as DropTargetView;
-						const dropped = target.posAtCoords({
-							left: event.clientX,
-							top: event.clientY,
-						});
-						uploadFn(
-							file,
-							view as never,
-							clampInsertPos(target, dropped?.pos ?? target.state.doc.content.size),
-						);
-						return true;
-					},
-					attributes: {
-						class: "prose prose-sm dark:prose-invert prose-headings:font-title focus:outline-none max-w-full min-h-[300px] px-4 py-3 text-foreground caret-foreground [&>p]:block [&>p]:min-w-px",
-					},
-				}}
+				className="rounded-b-md border border-muted bg-background"
+				editorProps={editorProps}
 			>
 				<EditorBubbleMenu />
 				<ImageBubbleMenu />
@@ -255,4 +262,4 @@ export function NovelEditor({
 			</EditorContent>
 		</EditorRoot>
 	);
-}
+});

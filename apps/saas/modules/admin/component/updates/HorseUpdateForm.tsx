@@ -8,6 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { CircleTiptapRenderer } from "@member-hub/tiptap/CircleTiptapRenderer";
 import { localDocToHydrated } from "@member-hub/tiptap/local-doc";
 import { Badge } from "@repo/ui/components/badge";
+import { cn } from "@repo/ui";
 import { Button } from "@repo/ui/components/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@repo/ui/components/card";
 import {
@@ -34,7 +35,7 @@ import { ArrowLeftIcon, ExternalLinkIcon, LockIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import type { JSONContent } from "novel";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -77,6 +78,7 @@ export function HorseUpdateForm({ memberPostId }: HorseUpdateFormProps) {
 	const contentHtmlRef = useRef<string>("");
 	const [hasBody, setHasBody] = useState(false);
 	const [previewDoc, setPreviewDoc] = useState<JSONContent | undefined>(undefined);
+	const deferredPreviewDoc = useDeferredValue(previewDoc);
 	const [isUploading, setIsUploading] = useState(false);
 	const [fallback, setFallback] = useState<{ circleUrl: string | null } | null>(null);
 
@@ -111,9 +113,12 @@ export function HorseUpdateForm({ memberPostId }: HorseUpdateFormProps) {
 					(existingPost.updateType as FormValues["updateType"] | null) ?? "trainer",
 				title: existingPost.title,
 			});
-			contentJsonRef.current = existingPost.bodyJson as JSONContent | undefined;
+			const bodyJson = existingPost.bodyJson as JSONContent | undefined;
+			contentJsonRef.current = bodyJson;
 			contentHtmlRef.current = existingPost.bodyHtml ?? "";
-			setHasBody(Boolean(stripHtml(existingPost.bodyHtml ?? "")));
+			const nextHasBody = Boolean(stripHtml(existingPost.bodyHtml ?? ""));
+			setHasBody(nextHasBody);
+			setPreviewDoc(nextHasBody ? bodyJson : undefined);
 		}
 	}, [existingPost, form]);
 
@@ -124,28 +129,42 @@ export function HorseUpdateForm({ memberPostId }: HorseUpdateFormProps) {
 		orpc.memberPosts.admin.createImageUploadUrl.mutationOptions(),
 	);
 
-	const handleUploadImage = async (file: File): Promise<string> => {
-		if (!organizationId) return "";
-		setIsUploading(true);
-		try {
-			const { signedUploadUrl, path } = await uploadUrlMutation.mutateAsync({
-				organizationId,
-				filename: `${Date.now()}-${file.name}`,
-			});
-			const uploadResponse = await fetch(signedUploadUrl, {
-				method: "PUT",
-				body: file,
-				headers: { "Content-Type": file.type },
-			});
-			if (!uploadResponse.ok) {
-				throw new Error("Upload failed");
+	const handleUploadImage = useCallback(
+		async (file: File): Promise<string> => {
+			if (!organizationId) return "";
+			setIsUploading(true);
+			try {
+				const { signedUploadUrl, path } = await uploadUrlMutation.mutateAsync({
+					organizationId,
+					filename: `${Date.now()}-${file.name}`,
+				});
+				const uploadResponse = await fetch(signedUploadUrl, {
+					method: "PUT",
+					body: file,
+					headers: { "Content-Type": file.type },
+				});
+				if (!uploadResponse.ok) {
+					throw new Error("Upload failed");
+				}
+				// Served via the signed-URL image proxy (private media bucket).
+				return `/image-proxy/media/${path}`;
+			} finally {
+				setIsUploading(false);
 			}
-			// Served via the signed-URL image proxy (private media bucket).
-			return `/image-proxy/media/${path}`;
-		} finally {
-			setIsUploading(false);
-		}
-	};
+		},
+		[organizationId, uploadUrlMutation],
+	);
+
+	const handleEditorChange = useCallback(
+		({ json, html }: { json: JSONContent; html: string }) => {
+			contentJsonRef.current = json;
+			contentHtmlRef.current = html;
+			const nextHasBody = Boolean(stripHtml(html));
+			setHasBody((prev) => (prev === nextHasBody ? prev : nextHasBody));
+			setPreviewDoc(nextHasBody ? json : undefined);
+		},
+		[],
+	);
 
 	const horseId = form.watch("horseId");
 	const updateType = form.watch("updateType");
@@ -351,27 +370,30 @@ export function HorseUpdateForm({ memberPostId }: HorseUpdateFormProps) {
 
 							<div>
 								<FormLabel>{t("admin.updates.form.content")}</FormLabel>
-								<div className="mt-2 rounded-md border" aria-disabled={!horseId}>
+								<div
+									className={cn(
+										"mt-2 rounded-md border bg-background",
+										!horseId && "pointer-events-none opacity-60",
+									)}
+								>
 									<NovelEditor
 										initialContent={
 											existingPost?.bodyJson as JSONContent | undefined
 										}
-										onChange={({ json, html }) => {
-											contentJsonRef.current = json;
-											contentHtmlRef.current = html;
-											setHasBody(Boolean(stripHtml(html)));
-											setPreviewDoc(json);
-										}}
+										editable={!!horseId && !isPublished}
+										onChange={handleEditorChange}
 										onUploadImage={handleUploadImage}
 										onUploadVideo={uploadVideo}
 									/>
 								</div>
-								{previewDoc ? (
+								{hasBody && deferredPreviewDoc ? (
 									<div className="mt-6 rounded-md border border-muted p-4">
 										<p className="mb-2 font-mono text-muted-foreground text-xs uppercase tracking-wide">
 											Member preview (approximate — media finalises on publish)
 										</p>
-										<CircleTiptapRenderer doc={localDocToHydrated(previewDoc)} />
+										<CircleTiptapRenderer
+											doc={localDocToHydrated(deferredPreviewDoc)}
+										/>
 									</div>
 								) : null}
 							</div>
