@@ -4,6 +4,7 @@ import { logger } from "@repo/logs";
 import { createCircleService, getCircleHeadlessApiBaseUrl } from "@repo/payments/lib/circle";
 import { z } from "zod";
 
+import { getFollowedHorseIds } from "../../racing/horses/lib/horse-follows";
 import { protectedProcedure } from "../../../orpc/procedures";
 import {
 	type MemberFeedItem,
@@ -97,12 +98,46 @@ export const getMemberFeed = protectedProcedure
 			});
 			return fail();
 		}
-		const spaces = extractPosts(await spacesRes.json())
-			.filter((space) => {
-				const type = textValue(space.space_type) ?? textValue(space.type);
-				return type ? POST_SPACE_TYPES.has(type) : true;
-			})
-			.slice(0, MAX_SPACES);
+		const typeFilteredSpaces = extractPosts(await spacesRes.json()).filter((space) => {
+			const type = textValue(space.space_type) ?? textValue(space.type);
+			return type ? POST_SPACE_TYPES.has(type) : true;
+		});
+
+		// 1.5 Filter out unfollowed horse spaces (non-horse spaces always pass). Fail-safe:
+		// any error in the horse/follow lookups falls back to the unfiltered feed — feed
+		// availability beats filter correctness.
+		let horseFilteredSpaces = typeFilteredSpaces;
+		try {
+			const orgHorses = await db.horse.findMany({
+				where: { organizationId: input.organizationId },
+				select: { id: true, circleSpaceId: true },
+			});
+			const horseIdBySpaceId = new Map<string, string>();
+			for (const horse of orgHorses) {
+				if (horse.circleSpaceId) {
+					horseIdBySpaceId.set(String(horse.circleSpaceId), horse.id);
+				}
+			}
+			const followedHorseIds = await getFollowedHorseIds({
+				organizationId: input.organizationId,
+				userId: user.id,
+			});
+			horseFilteredSpaces = typeFilteredSpaces.filter((space) => {
+				const horseId = horseIdBySpaceId.get(String(space.id));
+				if (!horseId) return true; // not a horse space — always pass
+				return followedHorseIds.has(horseId);
+			});
+		} catch (error) {
+			logger.warn("[Circle] Member feed: horse follow filter failed, returning unfiltered feed", {
+				surface: "circle.member_feed",
+				userId: user.id,
+				organizationId: input.organizationId,
+				error: String(error),
+			});
+			horseFilteredSpaces = typeFilteredSpaces;
+		}
+
+		const spaces = horseFilteredSpaces.slice(0, MAX_SPACES);
 
 		// 2. Latest posts from each space, in parallel; a failing space is skipped, not fatal.
 		const perSpace = await Promise.all(

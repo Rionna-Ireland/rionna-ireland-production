@@ -16,6 +16,7 @@
 		"./lib/circle/blocks": "./lib/circle/blocks.ts",
 		"./lib/circle/hydrate": "./lib/circle/hydrate.ts",
 		"./lib/circle-provisioning": "./lib/circle-provisioning.ts",
+		"./lib/circle-space-membership": "./lib/circle-space-membership.ts",
 		"./lib/circle-horse-provisioning": "./lib/circle-horse-provisioning.ts",
 		"./lib/customer": "./lib/customer.ts",
 		"./lib/provider-price-ids": "./lib/provider-price-ids.ts",

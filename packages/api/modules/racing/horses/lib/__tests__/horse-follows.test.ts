@@ -1,22 +1,34 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { mockUpsert, mockDeleteMany, mockMemberFindMany, mockCreateMany, mockFindMany } = vi.hoisted(() => ({
-	mockUpsert: vi.fn(),
-	mockDeleteMany: vi.fn(),
-	mockMemberFindMany: vi.fn(),
-	mockCreateMany: vi.fn(),
-	mockFindMany: vi.fn(),
-}));
+const { mockUpsert, mockDeleteMany, mockMemberFindMany, mockCreateMany, mockFindMany, mockSyncCircleSpaceMembership, mockLoggerInfo } =
+	vi.hoisted(() => ({
+		mockUpsert: vi.fn(),
+		mockDeleteMany: vi.fn(),
+		mockMemberFindMany: vi.fn(),
+		mockCreateMany: vi.fn(),
+		mockFindMany: vi.fn(),
+		mockSyncCircleSpaceMembership: vi.fn(),
+		mockLoggerInfo: vi.fn(),
+	}));
 vi.mock("@repo/database", () => ({
 	db: {
 		horseFollow: { upsert: mockUpsert, deleteMany: mockDeleteMany, createMany: mockCreateMany, findMany: mockFindMany },
 		member: { findMany: mockMemberFindMany },
 	},
 }));
+vi.mock("@repo/payments/lib/circle-space-membership", () => ({
+	syncCircleSpaceMembership: mockSyncCircleSpaceMembership,
+}));
+vi.mock("@repo/logs", () => ({
+	logger: { info: mockLoggerInfo, warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
+}));
 
 import { followHorse, unfollowHorse, followAllMembers, getFollowedHorseIds, listFollowedHorses, listHorseFollowers } from "../horse-follows";
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+	vi.clearAllMocks();
+	mockSyncCircleSpaceMembership.mockResolvedValue({ ok: true });
+});
 
 describe("followHorse", () => {
 	it("upserts idempotently keyed on userId+horseId", async () => {
@@ -28,6 +40,24 @@ describe("followHorse", () => {
 			update: {},
 		});
 	});
+
+	it("syncs a Circle space join after the DB write", async () => {
+		mockUpsert.mockResolvedValue({ id: "hf-1" });
+		await followHorse({ organizationId: "org-1", userId: "u-1", horseId: "h-1" });
+		expect(mockSyncCircleSpaceMembership).toHaveBeenCalledWith({
+			organizationId: "org-1",
+			userId: "u-1",
+			horseId: "h-1",
+			action: "join",
+		});
+	});
+
+	it("does not throw when the Circle sync fails", async () => {
+		mockUpsert.mockResolvedValue({ id: "hf-1" });
+		mockSyncCircleSpaceMembership.mockRejectedValue(new Error("circle down"));
+		await expect(followHorse({ organizationId: "org-1", userId: "u-1", horseId: "h-1" })).resolves.toBeUndefined();
+		expect(mockUpsert).toHaveBeenCalled();
+	});
 });
 
 describe("unfollowHorse", () => {
@@ -35,6 +65,24 @@ describe("unfollowHorse", () => {
 		mockDeleteMany.mockResolvedValue({ count: 0 });
 		await unfollowHorse({ organizationId: "org-1", userId: "u-1", horseId: "h-1" });
 		expect(mockDeleteMany).toHaveBeenCalledWith({ where: { userId: "u-1", horseId: "h-1", organizationId: "org-1" } });
+	});
+
+	it("syncs a Circle space leave after the DB write", async () => {
+		mockDeleteMany.mockResolvedValue({ count: 1 });
+		await unfollowHorse({ organizationId: "org-1", userId: "u-1", horseId: "h-1" });
+		expect(mockSyncCircleSpaceMembership).toHaveBeenCalledWith({
+			organizationId: "org-1",
+			userId: "u-1",
+			horseId: "h-1",
+			action: "leave",
+		});
+	});
+
+	it("does not throw when the Circle sync fails", async () => {
+		mockDeleteMany.mockResolvedValue({ count: 1 });
+		mockSyncCircleSpaceMembership.mockRejectedValue(new Error("circle down"));
+		await expect(unfollowHorse({ organizationId: "org-1", userId: "u-1", horseId: "h-1" })).resolves.toBeUndefined();
+		expect(mockDeleteMany).toHaveBeenCalled();
 	});
 });
 
@@ -51,6 +99,41 @@ describe("followAllMembers", () => {
 			skipDuplicates: true,
 		});
 		expect(res).toEqual({ added: 2 });
+	});
+
+	it("best-effort joins each member's Circle space and logs a summary", async () => {
+		mockMemberFindMany.mockResolvedValue([{ userId: "u-1" }, { userId: "u-2" }]);
+		mockCreateMany.mockResolvedValue({ count: 2 });
+		mockSyncCircleSpaceMembership
+			.mockResolvedValueOnce({ ok: true })
+			.mockResolvedValueOnce({ ok: false });
+
+		await followAllMembers({ organizationId: "org-1", horseId: "h-1" });
+
+		expect(mockSyncCircleSpaceMembership).toHaveBeenCalledWith({
+			organizationId: "org-1",
+			userId: "u-1",
+			horseId: "h-1",
+			action: "join",
+		});
+		expect(mockSyncCircleSpaceMembership).toHaveBeenCalledWith({
+			organizationId: "org-1",
+			userId: "u-2",
+			horseId: "h-1",
+			action: "join",
+		});
+		expect(mockLoggerInfo).toHaveBeenCalledWith(
+			expect.stringContaining("space join"),
+			expect.objectContaining({ joined: 1, failed: 1 }),
+		);
+	});
+
+	it("never throws even if the Circle sync rejects", async () => {
+		mockMemberFindMany.mockResolvedValue([{ userId: "u-1" }]);
+		mockCreateMany.mockResolvedValue({ count: 1 });
+		mockSyncCircleSpaceMembership.mockRejectedValue(new Error("circle down"));
+
+		await expect(followAllMembers({ organizationId: "org-1", horseId: "h-1" })).resolves.toEqual({ added: 1 });
 	});
 });
 

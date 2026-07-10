@@ -100,6 +100,30 @@ describe("handleStatusTransition", () => {
     expect(mockSendPush.mock.calls[0][0].triggerType).toBe("RACE_RESULT");
   });
 
+  // ── Race push targeting (S8-03 §2 / C2) ──────────────────────────
+
+  it("targets sendPush at the horse's followers for DECLARED", async () => {
+    await handleStatusTransition(
+      "org-1",
+      mockHorse,
+      mockRace,
+      makeEntry("DECLARED"),
+      "ENTERED",
+    );
+    expect(mockSendPush.mock.calls[0][0].followersOfHorseId).toBe("horse-1");
+  });
+
+  it("targets sendPush at the horse's followers for RAN", async () => {
+    await handleStatusTransition(
+      "org-1",
+      mockHorse,
+      mockRace,
+      makeEntry("RAN", [], 1),
+      "DECLARED",
+    );
+    expect(mockSendPush.mock.calls[0][0].followersOfHorseId).toBe("horse-1");
+  });
+
   // ── Non-push-worthy transitions ──────────────────────────────────
 
   it("does NOT fire push for ENTERED transition", async () => {

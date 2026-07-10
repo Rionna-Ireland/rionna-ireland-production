@@ -70,6 +70,7 @@ export async function handleStatusTransition(
     title: pushContent.title,
     body: pushContent.body,
     data: { screen: "horse", horseId: horse.id },
+    followersOfHorseId: horse.id,
   });
 
   // Mark as notified (idempotency)

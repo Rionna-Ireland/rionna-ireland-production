@@ -1,9 +1,29 @@
 import { db } from "@repo/database";
+import { logger } from "@repo/logs";
+import { syncCircleSpaceMembership } from "@repo/payments/lib/circle-space-membership";
 
 export interface FollowRef {
 	organizationId: string;
 	userId: string;
 	horseId: string;
+}
+
+/**
+ * Fail-safe: never let a Circle sync failure surface through to the caller —
+ * the DB follow-state write is the source of truth and must already have
+ * committed by the time this runs.
+ */
+async function syncCircleSpaceMembershipSafely(ref: FollowRef, action: "join" | "leave"): Promise<void> {
+	try {
+		await syncCircleSpaceMembership({ ...ref, action });
+	} catch (error) {
+		logger.warn("[Circle] Space membership sync threw unexpectedly", {
+			surface: "circle.space_membership",
+			...ref,
+			action,
+			error: error instanceof Error ? error.message : String(error),
+		});
+	}
 }
 
 /** Idempotent: following an already-followed horse is a no-op. */
@@ -13,6 +33,7 @@ export async function followHorse(ref: FollowRef): Promise<void> {
 		create: { organizationId: ref.organizationId, userId: ref.userId, horseId: ref.horseId },
 		update: {},
 	});
+	await syncCircleSpaceMembershipSafely(ref, "join");
 }
 
 /** Idempotent: unfollowing a not-followed horse is a no-op. */
@@ -20,6 +41,7 @@ export async function unfollowHorse(ref: FollowRef): Promise<void> {
 	await db.horseFollow.deleteMany({
 		where: { userId: ref.userId, horseId: ref.horseId, organizationId: ref.organizationId },
 	});
+	await syncCircleSpaceMembershipSafely(ref, "leave");
 }
 
 /** Add every org member as a follower of a horse. Idempotent (skips existing). */
@@ -30,6 +52,41 @@ export async function followAllMembers(params: { organizationId: string; horseId
 		data: members.map((m) => ({ organizationId: params.organizationId, userId: m.userId, horseId: params.horseId })),
 		skipDuplicates: true,
 	});
+
+	// Best-effort: join each member's Circle space sequentially. A failure
+	// here must never affect the follow rows that were just created.
+	let joined = 0;
+	let failed = 0;
+	for (const m of members) {
+		try {
+			const outcome = await syncCircleSpaceMembership({
+				organizationId: params.organizationId,
+				userId: m.userId,
+				horseId: params.horseId,
+				action: "join",
+			});
+			if (outcome.ok) joined++;
+			else failed++;
+		} catch (error) {
+			failed++;
+			logger.warn("[Circle] Space membership sync threw unexpectedly during followAllMembers", {
+				surface: "circle.space_membership",
+				organizationId: params.organizationId,
+				userId: m.userId,
+				horseId: params.horseId,
+				action: "join",
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+	logger.info("[Circle] followAllMembers space join summary", {
+		surface: "circle.space_membership",
+		organizationId: params.organizationId,
+		horseId: params.horseId,
+		joined,
+		failed,
+	});
+
 	return { added: result.count };
 }
 

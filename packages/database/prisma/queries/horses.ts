@@ -116,6 +116,33 @@ export async function publishHorses(horseIds: string[], publish: boolean) {
 	});
 }
 
+/**
+ * Recent-results include shared by the published-horses list and detail
+ * queries (S8-03 §4 dashboard cards): the last few finished (RAN) entries
+ * with the race/meeting/course/jockey relations the result-row UI needs
+ * (mirrors mobile's `result-row.tsx` — jockey · distance · going).
+ */
+const RECENT_RESULTS_INCLUDE = {
+	take: 3,
+	where: {
+		status: "RAN" as const,
+		finishingPosition: { not: null },
+	},
+	orderBy: { race: { postTime: "desc" as const } },
+	include: {
+		race: {
+			include: {
+				meeting: {
+					include: {
+						course: true,
+					},
+				},
+			},
+		},
+		jockey: true,
+	},
+} as const;
+
 export async function getPublishedHorses(organizationId: string) {
 	return db.horse.findMany({
 		where: {
@@ -126,6 +153,7 @@ export async function getPublishedHorses(organizationId: string) {
 			trainer: {
 				select: { id: true, name: true },
 			},
+			entries: RECENT_RESULTS_INCLUDE,
 		},
 		orderBy: { sortOrder: "asc" },
 	});
