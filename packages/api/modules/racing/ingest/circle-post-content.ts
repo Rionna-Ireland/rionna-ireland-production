@@ -75,6 +75,34 @@ function toOrdinal(n: number): string {
 	}
 }
 
+/**
+ * Builds the shared "details block" appended after the headline sentence:
+ * an optional jockey clause (tense depends on status — "rides" for
+ * DECLARED, "rode" for RAN) followed by an optional distance/going
+ * sentence. Degrades gracefully when any piece is missing.
+ */
+function buildDetailsBlock(
+	race: CirclePostContentRace,
+	entry: CirclePostContentEntry,
+	jockeyVerb: "rides" | "rode",
+): string {
+	let details = "";
+	if (entry.jockeyName) {
+		details += ` ${entry.jockeyName} ${jockeyVerb}.`;
+	}
+	const parts: string[] = [];
+	if (race.distanceFurlongs != null) {
+		parts.push(formatDistance(race.distanceFurlongs));
+	}
+	if (race.goingDescription) {
+		parts.push(`going ${race.goingDescription}`);
+	}
+	if (parts.length > 0) {
+		details += ` ${parts.join(", ")}.`;
+	}
+	return details;
+}
+
 export function buildCirclePostContent(
 	status: string,
 	horse: CirclePostContentHorse,
@@ -88,27 +116,14 @@ export function buildCirclePostContent(
 	const courseName = race.courseName;
 
 	if (status === "DECLARED") {
-		let body = `\u{1F3C7} ${horse.name} runs in the ${raceName} at ${courseName}, ${formatPostTime(race.postTime)}.`;
-		if (entry.jockeyName) {
-			body += ` ${entry.jockeyName} rides.`;
-		}
-		const details: string[] = [];
-		if (race.distanceFurlongs != null) {
-			details.push(formatDistance(race.distanceFurlongs));
-		}
-		if (race.goingDescription) {
-			details.push(`going ${race.goingDescription}`);
-		}
-		if (details.length > 0) {
-			body += ` ${details.join(", ")}.`;
-		}
+		const body = `\u{1F3C7} ${horse.name} runs in the ${raceName} at ${courseName}, ${formatPostTime(race.postTime)}.${buildDetailsBlock(race, entry, "rides")}`;
 		return { title: `${horse.name} is declared`, body };
 	}
 
 	// status === "RAN"
 	const pos = entry.finishingPosition;
 	if (pos === 1) {
-		const body = `\u{1F3C6} ${horse.name} won the ${raceName} at ${courseName}!`;
+		const body = `\u{1F3C6} ${horse.name} won the ${raceName} at ${courseName}!${buildDetailsBlock(race, entry, "rode")}`;
 		return { title: `${horse.name} won!`, body };
 	}
 	if (pos != null) {
@@ -116,10 +131,10 @@ export function buildCirclePostContent(
 			fieldSize != null
 				? `finished ${toOrdinal(pos)} of ${fieldSize}`
 				: `finished ${toOrdinal(pos)}`;
-		const body = `${horse.name} ${placeText} in the ${raceName} at ${courseName}.`;
+		const body = `${horse.name} ${placeText} in the ${raceName} at ${courseName}.${buildDetailsBlock(race, entry, "rode")}`;
 		return { title: `${horse.name} finished ${toOrdinal(pos)}`, body };
 	}
 
-	const body = `${horse.name} completed the ${raceName} at ${courseName}.`;
+	const body = `${horse.name} completed the ${raceName} at ${courseName}.${buildDetailsBlock(race, entry, "rode")}`;
 	return { title: `${horse.name} completed the race`, body };
 }

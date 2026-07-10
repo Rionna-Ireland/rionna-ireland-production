@@ -74,6 +74,86 @@ describe("buildCirclePostContent", () => {
 		expect(buildCirclePostContent("RAN", horse, race, { finishingPosition: null, jockeyName: null }, 8)!.body)
 			.toBe("My Boy Harry completed the Novice Stakes at Brighton.");
 	});
+
+	describe("RAN → details block (Amendment A1)", () => {
+		const enrichedRace = { ...race, distanceFurlongs: 22, goingDescription: "Soft" };
+		const jockeyEntry = { jockeyName: "Eoghan Finegan" };
+
+		it("win → includes jockey (rode), distance and going when available", () => {
+			const c = buildCirclePostContent(
+				"RAN",
+				horse,
+				enrichedRace,
+				{ finishingPosition: 1, ...jockeyEntry },
+				8,
+			);
+			expect(c!.body).toBe(
+				"🏆 My Boy Harry won the Novice Stakes at Brighton! Eoghan Finegan rode. 2m6f, going Soft.",
+			);
+		});
+		it("placed → includes jockey (rode), distance and going when available", () => {
+			const c = buildCirclePostContent(
+				"RAN",
+				horse,
+				enrichedRace,
+				{ finishingPosition: 6, ...jockeyEntry },
+				8,
+			);
+			expect(c!.body).toBe(
+				"My Boy Harry finished 6th of 8 in the Novice Stakes at Brighton. Eoghan Finegan rode. 2m6f, going Soft.",
+			);
+		});
+		it("null position fallback → includes details block when available", () => {
+			const c = buildCirclePostContent(
+				"RAN",
+				horse,
+				enrichedRace,
+				{ finishingPosition: null, ...jockeyEntry },
+				8,
+			);
+			expect(c!.body).toBe(
+				"My Boy Harry completed the Novice Stakes at Brighton. Eoghan Finegan rode. 2m6f, going Soft.",
+			);
+		});
+		it("win → omits missing parts gracefully (jockey only)", () => {
+			const c = buildCirclePostContent("RAN", horse, race, { finishingPosition: 1, ...jockeyEntry }, 8);
+			expect(c!.body).toBe("🏆 My Boy Harry won the Novice Stakes at Brighton! Eoghan Finegan rode.");
+		});
+		it("placed → omits missing parts gracefully (distance only)", () => {
+			const distanceOnlyRace = { ...race, distanceFurlongs: 7 };
+			const c = buildCirclePostContent(
+				"RAN",
+				horse,
+				distanceOnlyRace,
+				{ finishingPosition: 4, jockeyName: null },
+				8,
+			);
+			expect(c!.body).toBe("My Boy Harry finished 4th of 8 in the Novice Stakes at Brighton. 7f.");
+		});
+		it("placed → omits missing parts gracefully (going only)", () => {
+			const goingOnlyRace = { ...race, goingDescription: "Good to Firm" };
+			const c = buildCirclePostContent(
+				"RAN",
+				horse,
+				goingOnlyRace,
+				{ finishingPosition: 4, jockeyName: null },
+				8,
+			);
+			expect(c!.body).toBe("My Boy Harry finished 4th of 8 in the Novice Stakes at Brighton. going Good to Firm.");
+		});
+		it("win → all detail fields null reproduces today's exact string (backward compat)", () => {
+			expect(buildCirclePostContent("RAN", horse, race, { finishingPosition: 1, jockeyName: null }, 8)!.body)
+				.toBe("🏆 My Boy Harry won the Novice Stakes at Brighton!");
+		});
+		it("placed → all detail fields null reproduces today's exact string (backward compat)", () => {
+			expect(buildCirclePostContent("RAN", horse, race, { finishingPosition: 4, jockeyName: null }, 8)!.body)
+				.toBe("My Boy Harry finished 4th of 8 in the Novice Stakes at Brighton.");
+		});
+		it("fallback → all detail fields null reproduces today's exact string (backward compat)", () => {
+			expect(buildCirclePostContent("RAN", horse, race, { finishingPosition: null, jockeyName: null }, 8)!.body)
+				.toBe("My Boy Harry completed the Novice Stakes at Brighton.");
+		});
+	});
 	it("null race name → 'race'", () => {
 		expect(buildCirclePostContent("DECLARED", horse, { ...race, name: null }, noEntryDetail, undefined)!.body)
 			.toBe("🏇 My Boy Harry runs in the race at Brighton, 14:45.");

@@ -47,6 +47,7 @@ export async function handleStatusTransition(
   race: TransitionRace,
   raceEntry: TransitionRaceEntry,
   previousStatus: RaceEntryStatus | null,
+  fieldSize?: number,
 ): Promise<void> {
   const newStatus = raceEntry.status;
 
@@ -97,7 +98,7 @@ export async function handleStatusTransition(
       jockeyName: raceEntry.jockeyName ?? null,
       notifiedStates: [...notifiedStates, newStatus],
     },
-    // fieldSize not available on TransitionRace — omit; copy drops the "of N" clause.
+    fieldSize,
   });
 
   // Update denormalized fields on Horse
