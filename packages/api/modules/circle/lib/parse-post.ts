@@ -23,13 +23,17 @@ export interface CirclePostDetail {
 	bodyText: string | null;
 	imageUrl: string | null;
 	/** Circle TipTap document (`tiptap_body.body`) for rich read-only rendering, or null. */
-	tiptapDoc: unknown | null;
+	tiptapDoc: Record<string, unknown> | null;
 	/** `tiptap_body.sgids_to_object_map` — resolves embed nodes (video/oEmbed) by sgid. */
 	embeds: Record<string, unknown>;
+	/** `tiptap_body.inline_attachments` — resolves image nodes that only carry a signed id. */
+	inlineAttachments: Array<Record<string, unknown>>;
 	authorName: string | null;
 	authorAvatarUrl: string | null;
 	spaceName: string | null;
 	createdAt: string | null;
+	commentCount: number;
+	likeCount: number;
 	url: string | null;
 }
 
@@ -48,15 +52,15 @@ export function cleanTextValue(value: unknown): string | null {
 		.replace(/&amp;/gi, "&")
 		.replace(/&lt;/gi, "<")
 		.replace(/&gt;/gi, ">")
-		.replace(/&quot;/gi, "\"")
+		.replace(/&quot;/gi, '"')
 		.replace(/&#39;/gi, "'")
 		.replace(/\s+/g, " ")
 		.trim();
 	if (!stripped) return null;
 	const normalized = stripped.toLowerCase();
 	if (
-		normalized === "update available please update the app to view this post."
-		|| normalized === "update available please update the app to view this post"
+		normalized === "update available please update the app to view this post." ||
+		normalized === "update available please update the app to view this post"
 	) {
 		return null;
 	}
@@ -80,15 +84,19 @@ export function extractPosts(payload: unknown): Array<Record<string, unknown>> {
 	const body = objectValue(payload);
 	if (!body) return [];
 	const data = objectValue(body.data);
-	return (
-		arrayValue(body.records).length > 0 ? arrayValue(body.records)
-			: arrayValue(body.posts).length > 0 ? arrayValue(body.posts)
-				: arrayValue(body.items).length > 0 ? arrayValue(body.items)
-					: data && arrayValue(data.records).length > 0 ? arrayValue(data.records)
-						: data && arrayValue(data.posts).length > 0 ? arrayValue(data.posts)
-							: data && arrayValue(data.items).length > 0 ? arrayValue(data.items)
-								: []
-	);
+	return arrayValue(body.records).length > 0
+		? arrayValue(body.records)
+		: arrayValue(body.posts).length > 0
+			? arrayValue(body.posts)
+			: arrayValue(body.items).length > 0
+				? arrayValue(body.items)
+				: data && arrayValue(data.records).length > 0
+					? arrayValue(data.records)
+					: data && arrayValue(data.posts).length > 0
+						? arrayValue(data.posts)
+						: data && arrayValue(data.items).length > 0
+							? arrayValue(data.items)
+							: [];
 }
 
 function extractTiptapText(value: unknown): string | null {
@@ -106,21 +114,21 @@ export function extractPostText(post: Record<string, unknown>): string | null {
 	const tiptapBody = objectValue(post.tiptap_body);
 	const tiptapDocument = objectValue(tiptapBody?.body);
 	return (
-		cleanTextValue(post.body_plain_text_without_attachments)
-		?? cleanTextValue(post.body_plain_text)
-		?? cleanTextValue(tiptapBody?.circle_ios_fallback_text)
-		?? extractTiptapText(tiptapDocument)
-		?? cleanTextValue(tiptapBody?.plain_text_body)
-		?? cleanTextValue(tiptapBody?.text)
-		?? cleanTextValue(body?.plain_text_body)
-		?? cleanTextValue(post.body_text)
-		?? cleanTextValue(post.description)
-		?? cleanTextValue(post.excerpt)
-		?? cleanTextValue(body?.body)
-		?? cleanTextValue(body?.text)
-		?? cleanTextValue(body?.html)
-		?? cleanTextValue(post.name)
-		?? cleanTextValue(post.title)
+		cleanTextValue(post.body_plain_text_without_attachments) ??
+		cleanTextValue(post.body_plain_text) ??
+		cleanTextValue(tiptapBody?.circle_ios_fallback_text) ??
+		extractTiptapText(tiptapDocument) ??
+		cleanTextValue(tiptapBody?.plain_text_body) ??
+		cleanTextValue(tiptapBody?.text) ??
+		cleanTextValue(body?.plain_text_body) ??
+		cleanTextValue(post.body_text) ??
+		cleanTextValue(post.description) ??
+		cleanTextValue(post.excerpt) ??
+		cleanTextValue(body?.body) ??
+		cleanTextValue(body?.text) ??
+		cleanTextValue(body?.html) ??
+		cleanTextValue(post.name) ??
+		cleanTextValue(post.title)
 	);
 }
 
@@ -142,24 +150,24 @@ export function extractPostImageUrl(post: Record<string, unknown>): string | nul
 	});
 	const firstInlineImageUrl = textValue(objectValue(firstInlineImage)?.url);
 	return (
-		textValue(post.cardview_image)
-		?? textValue(post.cardview_image_url)
-		?? textValue(post.cardview_thumbnail_url)
-		?? textValue(post.cover_image_url)
-		?? firstInlineImageUrl
-		?? extractImageUrlFromHtml(body?.body)
-		?? extractImageUrlFromHtml(body?.html)
+		textValue(post.cardview_image) ??
+		textValue(post.cardview_image_url) ??
+		textValue(post.cardview_thumbnail_url) ??
+		textValue(post.cover_image_url) ??
+		firstInlineImageUrl ??
+		extractImageUrlFromHtml(body?.body) ??
+		extractImageUrlFromHtml(body?.html)
 	);
 }
 
 export function extractSpaceName(post: Record<string, unknown>): string | null {
 	const space = objectValue(post.space);
 	return (
-		textValue(space?.name)
-		?? textValue(space?.title)
-		?? textValue(space?.display_name)
-		?? textValue(post.space_name)
-		?? textValue(post.space_title)
+		textValue(space?.name) ??
+		textValue(space?.title) ??
+		textValue(space?.display_name) ??
+		textValue(post.space_name) ??
+		textValue(post.space_title)
 	);
 }
 
@@ -176,20 +184,21 @@ export function extractSpaceId(post: Record<string, unknown>): string | null {
 
 export function extractAuthorName(post: Record<string, unknown>): string | null {
 	const author =
-		objectValue(post.author)
-		?? objectValue(post.user)
-		?? objectValue(post.community_member)
-		?? objectValue(post.member);
+		objectValue(post.author) ??
+		objectValue(post.user) ??
+		objectValue(post.community_member) ??
+		objectValue(post.member);
 	return (
-		textValue(author?.name)
-		?? textValue(author?.display_name)
-		?? textValue(post.author_name)
-		?? textValue(post.user_name)
+		textValue(author?.name) ??
+		textValue(author?.display_name) ??
+		textValue(post.author_name) ??
+		textValue(post.user_name)
 	);
 }
 
 function extractAuthorAvatar(post: Record<string, unknown>): string | null {
-	const author = objectValue(post.author) ?? objectValue(post.user) ?? objectValue(post.community_member);
+	const author =
+		objectValue(post.author) ?? objectValue(post.user) ?? objectValue(post.community_member);
 	return textValue(author?.avatar_url) ?? textValue(author?.avatar);
 }
 
@@ -208,18 +217,27 @@ function numberValue(value: unknown): number {
 	return typeof value === "number" && Number.isFinite(value) ? value : 0;
 }
 
-function classifyFeedItem(post: Record<string, unknown>, spaceName: string | null): "news" | "post" {
-	const haystack = [spaceName, textValue(post.name), textValue(post.title), textValue(post.post_type), textValue(post.kind)]
+function classifyFeedItem(
+	post: Record<string, unknown>,
+	spaceName: string | null,
+): "news" | "post" {
+	const haystack = [
+		spaceName,
+		textValue(post.name),
+		textValue(post.title),
+		textValue(post.post_type),
+		textValue(post.kind),
+	]
 		.filter(Boolean)
 		.join(" ")
 		.toLowerCase();
 	if (
-		haystack.includes("news")
-		|| haystack.includes("inside track")
-		|| haystack.includes("announcement")
-		|| haystack.includes("notice")
-		|| haystack.includes("updates")
-		|| haystack.includes("trainer update")
+		haystack.includes("news") ||
+		haystack.includes("inside track") ||
+		haystack.includes("announcement") ||
+		haystack.includes("notice") ||
+		haystack.includes("updates") ||
+		haystack.includes("trainer update")
 	) {
 		return "news";
 	}
@@ -233,7 +251,9 @@ function buildFallbackUrl(input: {
 	spaceSlug: string | null;
 }): string | null {
 	const realPath =
-		input.spaceSlug && input.slug ? `/c/${input.spaceSlug}/${input.slug}` : `/posts/${input.id}`;
+		input.spaceSlug && input.slug
+			? `/c/${input.spaceSlug}/${input.slug}`
+			: `/posts/${input.id}`;
 	return buildCircleCommunityTargetUrl({
 		communityDomain: input.communityDomain,
 		realPath,
@@ -247,10 +267,10 @@ interface ParseOpts {
 
 export function extractTitle(post: Record<string, unknown>): string {
 	return (
-		textValue(post.name)
-		?? textValue(post.display_title)
-		?? textValue(post.title)
-		?? "Community post"
+		textValue(post.name) ??
+		textValue(post.display_title) ??
+		textValue(post.title) ??
+		"Community post"
 	);
 }
 
@@ -273,17 +293,22 @@ export function toFeedItem(post: Record<string, unknown>, opts: ParseOpts = {}):
 		spaceName,
 		authorName: extractAuthorName(post),
 		commentCount: numberValue(post.comment_count ?? post.comments_count ?? post.commentsCount),
-		likeCount: numberValue(post.user_likes_count ?? post.likes_count ?? post.likesCount ?? post.like_count),
+		likeCount: numberValue(
+			post.user_likes_count ?? post.likes_count ?? post.likesCount ?? post.like_count,
+		),
 		imageUrl: extractPostImageUrl(post),
 		url:
-			textValue(post.url)
-			?? textValue(post.web_url)
-			?? textValue(post.action_web_url)
-			?? fallbackUrl,
+			textValue(post.url) ??
+			textValue(post.web_url) ??
+			textValue(post.action_web_url) ??
+			fallbackUrl,
 	};
 }
 
-export function toPostDetail(post: Record<string, unknown>, opts: ParseOpts = {}): CirclePostDetail {
+export function toPostDetail(
+	post: Record<string, unknown>,
+	opts: ParseOpts = {},
+): CirclePostDetail {
 	const id = String(post.id ?? "");
 	const fallbackUrl = buildFallbackUrl({
 		communityDomain: opts.communityDomain,
@@ -299,12 +324,17 @@ export function toPostDetail(post: Record<string, unknown>, opts: ParseOpts = {}
 		bodyHtml: extractBodyHtml(post),
 		bodyText: extractPostText(post),
 		imageUrl: extractPostImageUrl(post),
-		tiptapDoc: tiptap ? (tiptap.body ?? null) : null,
+		tiptapDoc: objectValue(tiptap?.body),
 		embeds: objectValue(tiptap?.sgids_to_object_map) ?? {},
+		inlineAttachments: arrayValue(tiptap?.inline_attachments),
 		authorName: extractAuthorName(post),
 		authorAvatarUrl: extractAuthorAvatar(post),
 		spaceName: extractSpaceName(post),
 		createdAt: textValue(post.created_at) ?? textValue(post.createdAt),
+		commentCount: numberValue(post.comment_count ?? post.comments_count ?? post.commentsCount),
+		likeCount: numberValue(
+			post.user_likes_count ?? post.likes_count ?? post.likesCount ?? post.like_count,
+		),
 		url: textValue(post.url) ?? fallbackUrl,
 	};
 }
