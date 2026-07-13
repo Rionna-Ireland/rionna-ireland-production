@@ -10,7 +10,16 @@ const REAL_POST = {
 	post_type: "basic",
 	body: { html: "<p>Hello from <strong>Laska</strong></p>", attachments: {} },
 	body_plain_text: "Hello from Laska",
-	tiptap_body: { body: { type: "doc", content: [] } },
+	tiptap_body: {
+		body: { type: "doc", content: [] },
+		inline_attachments: [
+			{
+				signed_id: "signed-image-1",
+				url: "https://img/inline.jpg",
+				content_type: "image/jpeg",
+			},
+		],
+	},
 	author: { id: 1, name: "Jane Trainer", avatar_url: "https://img/a.png" },
 	space: { id: 2713068, name: "Laska", slug: "laska", emoji: "🐎" },
 	created_at: "2026-07-01T09:00:00.000Z",
@@ -58,7 +67,16 @@ describe("toPostDetail", () => {
 			authorAvatarUrl: "https://img/a.png",
 			spaceName: "Laska",
 			createdAt: "2026-07-01T09:00:00.000Z",
+			commentCount: 3,
+			likeCount: 5,
 		});
+		expect(post.inlineAttachments).toEqual([
+			{
+				signed_id: "signed-image-1",
+				url: "https://img/inline.jpg",
+				content_type: "image/jpeg",
+			},
+		]);
 	});
 
 	it("nulls the 'Update available' placeholder body.html and keeps the real plain text", () => {
@@ -66,7 +84,9 @@ describe("toPostDetail", () => {
 		const placeholderPost = {
 			id: 34087789,
 			name: "Video",
-			body: { html: "<div><strong>Update available</strong><br>Please update the app to view this post.</div>" },
+			body: {
+				html: "<div><strong>Update available</strong><br>Please update the app to view this post.</div>",
+			},
 			body_plain_text: "This is the video ^",
 			space: { id: 2711304, name: "My Boy Harry", slug: "my-boy-harry" },
 			cardview_image: "https://img/thumb.jpg",
@@ -88,7 +108,10 @@ describe("toPostDetail", () => {
 					type: "doc",
 					content: [
 						{ type: "embed", attrs: { sgid: "sg1" } },
-						{ type: "paragraph", content: [{ type: "text", text: "This is the video ^" }] },
+						{
+							type: "paragraph",
+							content: [{ type: "text", text: "This is the video ^" }],
+						},
 					],
 				},
 				sgids_to_object_map: { sg1: { embed_type: "video", html: "<iframe></iframe>" } },
