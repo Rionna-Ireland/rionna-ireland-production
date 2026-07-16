@@ -2,7 +2,16 @@ import { ORPCError } from "@orpc/client";
 import { z } from "zod";
 
 import { adminProcedure } from "../../../../orpc/procedures";
-import { followAllMembers, followHorse, listHorseFollowers, unfollowHorse } from "../lib/horse-follows";
+import {
+	clearMemberFeedCache,
+	invalidateMemberFeedCache,
+} from "../../../circle/lib/member-feed-cache";
+import {
+	followAllMembers,
+	followHorse,
+	listHorseFollowers,
+	unfollowHorse,
+} from "../lib/horse-follows";
 
 interface SessionContext {
 	session: { activeOrganizationId?: string | null };
@@ -37,7 +46,10 @@ export const addFollowerProcedure = adminProcedure
 	})
 	.input(z.object({ horseId: z.string(), userId: z.string() }))
 	.handler(async ({ input, context }) => {
-		await followHorse({ organizationId: requireOrg(context), userId: input.userId, horseId: input.horseId });
+		const organizationId = requireOrg(context);
+		await followHorse({ organizationId, userId: input.userId, horseId: input.horseId });
+		// The member's feed filter changed under them — drop their cached buffer.
+		invalidateMemberFeedCache(input.userId, organizationId);
 		return { ok: true as const };
 	});
 
@@ -50,7 +62,9 @@ export const removeFollowerProcedure = adminProcedure
 	})
 	.input(z.object({ horseId: z.string(), userId: z.string() }))
 	.handler(async ({ input, context }) => {
-		await unfollowHorse({ organizationId: requireOrg(context), userId: input.userId, horseId: input.horseId });
+		const organizationId = requireOrg(context);
+		await unfollowHorse({ organizationId, userId: input.userId, horseId: input.horseId });
+		invalidateMemberFeedCache(input.userId, organizationId);
 		return { ok: true as const };
 	});
 
@@ -63,5 +77,11 @@ export const followAllMembersProcedure = adminProcedure
 	})
 	.input(z.object({ horseId: z.string() }))
 	.handler(async ({ input, context }) => {
-		return followAllMembers({ organizationId: requireOrg(context), horseId: input.horseId });
+		const result = await followAllMembers({
+			organizationId: requireOrg(context),
+			horseId: input.horseId,
+		});
+		// Every member's feed filter changed — nuke all cached buffers.
+		clearMemberFeedCache();
+		return result;
 	});

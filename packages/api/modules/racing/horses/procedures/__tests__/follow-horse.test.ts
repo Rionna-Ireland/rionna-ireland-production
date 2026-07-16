@@ -18,6 +18,13 @@ vi.mock("@repo/database", () => ({
 	},
 }));
 
+const { mockInvalidateFeedCache } = vi.hoisted(() => ({
+	mockInvalidateFeedCache: vi.fn(),
+}));
+vi.mock("../../../../circle/lib/member-feed-cache", () => ({
+	invalidateMemberFeedCache: mockInvalidateFeedCache,
+}));
+
 import { followHorseProcedure, unfollowHorseProcedure } from "../follow-horse";
 
 const USER = { id: "u-1", role: "member" };
@@ -43,6 +50,11 @@ describe("followHorseProcedure", () => {
 		});
 		expect(res).toEqual({ ok: true, isFollowing: true });
 	});
+
+	it("invalidates the member's feed buffer so the filter change is visible immediately", async () => {
+		await call(followHorseProcedure, { horseId: "h-1" }, ctx);
+		expect(mockInvalidateFeedCache).toHaveBeenCalledWith("u-1", "org-1");
+	});
 });
 
 describe("unfollowHorseProcedure", () => {
@@ -50,6 +62,11 @@ describe("unfollowHorseProcedure", () => {
 		const res = await call(unfollowHorseProcedure, { horseId: "h-1" }, ctx);
 		expect(mockDeleteMany).toHaveBeenCalled();
 		expect(res).toEqual({ ok: true, isFollowing: false });
+	});
+
+	it("invalidates the member's feed buffer so the filter change is visible immediately", async () => {
+		await call(unfollowHorseProcedure, { horseId: "h-1" }, ctx);
+		expect(mockInvalidateFeedCache).toHaveBeenCalledWith("u-1", "org-1");
 	});
 });
 
@@ -62,7 +79,11 @@ describe("input organizationId (web dashboard — session has no active org)", (
 	});
 
 	it("follows using the input organizationId when the session has none", async () => {
-		const res = await call(followHorseProcedure, { horseId: "h-1", organizationId: "org-1" }, ctx);
+		const res = await call(
+			followHorseProcedure,
+			{ horseId: "h-1", organizationId: "org-1" },
+			ctx,
+		);
 		expect(mockMemberFindFirst).toHaveBeenCalledWith(
 			expect.objectContaining({ where: { organizationId: "org-1", userId: "u-1" } }),
 		);
