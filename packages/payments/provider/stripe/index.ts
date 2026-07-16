@@ -1,9 +1,4 @@
-import {
-	createPurchase,
-	db,
-	getPurchaseBySubscriptionId,
-	updatePurchase,
-} from "@repo/database";
+import { createPurchase, db, getPurchaseBySubscriptionId, updatePurchase } from "@repo/database";
 import { logger } from "@repo/logs";
 import Stripe from "stripe";
 
@@ -12,9 +7,9 @@ import {
 	provisionCircleMember,
 	reactivateCircleMember,
 } from "../../lib/circle-provisioning";
-import { sendWelcomeEmail } from "../../lib/send-welcome-email";
 import { setCustomerIdToEntity } from "../../lib/customer";
 import { getPlanIdByProviderPriceId } from "../../lib/provider-price-ids";
+import { sendWelcomeEmail } from "../../lib/send-welcome-email";
 import { clearEventDedup, isEventDuplicate } from "../../lib/stripe-dedup";
 import type {
 	CancelSubscription,
@@ -286,10 +281,7 @@ export async function handleSubscriptionCreated(event: Stripe.Event) {
 
 	// 3. Provision Circle member (Layer 3: pre-call existence check)
 	if (member && !member.circleMemberId && userId && organizationId) {
-		await provisionCircleMember(
-			{ id: member.id, userId, organizationId },
-			event.id,
-		);
+		await provisionCircleMember({ id: member.id, userId, organizationId }, event.id);
 	}
 
 	// 4. Send welcome email (S2-05)
@@ -316,13 +308,18 @@ export async function handleSubscriptionUpdated(event: Stripe.Event) {
 
 	// If transitioning from canceled to active, reactivate Circle member
 	// Stripe's previous_attributes is a webhook-specific field not in base types
-	const previousAttributes = (event.data as unknown as { previous_attributes?: Record<string, unknown> }).previous_attributes;
+	const previousAttributes = (
+		event.data as unknown as { previous_attributes?: Record<string, unknown> }
+	).previous_attributes;
 	if (previousAttributes?.status === "canceled" && subscription.status === "active") {
 		// Reuse existingPurchase instead of fetching again
-		const purchase = existingPurchase ?? await getPurchaseBySubscriptionId(subscriptionId);
+		const purchase = existingPurchase ?? (await getPurchaseBySubscriptionId(subscriptionId));
 		if (purchase?.userId) {
 			const member = await db.member.findFirst({
-				where: { userId: purchase.userId, organizationId: purchase.organizationId ?? undefined },
+				where: {
+					userId: purchase.userId,
+					organizationId: purchase.organizationId ?? undefined,
+				},
 			});
 			if (member?.circleMemberId && member.circleStatus === "deactivated") {
 				await reactivateCircleMember({
@@ -349,7 +346,10 @@ export async function handleSubscriptionDeleted(event: Stripe.Event) {
 	});
 	if (purchase?.userId) {
 		const member = await db.member.findFirst({
-			where: { userId: purchase.userId, organizationId: purchase.organizationId ?? undefined },
+			where: {
+				userId: purchase.userId,
+				organizationId: purchase.organizationId ?? undefined,
+			},
 		});
 		if (member?.circleMemberId && member.circleStatus === "active") {
 			await deactivateCircleMember({
@@ -415,6 +415,11 @@ export const webhookHandler: WebhookHandler = async (req) => {
 				const planId = priceId ? getPlanIdByProviderPriceId(priceId) : null;
 
 				if (!planId || !priceId) {
+					// FABLE_AUDIT C3: this early return doesn't throw, so the catch
+					// below never releases the dedup claim — Stripe's retries would
+					// hit the dedup, get a 200, and the purchase would silently
+					// never be created. Release the claim before returning non-2xx.
+					await clearEventDedup(event.id);
 					return new Response("Missing plan or price ID.", {
 						status: 400,
 					});
