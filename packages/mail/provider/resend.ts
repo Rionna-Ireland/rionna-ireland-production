@@ -3,7 +3,15 @@ import { Resend } from "resend";
 import { config } from "../config";
 import type { SendEmailBatchHandler, SendEmailHandler } from "../types";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Lazily constructed: `new Resend()` throws without an API key, and a
+// module-scope constructor made merely importing this file (via any
+// @repo/mail consumer) explode in test environments without .env — the
+// long-standing "resend flake" that failed stripe-webhook.test.ts at import.
+let resendClient: Resend | null = null;
+function getResend(): Resend {
+	resendClient ??= new Resend(process.env.RESEND_API_KEY);
+	return resendClient;
+}
 
 /** Resend's hard cap on messages per batch call. */
 export const MAX_BATCH_SIZE = 100;
@@ -23,7 +31,7 @@ export const sendRawEmailBatch: SendEmailBatchHandler = async (messages) => {
 			`Batch of ${messages.length} exceeds the Resend limit of ${MAX_BATCH_SIZE}`,
 		);
 	}
-	const { error } = await resend.batch.send(
+	const { error } = await getResend().batch.send(
 		messages.map((message) => ({
 			from: message.from ?? config.mailFrom,
 			to: [message.to],
@@ -47,7 +55,7 @@ export const send: SendEmailHandler = async ({
 	html,
 	text,
 }) => {
-	await resend.emails.send({
+	await getResend().emails.send({
 		from: from ?? config.mailFrom,
 		to: [to],
 		cc,
