@@ -6,7 +6,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger as honoLogger } from "hono/logger";
 
-import { checkAuthRateLimit } from "./lib/rate-limit";
+import { checkApiRateLimit, checkAuthRateLimit } from "./lib/rate-limit";
 import { openApiHandler, rpcHandler } from "./orpc/handler";
 
 export { router } from "./orpc/router";
@@ -45,6 +45,20 @@ export const app = new Hono()
 	.post("/webhooks/payments", (c) => paymentsWebhookHandler(c.req.raw))
 	// Health check
 	.get("/health", (c) => c.text("OK"))
+	// Rate limit the general API surface (FABLE_AUDIT F2 / S5-07 item 8).
+	// Registered after auth/webhook/health routes, so it only guards the oRPC
+	// and OpenAPI handlers below. Fails open like the auth limiter.
+	.use("*", async (c, next) => {
+		const verdict = await checkApiRateLimit(c.req.raw.headers);
+		if (!verdict.ok) {
+			return c.json(
+				{ error: "rate_limited" },
+				429,
+				verdict.retryAfter ? { "Retry-After": String(verdict.retryAfter) } : undefined,
+			);
+		}
+		return next();
+	})
 	// oRPC handlers (for RPC and OpenAPI)
 	.use("*", async (c, next) => {
 		const context = {

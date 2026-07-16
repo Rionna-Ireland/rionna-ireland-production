@@ -36,6 +36,7 @@ vi.mock("@upstash/ratelimit", () => ({ Ratelimit: mocks.RatelimitCtor }));
 
 import {
 	__resetRateLimiterForTests,
+	checkApiRateLimit,
 	checkAuthRateLimit,
 	classifyAuthPath,
 	getClientIp,
@@ -146,6 +147,46 @@ describe("checkAuthRateLimit", () => {
 			"/api/auth/sign-in/email",
 			new Headers({ "x-real-ip": "1.2.3.4" }),
 		);
+
+		expect(verdict.ok).toBe(true);
+	});
+});
+
+// FABLE_AUDIT F2 / S5-07 item 8: the general API surface (oRPC + OpenAPI)
+// gets its own generous per-IP limiter, same fail-open semantics as auth.
+describe("checkApiRateLimit", () => {
+	it("allows the request when Upstash env is not configured", async () => {
+		const verdict = await checkApiRateLimit(new Headers());
+		expect(verdict.ok).toBe(true);
+		expect(mocks.limit).not.toHaveBeenCalled();
+	});
+
+	it("allows a request under the limit", async () => {
+		enableUpstash();
+		mocks.limit.mockResolvedValue({ success: true, remaining: 99, reset: Date.now() + 10_000 });
+
+		const verdict = await checkApiRateLimit(new Headers({ "x-real-ip": "1.2.3.4" }));
+
+		expect(verdict.ok).toBe(true);
+		expect(mocks.limit).toHaveBeenCalledWith("1.2.3.4");
+	});
+
+	it("blocks an over-limit request with a Retry-After value", async () => {
+		enableUpstash();
+		mocks.limit.mockResolvedValue({ success: false, remaining: 0, reset: Date.now() + 30_000 });
+
+		const verdict = await checkApiRateLimit(new Headers({ "x-real-ip": "1.2.3.4" }));
+
+		expect(verdict.ok).toBe(false);
+		expect(verdict.retryAfter).toBeGreaterThan(28);
+		expect(verdict.retryAfter).toBeLessThanOrEqual(30);
+	});
+
+	it("fails open when the limiter throws", async () => {
+		enableUpstash();
+		mocks.limit.mockRejectedValue(new Error("redis unreachable"));
+
+		const verdict = await checkApiRateLimit(new Headers({ "x-real-ip": "1.2.3.4" }));
 
 		expect(verdict.ok).toBe(true);
 	});
