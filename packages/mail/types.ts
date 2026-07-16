@@ -29,6 +29,17 @@ export interface SendEmailParams {
 
 export type SendEmailHandler = (params: SendEmailParams) => Promise<void>;
 
+/** A fully rendered email, ready for a provider batch call. */
+export interface RawEmail {
+	to: string;
+	from?: string;
+	subject: string;
+	text: string;
+	html?: string;
+}
+
+export type SendEmailBatchHandler = (messages: RawEmail[]) => Promise<void>;
+
 export interface MailProvider {
 	send: SendEmailHandler;
 }
