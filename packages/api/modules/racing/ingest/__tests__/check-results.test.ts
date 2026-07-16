@@ -167,6 +167,21 @@ describe("checkForResults", () => {
 		});
 	});
 
+	// ── FABLE_AUDIT P6: stop re-polling resultless races forever ──────────
+
+	it("only polls races past post time within the 48h give-up window", async () => {
+		mockRaceFindMany.mockResolvedValue([]);
+
+		await checkForResults("org-1", { getRaceResult: vi.fn() } as never);
+
+		const where = mockRaceFindMany.mock.calls[0][0].where;
+		expect(where.postTime.lt).toBeInstanceOf(Date);
+		expect(where.postTime.gte).toBeInstanceOf(Date);
+		// An abandoned race would otherwise cost ~96 provider calls/day forever.
+		const windowMs = where.postTime.lt.getTime() - where.postTime.gte.getTime();
+		expect(windowMs).toBe(48 * 60 * 60 * 1000);
+	});
+
 	// ── FABLE_AUDIT C5: rollback must not erase a just-written push marker ──
 
 	it("unions pre-transition and current notified markers on rollback", async () => {

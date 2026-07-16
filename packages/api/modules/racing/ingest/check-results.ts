@@ -17,10 +17,15 @@ export async function checkForResults(
 	organizationId: string,
 	provider: RacingDataProvider,
 ): Promise<void> {
+	// FABLE_AUDIT P6: give up on races with no result after 48h — an abandoned
+	// race would otherwise be re-polled every 15 minutes forever (~96 provider
+	// calls/day in perpetuity).
+	const RESULT_POLL_WINDOW_MS = 48 * 60 * 60 * 1000;
+	const now = new Date();
 	const pendingRaces = await db.race.findMany({
 		where: {
 			organizationId,
-			postTime: { lt: new Date() },
+			postTime: { lt: now, gte: new Date(now.getTime() - RESULT_POLL_WINDOW_MS) },
 			entries: {
 				some: {
 					status: { in: ["DECLARED", "ENTERED"] },
