@@ -9,6 +9,7 @@ import { logger } from "@repo/logs";
 import { z } from "zod";
 
 import { adminProcedure } from "../../../orpc/procedures";
+import { sanitizeNewsHtml } from "../lib/sanitize-news-html";
 import { sendNewsNotificationEmails } from "../../mail/send-news-notification";
 import { sendPush } from "../../racing/ingest/send-push";
 
@@ -57,7 +58,7 @@ export const updateNewsPost = adminProcedure
 			updateData.contentJson = input.contentJson as object;
 		}
 		if (input.contentHtml !== undefined) {
-			updateData.contentHtml = input.contentHtml;
+			updateData.contentHtml = sanitizeNewsHtml(input.contentHtml);
 		}
 		if (input.notifyMembersOnPublish !== undefined) {
 			updateData.notifyMembersOnPublish = input.notifyMembersOnPublish;

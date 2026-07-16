@@ -47,7 +47,9 @@ export function UserAvatarUpload({
 
 		setUploading(true);
 		try {
-			const { signedUploadUrl, path } = await getSignedUploadUrlMutation.mutateAsync({});
+			const { signedUploadUrl, path } = await getSignedUploadUrlMutation.mutateAsync({
+				fileSize: croppedImageData.size,
+			});
 
 			const response = await fetch(signedUploadUrl, {
 				method: "PUT",

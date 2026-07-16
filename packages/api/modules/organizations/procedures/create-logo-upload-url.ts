@@ -3,6 +3,7 @@ import { getOrganizationById } from "@repo/database";
 import { getSignedUploadUrl } from "@repo/storage";
 import z from "zod";
 
+import { imageFileSizeSchema } from "../../../lib/upload-validation";
 import { adminProcedure } from "../../../orpc/procedures";
 
 export const createLogoUploadUrl = adminProcedure
@@ -16,6 +17,7 @@ export const createLogoUploadUrl = adminProcedure
 	.input(
 		z.object({
 			organizationId: z.string(),
+			fileSize: imageFileSizeSchema,
 		}),
 	)
 	.handler(async ({ input: { organizationId } }) => {

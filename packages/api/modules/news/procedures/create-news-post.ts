@@ -5,6 +5,7 @@ import { nanoid } from "nanoid";
 import { z } from "zod";
 
 import { adminProcedure } from "../../../orpc/procedures";
+import { sanitizeNewsHtml } from "../lib/sanitize-news-html";
 
 export const createNewsPost = adminProcedure
 	.route({
@@ -53,7 +54,7 @@ export const createNewsPost = adminProcedure
 			subtitle: input.subtitle ?? null,
 			featuredImageUrl: input.featuredImageUrl ?? null,
 			contentJson: input.contentJson as object,
-			contentHtml: input.contentHtml,
+			contentHtml: sanitizeNewsHtml(input.contentHtml),
 			publishedAt: input.publish ? new Date() : null,
 			notifyMembersOnPublish: input.notifyMembersOnPublish,
 			authorUserId: context.user.id,
