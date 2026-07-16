@@ -23,6 +23,11 @@ import { isAuthorizedCronRequest } from "@repo/api/lib/cron-auth";
 import { runCirclePollTick } from "@repo/api/modules/circle/poller";
 import { logger } from "@repo/logs";
 
+// FABLE_AUDIT P2: the poll tick scales with member count (~15–40s at 500
+// members). Without an explicit maxDuration the platform default truncates
+// the tick silently mid-run. Requires Fluid Compute (the account default).
+export const maxDuration = 300;
+
 export async function POST(request: Request) {
 	if (!isAuthorizedCronRequest(request)) {
 		return new Response("Unauthorized", { status: 401 });
