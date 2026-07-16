@@ -18,6 +18,11 @@ import {
 	compareIds,
 	normaliseCircleNotification,
 } from "./http-utils";
+import {
+	clearCachedMemberToken,
+	persistCachedMemberToken,
+	readCachedMemberToken,
+} from "./member-token-cache";
 import type {
 	CircleCallOutcome,
 	CircleNotification,
@@ -246,6 +251,13 @@ export class RealCircleService implements CircleService {
 	}
 
 	async getMemberToken(circleMemberId: string): Promise<CircleCallOutcome<MemberTokenResult>> {
+		// FABLE_AUDIT P3: reuse the persisted token while it's fresh — token
+		// mints were the dominant Circle quota consumer. Fails open to a mint.
+		const cached = await readCachedMemberToken(circleMemberId);
+		if (cached) {
+			return { ok: true, data: cached };
+		}
+
 		let result: {
 			access_token: string;
 			refresh_token: string;
@@ -279,14 +291,14 @@ export class RealCircleService implements CircleService {
 
 		logger.info("[Circle] Minted member token", { circleMemberId });
 
-		return {
-			ok: true,
-			data: {
-				accessToken: result.access_token,
-				refreshToken: result.refresh_token,
-				expiresAt: result.access_token_expires_at,
-			},
+		const token: MemberTokenResult = {
+			accessToken: result.access_token,
+			refreshToken: result.refresh_token,
+			expiresAt: result.access_token_expires_at,
 		};
+		await persistCachedMemberToken(circleMemberId, token);
+
+		return { ok: true, data: token };
 	}
 
 	/**
@@ -342,6 +354,12 @@ export class RealCircleService implements CircleService {
 				status: res.status,
 				reason,
 			});
+			// A cached token Circle no longer accepts (e.g. revoked out-of-band)
+			// would otherwise fail every poll until it expires — drop it so the
+			// next tick recovers with a fresh mint.
+			if (res.status === 401 && tokenOutcome.data.fromCache) {
+				await clearCachedMemberToken(circleMemberId);
+			}
 			return { ok: false, reason, retriable, raw };
 		}
 
@@ -621,10 +639,17 @@ export class RealCircleService implements CircleService {
 			return { ok: false, reason, retriable, raw };
 		}
 
-		logger.info("[Circle] Uploaded image", { signedId: reg.data.signedId, filename: params.filename });
+		logger.info("[Circle] Uploaded image", {
+			signedId: reg.data.signedId,
+			filename: params.filename,
+		});
 		return {
 			ok: true,
-			data: { signedId: reg.data.signedId, attachableSgid: reg.data.attachableSgid, url: reg.data.cdnUrl },
+			data: {
+				signedId: reg.data.signedId,
+				attachableSgid: reg.data.attachableSgid,
+				url: reg.data.cdnUrl,
+			},
 		};
 	}
 

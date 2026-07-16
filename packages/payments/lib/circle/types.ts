@@ -33,6 +33,12 @@ export interface MemberTokenResult {
 	refreshToken: string;
 	/** ISO 8601, from Circle `access_token_expires_at`. */
 	expiresAt: string;
+	/**
+	 * True when the token was served from the Member-row cache rather than
+	 * freshly minted (FABLE_AUDIT P3). Lets consumers invalidate the cache
+	 * when Circle rejects the token.
+	 */
+	fromCache?: boolean;
 }
 
 export type CircleNotificationType =
@@ -324,7 +330,9 @@ export interface CircleService {
 	/** List all Circle space groups (paginated upstream; one page is fetched). */
 	listSpaceGroups(): Promise<CircleCallOutcome<CircleSpaceGroupSummary[]>>;
 	/** List Circle spaces, optionally scoped to a single space group. */
-	listSpaces(params?: { spaceGroupId?: string }): Promise<CircleCallOutcome<CircleSpaceSummary[]>>;
+	listSpaces(params?: {
+		spaceGroupId?: string;
+	}): Promise<CircleCallOutcome<CircleSpaceSummary[]>>;
 	/** Toggle a space's public/private visibility (Circle's `is_private` field). */
 	setSpaceVisibility(params: {
 		spaceId: string;

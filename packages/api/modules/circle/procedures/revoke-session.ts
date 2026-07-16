@@ -63,10 +63,16 @@ export const revokeSession = protectedProcedure
 			});
 		}
 
-		// Always clear the stored refresh token, regardless of revoke outcome.
+		// Always clear the stored refresh token — and the cached access token
+		// (FABLE_AUDIT P3): the token just revoked may be the cached one, and
+		// serving it to server-side consumers after logout would 401.
 		await db.member.update({
 			where: { id: member.id },
-			data: { circleRefreshToken: null },
+			data: {
+				circleRefreshToken: null,
+				circleAccessToken: null,
+				circleAccessTokenExpiresAt: null,
+			},
 		});
 
 		return { ok: true };

@@ -97,7 +97,11 @@ describe("revokeSession — logout fail-open (S6-03)", () => {
 		});
 		expect(mockMemberUpdate).toHaveBeenCalledWith({
 			where: { id: "m1" },
-			data: { circleRefreshToken: null },
+			data: {
+				circleRefreshToken: null,
+				circleAccessToken: null,
+				circleAccessTokenExpiresAt: null,
+			},
 		});
 		expect(result).toEqual({ ok: true });
 	});
@@ -114,7 +118,11 @@ describe("revokeSession — logout fail-open (S6-03)", () => {
 
 		expect(mockMemberUpdate).toHaveBeenCalledWith({
 			where: { id: "m1" },
-			data: { circleRefreshToken: null },
+			data: {
+				circleRefreshToken: null,
+				circleAccessToken: null,
+				circleAccessTokenExpiresAt: null,
+			},
 		});
 		expect(result).toEqual({ ok: true });
 	});
