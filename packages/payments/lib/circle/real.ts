@@ -322,9 +322,20 @@ export class RealCircleService implements CircleService {
 		const accessToken = tokenOutcome.data.accessToken;
 
 		const url = new URL(`${CIRCLE_HEADLESS_BASE}/notifications`);
-		// TODO(T18): verify Circle Headless accepts `after_id` + `per_page` as the
-		// pagination param names. If not, the poller will silently re-fetch the
-		// full first page every tick. Alternatives to try: since_id, starting_after, limit, page_size.
+		// T18 (verified 2026-07-16, live read-only probe + headless swagger):
+		// GET /notifications is OFFSET-paginated. The swagger
+		// (api-headless.circle.so/api/headless_client/v1/swagger.yaml) documents
+		// exactly two query params — `page` and `per_page` — and the live response
+		// envelope is offset-shaped ({ page, per_page, has_next_page, count,
+		// page_count, records }) with no cursor token. `per_page` is honoured;
+		// `page` is honoured. There is NO cursor param: `after_id` (and the
+		// alternatives since_id / starting_after / page_size) are silently accepted
+		// and ignored — the request still returns page 1's newest `per_page` rows.
+		// So the poller re-fetches the newest page every tick regardless. That is a
+		// quota note only, NOT a correctness bug: applyNotificationsCursor filters
+		// stale/replayed ids client-side (see http-utils.ts). We keep sending
+		// `after_id` — it is a harmless no-op today and becomes a live cursor for
+		// free if Circle ever adds one — and bound the page with `per_page`.
 		if (opts.sinceNotificationId) {
 			url.searchParams.set("after_id", opts.sinceNotificationId);
 		}
