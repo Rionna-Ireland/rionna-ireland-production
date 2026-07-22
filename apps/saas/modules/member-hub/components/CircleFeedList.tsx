@@ -39,6 +39,10 @@ export function CircleFeedList({
 			page: initialPage,
 			hasNextPage: initialHasNextPage,
 		},
+		// The server component just fetched page 1 — without this, TanStack
+		// treats initialData as stale and refetches on mount (Kimi L6). Matches
+		// the server-side feed buffer TTL.
+		staleTime: 60_000,
 	});
 
 	const [loadMoreState, setLoadMoreState] = useState<LoadMoreState<CircleFeedCardItem>>({

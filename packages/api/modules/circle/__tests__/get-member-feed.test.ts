@@ -339,3 +339,66 @@ describe("getMemberFeed (buffer cache — FABLE_AUDIT P4/C8)", () => {
 		expect(fetchSpy.mock.calls.length).toBeGreaterThan(fetchesAfterP1);
 	});
 });
+
+describe("getMemberFeed (total per-space failure — Kimi M1)", () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		clearMemberFeedCache();
+		mockGetSession.mockResolvedValue({ user: USER, session: SESSION });
+		mockOrgFindUnique.mockResolvedValue({ id: ORG_ID, slug: "rionna", metadata: null });
+		mockMemberFindFirst.mockResolvedValue({ circleMemberId: "82236270" });
+		mockGetMemberToken.mockResolvedValue({ ok: true, data: { accessToken: "jwt" } });
+		mockHorseFindMany.mockResolvedValue([]);
+		mockGetFollowedHorseIds.mockResolvedValue(new Set());
+	});
+
+	const failingPostsFetch = () =>
+		vi.fn(async (url) => {
+			const u = String(url);
+			if (u.includes("/spaces?")) {
+				return { ok: true, status: 200, json: async () => ({ records: SPACES }) };
+			}
+			if (/\/spaces\/\d+\/posts/.test(u)) {
+				return { ok: false, status: 429, json: async () => ({}) };
+			}
+			return { ok: false, status: 404, json: async () => ({}) };
+		});
+
+	it("returns ok:false (not a cached empty success) when every space fetch fails", async () => {
+		vi.stubGlobal("fetch", failingPostsFetch());
+		const res = await call(
+			getMemberFeed,
+			{ organizationId: ORG_ID, page: 1, perPage: 15 },
+			ctx,
+		);
+		expect(res).toMatchObject({ ok: false, items: [], hasNextPage: false });
+	});
+
+	it("does not cache the failure — the next call retries Circle", async () => {
+		const fetchSpy = failingPostsFetch();
+		vi.stubGlobal("fetch", fetchSpy);
+		await call(getMemberFeed, { organizationId: ORG_ID, page: 1, perPage: 15 }, ctx);
+		const afterFirst = fetchSpy.mock.calls.length;
+		await call(getMemberFeed, { organizationId: ORG_ID, page: 1, perPage: 15 }, ctx);
+		expect(fetchSpy.mock.calls.length).toBeGreaterThan(afterFirst);
+	});
+
+	it("still returns an ok empty feed when spaces genuinely have no posts", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(async (url) => {
+				const u = String(url);
+				if (u.includes("/spaces?")) {
+					return { ok: true, status: 200, json: async () => ({ records: SPACES }) };
+				}
+				return { ok: true, status: 200, json: async () => ({ records: [] }) };
+			}),
+		);
+		const res = await call(
+			getMemberFeed,
+			{ organizationId: ORG_ID, page: 1, perPage: 15 },
+			ctx,
+		);
+		expect(res).toMatchObject({ ok: true, items: [] });
+	});
+});

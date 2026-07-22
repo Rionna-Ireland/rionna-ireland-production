@@ -170,3 +170,42 @@ describe("listFollowedHorses", () => {
 		expect(rows).toHaveLength(1);
 	});
 });
+
+describe("followAllMembers concurrency (Kimi H1)", () => {
+	it("runs Circle joins with bounded parallelism, not serially", async () => {
+		const members = Array.from({ length: 6 }, (_, i) => ({ userId: `u-${i}` }));
+		mockMemberFindMany.mockResolvedValue(members);
+		mockCreateMany.mockResolvedValue({ count: members.length });
+
+		let inFlight = 0;
+		let maxInFlight = 0;
+		mockSyncCircleSpaceMembership.mockImplementation(async () => {
+			inFlight++;
+			maxInFlight = Math.max(maxInFlight, inFlight);
+			await new Promise((resolve) => setTimeout(resolve, 5));
+			inFlight--;
+			return { ok: true };
+		});
+
+		await followAllMembers({ organizationId: "org-1", horseId: "h-1" });
+
+		expect(mockSyncCircleSpaceMembership).toHaveBeenCalledTimes(members.length);
+		expect(maxInFlight).toBeGreaterThan(1);
+	});
+
+	it("still logs the joined/failed summary with bounded execution", async () => {
+		mockMemberFindMany.mockResolvedValue([{ userId: "u-1" }, { userId: "u-2" }, { userId: "u-3" }]);
+		mockCreateMany.mockResolvedValue({ count: 3 });
+		mockSyncCircleSpaceMembership
+			.mockResolvedValueOnce({ ok: true })
+			.mockResolvedValueOnce({ ok: false })
+			.mockRejectedValueOnce(new Error("circle down"));
+
+		await followAllMembers({ organizationId: "org-1", horseId: "h-1" });
+
+		expect(mockLoggerInfo).toHaveBeenCalledWith(
+			"[Circle] followAllMembers space join summary",
+			expect.objectContaining({ joined: 1, failed: 2 }),
+		);
+	});
+});

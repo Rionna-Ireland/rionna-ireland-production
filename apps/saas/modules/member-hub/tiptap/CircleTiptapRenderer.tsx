@@ -1,6 +1,7 @@
 import { Fragment, type ReactNode } from "react";
 import type { HydratedNode } from "@repo/payments/lib/circle/hydrate";
 import { CIRCLE_PROSE_CLASS } from "./prose";
+import { extractEmbedIframeSrc } from "./embed-html";
 
 /**
  * Lightweight read-only renderer for a HYDRATED Circle doc (see hydrateCircleDoc).
@@ -117,14 +118,21 @@ function renderNode(node: HydratedNode, key: string): ReactNode {
 		}
 		case "embed": {
 			const embed = (node.attrs?._resolved as EmbedObject) ?? null;
-			if (embed?.html) {
+			// Never inject embed.html verbatim (stored-XSS surface, Kimi H3):
+			// rebuild the iframe from its validated https src instead.
+			const iframeSrc = extractEmbedIframeSrc(embed?.html ?? null);
+			if (iframeSrc) {
 				return (
-					<div
-						key={key}
-						className="my-6 overflow-hidden rounded-xl"
-						// biome-ignore lint/security/noDangerouslySetInnerHtml: Circle-provided oEmbed iframe, read-only
-						dangerouslySetInnerHTML={{ __html: embed.html }}
-					/>
+					<div key={key} className="my-6 overflow-hidden rounded-xl">
+						<iframe
+							src={iframeSrc}
+							title="Embedded media"
+							className="aspect-video w-full"
+							loading="lazy"
+							allowFullScreen
+							referrerPolicy="no-referrer"
+						/>
+					</div>
 				);
 			}
 			return str(embed?.url) ? (

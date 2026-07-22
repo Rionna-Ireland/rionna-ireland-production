@@ -56,3 +56,36 @@ describe("CircleTiptapRenderer", () => {
 		).not.toThrow();
 	});
 });
+
+describe("CircleTiptapRenderer embed sanitization (Kimi H3)", () => {
+	const embedDoc = (html: string): HydratedNode => ({
+		type: "doc",
+		content: [
+			{
+				type: "embed",
+				attrs: { sgid: "X", _resolved: { html, url: "https://provider.example/watch" } },
+			},
+		],
+	});
+
+	it("rebuilds an iframe embed from its validated https src (no raw HTML pass-through)", () => {
+		const html = render(
+			embedDoc('<iframe src="https://www.youtube.com/embed/abc" data-tracker="spy"></iframe>'),
+		);
+		expect(html).toContain('src="https://www.youtube.com/embed/abc"');
+		expect(html).not.toContain("data-tracker");
+	});
+
+	it("renders a script-only embed as a safe link, never as HTML", () => {
+		const html = render(embedDoc('<script>alert(1)</script>'));
+		expect(html).not.toContain("<script");
+		expect(html).toContain("View media");
+		expect(html).toContain('href="https://provider.example/watch"');
+	});
+
+	it("renders a javascript: iframe src as a safe link", () => {
+		const html = render(embedDoc('<iframe src="javascript:alert(1)"></iframe>'));
+		expect(html).not.toContain("javascript:");
+		expect(html).toContain("View media");
+	});
+});

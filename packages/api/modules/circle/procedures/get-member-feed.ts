@@ -174,7 +174,9 @@ export const getMemberFeed = protectedProcedure
 
 		const spaces = horseFilteredSpaces.slice(0, MAX_SPACES);
 
-		// 2. Latest posts from each space, in parallel; a failing space is skipped, not fatal.
+		// 2. Latest posts from each space, in parallel; a failing space is skipped, not
+		// fatal — but we count failures so a total wipe-out isn't cached as success.
+		let failedSpaces = 0;
 		const perSpace = await Promise.all(
 			spaces.map(async (space) => {
 				const spaceMeta = {
@@ -187,17 +189,34 @@ export const getMemberFeed = protectedProcedure
 						`${base}/spaces/${encodeURIComponent(String(space.id))}/posts?per_page=${POSTS_PER_SPACE}&sort=latest`,
 						{ headers: authHeaders },
 					);
-					if (!r.ok) return [];
+					if (!r.ok) {
+						failedSpaces++;
+						return [];
+					}
 					// Ensure each post carries its space context (space post lists may omit it).
 					return extractPosts(await r.json()).map((post) => ({
 						...post,
 						space: objectValue(post.space) ?? spaceMeta,
 					}));
 				} catch {
+					failedSpaces++;
 					return [];
 				}
 			}),
 		);
+
+		// Every space fetch failed (Circle partial outage / 429 burst): surface the
+		// error path so the client shows retry, and don't cache the empty buffer for
+		// the TTL (Kimi M1). A genuinely empty feed (no failures) still caches.
+		if (spaces.length > 0 && failedSpaces === spaces.length) {
+			logger.warn("[Circle] Member feed: every space fetch failed", {
+				surface: "circle.member_feed",
+				userId: user.id,
+				organizationId: input.organizationId,
+				spaces: spaces.length,
+			});
+			return fail();
+		}
 
 		// 3. Merge → map → newest-first → dedupe by id.
 		const seen = new Set<string>();
