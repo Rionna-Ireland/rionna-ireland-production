@@ -65,7 +65,20 @@ async function main() {
 	const failed: Array<{ postId: unknown; status: number }> = [];
 
 	for (const space of spaces) {
-		const posts = await listPaginated(`/posts?space_id=${space.id}`);
+		// Chat/members/course-type spaces 404 on the admin posts endpoint
+		// ("Missing record: space") — they carry no likeable posts; skip them.
+		let posts: CircleRecord[];
+		try {
+			posts = await listPaginated(`/posts?space_id=${space.id}`);
+		} catch (error) {
+			if (String(error).includes("-> 404")) {
+				console.log(
+					`skipping space ${space.id} (${String(space.name)}): no posts endpoint (404)`,
+				);
+				continue;
+			}
+			throw error;
+		}
 		for (const post of posts) {
 			scanned++;
 			if (post.is_liking_enabled === true) {
