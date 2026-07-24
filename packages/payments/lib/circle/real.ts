@@ -505,6 +505,10 @@ export class RealCircleService implements CircleService {
 			space_id: Number(params.spaceId),
 			name: params.name,
 			tiptap_body: params.tiptapBody,
+			// Admin-API posts default is_liking_enabled to false, which makes the
+			// Member API 401 members' like taps (S7-03 QA finding). Comments stay
+			// at Circle's default until a native comment surface exists.
+			is_liking_enabled: true,
 		};
 		if (params.attachments && params.attachments.length > 0) {
 			body.attachments = params.attachments;

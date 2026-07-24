@@ -92,6 +92,9 @@ describe("RealCircleService — publishing surface (S2-09)", () => {
 				space_id: 2681063,
 				name: "Trainer update",
 				tiptap_body: DOC,
+				// S7-03 QA: Admin-API posts default likes OFF — members' like taps
+				// 401 with "You cannot perform this action" unless this is set.
+				is_liking_enabled: true,
 			});
 		});
 
