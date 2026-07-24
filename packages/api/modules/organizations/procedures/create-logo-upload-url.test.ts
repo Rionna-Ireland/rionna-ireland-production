@@ -31,7 +31,7 @@ const MEMBER = { id: "member", role: "member", name: "Alice" };
 const SESSION = { id: "s1", activeOrganizationId: "org1" };
 const ctx = { context: { headers: new Headers() } };
 
-const okInput = { organizationId: "org1" };
+const okInput = { organizationId: "org1", fileSize: 1024 };
 
 beforeEach(() => {
 	vi.clearAllMocks();
@@ -47,6 +47,13 @@ describe("createLogoUploadUrl procedure (S5-07 item 4)", () => {
 		await expect(call(createLogoUploadUrl, okInput, ctx)).rejects.toMatchObject({
 			code: "FORBIDDEN",
 		});
+		expect(mockGetSignedUploadUrl).not.toHaveBeenCalled();
+	});
+
+	it("rejects a fileSize above the 10 MB image cap (S5-09 / F3)", async () => {
+		await expect(
+			call(createLogoUploadUrl, { ...okInput, fileSize: 10 * 1024 * 1024 + 1 }, ctx),
+		).rejects.toMatchObject({ code: "BAD_REQUEST" });
 		expect(mockGetSignedUploadUrl).not.toHaveBeenCalled();
 	});
 

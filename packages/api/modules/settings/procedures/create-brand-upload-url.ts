@@ -3,6 +3,7 @@ import { db } from "@repo/database";
 import { getPublicUrl, getSignedUploadUrl } from "@repo/storage";
 import { z } from "zod";
 
+import { assertSafeFilename, imageFileSizeSchema } from "../../../lib/upload-validation";
 import { adminProcedure } from "../../../orpc/procedures";
 
 export const createBrandUploadUrl = adminProcedure
@@ -16,9 +17,12 @@ export const createBrandUploadUrl = adminProcedure
 		z.object({
 			organizationId: z.string(),
 			filename: z.string(),
+			fileSize: imageFileSizeSchema,
 		}),
 	)
 	.handler(async ({ input: { organizationId, filename } }) => {
+		assertSafeFilename(filename);
+
 		const organization = await db.organization.findUnique({
 			where: { id: organizationId },
 			select: { id: true },

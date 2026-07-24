@@ -7,12 +7,7 @@
  *   providerEntryId   = `${race_id}_${horse_id}`
  */
 
-import type {
-	ProviderEntry,
-	ProviderHistoricalRun,
-	ProviderHorse,
-	ProviderResult,
-} from "../types";
+import type { ProviderEntry, ProviderHistoricalRun, ProviderHorse, ProviderResult } from "../types";
 
 export interface ApiSearchHorse {
 	id: string;
@@ -131,7 +126,14 @@ export function mapRacecardToEntries(
 			},
 			entry: {
 				providerEntryId: entryId(rc.race_id, r.horse_id),
-				status: "DECLARED" as const,
+				// FABLE_AUDIT C6 / S5-09 Task 1.5: The Racing API keeps withdrawn
+				// runners on the racecard with number "NR" (the OpenAPI spec types
+				// `number` as a plain string; this is per the API docs).
+				// TODO(S5-09): confirm NR signal against live data.
+				status:
+					r.number?.toUpperCase() === "NR"
+						? ("NON_RUNNER" as const)
+						: ("DECLARED" as const),
 				draw: num(r.draw),
 				weightLbs: num(r.lbs),
 				jockeyName: r.jockey,
@@ -194,9 +196,7 @@ export function mapHorseHistory(
 	const runs: ProviderHistoricalRun[] = [];
 
 	for (const race of data.results ?? []) {
-		const runner = (race.runners ?? []).find(
-			(r) => r.horse_id === providerHorseId,
-		);
+		const runner = (race.runners ?? []).find((r) => r.horse_id === providerHorseId);
 		if (!runner) continue;
 
 		runs.push({

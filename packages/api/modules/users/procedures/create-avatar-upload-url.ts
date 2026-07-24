@@ -1,5 +1,7 @@
 import { getSignedUploadUrl } from "@repo/storage";
+import { z } from "zod";
 
+import { imageFileSizeSchema } from "../../../lib/upload-validation";
 import { protectedProcedure } from "../../../orpc/procedures";
 
 export const createAvatarUploadUrl = protectedProcedure
@@ -10,6 +12,11 @@ export const createAvatarUploadUrl = protectedProcedure
 		summary: "Create avatar upload URL",
 		description: "Create a signed upload URL to upload an avatar image to the storage bucket",
 	})
+	.input(
+		z.object({
+			fileSize: imageFileSizeSchema,
+		}),
+	)
 	.handler(async ({ context: { user } }) => {
 		const path = `${user.id}.png`;
 		const signedUploadUrl = await getSignedUploadUrl(`${user.id}.png`, {

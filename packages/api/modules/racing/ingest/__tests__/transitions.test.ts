@@ -16,309 +16,347 @@ const mockRaceEntryUpdate = vi.fn().mockResolvedValue({});
 const mockHorseUpdate = vi.fn().mockResolvedValue({});
 
 vi.mock("@repo/database", () => ({
-  db: {
-    raceEntry: { update: (...args: unknown[]) => mockRaceEntryUpdate(...args) },
-    horse: { update: (...args: unknown[]) => mockHorseUpdate(...args) },
-  },
+	db: {
+		raceEntry: { update: (...args: unknown[]) => mockRaceEntryUpdate(...args) },
+		horse: { update: (...args: unknown[]) => mockHorseUpdate(...args) },
+	},
 }));
 
-// Mock sendPush
-const mockSendPush = vi.fn().mockResolvedValue(undefined);
+// Mock sendPush — default: delivered to a healthy audience.
+const mockSendPush = vi.fn();
 vi.mock("../send-push", () => ({
-  sendPush: (...args: unknown[]) => mockSendPush(...args),
+	sendPush: (...args: unknown[]) => mockSendPush(...args),
 }));
 
 // Mock postRaceUpdateToCircle
 const mockPostToCircle = vi.fn().mockResolvedValue(undefined);
 vi.mock("../post-to-circle", () => ({
-  postRaceUpdateToCircle: (...args: unknown[]) => mockPostToCircle(...args),
+	postRaceUpdateToCircle: (...args: unknown[]) => mockPostToCircle(...args),
 }));
 
 import { handleStatusTransition } from "../transitions";
 
 const mockHorse = { id: "horse-1", name: "Pink Jasmine" };
 const mockRace = {
-  id: "race-1",
-  name: "Leopardstown Maiden",
-  postTime: new Date("2026-04-15T14:00:00Z"),
-  courseName: "Leopardstown",
+	id: "race-1",
+	name: "Leopardstown Maiden",
+	postTime: new Date("2026-04-15T14:00:00Z"),
+	courseName: "Leopardstown",
 };
 
 function makeEntry(
-  status: string,
-  notifiedStates: string[] = [],
-  finishingPosition: number | null = null,
+	status: string,
+	notifiedStates: string[] = [],
+	finishingPosition: number | null = null,
 ) {
-  return {
-    id: "entry-1",
-    status: status as "DECLARED" | "NON_RUNNER" | "RAN",
-    notifiedStates,
-    finishingPosition,
-  };
+	return {
+		id: "entry-1",
+		status: status as "DECLARED" | "NON_RUNNER" | "RAN",
+		notifiedStates,
+		finishingPosition,
+	};
 }
 
 describe("handleStatusTransition", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+	beforeEach(() => {
+		vi.clearAllMocks();
+		mockSendPush.mockResolvedValue({ attempted: 3, sent: 3, failed: 0 });
+	});
 
-  // ── Push-worthy transitions ──────────────────────────────────────
+	// ── Push delivery failure (FABLE_AUDIT C4) ───────────────────────
 
-  it("fires push for DECLARED transition", async () => {
-    await handleStatusTransition(
-      "org-1",
-      mockHorse,
-      mockRace,
-      makeEntry("DECLARED"),
-      "ENTERED",
-    );
-    expect(mockSendPush).toHaveBeenCalledOnce();
-    expect(mockSendPush.mock.calls[0][0].triggerType).toBe("HORSE_DECLARED");
-  });
+	it("throws (and does not mark notified) when the push failed for the whole audience", async () => {
+		mockSendPush.mockResolvedValue({ attempted: 5, sent: 0, failed: 5 });
 
-  it("fires push for NON_RUNNER transition", async () => {
-    await handleStatusTransition(
-      "org-1",
-      mockHorse,
-      mockRace,
-      makeEntry("NON_RUNNER"),
-      "DECLARED",
-    );
-    expect(mockSendPush).toHaveBeenCalledOnce();
-    expect(mockSendPush.mock.calls[0][0].triggerType).toBe("HORSE_NON_RUNNER");
-  });
+		await expect(
+			handleStatusTransition("org-1", mockHorse, mockRace, makeEntry("DECLARED"), "ENTERED"),
+		).rejects.toThrow(/push delivery failed/i);
 
-  it("fires push for RAN transition (winner)", async () => {
-    await handleStatusTransition(
-      "org-1",
-      mockHorse,
-      mockRace,
-      makeEntry("RAN", [], 1),
-      "DECLARED",
-    );
-    expect(mockSendPush).toHaveBeenCalledOnce();
-    expect(mockSendPush.mock.calls[0][0].triggerType).toBe("RACE_RESULT");
-  });
+		expect(mockRaceEntryUpdate).not.toHaveBeenCalled();
+		expect(mockPostToCircle).not.toHaveBeenCalled();
+	});
 
-  // ── Race push targeting (S8-03 §2 / C2) ──────────────────────────
+	it("marks notified on a partial delivery (no re-push to the successes)", async () => {
+		mockSendPush.mockResolvedValue({ attempted: 5, sent: 3, failed: 2 });
 
-  it("targets sendPush at the horse's followers for DECLARED", async () => {
-    await handleStatusTransition(
-      "org-1",
-      mockHorse,
-      mockRace,
-      makeEntry("DECLARED"),
-      "ENTERED",
-    );
-    expect(mockSendPush.mock.calls[0][0].followersOfHorseId).toBe("horse-1");
-  });
+		await handleStatusTransition(
+			"org-1",
+			mockHorse,
+			mockRace,
+			makeEntry("DECLARED"),
+			"ENTERED",
+		);
 
-  it("targets sendPush at the horse's followers for RAN", async () => {
-    await handleStatusTransition(
-      "org-1",
-      mockHorse,
-      mockRace,
-      makeEntry("RAN", [], 1),
-      "DECLARED",
-    );
-    expect(mockSendPush.mock.calls[0][0].followersOfHorseId).toBe("horse-1");
-  });
+		expect(mockRaceEntryUpdate).toHaveBeenCalledWith(
+			expect.objectContaining({
+				data: { notifiedStates: ["DECLARED"] },
+			}),
+		);
+	});
 
-  // ── Non-push-worthy transitions ──────────────────────────────────
+	it("marks notified when there was nothing to send (empty audience / all deduped)", async () => {
+		mockSendPush.mockResolvedValue({ attempted: 0, sent: 0, failed: 0 });
 
-  it("does NOT fire push for ENTERED transition", async () => {
-    await handleStatusTransition(
-      "org-1",
-      mockHorse,
-      mockRace,
-      makeEntry("ENTERED"),
-      null,
-    );
-    expect(mockSendPush).not.toHaveBeenCalled();
-  });
+		await handleStatusTransition(
+			"org-1",
+			mockHorse,
+			mockRace,
+			makeEntry("DECLARED"),
+			"ENTERED",
+		);
 
-  it("does NOT fire push for DISQUALIFIED transition", async () => {
-    await handleStatusTransition(
-      "org-1",
-      mockHorse,
-      mockRace,
-      makeEntry("DISQUALIFIED"),
-      "RAN",
-    );
-    expect(mockSendPush).not.toHaveBeenCalled();
-  });
+		expect(mockRaceEntryUpdate).toHaveBeenCalledWith(
+			expect.objectContaining({
+				data: { notifiedStates: ["DECLARED"] },
+			}),
+		);
+	});
 
-  it("does NOT fire push for VOID transition", async () => {
-    await handleStatusTransition(
-      "org-1",
-      mockHorse,
-      mockRace,
-      makeEntry("VOID"),
-      "ENTERED",
-    );
-    expect(mockSendPush).not.toHaveBeenCalled();
-  });
+	// ── Push-worthy transitions ──────────────────────────────────────
 
-  // ── notifiedStates idempotency ───────────────────────────────────
+	it("fires push for DECLARED transition", async () => {
+		await handleStatusTransition(
+			"org-1",
+			mockHorse,
+			mockRace,
+			makeEntry("DECLARED"),
+			"ENTERED",
+		);
+		expect(mockSendPush).toHaveBeenCalledOnce();
+		expect(mockSendPush.mock.calls[0][0].triggerType).toBe("HORSE_DECLARED");
+	});
 
-  it("does NOT fire duplicate push if DECLARED already in notifiedStates", async () => {
-    await handleStatusTransition(
-      "org-1",
-      mockHorse,
-      mockRace,
-      makeEntry("DECLARED", ["DECLARED"]),
-      "ENTERED",
-    );
-    expect(mockSendPush).not.toHaveBeenCalled();
-  });
+	it("fires push for NON_RUNNER transition", async () => {
+		await handleStatusTransition(
+			"org-1",
+			mockHorse,
+			mockRace,
+			makeEntry("NON_RUNNER"),
+			"DECLARED",
+		);
+		expect(mockSendPush).toHaveBeenCalledOnce();
+		expect(mockSendPush.mock.calls[0][0].triggerType).toBe("HORSE_NON_RUNNER");
+	});
 
-  it("does NOT fire duplicate push if RAN already in notifiedStates", async () => {
-    await handleStatusTransition(
-      "org-1",
-      mockHorse,
-      mockRace,
-      makeEntry("RAN", ["DECLARED", "RAN"], 2),
-      "DECLARED",
-    );
-    expect(mockSendPush).not.toHaveBeenCalled();
-  });
+	it("fires push for RAN transition (winner)", async () => {
+		await handleStatusTransition(
+			"org-1",
+			mockHorse,
+			mockRace,
+			makeEntry("RAN", [], 1),
+			"DECLARED",
+		);
+		expect(mockSendPush).toHaveBeenCalledOnce();
+		expect(mockSendPush.mock.calls[0][0].triggerType).toBe("RACE_RESULT");
+	});
 
-  it("fires push for RAN even if DECLARED was already notified", async () => {
-    await handleStatusTransition(
-      "org-1",
-      mockHorse,
-      mockRace,
-      makeEntry("RAN", ["DECLARED"], 3),
-      "DECLARED",
-    );
-    expect(mockSendPush).toHaveBeenCalledOnce();
-  });
+	// ── Race push targeting (S8-03 §2 / C2) ──────────────────────────
 
-  // ── notifiedStates is updated after push ─────────────────────────
+	it("targets sendPush at the horse's followers for DECLARED", async () => {
+		await handleStatusTransition(
+			"org-1",
+			mockHorse,
+			mockRace,
+			makeEntry("DECLARED"),
+			"ENTERED",
+		);
+		expect(mockSendPush.mock.calls[0][0].followersOfHorseId).toBe("horse-1");
+	});
 
-  it("appends new status to notifiedStates after push", async () => {
-    await handleStatusTransition(
-      "org-1",
-      mockHorse,
-      mockRace,
-      makeEntry("DECLARED"),
-      "ENTERED",
-    );
-    expect(mockRaceEntryUpdate).toHaveBeenCalledWith({
-      where: { id: "entry-1" },
-      data: { notifiedStates: ["DECLARED"] },
-    });
-  });
+	it("targets sendPush at the horse's followers for RAN", async () => {
+		await handleStatusTransition(
+			"org-1",
+			mockHorse,
+			mockRace,
+			makeEntry("RAN", [], 1),
+			"DECLARED",
+		);
+		expect(mockSendPush.mock.calls[0][0].followersOfHorseId).toBe("horse-1");
+	});
 
-  it("preserves existing notifiedStates when appending", async () => {
-    await handleStatusTransition(
-      "org-1",
-      mockHorse,
-      mockRace,
-      makeEntry("RAN", ["DECLARED"], 1),
-      "DECLARED",
-    );
-    expect(mockRaceEntryUpdate).toHaveBeenCalledWith({
-      where: { id: "entry-1" },
-      data: { notifiedStates: ["DECLARED", "RAN"] },
-    });
-  });
+	// ── Non-push-worthy transitions ──────────────────────────────────
 
-  // ── Horse denormalized fields ────────────────────────────────────
+	it("does NOT fire push for ENTERED transition", async () => {
+		await handleStatusTransition("org-1", mockHorse, mockRace, makeEntry("ENTERED"), null);
+		expect(mockSendPush).not.toHaveBeenCalled();
+	});
 
-  it("sets Horse.nextEntryId on DECLARED", async () => {
-    await handleStatusTransition(
-      "org-1",
-      mockHorse,
-      mockRace,
-      makeEntry("DECLARED"),
-      "ENTERED",
-    );
-    expect(mockHorseUpdate).toHaveBeenCalledWith({
-      where: { id: "horse-1" },
-      data: { nextEntryId: "entry-1" },
-    });
-  });
+	it("does NOT fire push for DISQUALIFIED transition", async () => {
+		await handleStatusTransition(
+			"org-1",
+			mockHorse,
+			mockRace,
+			makeEntry("DISQUALIFIED"),
+			"RAN",
+		);
+		expect(mockSendPush).not.toHaveBeenCalled();
+	});
 
-  it("sets Horse.latestEntryId and clears nextEntryId on RAN", async () => {
-    await handleStatusTransition(
-      "org-1",
-      mockHorse,
-      mockRace,
-      makeEntry("RAN", [], 2),
-      "DECLARED",
-    );
-    expect(mockHorseUpdate).toHaveBeenCalledWith({
-      where: { id: "horse-1" },
-      data: { latestEntryId: "entry-1", nextEntryId: null },
-    });
-  });
+	it("does NOT fire push for VOID transition", async () => {
+		await handleStatusTransition("org-1", mockHorse, mockRace, makeEntry("VOID"), "ENTERED");
+		expect(mockSendPush).not.toHaveBeenCalled();
+	});
 
-  it("does NOT update Horse fields for NON_RUNNER", async () => {
-    await handleStatusTransition(
-      "org-1",
-      mockHorse,
-      mockRace,
-      makeEntry("NON_RUNNER"),
-      "DECLARED",
-    );
-    expect(mockHorseUpdate).not.toHaveBeenCalled();
-  });
+	// ── notifiedStates idempotency ───────────────────────────────────
 
-  // ── Circle posting (S6-08) ────────────────────────────────────────
+	it("does NOT fire duplicate push if DECLARED already in notifiedStates", async () => {
+		await handleStatusTransition(
+			"org-1",
+			mockHorse,
+			mockRace,
+			makeEntry("DECLARED", ["DECLARED"]),
+			"ENTERED",
+		);
+		expect(mockSendPush).not.toHaveBeenCalled();
+	});
 
-  it("DECLARED both pushes and posts to Circle", async () => {
-    await handleStatusTransition(
-      "org-1",
-      mockHorse,
-      mockRace,
-      makeEntry("DECLARED"),
-      "ENTERED",
-    );
-    expect(mockSendPush).toHaveBeenCalledOnce();
-    expect(mockPostToCircle).toHaveBeenCalledOnce();
-    expect(mockPostToCircle.mock.calls[0][0]).toMatchObject({
-      organizationId: "org-1",
-      status: "DECLARED",
-    });
-  });
+	it("does NOT fire duplicate push if RAN already in notifiedStates", async () => {
+		await handleStatusTransition(
+			"org-1",
+			mockHorse,
+			mockRace,
+			makeEntry("RAN", ["DECLARED", "RAN"], 2),
+			"DECLARED",
+		);
+		expect(mockSendPush).not.toHaveBeenCalled();
+	});
 
-  it("already-notified bare status short-circuits both push and post", async () => {
-    const entry = {
-      id: "entry-1",
-      status: "DECLARED" as const,
-      notifiedStates: ["DECLARED"],
-      finishingPosition: null,
-    };
-    await handleStatusTransition("org-1", mockHorse, mockRace, entry, "ENTERED");
-    expect(mockSendPush).not.toHaveBeenCalled();
-    expect(mockPostToCircle).not.toHaveBeenCalled();
-  });
+	it("fires push for RAN even if DECLARED was already notified", async () => {
+		await handleStatusTransition(
+			"org-1",
+			mockHorse,
+			mockRace,
+			makeEntry("RAN", ["DECLARED"], 3),
+			"DECLARED",
+		);
+		expect(mockSendPush).toHaveBeenCalledOnce();
+	});
 
-  it("passes fieldSize through to postRaceUpdateToCircle when provided", async () => {
-    await handleStatusTransition(
-      "org-1",
-      mockHorse,
-      mockRace,
-      makeEntry("RAN", [], 4),
-      "DECLARED",
-      8,
-    );
-    expect(mockPostToCircle).toHaveBeenCalledOnce();
-    expect(mockPostToCircle.mock.calls[0][0]).toMatchObject({
-      fieldSize: 8,
-    });
-  });
+	// ── notifiedStates is updated after push ─────────────────────────
 
-  it("omits fieldSize from postRaceUpdateToCircle when not provided", async () => {
-    await handleStatusTransition(
-      "org-1",
-      mockHorse,
-      mockRace,
-      makeEntry("RAN", [], 4),
-      "DECLARED",
-    );
-    expect(mockPostToCircle).toHaveBeenCalledOnce();
-    expect(mockPostToCircle.mock.calls[0][0].fieldSize).toBeUndefined();
-  });
+	it("appends new status to notifiedStates after push", async () => {
+		await handleStatusTransition(
+			"org-1",
+			mockHorse,
+			mockRace,
+			makeEntry("DECLARED"),
+			"ENTERED",
+		);
+		expect(mockRaceEntryUpdate).toHaveBeenCalledWith({
+			where: { id: "entry-1" },
+			data: { notifiedStates: ["DECLARED"] },
+		});
+	});
+
+	it("preserves existing notifiedStates when appending", async () => {
+		await handleStatusTransition(
+			"org-1",
+			mockHorse,
+			mockRace,
+			makeEntry("RAN", ["DECLARED"], 1),
+			"DECLARED",
+		);
+		expect(mockRaceEntryUpdate).toHaveBeenCalledWith({
+			where: { id: "entry-1" },
+			data: { notifiedStates: ["DECLARED", "RAN"] },
+		});
+	});
+
+	// ── Horse denormalized fields ────────────────────────────────────
+
+	it("sets Horse.nextEntryId on DECLARED", async () => {
+		await handleStatusTransition(
+			"org-1",
+			mockHorse,
+			mockRace,
+			makeEntry("DECLARED"),
+			"ENTERED",
+		);
+		expect(mockHorseUpdate).toHaveBeenCalledWith({
+			where: { id: "horse-1" },
+			data: { nextEntryId: "entry-1" },
+		});
+	});
+
+	it("sets Horse.latestEntryId and clears nextEntryId on RAN", async () => {
+		await handleStatusTransition(
+			"org-1",
+			mockHorse,
+			mockRace,
+			makeEntry("RAN", [], 2),
+			"DECLARED",
+		);
+		expect(mockHorseUpdate).toHaveBeenCalledWith({
+			where: { id: "horse-1" },
+			data: { latestEntryId: "entry-1", nextEntryId: null },
+		});
+	});
+
+	it("does NOT update Horse fields for NON_RUNNER", async () => {
+		await handleStatusTransition(
+			"org-1",
+			mockHorse,
+			mockRace,
+			makeEntry("NON_RUNNER"),
+			"DECLARED",
+		);
+		expect(mockHorseUpdate).not.toHaveBeenCalled();
+	});
+
+	// ── Circle posting (S6-08) ────────────────────────────────────────
+
+	it("DECLARED both pushes and posts to Circle", async () => {
+		await handleStatusTransition(
+			"org-1",
+			mockHorse,
+			mockRace,
+			makeEntry("DECLARED"),
+			"ENTERED",
+		);
+		expect(mockSendPush).toHaveBeenCalledOnce();
+		expect(mockPostToCircle).toHaveBeenCalledOnce();
+		expect(mockPostToCircle.mock.calls[0][0]).toMatchObject({
+			organizationId: "org-1",
+			status: "DECLARED",
+		});
+	});
+
+	it("already-notified bare status short-circuits both push and post", async () => {
+		const entry = {
+			id: "entry-1",
+			status: "DECLARED" as const,
+			notifiedStates: ["DECLARED"],
+			finishingPosition: null,
+		};
+		await handleStatusTransition("org-1", mockHorse, mockRace, entry, "ENTERED");
+		expect(mockSendPush).not.toHaveBeenCalled();
+		expect(mockPostToCircle).not.toHaveBeenCalled();
+	});
+
+	it("passes fieldSize through to postRaceUpdateToCircle when provided", async () => {
+		await handleStatusTransition(
+			"org-1",
+			mockHorse,
+			mockRace,
+			makeEntry("RAN", [], 4),
+			"DECLARED",
+			8,
+		);
+		expect(mockPostToCircle).toHaveBeenCalledOnce();
+		expect(mockPostToCircle.mock.calls[0][0]).toMatchObject({
+			fieldSize: 8,
+		});
+	});
+
+	it("omits fieldSize from postRaceUpdateToCircle when not provided", async () => {
+		await handleStatusTransition(
+			"org-1",
+			mockHorse,
+			mockRace,
+			makeEntry("RAN", [], 4),
+			"DECLARED",
+		);
+		expect(mockPostToCircle).toHaveBeenCalledOnce();
+		expect(mockPostToCircle.mock.calls[0][0].fieldSize).toBeUndefined();
+	});
 });

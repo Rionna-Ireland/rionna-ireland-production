@@ -29,6 +29,7 @@ import { Switch } from "@repo/ui/components/switch";
 import { Textarea } from "@repo/ui/components/textarea";
 import { toastError, toastSuccess } from "@repo/ui/components/toast";
 import { orpc } from "@shared/lib/orpc-query-utils";
+import { toSafeFilename } from "@shared/lib/safe-filename";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef } from "react";
@@ -159,12 +160,13 @@ export function ClubSettingsForm() {
 		if (!file || !organizationId) return;
 
 		const ext = file.name.split(".").pop() ?? "png";
-		const filename = `logo.${ext}`;
+		const filename = `logo.${toSafeFilename(ext)}`;
 
 		try {
 			const { signedUploadUrl, publicUrl } = await uploadUrlMutation.mutateAsync({
 				organizationId,
 				filename,
+				fileSize: file.size,
 			});
 
 			const uploadResponse = await fetch(signedUploadUrl, {

@@ -1,5 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { mapSearchHorse, mapRacecardToEntries, mapResult, mapHorseHistory, num, parseDistF } from "../map";
+
+import {
+	mapSearchHorse,
+	mapRacecardToEntries,
+	mapResult,
+	mapHorseHistory,
+	num,
+	parseDistF,
+} from "../map";
 
 describe("num", () => {
 	it.each([
@@ -93,9 +101,30 @@ describe("mapRacecardToEntries", () => {
 
 	it("returns [] when the racecard omits runners", () => {
 		const { runners: _runners, ...noRunners } = racecard;
-		expect(
-			mapRacecardToEntries(noRunners, new Set(["hrs_45568460"])),
-		).toEqual([]);
+		expect(mapRacecardToEntries(noRunners, new Set(["hrs_45568460"]))).toEqual([]);
+	});
+
+	// FABLE_AUDIT C6 / S5-09 Task 1.5 — synthesized fixture: the OpenAPI spec
+	// types `number` as a plain string; the API docs present withdrawn runners
+	// as number "NR" on racecards.
+	it("maps a runner numbered NR to NON_RUNNER", () => {
+		const withNr = {
+			...racecard,
+			runners: [{ ...racecard.runners[0], number: "NR" }],
+		};
+		const entries = mapRacecardToEntries(withNr, new Set(["hrs_45568460"]));
+		expect(entries).toHaveLength(1);
+		expect(entries[0].entry.status).toBe("NON_RUNNER");
+	});
+
+	it("treats a lowercase nr as a non-runner too", () => {
+		const withNr = {
+			...racecard,
+			runners: [{ ...racecard.runners[0], number: "nr" }],
+		};
+		expect(mapRacecardToEntries(withNr, new Set(["hrs_45568460"]))[0].entry.status).toBe(
+			"NON_RUNNER",
+		);
 	});
 });
 
@@ -196,7 +225,13 @@ describe("mapResult", () => {
 		const result = mapResult({
 			race_id: "rac_9",
 			runners: [
-				{ horse_id: "hrs_45568460", position: "1", btn: "0", or: "75", comment: "stayed on" },
+				{
+					horse_id: "hrs_45568460",
+					position: "1",
+					btn: "0",
+					or: "75",
+					comment: "stayed on",
+				},
 				{ horse_id: "hrs_x", position: "2", btn: "1.5", or: "70" },
 			],
 		});
@@ -211,9 +246,16 @@ describe("mapResult", () => {
 	it("ignores runners with a non-numeric position", () => {
 		const result = mapResult({
 			race_id: "rac_9",
-			runners: [{ horse_id: "h1", position: "PU" }, { horse_id: "h2", position: "2" }],
+			runners: [
+				{ horse_id: "h1", position: "PU" },
+				{ horse_id: "h2", position: "2" },
+			],
 		});
-		expect(result.entries.find((e) => e.providerEntryId === "rac_9_h1")?.finishingPosition).toBeUndefined();
-		expect(result.entries.find((e) => e.providerEntryId === "rac_9_h2")?.finishingPosition).toBe(2);
+		expect(
+			result.entries.find((e) => e.providerEntryId === "rac_9_h1")?.finishingPosition,
+		).toBeUndefined();
+		expect(
+			result.entries.find((e) => e.providerEntryId === "rac_9_h2")?.finishingPosition,
+		).toBe(2);
 	});
 });

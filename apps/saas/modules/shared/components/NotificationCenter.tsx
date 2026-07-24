@@ -44,7 +44,10 @@ export function NotificationCenter({ className }: { className?: string }) {
 		}),
 		enabled: Boolean(user),
 		refetchOnWindowFocus: true,
-		refetchInterval: 60 * 1000,
+		// 180s: the badge poll is the single biggest driver of function
+		// invocations (Kimi M3) — refetchOnWindowFocus keeps it feeling live.
+		// refetchIntervalInBackground stays default (false): hidden tabs don't poll.
+		refetchInterval: 180 * 1000,
 	});
 
 	const { data: list = EMPTY_NOTIFICATION_LIST } = useQuery({

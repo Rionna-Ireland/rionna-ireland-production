@@ -1,6 +1,7 @@
 import { getPublicUrl, getSignedUploadUrl } from "@repo/storage";
 import { z } from "zod";
 
+import { assertSafeFilename, imageFileSizeSchema } from "../../../lib/upload-validation";
 import { adminProcedure } from "../../../orpc/procedures";
 
 export const createNewsImageUploadUrl = adminProcedure
@@ -14,9 +15,12 @@ export const createNewsImageUploadUrl = adminProcedure
 		z.object({
 			organizationId: z.string(),
 			filename: z.string(),
+			fileSize: imageFileSizeSchema,
 		}),
 	)
 	.handler(async ({ input: { organizationId, filename } }) => {
+		assertSafeFilename(filename);
+
 		const path = `${organizationId}/news/${filename}`;
 		const signedUploadUrl = await getSignedUploadUrl(path, {
 			bucket: "mediaPublic",

@@ -19,6 +19,7 @@ import { Button } from "@repo/ui/components/button";
 import { Input } from "@repo/ui/components/input";
 import { toastError } from "@repo/ui/components/toast";
 import { orpc } from "@shared/lib/orpc-query-utils";
+import { toSafeFilename } from "@shared/lib/safe-filename";
 import { useMutation } from "@tanstack/react-query";
 import { GripVerticalIcon, TrashIcon, UploadIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -116,7 +117,8 @@ export function PhotoGallery({ horseId, photos, onChange }: PhotoGalleryProps) {
 				try {
 					const { signedUploadUrl, publicUrl } = await uploadUrlMutation.mutateAsync({
 						horseId,
-						filename: file.name,
+						filename: `${Date.now()}-${toSafeFilename(file.name)}`,
+						fileSize: file.size,
 					});
 
 					const uploadResponse = await fetch(signedUploadUrl, {

@@ -4,8 +4,9 @@ import { logger } from "@repo/logs";
 import { createCircleService, getCircleHeadlessApiBaseUrl } from "@repo/payments/lib/circle";
 import { z } from "zod";
 
-import { getFollowedHorseIds } from "../../racing/horses/lib/horse-follows";
 import { protectedProcedure } from "../../../orpc/procedures";
+import { getFollowedHorseIds } from "../../racing/horses/lib/horse-follows";
+import { readMemberFeedBuffer, writeMemberFeedBuffer } from "../lib/member-feed-cache";
 import {
 	type MemberFeedItem,
 	extractPosts,
@@ -52,14 +53,25 @@ export const getMemberFeed = protectedProcedure
 		}),
 	)
 	.handler(async ({ input, context: { user } }): Promise<MemberFeedResult> => {
-		const fail = (): MemberFeedResult => ({ ok: false, items: [], page: input.page, hasNextPage: false });
-		const empty = (): MemberFeedResult => ({ ok: true, items: [], page: input.page, hasNextPage: false });
+		const fail = (): MemberFeedResult => ({
+			ok: false,
+			items: [],
+			page: input.page,
+			hasNextPage: false,
+		});
+		const empty = (): MemberFeedResult => ({
+			ok: true,
+			items: [],
+			page: input.page,
+			hasNextPage: false,
+		});
 
 		const org = await db.organization.findUnique({ where: { id: input.organizationId } });
 		if (!org?.slug) {
 			throw new ORPCError("NOT_FOUND", { message: "Organization not found" });
 		}
-		const communityDomain = parseOrgMetadata(org.metadata as string | null).circle?.communityDomain;
+		const communityDomain = parseOrgMetadata(org.metadata as string | null).circle
+			?.communityDomain;
 
 		const member = await db.member.findFirst({
 			where: { userId: user.id, organizationId: input.organizationId },
@@ -67,6 +79,23 @@ export const getMemberFeed = protectedProcedure
 		});
 		if (!member?.circleMemberId) {
 			return empty();
+		}
+
+		// Serve pages from the short-lived merged buffer when we have one
+		// (FABLE_AUDIT P4): "load more" then costs zero Circle calls, and the
+		// buffer can't shift under the pagination within the TTL (C8).
+		const paginate = (merged: MemberFeedItem[]): MemberFeedResult => {
+			const start = (input.page - 1) * input.perPage;
+			return {
+				ok: true,
+				items: merged.slice(start, start + input.perPage),
+				page: input.page,
+				hasNextPage: merged.length > start + input.perPage,
+			};
+		};
+		const cachedBuffer = readMemberFeedBuffer(user.id, input.organizationId);
+		if (cachedBuffer) {
+			return paginate(cachedBuffer);
 		}
 
 		const service = createCircleService(org.slug);
@@ -88,7 +117,10 @@ export const getMemberFeed = protectedProcedure
 		try {
 			spacesRes = await fetch(`${base}/spaces?per_page=100`, { headers: authHeaders });
 		} catch (error) {
-			logger.warn("[Circle] Member feed: spaces fetch threw", { surface: "circle.member_feed", error: String(error) });
+			logger.warn("[Circle] Member feed: spaces fetch threw", {
+				surface: "circle.member_feed",
+				error: String(error),
+			});
 			return fail();
 		}
 		if (!spacesRes.ok) {
@@ -128,37 +160,63 @@ export const getMemberFeed = protectedProcedure
 				return followedHorseIds.has(horseId);
 			});
 		} catch (error) {
-			logger.warn("[Circle] Member feed: horse follow filter failed, returning unfiltered feed", {
-				surface: "circle.member_feed",
-				userId: user.id,
-				organizationId: input.organizationId,
-				error: String(error),
-			});
+			logger.warn(
+				"[Circle] Member feed: horse follow filter failed, returning unfiltered feed",
+				{
+					surface: "circle.member_feed",
+					userId: user.id,
+					organizationId: input.organizationId,
+					error: String(error),
+				},
+			);
 			horseFilteredSpaces = typeFilteredSpaces;
 		}
 
 		const spaces = horseFilteredSpaces.slice(0, MAX_SPACES);
 
-		// 2. Latest posts from each space, in parallel; a failing space is skipped, not fatal.
+		// 2. Latest posts from each space, in parallel; a failing space is skipped, not
+		// fatal — but we count failures so a total wipe-out isn't cached as success.
+		let failedSpaces = 0;
 		const perSpace = await Promise.all(
 			spaces.map(async (space) => {
-				const spaceMeta = { id: space.id, name: textValue(space.name), slug: textValue(space.slug) };
+				const spaceMeta = {
+					id: space.id,
+					name: textValue(space.name),
+					slug: textValue(space.slug),
+				};
 				try {
 					const r = await fetch(
 						`${base}/spaces/${encodeURIComponent(String(space.id))}/posts?per_page=${POSTS_PER_SPACE}&sort=latest`,
 						{ headers: authHeaders },
 					);
-					if (!r.ok) return [];
+					if (!r.ok) {
+						failedSpaces++;
+						return [];
+					}
 					// Ensure each post carries its space context (space post lists may omit it).
 					return extractPosts(await r.json()).map((post) => ({
 						...post,
 						space: objectValue(post.space) ?? spaceMeta,
 					}));
 				} catch {
+					failedSpaces++;
 					return [];
 				}
 			}),
 		);
+
+		// Every space fetch failed (Circle partial outage / 429 burst): surface the
+		// error path so the client shows retry, and don't cache the empty buffer for
+		// the TTL (Kimi M1). A genuinely empty feed (no failures) still caches.
+		if (spaces.length > 0 && failedSpaces === spaces.length) {
+			logger.warn("[Circle] Member feed: every space fetch failed", {
+				surface: "circle.member_feed",
+				userId: user.id,
+				organizationId: input.organizationId,
+				spaces: spaces.length,
+			});
+			return fail();
+		}
 
 		// 3. Merge → map → newest-first → dedupe by id.
 		const seen = new Set<string>();
@@ -176,8 +234,7 @@ export const getMemberFeed = protectedProcedure
 			return (Number.isNaN(tb) ? 0 : tb) - (Number.isNaN(ta) ? 0 : ta);
 		});
 
-		// 4. Offset pagination over the merged buffer.
-		const start = (input.page - 1) * input.perPage;
-		const items = merged.slice(start, start + input.perPage);
-		return { ok: true, items, page: input.page, hasNextPage: merged.length > start + input.perPage };
+		// 4. Cache the merged buffer, then paginate over it.
+		writeMemberFeedBuffer(user.id, input.organizationId, merged);
+		return paginate(merged);
 	});

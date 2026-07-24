@@ -3,6 +3,7 @@ import { getHorseById } from "@repo/database";
 import { getPublicUrl, getSignedUploadUrl } from "@repo/storage";
 import { z } from "zod";
 
+import { assertSafeFilename, imageFileSizeSchema } from "../../../../lib/upload-validation";
 import { adminProcedure } from "../../../../orpc/procedures";
 
 export const createPhotoUploadUrl = adminProcedure
@@ -17,9 +18,12 @@ export const createPhotoUploadUrl = adminProcedure
 		z.object({
 			horseId: z.string(),
 			filename: z.string(),
+			fileSize: imageFileSizeSchema,
 		}),
 	)
 	.handler(async ({ input }) => {
+		assertSafeFilename(input.filename);
+
 		const horse = await getHorseById(input.horseId);
 
 		if (!horse) {

@@ -24,6 +24,7 @@ import { Input } from "@repo/ui/components/input";
 import { toastError, toastSuccess } from "@repo/ui/components/toast";
 import { useRouter } from "@shared/hooks/router";
 import { orpc } from "@shared/lib/orpc-query-utils";
+import { toSafeFilename } from "@shared/lib/safe-filename";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeftIcon, ExternalLinkIcon, UsersIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -100,7 +101,8 @@ export function CommunityAnnouncementForm({ memberPostId }: CommunityAnnouncemen
 		try {
 			const { signedUploadUrl, path } = await uploadUrlMutation.mutateAsync({
 				organizationId,
-				filename: `${Date.now()}-${file.name}`,
+				filename: `${Date.now()}-${toSafeFilename(file.name)}`,
+				fileSize: file.size,
 			});
 			const uploadResponse = await fetch(signedUploadUrl, {
 				method: "PUT",

@@ -21,7 +21,7 @@ import {
 	UploadImagesPlugin,
 	Placeholder,
 } from "novel";
-import { memo, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 
 import { EditorBubbleMenu } from "./novel/editor-bubble-menu";
 import { EditorToolbar } from "./novel/editor-toolbar";
@@ -92,6 +92,15 @@ export const NovelEditor = memo(function NovelEditor({
 }: NovelEditorProps) {
 	const [editor, setEditor] = useState<EditorInstance | null>(null);
 	const [videoOpen, setVideoOpen] = useState(false);
+
+	// tiptap's React wrapper only applies `editable` at creation — on later renders it
+	// re-applies the editor's *current* value, so prop changes (e.g. HorseUpdateForm
+	// enabling the body once a horse is picked) silently do nothing. Sync it ourselves.
+	useEffect(() => {
+		if (editor && editor.isEditable !== editable) {
+			editor.setEditable(editable);
+		}
+	}, [editor, editable]);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
 	// novel's createImageUpload contract: validateFn MUST return a truthy value

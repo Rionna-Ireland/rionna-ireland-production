@@ -191,6 +191,11 @@ model Member {
   circleRefreshToken       String?
   circleProfileConfirmedAt DateTime?
 
+  // Circle member token cache (FABLE_AUDIT P3) — minted JWTs are reused
+  // until shortly before expiry instead of minted per request.
+  circleAccessToken          String?   @db.Text
+  circleAccessTokenExpiresAt DateTime?
+
   // Circle notification poller cursor (S6-01)
   circleLastSeenNotificationId String?
   circleLastPolledAt           DateTime?

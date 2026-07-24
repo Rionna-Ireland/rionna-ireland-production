@@ -17,6 +17,9 @@ import { db } from "@repo/database";
 import { parseOrgMetadata } from "@repo/database/types";
 import { logger } from "@repo/logs";
 
+// FABLE_AUDIT P2: reconciliation walks every member; give it headroom.
+export const maxDuration = 300;
+
 export async function POST(request: Request) {
 	if (!isAuthorizedCronRequest(request)) {
 		return new Response("Unauthorized", { status: 401 });

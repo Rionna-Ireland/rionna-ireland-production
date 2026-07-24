@@ -1,3 +1,4 @@
+import { auth } from "@repo/auth";
 import { getSignedUrl } from "@repo/storage";
 import { config as storageConfig } from "@repo/storage/config";
 
@@ -10,7 +11,7 @@ type LogicalBucket = (typeof ALLOWED_BUCKETS)[number];
 const resolveLogicalBucket = (segment: string): LogicalBucket | undefined =>
 	ALLOWED_BUCKETS.find((key) => key === segment || storageConfig.bucketNames[key] === segment);
 
-export const GET = async (_req: Request, { params }: { params: Promise<{ path: string[] }> }) => {
+export const GET = async (req: Request, { params }: { params: Promise<{ path: string[] }> }) => {
 	const { path } = await params;
 
 	const [bucketSegment, ...rest] = path;
@@ -25,16 +26,26 @@ export const GET = async (_req: Request, { params }: { params: Promise<{ path: s
 		return new Response("Not found", { status: 404 });
 	}
 
+	// FABLE_AUDIT F1: both buckets are private and their keys are guessable
+	// ({userId}.png avatars, {orgId}/member-posts/{file} media), so club-private
+	// content must not be readable without a session. Every consumer of this
+	// proxy lives inside the authenticated app; genuinely public assets use the
+	// `media-public` bucket's direct URLs and never come through here (P5).
+	const session = await auth.api.getSession({ headers: req.headers });
+	if (!session) {
+		return new Response("Unauthorized", { status: 401 });
+	}
+
 	const signedUrl = await getSignedUrl(filePath, {
 		bucket,
 		expiresIn: 60 * 60,
 	});
 
-	// Stream the bytes through (rather than 302-redirecting to the signed URL):
-	// next/image's optimizer does not resolve a redirect to image bytes and fails
-	// with "received null", whereas a plain <img> would. Proxying the body keeps
-	// both consumers (next/image for media, <img> for avatars) working, and never
-	// exposes the signed Supabase URL to the client.
+	// Stream the bytes through (rather than 302-redirecting to the signed URL)
+	// so the signed Supabase URL is never exposed to the client. Note: all
+	// consumers are browser-initiated <img>/AvatarImage requests, which carry
+	// the session cookie — do NOT put next/image in front of this route; its
+	// optimizer fetches server-side without cookies and would 401 (F1).
 	const upstream = await fetch(signedUrl);
 	if (!upstream.ok || !upstream.body) {
 		return new Response("Not found", { status: 404 });

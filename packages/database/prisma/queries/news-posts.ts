@@ -1,6 +1,5 @@
-import type { Prisma } from "../generated/client";
-
 import { db } from "../client";
+import type { Prisma } from "../generated/client";
 
 export async function getNewsPosts({
 	organizationId,
@@ -196,5 +195,26 @@ export async function updateNewsPost(
 export async function deleteNewsPost(id: string) {
 	return await db.newsPost.delete({
 		where: { id },
+	});
+}
+
+/**
+ * Atomically claim the post's one-shot publish notification (FABLE_AUDIT P1).
+ * Returns true only for the caller that flipped `notificationSentAt` from
+ * null — concurrent publishes lose the claim and must not send.
+ */
+export async function claimNewsPostNotification(id: string): Promise<boolean> {
+	const result = await db.newsPost.updateMany({
+		where: { id, notificationSentAt: null },
+		data: { notificationSentAt: new Date() },
+	});
+	return result.count === 1;
+}
+
+/** Release a claim taken by `claimNewsPostNotification` so a re-publish can retry. */
+export async function releaseNewsPostNotification(id: string): Promise<void> {
+	await db.newsPost.updateMany({
+		where: { id },
+		data: { notificationSentAt: null },
 	});
 }

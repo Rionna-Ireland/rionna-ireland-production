@@ -5,6 +5,7 @@ import { orpc } from "@shared/lib/orpc-query-utils";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 
+import { applyLoadMoreResult, type LoadMoreState } from "../lib/feed-pagination";
 import { CircleFeedCard, type CircleFeedCardItem } from "./CircleFeedCard";
 
 interface CircleFeedListProps {
@@ -38,20 +39,31 @@ export function CircleFeedList({
 			page: initialPage,
 			hasNextPage: initialHasNextPage,
 		},
+		// The server component just fetched page 1 — without this, TanStack
+		// treats initialData as stale and refetches on mount (Kimi L6). Matches
+		// the server-side feed buffer TTL.
+		staleTime: 60_000,
 	});
 
-	const [extraItems, setExtraItems] = useState<CircleFeedCardItem[]>([]);
-	const [page, setPage] = useState(initialPage);
-	const [hasNextPage, setHasNextPage] = useState(initialHasNextPage);
+	const [loadMoreState, setLoadMoreState] = useState<LoadMoreState<CircleFeedCardItem>>({
+		extraItems: [],
+		page: initialPage,
+		hasNextPage: initialHasNextPage,
+		loadFailed: false,
+	});
 	const [isLoading, setIsLoading] = useState(false);
+	const { extraItems, page, hasNextPage, loadFailed } = loadMoreState;
 
 	// Whenever the first page refetches (e.g. after a follow/unfollow toggle
 	// invalidates the query), drop any "load more" pages and reset pagination
 	// so the visible list matches the freshly filtered feed.
 	useEffect(() => {
-		setExtraItems([]);
-		setPage(feedQuery.data.page);
-		setHasNextPage(feedQuery.data.hasNextPage);
+		setLoadMoreState({
+			extraItems: [],
+			page: feedQuery.data.page,
+			hasNextPage: feedQuery.data.hasNextPage,
+			loadFailed: false,
+		});
 	}, [feedQuery.data]);
 
 	async function loadMore() {
@@ -60,15 +72,15 @@ export function CircleFeedList({
 		}
 		setIsLoading(true);
 		try {
-			const next = page + 1;
 			const result = await orpcClient.circle.getMemberFeed({
 				organizationId,
-				page: next,
+				page: page + 1,
 				perPage,
 			});
-			setExtraItems((prev) => [...prev, ...result.items]);
-			setPage(result.page);
-			setHasNextPage(result.hasNextPage);
+			setLoadMoreState((prev) => applyLoadMoreResult(prev, feedQuery.data.items, result));
+		} catch {
+			// Network/RPC failure — same handling as the server's ok:false fail-safe.
+			setLoadMoreState((prev) => ({ ...prev, loadFailed: true }));
 		} finally {
 			setIsLoading(false);
 		}
@@ -78,20 +90,27 @@ export function CircleFeedList({
 
 	return (
 		<div>
-			<div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+			<div className="gap-6 md:grid-cols-2 lg:grid-cols-3 grid">
 				{items.map((item) => (
-					<CircleFeedCard key={`${item.spaceId}-${item.id}`} item={item} basePath={basePath} />
+					<CircleFeedCard
+						key={`${item.spaceId}-${item.id}`}
+						item={item}
+						basePath={basePath}
+					/>
 				))}
 			</div>
 			{hasNextPage ? (
-				<div className="mt-10 flex justify-center">
+				<div className="mt-10 gap-2 flex flex-col items-center">
+					{loadFailed ? (
+						<p className="text-sm text-muted-foreground">Couldn’t load more posts.</p>
+					) : null}
 					<button
 						type="button"
 						onClick={loadMore}
 						disabled={isLoading}
-						className="rounded-full bg-primary px-6 py-2.5 font-mono text-xs uppercase tracking-wide text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-60"
+						className="px-6 py-2.5 text-xs tracking-wide rounded-full bg-primary font-mono text-primary-foreground uppercase transition-opacity hover:opacity-90 disabled:opacity-60"
 					>
-						{isLoading ? "Loading…" : "Load more"}
+						{isLoading ? "Loading…" : loadFailed ? "Retry" : "Load more"}
 					</button>
 				</div>
 			) : null}

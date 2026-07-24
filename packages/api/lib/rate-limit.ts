@@ -20,6 +20,7 @@ let redisClient: Redis | null | undefined;
 let emailLimiter: Ratelimit | null = null;
 let signInLimiter: Ratelimit | null = null;
 let generalLimiter: Ratelimit | null = null;
+let apiLimiter: Ratelimit | null = null;
 let warnedMissingConfig = false;
 
 function getRedis(): Redis | null {
@@ -153,11 +154,47 @@ export async function checkAuthRateLimit(
 	}
 }
 
+/**
+ * Rate limit for the general API surface — the oRPC/OpenAPI handlers behind
+ * `/rpc` and `/api` (FABLE_AUDIT F2 / S5-07 item 8). Generous per-IP sliding
+ * window: the app is chatty (feed, badge polls) but not 100-req/min chatty,
+ * while unauthenticated `publicProcedure`s stop being free enumeration/DoS
+ * targets. Same fail-open semantics as the auth limiter.
+ */
+export async function checkApiRateLimit(headers: Headers): Promise<RateLimitVerdict> {
+	try {
+		const redis = getRedis();
+		if (!redis) {
+			return { ok: true }; // no store configured -> allow
+		}
+
+		apiLimiter ??= new Ratelimit({
+			redis,
+			limiter: Ratelimit.slidingWindow(100, "1 m"),
+			prefix: "rl:api",
+		});
+
+		const { success, remaining, reset } = await apiLimiter.limit(getClientIp(headers));
+
+		return {
+			ok: success,
+			retryAfter: success ? undefined : Math.max(0, Math.ceil((reset - Date.now()) / 1000)),
+			remaining,
+			reset,
+		};
+	} catch (error) {
+		// Fail open — API availability outweighs limiter strictness.
+		logger.error(error, { ctx: "checkApiRateLimit" });
+		return { ok: true };
+	}
+}
+
 /** @internal Test-only: clears the lazy singletons so env changes take effect. */
 export function __resetRateLimiterForTests(): void {
 	redisClient = undefined;
 	emailLimiter = null;
 	signInLimiter = null;
 	generalLimiter = null;
+	apiLimiter = null;
 	warnedMissingConfig = false;
 }

@@ -18,6 +18,10 @@
 import { isAuthorizedCronRequest } from "@repo/api/lib/cron-auth";
 import { runIngestForAllOrgs } from "@repo/api/modules/racing/ingest/orchestrator";
 
+// FABLE_AUDIT P2: racecard ingest stretches on busy race days (provider is
+// throttled to 5 req/s); don't let the platform default truncate the tick.
+export const maxDuration = 300;
+
 export async function POST(request: Request) {
   if (!isAuthorizedCronRequest(request)) {
     return new Response("Unauthorized", { status: 401 });

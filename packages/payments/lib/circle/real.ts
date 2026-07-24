@@ -18,6 +18,11 @@ import {
 	compareIds,
 	normaliseCircleNotification,
 } from "./http-utils";
+import {
+	clearCachedMemberToken,
+	persistCachedMemberToken,
+	readCachedMemberToken,
+} from "./member-token-cache";
 import type {
 	CircleCallOutcome,
 	CircleNotification,
@@ -246,6 +251,13 @@ export class RealCircleService implements CircleService {
 	}
 
 	async getMemberToken(circleMemberId: string): Promise<CircleCallOutcome<MemberTokenResult>> {
+		// FABLE_AUDIT P3: reuse the persisted token while it's fresh — token
+		// mints were the dominant Circle quota consumer. Fails open to a mint.
+		const cached = await readCachedMemberToken(circleMemberId);
+		if (cached) {
+			return { ok: true, data: cached };
+		}
+
 		let result: {
 			access_token: string;
 			refresh_token: string;
@@ -279,14 +291,14 @@ export class RealCircleService implements CircleService {
 
 		logger.info("[Circle] Minted member token", { circleMemberId });
 
-		return {
-			ok: true,
-			data: {
-				accessToken: result.access_token,
-				refreshToken: result.refresh_token,
-				expiresAt: result.access_token_expires_at,
-			},
+		const token: MemberTokenResult = {
+			accessToken: result.access_token,
+			refreshToken: result.refresh_token,
+			expiresAt: result.access_token_expires_at,
 		};
+		await persistCachedMemberToken(circleMemberId, token);
+
+		return { ok: true, data: token };
 	}
 
 	/**
@@ -310,9 +322,20 @@ export class RealCircleService implements CircleService {
 		const accessToken = tokenOutcome.data.accessToken;
 
 		const url = new URL(`${CIRCLE_HEADLESS_BASE}/notifications`);
-		// TODO(T18): verify Circle Headless accepts `after_id` + `per_page` as the
-		// pagination param names. If not, the poller will silently re-fetch the
-		// full first page every tick. Alternatives to try: since_id, starting_after, limit, page_size.
+		// T18 (verified 2026-07-16, live read-only probe + headless swagger):
+		// GET /notifications is OFFSET-paginated. The swagger
+		// (api-headless.circle.so/api/headless_client/v1/swagger.yaml) documents
+		// exactly two query params — `page` and `per_page` — and the live response
+		// envelope is offset-shaped ({ page, per_page, has_next_page, count,
+		// page_count, records }) with no cursor token. `per_page` is honoured;
+		// `page` is honoured. There is NO cursor param: `after_id` (and the
+		// alternatives since_id / starting_after / page_size) are silently accepted
+		// and ignored — the request still returns page 1's newest `per_page` rows.
+		// So the poller re-fetches the newest page every tick regardless. That is a
+		// quota note only, NOT a correctness bug: applyNotificationsCursor filters
+		// stale/replayed ids client-side (see http-utils.ts). We keep sending
+		// `after_id` — it is a harmless no-op today and becomes a live cursor for
+		// free if Circle ever adds one — and bound the page with `per_page`.
 		if (opts.sinceNotificationId) {
 			url.searchParams.set("after_id", opts.sinceNotificationId);
 		}
@@ -342,6 +365,12 @@ export class RealCircleService implements CircleService {
 				status: res.status,
 				reason,
 			});
+			// A cached token Circle no longer accepts (e.g. revoked out-of-band)
+			// would otherwise fail every poll until it expires — drop it so the
+			// next tick recovers with a fresh mint.
+			if (res.status === 401 && tokenOutcome.data.fromCache) {
+				await clearCachedMemberToken(circleMemberId);
+			}
 			return { ok: false, reason, retriable, raw };
 		}
 
@@ -621,10 +650,17 @@ export class RealCircleService implements CircleService {
 			return { ok: false, reason, retriable, raw };
 		}
 
-		logger.info("[Circle] Uploaded image", { signedId: reg.data.signedId, filename: params.filename });
+		logger.info("[Circle] Uploaded image", {
+			signedId: reg.data.signedId,
+			filename: params.filename,
+		});
 		return {
 			ok: true,
-			data: { signedId: reg.data.signedId, attachableSgid: reg.data.attachableSgid, url: reg.data.cdnUrl },
+			data: {
+				signedId: reg.data.signedId,
+				attachableSgid: reg.data.attachableSgid,
+				url: reg.data.cdnUrl,
+			},
 		};
 	}
 

@@ -3,6 +3,7 @@ import { db } from "@repo/database";
 import { z } from "zod";
 
 import { protectedProcedure } from "../../../../orpc/procedures";
+import { invalidateMemberFeedCache } from "../../../circle/lib/member-feed-cache";
 import { followHorse, unfollowHorse } from "../lib/horse-follows";
 
 const input = z.object({
@@ -59,6 +60,9 @@ export const followHorseProcedure = protectedProcedure
 	.handler(async ({ input: i, context }) => {
 		const ref = await resolveFollowRef(i, context);
 		await followHorse(ref);
+		// The follow changes the member's feed filter (and their Circle space
+		// membership) — drop their cached feed buffer so it's visible now.
+		invalidateMemberFeedCache(ref.userId, ref.organizationId);
 
 		return { ok: true as const, isFollowing: true as const };
 	});
@@ -74,6 +78,7 @@ export const unfollowHorseProcedure = protectedProcedure
 	.handler(async ({ input: i, context }) => {
 		const ref = await resolveFollowRef(i, context);
 		await unfollowHorse(ref);
+		invalidateMemberFeedCache(ref.userId, ref.organizationId);
 
 		return { ok: true as const, isFollowing: false as const };
 	});

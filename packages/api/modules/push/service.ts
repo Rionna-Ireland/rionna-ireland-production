@@ -22,6 +22,19 @@ interface ReservedPush {
 	message: ExpoPushMessage;
 }
 
+/**
+ * Delivery summary (FABLE_AUDIT C4). `attempted` counts reservations that
+ * went to Expo this call — 0 means every recipient was already handled
+ * (dedup) or there was no audience, which callers should treat as success.
+ * `attempted > 0 && sent === 0` is a total delivery failure the caller can
+ * act on (e.g. not writing an idempotency marker, so the send is retried).
+ */
+export interface PushSendSummary {
+	attempted: number;
+	sent: number;
+	failed: number;
+}
+
 export interface PushRequest {
 	organizationId: string;
 	triggerType: PushTriggerType | string;
@@ -39,11 +52,11 @@ export interface PushRequest {
 
 function isUniqueConstraintError(error: unknown): error is { code: string } {
 	return (
-		error !== null
-		&& error !== undefined
-		&& typeof error === "object"
-		&& "code" in error
-		&& error.code === "P2002"
+		error !== null &&
+		error !== undefined &&
+		typeof error === "object" &&
+		"code" in error &&
+		error.code === "P2002"
 	);
 }
 
@@ -83,6 +96,33 @@ async function reservePush(
 		};
 	} catch (error) {
 		if (isUniqueConstraintError(error)) {
+			// FABLE_AUDIT C4: a FAILED row from a previous attempt must be
+			// re-claimable, otherwise a retried trigger dedups against its own
+			// failure and the push is lost forever. QUEUED/SENT rows still skip.
+			const reclaimed = await db.pushLog.updateMany({
+				where: {
+					organizationId: request.organizationId,
+					expoPushToken: token.expoPushToken,
+					triggerType: request.triggerType as PushTriggerType,
+					triggerRefId: request.triggerRefId,
+					status: "FAILED",
+				},
+				data: { status: "QUEUED", error: null },
+			});
+			if (reclaimed.count > 0) {
+				const failedLog = await db.pushLog.findFirst({
+					where: {
+						organizationId: request.organizationId,
+						expoPushToken: token.expoPushToken,
+						triggerType: request.triggerType as PushTriggerType,
+						triggerRefId: request.triggerRefId,
+					},
+					select: { id: true },
+				});
+				if (failedLog) {
+					return { logId: failedLog.id, token, message };
+				}
+			}
 			logger.info("[sendPush] Duplicate trigger already reserved, skipping", {
 				organizationId: request.organizationId,
 				triggerType: request.triggerType,
@@ -95,7 +135,7 @@ async function reservePush(
 	}
 }
 
-export async function sendPush(request: PushRequest): Promise<void> {
+export async function sendPush(request: PushRequest): Promise<PushSendSummary> {
 	const tokens = await getAudienceTokens({
 		organizationId: request.organizationId,
 		triggerType: request.triggerType as PushTriggerType,
@@ -108,12 +148,12 @@ export async function sendPush(request: PushRequest): Promise<void> {
 			organizationId: request.organizationId,
 			triggerType: request.triggerType,
 		});
-		return;
+		return { attempted: 0, sent: 0, failed: 0 };
 	}
 
-	const reserved = (
-		await Promise.all(tokens.map((token) => reservePush(request, token)))
-	).filter((entry): entry is ReservedPush => entry !== null);
+	const reserved = (await Promise.all(tokens.map((token) => reservePush(request, token)))).filter(
+		(entry): entry is ReservedPush => entry !== null,
+	);
 
 	if (reserved.length === 0) {
 		logger.info("[sendPush] All audience tokens already handled for trigger, skipping", {
@@ -121,12 +161,14 @@ export async function sendPush(request: PushRequest): Promise<void> {
 			triggerType: request.triggerType,
 			triggerRefId: request.triggerRefId,
 		});
-		return;
+		return { attempted: 0, sent: 0, failed: 0 };
 	}
 
 	const messages = reserved.map((entry) => entry.message);
 	const chunks = expo.chunkPushNotifications(messages);
 
+	let sent = 0;
+	let failed = 0;
 	for (const chunk of chunks) {
 		const chunkReserved = chunk
 			.map((message, i) => {
@@ -143,23 +185,25 @@ export async function sendPush(request: PushRequest): Promise<void> {
 				const entry = chunkReserved[i];
 				if (!entry) continue;
 
+				if (receipt.status === "ok") {
+					sent++;
+				} else {
+					failed++;
+				}
 				await db.pushLog.update({
 					where: { id: entry.logId },
 					data: {
 						status: receipt.status === "ok" ? "SENT" : "FAILED",
-						error:
-							receipt.status === "error"
-								? receipt.message
-								: null,
+						error: receipt.status === "error" ? receipt.message : null,
 						sentAt: new Date(),
 					},
 				});
 			}
 		} catch (error) {
-			const message =
-				error instanceof Error ? error.message : String(error);
+			const message = error instanceof Error ? error.message : String(error);
 			logger.error("[sendPush] Expo send failed", { error: message });
 
+			failed += chunkReserved.length;
 			await Promise.all(
 				chunkReserved.map((entry) =>
 					db.pushLog.update({
@@ -174,4 +218,6 @@ export async function sendPush(request: PushRequest): Promise<void> {
 			);
 		}
 	}
+
+	return { attempted: reserved.length, sent, failed };
 }

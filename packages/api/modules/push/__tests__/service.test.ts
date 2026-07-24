@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
 	mockCreate,
 	mockUpdate,
+	mockUpdateMany,
+	mockFindFirst,
 	mockGetAudienceTokens,
 	mockChunkPushNotifications,
 	mockSendPushNotificationsAsync,
@@ -10,6 +12,8 @@ const {
 } = vi.hoisted(() => ({
 	mockCreate: vi.fn(),
 	mockUpdate: vi.fn(),
+	mockUpdateMany: vi.fn(),
+	mockFindFirst: vi.fn(),
 	mockGetAudienceTokens: vi.fn(),
 	mockChunkPushNotifications: vi.fn((messages: unknown[]) => [messages]),
 	mockSendPushNotificationsAsync: vi.fn(),
@@ -27,6 +31,8 @@ vi.mock("@repo/database", () => ({
 		pushLog: {
 			create: (...args: unknown[]) => mockCreate(...args),
 			update: (...args: unknown[]) => mockUpdate(...args),
+			updateMany: (...args: unknown[]) => mockUpdateMany(...args),
+			findFirst: (...args: unknown[]) => mockFindFirst(...args),
 		},
 	},
 }));
@@ -78,9 +84,7 @@ describe("sendPush", () => {
 			{ expoPushToken: "ExponentPushToken[a]", userId: "user-1" },
 			{ expoPushToken: "ExponentPushToken[b]", userId: "user-2" },
 		]);
-		mockCreate
-			.mockResolvedValueOnce({ id: "log-1" })
-			.mockResolvedValueOnce({ id: "log-2" });
+		mockCreate.mockResolvedValueOnce({ id: "log-1" }).mockResolvedValueOnce({ id: "log-2" });
 		mockSendPushNotificationsAsync.mockResolvedValueOnce([
 			{ status: "ok" },
 			{ status: "error", message: "DeviceNotRegistered" },
@@ -130,9 +134,9 @@ describe("sendPush", () => {
 			{ expoPushToken: "ExponentPushToken[a]", userId: "user-1" },
 			{ expoPushToken: "ExponentPushToken[b]", userId: "user-2" },
 		]);
-		mockCreate
-			.mockRejectedValueOnce(duplicateError)
-			.mockResolvedValueOnce({ id: "log-2" });
+		mockCreate.mockRejectedValueOnce(duplicateError).mockResolvedValueOnce({ id: "log-2" });
+		// The existing row is QUEUED/SENT — not re-claimable.
+		mockUpdateMany.mockResolvedValue({ count: 0 });
 		mockSendPushNotificationsAsync.mockResolvedValueOnce([{ status: "ok" }]);
 
 		await sendPush({
@@ -164,9 +168,7 @@ describe("sendPush", () => {
 			{ expoPushToken: "ExponentPushToken[a]", userId: "user-1" },
 			{ expoPushToken: "ExponentPushToken[b]", userId: "user-2" },
 		]);
-		mockCreate
-			.mockResolvedValueOnce({ id: "log-1" })
-			.mockResolvedValueOnce({ id: "log-2" });
+		mockCreate.mockResolvedValueOnce({ id: "log-1" }).mockResolvedValueOnce({ id: "log-2" });
 		mockSendPushNotificationsAsync.mockRejectedValueOnce(new Error("expo down"));
 
 		await sendPush({
@@ -191,6 +193,105 @@ describe("sendPush", () => {
 				status: "FAILED",
 				error: "expo down",
 			}),
+		});
+	});
+
+	// ── delivery summary + FAILED re-claim (FABLE_AUDIT C4) ──────────
+
+	it("returns a delivery summary on success", async () => {
+		mockGetAudienceTokens.mockResolvedValue([
+			{ expoPushToken: "ExponentPushToken[a]", userId: "user-1" },
+			{ expoPushToken: "ExponentPushToken[b]", userId: "user-2" },
+		]);
+		mockCreate.mockResolvedValueOnce({ id: "log-1" }).mockResolvedValueOnce({ id: "log-2" });
+		mockSendPushNotificationsAsync.mockResolvedValueOnce([
+			{ status: "ok" },
+			{ status: "error", message: "DeviceNotRegistered" },
+		]);
+
+		const result = await sendPush({
+			organizationId: "org-1",
+			triggerType: "TRAINER_POST",
+			triggerRefId: "notif-3",
+			title: "T",
+			body: "B",
+		});
+
+		expect(result).toEqual({ attempted: 2, sent: 1, failed: 1 });
+	});
+
+	it("reports total failure when the Expo chunk send throws", async () => {
+		mockGetAudienceTokens.mockResolvedValue([
+			{ expoPushToken: "ExponentPushToken[a]", userId: "user-1" },
+			{ expoPushToken: "ExponentPushToken[b]", userId: "user-2" },
+		]);
+		mockCreate.mockResolvedValueOnce({ id: "log-1" }).mockResolvedValueOnce({ id: "log-2" });
+		mockSendPushNotificationsAsync.mockRejectedValueOnce(new Error("expo down"));
+
+		const result = await sendPush({
+			organizationId: "org-1",
+			triggerType: "TRAINER_POST",
+			triggerRefId: "notif-4",
+			title: "T",
+			body: "B",
+		});
+
+		expect(result).toEqual({ attempted: 2, sent: 0, failed: 2 });
+	});
+
+	it("reports attempted: 0 when every reservation was already handled", async () => {
+		const duplicateError = Object.assign(new Error("dup"), { code: "P2002" });
+		mockGetAudienceTokens.mockResolvedValue([
+			{ expoPushToken: "ExponentPushToken[a]", userId: "user-1" },
+		]);
+		mockCreate.mockRejectedValueOnce(duplicateError);
+		mockUpdateMany.mockResolvedValue({ count: 0 });
+
+		const result = await sendPush({
+			organizationId: "org-1",
+			triggerType: "TRAINER_POST",
+			triggerRefId: "notif-5",
+			title: "T",
+			body: "B",
+		});
+
+		expect(result).toEqual({ attempted: 0, sent: 0, failed: 0 });
+		expect(mockSendPushNotificationsAsync).not.toHaveBeenCalled();
+	});
+
+	it("re-claims a FAILED reservation so a retry actually sends", async () => {
+		const duplicateError = Object.assign(new Error("dup"), { code: "P2002" });
+		mockGetAudienceTokens.mockResolvedValue([
+			{ expoPushToken: "ExponentPushToken[a]", userId: "user-1" },
+		]);
+		mockCreate.mockRejectedValueOnce(duplicateError);
+		// A prior failed attempt left a FAILED row — the retry re-claims it.
+		mockUpdateMany.mockResolvedValue({ count: 1 });
+		mockFindFirst.mockResolvedValue({ id: "log-failed" });
+		mockSendPushNotificationsAsync.mockResolvedValueOnce([{ status: "ok" }]);
+
+		const result = await sendPush({
+			organizationId: "org-1",
+			triggerType: "TRAINER_POST",
+			triggerRefId: "notif-6",
+			title: "T",
+			body: "B",
+		});
+
+		expect(result).toEqual({ attempted: 1, sent: 1, failed: 0 });
+		expect(mockUpdateMany).toHaveBeenCalledWith({
+			where: {
+				organizationId: "org-1",
+				expoPushToken: "ExponentPushToken[a]",
+				triggerType: "TRAINER_POST",
+				triggerRefId: "notif-6",
+				status: "FAILED",
+			},
+			data: { status: "QUEUED", error: null },
+		});
+		expect(mockUpdate).toHaveBeenCalledWith({
+			where: { id: "log-failed" },
+			data: expect.objectContaining({ status: "SENT" }),
 		});
 	});
 
