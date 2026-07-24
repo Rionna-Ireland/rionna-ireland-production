@@ -92,13 +92,28 @@ async function main() {
 				enabled++;
 				continue;
 			}
+			// Admin v2 update-post takes a FLAT body (per the swagger) — a
+			// `{post:{...}}` wrapper 200s but silently changes nothing.
+			// skip_notifications so a bulk sweep doesn't ping members.
 			const res = await fetch(`${ADMIN_BASE}/posts/${post.id}`, {
 				method: "PUT",
 				headers: adminHeaders(),
-				body: JSON.stringify({ post: { is_liking_enabled: true } }),
+				body: JSON.stringify({ is_liking_enabled: true, skip_notifications: true }),
 			});
-			if (res.ok) {
+			const updated = res.ok
+				? ((await res.json().catch(() => null)) as CircleRecord | null)
+				: null;
+			// Trust the response, not the status: verify the flag actually flipped.
+			if (res.ok && (updated?.is_liking_enabled === true || updated === null)) {
+				if (updated === null) {
+					console.warn(`post ${post.id}: 200 but unparseable body — verify manually`);
+				}
 				enabled++;
+			} else if (res.ok) {
+				failed.push({ postId: post.id, status: res.status });
+				console.warn(
+					`FAILED post ${post.id}: 200 but is_liking_enabled still ${String(updated?.is_liking_enabled)}`,
+				);
 			} else {
 				failed.push({ postId: post.id, status: res.status });
 				console.warn(
