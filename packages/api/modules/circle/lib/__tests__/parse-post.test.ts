@@ -26,6 +26,7 @@ const REAL_POST = {
 	url: "https://community.rionna.com/c/laska/test-laska",
 	comment_count: 3,
 	user_likes_count: 5,
+	is_liked: true,
 };
 
 describe("extractPosts", () => {
@@ -50,8 +51,15 @@ describe("toFeedItem", () => {
 			authorName: "Jane Trainer",
 			commentCount: 3,
 			likeCount: 5,
+			isLiked: true,
 			url: "https://community.rionna.com/c/laska/test-laska",
 		});
+	});
+
+	it("defaults isLiked to false when is_liked is absent or non-boolean", () => {
+		const { is_liked: _isLiked, ...withoutFlag } = REAL_POST;
+		expect(toFeedItem(withoutFlag, {}).isLiked).toBe(false);
+		expect(toFeedItem({ ...withoutFlag, is_liked: "yes" }, {}).isLiked).toBe(false);
 	});
 });
 
@@ -69,6 +77,7 @@ describe("toPostDetail", () => {
 			createdAt: "2026-07-01T09:00:00.000Z",
 			commentCount: 3,
 			likeCount: 5,
+			isLiked: true,
 		});
 		expect(post.inlineAttachments).toEqual([
 			{

@@ -5,6 +5,7 @@ import { getNotificationBadgeCount } from "./procedures/get-notification-badge-c
 import { getSessionToken } from "./procedures/get-session-token";
 import { getTrainerPosts } from "./procedures/get-trainer-posts";
 import { revokeSession } from "./procedures/revoke-session";
+import { setPostLike } from "./procedures/set-post-like";
 
 export const circleRouter = {
 	getFeed,
@@ -14,4 +15,5 @@ export const circleRouter = {
 	getSessionToken,
 	getTrainerPosts,
 	revokeSession,
+	setPostLike,
 };

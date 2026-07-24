@@ -11,6 +11,8 @@ export interface MemberFeedItem {
 	authorName: string | null;
 	commentCount: number;
 	likeCount: number;
+	/** Whether the authenticated member has liked this post (`is_liked`). */
+	isLiked: boolean;
 	imageUrl: string | null;
 	url: string | null;
 }
@@ -34,6 +36,8 @@ export interface CirclePostDetail {
 	createdAt: string | null;
 	commentCount: number;
 	likeCount: number;
+	/** Whether the authenticated member has liked this post (`is_liked`). */
+	isLiked: boolean;
 	url: string | null;
 }
 
@@ -217,6 +221,10 @@ function numberValue(value: unknown): number {
 	return typeof value === "number" && Number.isFinite(value) ? value : 0;
 }
 
+function booleanValue(value: unknown): boolean {
+	return value === true;
+}
+
 function classifyFeedItem(
 	post: Record<string, unknown>,
 	spaceName: string | null,
@@ -296,6 +304,7 @@ export function toFeedItem(post: Record<string, unknown>, opts: ParseOpts = {}):
 		likeCount: numberValue(
 			post.user_likes_count ?? post.likes_count ?? post.likesCount ?? post.like_count,
 		),
+		isLiked: booleanValue(post.is_liked),
 		imageUrl: extractPostImageUrl(post),
 		url:
 			textValue(post.url) ??
@@ -335,6 +344,7 @@ export function toPostDetail(
 		likeCount: numberValue(
 			post.user_likes_count ?? post.likes_count ?? post.likesCount ?? post.like_count,
 		),
+		isLiked: booleanValue(post.is_liked),
 		url: textValue(post.url) ?? fallbackUrl,
 	};
 }
