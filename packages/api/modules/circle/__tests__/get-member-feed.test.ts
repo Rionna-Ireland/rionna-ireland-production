@@ -340,6 +340,86 @@ describe("getMemberFeed (buffer cache — FABLE_AUDIT P4/C8)", () => {
 	});
 });
 
+describe("getMemberFeed (single-space feed — horse discussion)", () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		clearMemberFeedCache();
+		mockGetSession.mockResolvedValue({ user: USER, session: SESSION });
+		mockOrgFindUnique.mockResolvedValue({ id: ORG_ID, slug: "rionna", metadata: null });
+		mockMemberFindFirst.mockResolvedValue({ circleMemberId: "82236270" });
+		mockGetMemberToken.mockResolvedValue({ ok: true, data: { accessToken: "jwt" } });
+		mockHorseFindMany.mockResolvedValue([{ id: "horse-1", circleSpaceId: "9" }]);
+		mockGetFollowedHorseIds.mockResolvedValue(new Set());
+	});
+
+	it("returns only the requested space's posts", async () => {
+		vi.stubGlobal("fetch", routeFetch());
+		const res = await call(
+			getMemberFeed,
+			{ organizationId: ORG_ID, page: 1, perPage: 15, spaceId: "9" },
+			ctx,
+		);
+		expect(res.ok).toBe(true);
+		expect(res.items.map((i) => i.id)).toEqual(["1"]);
+		expect(res.items[0]).toMatchObject({ spaceId: "9" });
+	});
+
+	it("shows an unfollowed horse space — explicit navigation bypasses the follow filter", async () => {
+		// horse-1 (space 9) is NOT followed, but the member opened its discussion directly.
+		vi.stubGlobal("fetch", routeFetch());
+		const res = await call(
+			getMemberFeed,
+			{ organizationId: ORG_ID, page: 1, perPage: 15, spaceId: "9" },
+			ctx,
+		);
+		expect(res.items.map((i) => i.id)).toEqual(["1"]);
+	});
+
+	it("does not serve a space feed from the merged buffer, nor pollute it", async () => {
+		const fetchSpy = routeFetch();
+		vi.stubGlobal("fetch", fetchSpy);
+
+		// Prime the merged buffer.
+		const merged = await call(
+			getMemberFeed,
+			{ organizationId: ORG_ID, page: 1, perPage: 15 },
+			ctx,
+		);
+		expect(merged.items.length).toBeGreaterThan(0);
+		const fetchesAfterMerged = fetchSpy.mock.calls.length;
+
+		// Space call must hit Circle (not the buffer) and return only space 9.
+		const space = await call(
+			getMemberFeed,
+			{ organizationId: ORG_ID, page: 1, perPage: 15, spaceId: "9" },
+			ctx,
+		);
+		expect(space.items.map((i) => i.id)).toEqual(["1"]);
+		expect(fetchSpy.mock.calls.length).toBeGreaterThan(fetchesAfterMerged);
+
+		// And the merged buffer must still serve the full merged feed afterwards.
+		const mergedAgain = await call(
+			getMemberFeed,
+			{ organizationId: ORG_ID, page: 1, perPage: 15 },
+			ctx,
+		);
+		expect(mergedAgain.items.length).toBe(merged.items.length);
+	});
+
+	it("returns ok:false when the space posts fetch fails", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(async () => ({ ok: false, status: 500, json: async () => ({}) })),
+		);
+		const res = await call(
+			getMemberFeed,
+			{ organizationId: ORG_ID, page: 1, perPage: 15, spaceId: "9" },
+			ctx,
+		);
+		expect(res).toMatchObject({ ok: false, items: [] });
+	});
+});
+
 describe("getMemberFeed (total per-space failure — Kimi M1)", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
