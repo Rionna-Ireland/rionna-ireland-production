@@ -100,9 +100,12 @@ async function main() {
 				headers: adminHeaders(),
 				body: JSON.stringify({ is_liking_enabled: true, skip_notifications: true }),
 			});
-			const updated = res.ok
+			const body = res.ok
 				? ((await res.json().catch(() => null)) as CircleRecord | null)
 				: null;
+			// The update response is `{message, post: {...}}` (basic_post_updated_response)
+			// — the flag lives on the nested post, not at the top level.
+			const updated = (body?.post as CircleRecord | undefined) ?? body;
 			// Trust the response, not the status: verify the flag actually flipped.
 			if (res.ok && (updated?.is_liking_enabled === true || updated === null)) {
 				if (updated === null) {
