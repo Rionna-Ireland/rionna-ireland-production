@@ -50,6 +50,10 @@ export const getMemberFeed = protectedProcedure
 			organizationId: z.string(),
 			page: z.number().min(1).default(1),
 			perPage: z.number().min(1).max(30).default(15),
+			// When set, return only this space's posts (e.g. a horse's discussion
+			// space) — one Circle call, no merged buffer, no follow filter (the
+			// member navigated to the space explicitly).
+			spaceId: z.string().optional(),
 		}),
 	)
 	.handler(async ({ input, context: { user } }): Promise<MemberFeedResult> => {
@@ -93,7 +97,9 @@ export const getMemberFeed = protectedProcedure
 				hasNextPage: merged.length > start + input.perPage,
 			};
 		};
-		const cachedBuffer = readMemberFeedBuffer(user.id, input.organizationId);
+		const cachedBuffer = input.spaceId
+			? null
+			: readMemberFeedBuffer(user.id, input.organizationId);
 		if (cachedBuffer) {
 			return paginate(cachedBuffer);
 		}
@@ -111,6 +117,53 @@ export const getMemberFeed = protectedProcedure
 		}
 		const base = getCircleHeadlessApiBaseUrl();
 		const authHeaders = { Authorization: `Bearer ${tokenOutcome.data.accessToken}` };
+
+		// Single-space feed (horse discussion): one Circle call, paged by Circle
+		// itself. Deliberately bypasses the merged buffer (never read or written)
+		// and the follow filter — reaching this path means the member opened the
+		// space explicitly.
+		if (input.spaceId) {
+			try {
+				const r = await fetch(
+					`${base}/spaces/${encodeURIComponent(input.spaceId)}/posts?per_page=${input.perPage}&page=${input.page}&sort=latest`,
+					{ headers: authHeaders },
+				);
+				if (!r.ok) {
+					logger.warn("[Circle] Member feed: space posts fetch failed", {
+						surface: "circle.member_feed",
+						spaceId: input.spaceId,
+						status: r.status,
+					});
+					return fail();
+				}
+				const spaceMeta = { id: input.spaceId };
+				const seen = new Set<string>();
+				const items: MemberFeedItem[] = [];
+				for (const post of extractPosts(await r.json())) {
+					const item = toFeedItem(
+						{ ...post, space: objectValue(post.space) ?? spaceMeta },
+						{ communityDomain },
+					);
+					if (item.id && !seen.has(item.id)) {
+						seen.add(item.id);
+						items.push(item);
+					}
+				}
+				return {
+					ok: true,
+					items,
+					page: input.page,
+					hasNextPage: items.length === input.perPage,
+				};
+			} catch (error) {
+				logger.warn("[Circle] Member feed: space posts fetch threw", {
+					surface: "circle.member_feed",
+					spaceId: input.spaceId,
+					error: String(error),
+				});
+				return fail();
+			}
+		}
 
 		// 1. The member's accessible post-bearing spaces.
 		let spacesRes: Response;
