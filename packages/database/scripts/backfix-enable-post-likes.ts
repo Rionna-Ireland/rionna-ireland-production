@@ -1,8 +1,9 @@
 /**
- * One-off back-fix (S7-03 QA finding): Admin-API-created posts default
- * `is_liking_enabled: false`, so members' like taps 401 with "You cannot
- * perform this action". `createPost` now sends `is_liking_enabled: true`;
- * this script flips the flag on every existing post that still has it off.
+ * One-off back-fix (S7-03 QA finding, extended for S7-04 comments):
+ * Admin-API-created posts default `is_liking_enabled` AND `is_comments_enabled`
+ * to false, so member likes/comments 401 with "You cannot perform this
+ * action". `createPost` now sends both flags; this script flips them on every
+ * existing post that still has either off.
  *
  * Read-modify-write via Circle Admin v2 only — no DB access. Idempotent:
  * posts already enabled are skipped, so reruns are safe.
@@ -81,7 +82,7 @@ async function main() {
 		}
 		for (const post of posts) {
 			scanned++;
-			if (post.is_liking_enabled === true) {
+			if (post.is_liking_enabled === true && post.is_comments_enabled === true) {
 				skipped++;
 				continue;
 			}
@@ -98,7 +99,11 @@ async function main() {
 			const res = await fetch(`${ADMIN_BASE}/posts/${post.id}`, {
 				method: "PUT",
 				headers: adminHeaders(),
-				body: JSON.stringify({ is_liking_enabled: true, skip_notifications: true }),
+				body: JSON.stringify({
+					is_liking_enabled: true,
+					is_comments_enabled: true,
+					skip_notifications: true,
+				}),
 			});
 			const body = res.ok
 				? ((await res.json().catch(() => null)) as CircleRecord | null)
@@ -106,8 +111,12 @@ async function main() {
 			// The update response is `{message, post: {...}}` (basic_post_updated_response)
 			// — the flag lives on the nested post, not at the top level.
 			const updated = (body?.post as CircleRecord | undefined) ?? body;
-			// Trust the response, not the status: verify the flag actually flipped.
-			if (res.ok && (updated?.is_liking_enabled === true || updated === null)) {
+			// Trust the response, not the status: verify the flags actually flipped.
+			if (
+				res.ok &&
+				((updated?.is_liking_enabled === true && updated?.is_comments_enabled === true) ||
+					updated === null)
+			) {
 				if (updated === null) {
 					console.warn(`post ${post.id}: 200 but unparseable body — verify manually`);
 				}
@@ -115,7 +124,7 @@ async function main() {
 			} else if (res.ok) {
 				failed.push({ postId: post.id, status: res.status });
 				console.warn(
-					`FAILED post ${post.id}: 200 but is_liking_enabled still ${String(updated?.is_liking_enabled)}`,
+					`FAILED post ${post.id}: 200 but liking=${String(updated?.is_liking_enabled)} comments=${String(updated?.is_comments_enabled)}`,
 				);
 			} else {
 				failed.push({ postId: post.id, status: res.status });
