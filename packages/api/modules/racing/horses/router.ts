@@ -1,3 +1,4 @@
+import { createAudioUploadUrl } from "./procedures/create-audio-upload-url";
 import { createHorse } from "./procedures/create-horse";
 import { createPhotoUploadUrl } from "./procedures/create-photo-upload-url";
 import { createTrainer } from "./procedures/create-trainer";
@@ -9,6 +10,7 @@ import {
 	listFollowersProcedure,
 	removeFollowerProcedure,
 } from "./procedures/horse-followers-admin";
+import { listHorseEntries } from "./procedures/list-horse-entries";
 import { listHorses } from "./procedures/list-horses";
 import { listTrainers } from "./procedures/list-trainers";
 import { publishHorses } from "./procedures/publish-horses";
@@ -38,10 +40,12 @@ export const horsesAdminRouter = {
 	retryCircleSpace: retryHorseSpaceProvisioning,
 	setSpaceVisibility: setHorseSpaceVisibility,
 	createPhotoUploadUrl: createPhotoUploadUrl,
+	createAudioUploadUrl: createAudioUploadUrl,
 	listFollowers: listFollowersProcedure,
 	addFollower: addFollowerProcedure,
 	removeFollower: removeFollowerProcedure,
 	followAllMembers: followAllMembersProcedure,
+	listEntries: listHorseEntries,
 	updateEntryReplayUrl: updateRaceEntryReplayUrl,
 	wellbeing: {
 		list: listWellbeingUpdatesProcedure,

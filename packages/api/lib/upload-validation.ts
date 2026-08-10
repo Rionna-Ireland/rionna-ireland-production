@@ -20,6 +20,20 @@ export const imageFileSizeSchema = z
 	.max(MAX_IMAGE_UPLOAD_BYTES);
 
 /**
+ * Audio notes (S8-01 §5/§6) — short admin-uploaded clips, not multi-hour
+ * recordings, so a smaller cap than video (which never touches our storage —
+ * see the Circle video upload comment above) but roomier than a photo.
+ */
+export const MAX_AUDIO_UPLOAD_BYTES = 25 * 1024 * 1024;
+
+/** Client-declared byte size for a presigned audio PUT, capped at 25 MB. */
+export const audioFileSizeSchema = z
+	.number()
+	.int()
+	.positive()
+	.max(MAX_AUDIO_UPLOAD_BYTES);
+
+/**
  * Filenames are concatenated into storage keys — restrict to a single safe path
  * segment (no separators, no leading dot/dash, max 121 chars).
  */
