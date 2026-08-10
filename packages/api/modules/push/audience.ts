@@ -7,7 +7,7 @@
  * @see Architecture/specs/S2-04-push-notification-pipeline.md
  */
 
-import { db } from "@repo/database";
+import { db, parseOrgMetadata } from "@repo/database";
 import type { PushTriggerType } from "@repo/database";
 
 export interface AudienceToken {
@@ -52,9 +52,7 @@ export function getPrefKey(triggerType: PushTriggerType): string | null {
 	}
 }
 
-export async function getAudienceTokens(
-	request: AudienceRequest,
-): Promise<AudienceToken[]> {
+export async function getAudienceTokens(request: AudienceRequest): Promise<AudienceToken[]> {
 	const prefKey = getPrefKey(request.triggerType);
 
 	const tokens = await db.pushToken.findMany({
@@ -77,8 +75,7 @@ export async function getAudienceTokens(
 	const filteredTokens = tokens
 		.filter((t) => {
 			if (!prefKey) return true; // SYSTEM pushes go to everyone
-			const prefs =
-				(t.user.pushPreferences as Record<string, boolean>) ?? {};
+			const prefs = (t.user.pushPreferences as Record<string, boolean>) ?? {};
 			return prefs[prefKey] !== false; // Default true (opt-out model)
 		})
 		.map((t) => ({
@@ -87,15 +84,28 @@ export async function getAudienceTokens(
 		}));
 
 	if (request.followersOfHorseId) {
-		const follows = await db.horseFollow.findMany({
-			where: {
-				organizationId: request.organizationId,
-				horseId: request.followersOfHorseId,
-			},
-			select: { userId: true },
+		// S8-04 §5: when the org's follow layer is disabled, fall back to all
+		// members rather than filtering by (unmaintained) follow rows —
+		// otherwise disabling follows would silently kill every race push.
+		// This mirrors the pre-follow (S5-09) behaviour.
+		const org = await db.organization.findUnique({
+			where: { id: request.organizationId },
+			select: { metadata: true },
 		});
-		const followerIds = new Set(follows.map((f) => f.userId));
-		return filteredTokens.filter((t) => followerIds.has(t.userId));
+		const horseFollowsEnabled =
+			parseOrgMetadata(org?.metadata ?? null).features?.horseFollows !== false;
+
+		if (horseFollowsEnabled) {
+			const follows = await db.horseFollow.findMany({
+				where: {
+					organizationId: request.organizationId,
+					horseId: request.followersOfHorseId,
+				},
+				select: { userId: true },
+			});
+			const followerIds = new Set(follows.map((f) => f.userId));
+			return filteredTokens.filter((t) => followerIds.has(t.userId));
+		}
 	}
 
 	return filteredTokens;

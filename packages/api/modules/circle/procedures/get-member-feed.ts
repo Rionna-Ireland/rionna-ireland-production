@@ -74,8 +74,13 @@ export const getMemberFeed = protectedProcedure
 		if (!org?.slug) {
 			throw new ORPCError("NOT_FOUND", { message: "Organization not found" });
 		}
-		const communityDomain = parseOrgMetadata(org.metadata as string | null).circle
-			?.communityDomain;
+		const orgMetadata = parseOrgMetadata(org.metadata as string | null);
+		const communityDomain = orgMetadata.circle?.communityDomain;
+		// S8-04 §5: when the org's follow layer is disabled, the horse-follow
+		// filter below is bypassed entirely — every horse space is shown to
+		// everyone (the open-community default). Never render an empty feed
+		// for a "disabled" flag; that would look like an outage.
+		const horseFollowsEnabled = orgMetadata.features?.horseFollows !== false;
 
 		const member = await db.member.findFirst({
 			where: { userId: user.id, organizationId: input.organizationId },
@@ -192,38 +197,42 @@ export const getMemberFeed = protectedProcedure
 		// any error in the horse/follow lookups falls back to the unfiltered feed — feed
 		// availability beats filter correctness.
 		let horseFilteredSpaces = typeFilteredSpaces;
-		try {
-			const orgHorses = await db.horse.findMany({
-				where: { organizationId: input.organizationId },
-				select: { id: true, circleSpaceId: true },
-			});
-			const horseIdBySpaceId = new Map<string, string>();
-			for (const horse of orgHorses) {
-				if (horse.circleSpaceId) {
-					horseIdBySpaceId.set(String(horse.circleSpaceId), horse.id);
+		if (horseFollowsEnabled) {
+			try {
+				const orgHorses = await db.horse.findMany({
+					where: { organizationId: input.organizationId },
+					select: { id: true, circleSpaceId: true },
+				});
+				const horseIdBySpaceId = new Map<string, string>();
+				for (const horse of orgHorses) {
+					if (horse.circleSpaceId) {
+						horseIdBySpaceId.set(String(horse.circleSpaceId), horse.id);
+					}
 				}
-			}
-			const followedHorseIds = await getFollowedHorseIds({
-				organizationId: input.organizationId,
-				userId: user.id,
-			});
-			horseFilteredSpaces = typeFilteredSpaces.filter((space) => {
-				const horseId = horseIdBySpaceId.get(String(space.id));
-				if (!horseId) return true; // not a horse space — always pass
-				return followedHorseIds.has(horseId);
-			});
-		} catch (error) {
-			logger.warn(
-				"[Circle] Member feed: horse follow filter failed, returning unfiltered feed",
-				{
-					surface: "circle.member_feed",
-					userId: user.id,
+				const followedHorseIds = await getFollowedHorseIds({
 					organizationId: input.organizationId,
-					error: String(error),
-				},
-			);
-			horseFilteredSpaces = typeFilteredSpaces;
+					userId: user.id,
+				});
+				horseFilteredSpaces = typeFilteredSpaces.filter((space) => {
+					const horseId = horseIdBySpaceId.get(String(space.id));
+					if (!horseId) return true; // not a horse space — always pass
+					return followedHorseIds.has(horseId);
+				});
+			} catch (error) {
+				logger.warn(
+					"[Circle] Member feed: horse follow filter failed, returning unfiltered feed",
+					{
+						surface: "circle.member_feed",
+						userId: user.id,
+						organizationId: input.organizationId,
+						error: String(error),
+					},
+				);
+				horseFilteredSpaces = typeFilteredSpaces;
+			}
 		}
+		// S8-04 §5: horseFollowsEnabled === false leaves horseFilteredSpaces as
+		// typeFilteredSpaces (unfiltered) — no follow lookup, no Circle call.
 
 		const spaces = horseFilteredSpaces.slice(0, MAX_SPACES);
 

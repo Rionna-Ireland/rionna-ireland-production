@@ -47,7 +47,14 @@ export const addFollowerProcedure = adminProcedure
 	.input(z.object({ horseId: z.string(), userId: z.string() }))
 	.handler(async ({ input, context }) => {
 		const organizationId = requireOrg(context);
-		await followHorse({ organizationId, userId: input.userId, horseId: input.horseId });
+		const result = await followHorse({
+			organizationId,
+			userId: input.userId,
+			horseId: input.horseId,
+		});
+		if (!result.ok) {
+			return { ok: false as const, disabled: true as const };
+		}
 		// The member's feed filter changed under them — drop their cached buffer.
 		invalidateMemberFeedCache(input.userId, organizationId);
 		return { ok: true as const };
@@ -63,7 +70,14 @@ export const removeFollowerProcedure = adminProcedure
 	.input(z.object({ horseId: z.string(), userId: z.string() }))
 	.handler(async ({ input, context }) => {
 		const organizationId = requireOrg(context);
-		await unfollowHorse({ organizationId, userId: input.userId, horseId: input.horseId });
+		const result = await unfollowHorse({
+			organizationId,
+			userId: input.userId,
+			horseId: input.horseId,
+		});
+		if (!result.ok) {
+			return { ok: false as const, disabled: true as const };
+		}
 		invalidateMemberFeedCache(input.userId, organizationId);
 		return { ok: true as const };
 	});
@@ -81,7 +95,9 @@ export const followAllMembersProcedure = adminProcedure
 			organizationId: requireOrg(context),
 			horseId: input.horseId,
 		});
-		// Every member's feed filter changed — nuke all cached buffers.
-		clearMemberFeedCache();
+		if (!result.disabled) {
+			// Every member's feed filter changed — nuke all cached buffers.
+			clearMemberFeedCache();
+		}
 		return result;
 	});

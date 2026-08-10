@@ -73,7 +73,7 @@ describe("listFollowersProcedure", () => {
 
 describe("addFollowerProcedure", () => {
 	it("delegates to followHorse with the active org, userId, and horseId", async () => {
-		mockFollowHorse.mockResolvedValue(undefined);
+		mockFollowHorse.mockResolvedValue({ ok: true });
 
 		const res = await call(addFollowerProcedure, { horseId: "h-1", userId: "u-1" }, ctx);
 
@@ -86,15 +86,22 @@ describe("addFollowerProcedure", () => {
 	});
 
 	it("invalidates the target member's feed buffer", async () => {
-		mockFollowHorse.mockResolvedValue(undefined);
+		mockFollowHorse.mockResolvedValue({ ok: true });
 		await call(addFollowerProcedure, { horseId: "h-1", userId: "u-1" }, ctx);
 		expect(mockInvalidateFeedCache).toHaveBeenCalledWith("u-1", "org-1");
+	});
+
+	it("S8-04 §5: returns ok:false, disabled:true and skips cache invalidation when horseFollows is disabled", async () => {
+		mockFollowHorse.mockResolvedValue({ ok: false, disabled: true });
+		const res = await call(addFollowerProcedure, { horseId: "h-1", userId: "u-1" }, ctx);
+		expect(res).toEqual({ ok: false, disabled: true });
+		expect(mockInvalidateFeedCache).not.toHaveBeenCalled();
 	});
 });
 
 describe("removeFollowerProcedure", () => {
 	it("delegates to unfollowHorse with the active org, userId, and horseId", async () => {
-		mockUnfollowHorse.mockResolvedValue(undefined);
+		mockUnfollowHorse.mockResolvedValue({ ok: true });
 
 		const res = await call(removeFollowerProcedure, { horseId: "h-1", userId: "u-1" }, ctx);
 
@@ -107,9 +114,16 @@ describe("removeFollowerProcedure", () => {
 	});
 
 	it("invalidates the target member's feed buffer", async () => {
-		mockUnfollowHorse.mockResolvedValue(undefined);
+		mockUnfollowHorse.mockResolvedValue({ ok: true });
 		await call(removeFollowerProcedure, { horseId: "h-1", userId: "u-1" }, ctx);
 		expect(mockInvalidateFeedCache).toHaveBeenCalledWith("u-1", "org-1");
+	});
+
+	it("S8-04 §5: returns ok:false, disabled:true and skips cache invalidation when horseFollows is disabled", async () => {
+		mockUnfollowHorse.mockResolvedValue({ ok: false, disabled: true });
+		const res = await call(removeFollowerProcedure, { horseId: "h-1", userId: "u-1" }, ctx);
+		expect(res).toEqual({ ok: false, disabled: true });
+		expect(mockInvalidateFeedCache).not.toHaveBeenCalled();
 	});
 });
 
@@ -118,6 +132,13 @@ describe("followAllMembersProcedure feed-cache clearing", () => {
 		mockFollowAllMembers.mockResolvedValue({ followed: 3, joined: 3, failed: 0 });
 		await call(followAllMembersProcedure, { horseId: "h-1" }, ctx);
 		expect(mockClearFeedCache).toHaveBeenCalled();
+	});
+
+	it("S8-04 §5: skips the cache clear when the result is disabled (nothing changed)", async () => {
+		mockFollowAllMembers.mockResolvedValue({ added: 0, disabled: true });
+		const res = await call(followAllMembersProcedure, { horseId: "h-1" }, ctx);
+		expect(mockClearFeedCache).not.toHaveBeenCalled();
+		expect(res).toEqual({ added: 0, disabled: true });
 	});
 });
 

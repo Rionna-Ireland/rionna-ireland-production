@@ -59,7 +59,12 @@ export const followHorseProcedure = protectedProcedure
 	.input(input)
 	.handler(async ({ input: i, context }) => {
 		const ref = await resolveFollowRef(i, context);
-		await followHorse(ref);
+		const result = await followHorse(ref);
+		if (!result.ok) {
+			// S8-04 §5: features.horseFollows disabled — no DB write, no Circle
+			// join happened, so there's no feed filter change to invalidate for.
+			return { ok: false as const, disabled: true as const };
+		}
 		// The follow changes the member's feed filter (and their Circle space
 		// membership) — drop their cached feed buffer so it's visible now.
 		invalidateMemberFeedCache(ref.userId, ref.organizationId);
@@ -77,7 +82,10 @@ export const unfollowHorseProcedure = protectedProcedure
 	.input(input)
 	.handler(async ({ input: i, context }) => {
 		const ref = await resolveFollowRef(i, context);
-		await unfollowHorse(ref);
+		const result = await unfollowHorse(ref);
+		if (!result.ok) {
+			return { ok: false as const, disabled: true as const };
+		}
 		invalidateMemberFeedCache(ref.userId, ref.organizationId);
 
 		return { ok: true as const, isFollowing: false as const };

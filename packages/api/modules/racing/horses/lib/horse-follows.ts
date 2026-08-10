@@ -1,4 +1,4 @@
-import { db } from "@repo/database";
+import { db, parseOrgMetadata } from "@repo/database";
 import { logger } from "@repo/logs";
 import { syncCircleSpaceMembership } from "@repo/payments/lib/circle-space-membership";
 
@@ -10,12 +10,33 @@ export interface FollowRef {
 	horseId: string;
 }
 
+export interface FollowMutationResult {
+	ok: boolean;
+	/** Set when the org-level features.horseFollows kill-switch is off (S8-04 §5). */
+	disabled?: boolean;
+}
+
+/**
+ * S8-04 §5 org-level kill-switch. Default ON — absent or any value other
+ * than the literal `false` is treated as enabled.
+ */
+async function horseFollowsEnabled(organizationId: string): Promise<boolean> {
+	const org = await db.organization.findUnique({
+		where: { id: organizationId },
+		select: { metadata: true },
+	});
+	return parseOrgMetadata(org?.metadata ?? null).features?.horseFollows !== false;
+}
+
 /**
  * Fail-safe: never let a Circle sync failure surface through to the caller —
  * the DB follow-state write is the source of truth and must already have
  * committed by the time this runs.
  */
-async function syncCircleSpaceMembershipSafely(ref: FollowRef, action: "join" | "leave"): Promise<void> {
+async function syncCircleSpaceMembershipSafely(
+	ref: FollowRef,
+	action: "join" | "leave",
+): Promise<void> {
 	try {
 		await syncCircleSpaceMembership({ ...ref, action });
 	} catch (error) {
@@ -28,30 +49,80 @@ async function syncCircleSpaceMembershipSafely(ref: FollowRef, action: "join" | 
 	}
 }
 
-/** Idempotent: following an already-followed horse is a no-op. */
-export async function followHorse(ref: FollowRef): Promise<void> {
+/**
+ * Idempotent: following an already-followed horse is a no-op.
+ *
+ * S8-04 §5: when `features.horseFollows` is disabled for the org, this is a
+ * no-op — no DB write, no Circle join — and returns `{ ok: false, disabled: true }`.
+ */
+export async function followHorse(ref: FollowRef): Promise<FollowMutationResult> {
+	if (!(await horseFollowsEnabled(ref.organizationId))) {
+		logger.info("[Circle] Horse follow: horseFollows disabled, skipping", {
+			surface: "circle.horse_follows",
+			...ref,
+		});
+		return { ok: false, disabled: true };
+	}
 	await db.horseFollow.upsert({
 		where: { userId_horseId: { userId: ref.userId, horseId: ref.horseId } },
 		create: { organizationId: ref.organizationId, userId: ref.userId, horseId: ref.horseId },
 		update: {},
 	});
 	await syncCircleSpaceMembershipSafely(ref, "join");
+	return { ok: true };
 }
 
-/** Idempotent: unfollowing a not-followed horse is a no-op. */
-export async function unfollowHorse(ref: FollowRef): Promise<void> {
+/**
+ * Idempotent: unfollowing a not-followed horse is a no-op.
+ *
+ * S8-04 §5: when `features.horseFollows` is disabled for the org, this is a
+ * no-op — no DB write, no Circle leave — and returns `{ ok: false, disabled: true }`.
+ */
+export async function unfollowHorse(ref: FollowRef): Promise<FollowMutationResult> {
+	if (!(await horseFollowsEnabled(ref.organizationId))) {
+		logger.info("[Circle] Horse unfollow: horseFollows disabled, skipping", {
+			surface: "circle.horse_follows",
+			...ref,
+		});
+		return { ok: false, disabled: true };
+	}
 	await db.horseFollow.deleteMany({
 		where: { userId: ref.userId, horseId: ref.horseId, organizationId: ref.organizationId },
 	});
 	await syncCircleSpaceMembershipSafely(ref, "leave");
+	return { ok: true };
 }
 
-/** Add every org member as a follower of a horse. Idempotent (skips existing). */
-export async function followAllMembers(params: { organizationId: string; horseId: string }): Promise<{ added: number }> {
-	const members = await db.member.findMany({ where: { organizationId: params.organizationId }, select: { userId: true } });
+/**
+ * Add every org member as a follower of a horse. Idempotent (skips existing).
+ *
+ * S8-04 §5: no-op (`{ added: 0, disabled: true }`) when `features.horseFollows`
+ * is disabled for the org.
+ */
+export async function followAllMembers(params: {
+	organizationId: string;
+	horseId: string;
+}): Promise<{ added: number; disabled?: boolean }> {
+	if (!(await horseFollowsEnabled(params.organizationId))) {
+		logger.info("[Circle] followAllMembers: horseFollows disabled, skipping", {
+			surface: "circle.horse_follows",
+			organizationId: params.organizationId,
+			horseId: params.horseId,
+		});
+		return { added: 0, disabled: true };
+	}
+
+	const members = await db.member.findMany({
+		where: { organizationId: params.organizationId },
+		select: { userId: true },
+	});
 	if (members.length === 0) return { added: 0 };
 	const result = await db.horseFollow.createMany({
-		data: members.map((m) => ({ organizationId: params.organizationId, userId: m.userId, horseId: params.horseId })),
+		data: members.map((m) => ({
+			organizationId: params.organizationId,
+			userId: m.userId,
+			horseId: params.horseId,
+		})),
 		skipDuplicates: true,
 	});
 
@@ -100,7 +171,10 @@ export async function followAllMembers(params: { organizationId: string; horseId
 	return { added: result.count };
 }
 
-export async function getFollowedHorseIds(params: { organizationId: string; userId: string }): Promise<Set<string>> {
+export async function getFollowedHorseIds(params: {
+	organizationId: string;
+	userId: string;
+}): Promise<Set<string>> {
 	const rows = await db.horseFollow.findMany({
 		where: { organizationId: params.organizationId, userId: params.userId },
 		select: { horseId: true },
@@ -123,11 +197,19 @@ export interface HorseFollowerSummary {
 	followedAt: Date;
 }
 
-export async function listHorseFollowers(params: { organizationId: string; horseId: string }): Promise<HorseFollowerSummary[]> {
+export async function listHorseFollowers(params: {
+	organizationId: string;
+	horseId: string;
+}): Promise<HorseFollowerSummary[]> {
 	const rows = await db.horseFollow.findMany({
 		where: { organizationId: params.organizationId, horseId: params.horseId },
 		include: { user: { select: { name: true, email: true } } },
 		orderBy: { createdAt: "asc" },
 	});
-	return rows.map((r) => ({ userId: r.userId, name: r.user.name, email: r.user.email, followedAt: r.createdAt }));
+	return rows.map((r) => ({
+		userId: r.userId,
+		name: r.user.name,
+		email: r.user.email,
+		followedAt: r.createdAt,
+	}));
 }
