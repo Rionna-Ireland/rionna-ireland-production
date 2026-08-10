@@ -47,6 +47,8 @@ export function getPrefKey(triggerType: PushTriggerType): string | null {
 			return "circleDm";
 		case "CIRCLE_HORSE_DISCUSSION":
 			return "circleHorseDiscussion";
+		case "HORSE_WELLBEING":
+			return "horseWellbeing";
 		case "SYSTEM":
 			return null;
 	}
