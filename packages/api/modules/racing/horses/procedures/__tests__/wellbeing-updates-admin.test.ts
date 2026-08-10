@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
 	mockGetSession,
+	mockGetHorseById,
 	mockListWellbeingTimeline,
 	mockCreateWellbeingUpdate,
 	mockUpdateWellbeingUpdateFields,
@@ -10,6 +11,7 @@ const {
 	mockPublishWellbeingUpdate,
 } = vi.hoisted(() => ({
 	mockGetSession: vi.fn(),
+	mockGetHorseById: vi.fn(),
 	mockListWellbeingTimeline: vi.fn(),
 	mockCreateWellbeingUpdate: vi.fn(),
 	mockUpdateWellbeingUpdateFields: vi.fn(),
@@ -18,6 +20,10 @@ const {
 }));
 
 vi.mock("@repo/auth", () => ({ auth: { api: { getSession: mockGetSession } } }));
+
+vi.mock("@repo/database", () => ({
+	getHorseById: mockGetHorseById,
+}));
 
 vi.mock("../../lib/wellbeing-updates", () => ({
 	listWellbeingTimeline: mockListWellbeingTimeline,
@@ -42,6 +48,7 @@ const ctx = { context: { headers: new Headers() } };
 beforeEach(() => {
 	vi.clearAllMocks();
 	mockGetSession.mockResolvedValue({ user: ADMIN, session: SESSION });
+	mockGetHorseById.mockResolvedValue({ id: "h-1", organizationId: "org-1" });
 });
 
 describe("listWellbeingUpdatesProcedure", () => {
@@ -82,6 +89,32 @@ describe("createWellbeingUpdateProcedure", () => {
 			publish: true,
 			notifyMembers: true,
 		});
+	});
+
+	it("throws NOT_FOUND when the horse doesn't exist", async () => {
+		mockGetHorseById.mockResolvedValue(null);
+
+		await expect(
+			call(
+				createWellbeingUpdateProcedure,
+				{ horseId: "h-1", type: "VET", body: "Routine checkup." },
+				ctx,
+			),
+		).rejects.toMatchObject({ code: "NOT_FOUND" });
+		expect(mockCreateWellbeingUpdate).not.toHaveBeenCalled();
+	});
+
+	it("throws NOT_FOUND when the horse belongs to a different organization", async () => {
+		mockGetHorseById.mockResolvedValue({ id: "h-1", organizationId: "org-other" });
+
+		await expect(
+			call(
+				createWellbeingUpdateProcedure,
+				{ horseId: "h-1", type: "VET", body: "Routine checkup." },
+				ctx,
+			),
+		).rejects.toMatchObject({ code: "NOT_FOUND" });
+		expect(mockCreateWellbeingUpdate).not.toHaveBeenCalled();
 	});
 });
 

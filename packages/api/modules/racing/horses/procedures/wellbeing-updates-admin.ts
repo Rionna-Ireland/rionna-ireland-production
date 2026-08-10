@@ -1,4 +1,5 @@
 import { ORPCError } from "@orpc/client";
+import { getHorseById } from "@repo/database";
 import { z } from "zod";
 
 import { adminProcedure } from "../../../../orpc/procedures";
@@ -58,8 +59,14 @@ export const createWellbeingUpdateProcedure = adminProcedure
 		}),
 	)
 	.handler(async ({ input, context }) => {
+		const organizationId = requireOrg(context);
+		const horse = await getHorseById(input.horseId);
+		if (!horse || horse.organizationId !== organizationId) {
+			throw new ORPCError("NOT_FOUND", { message: "Horse not found" });
+		}
+
 		return createWellbeingUpdate({
-			organizationId: requireOrg(context),
+			organizationId,
 			horseId: input.horseId,
 			type: input.type,
 			body: input.body,

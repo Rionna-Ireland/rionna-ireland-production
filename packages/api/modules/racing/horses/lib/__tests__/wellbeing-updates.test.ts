@@ -130,6 +130,30 @@ describe("createWellbeingUpdate", () => {
 			}),
 		);
 	});
+
+	it("does not throw when the push delivery itself throws — the create already committed", async () => {
+		mockCreateWellbeingUpdate.mockResolvedValue({
+			id: "w-1",
+			horseId: "h-1",
+			organizationId: "org-1",
+			type: "REHAB",
+			publishedAt: new Date(),
+		});
+		mockSendPush.mockRejectedValue(new Error("db unavailable"));
+
+		await expect(
+			createWellbeingUpdate({
+				organizationId: "org-1",
+				horseId: "h-1",
+				type: "REHAB",
+				body: "Progressing well in the pool.",
+				publish: true,
+				notifyMembers: true,
+			}),
+		).resolves.toEqual(
+			expect.objectContaining({ id: "w-1" }),
+		);
+	});
 });
 
 describe("publishWellbeingUpdate", () => {
@@ -226,6 +250,32 @@ describe("publishWellbeingUpdate", () => {
 		});
 
 		expect(mockSendPush).not.toHaveBeenCalled();
+	});
+
+	it("still returns the published row when the push delivery throws", async () => {
+		mockGetWellbeingUpdateById.mockResolvedValue({
+			id: "w-1",
+			organizationId: "org-1",
+			horseId: "h-1",
+			type: "REST",
+			publishedAt: null,
+		});
+		mockUpdateWellbeingUpdate.mockResolvedValue({
+			id: "w-1",
+			organizationId: "org-1",
+			horseId: "h-1",
+			type: "REST",
+			publishedAt: new Date(),
+		});
+		mockSendPush.mockRejectedValue(new Error("db unavailable"));
+
+		await expect(
+			publishWellbeingUpdate({
+				organizationId: "org-1",
+				updateId: "w-1",
+				notifyMembers: true,
+			}),
+		).resolves.toEqual(expect.objectContaining({ id: "w-1" }));
 	});
 });
 

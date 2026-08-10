@@ -21,12 +21,12 @@ export const createAudioUploadUrl = adminProcedure
 			fileSize: audioFileSizeSchema,
 		}),
 	)
-	.handler(async ({ input }) => {
+	.handler(async ({ input, context }) => {
 		assertSafeFilename(input.filename);
 
 		const horse = await getHorseById(input.horseId);
 
-		if (!horse) {
+		if (!horse || horse.organizationId !== context.session.activeOrganizationId) {
 			throw new ORPCError("NOT_FOUND", { message: "Horse not found" });
 		}
 

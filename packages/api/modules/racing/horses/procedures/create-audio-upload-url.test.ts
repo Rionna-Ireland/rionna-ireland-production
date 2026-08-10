@@ -75,4 +75,13 @@ describe("createAudioUploadUrl", () => {
 			code: "NOT_FOUND",
 		});
 	});
+
+	it("404s when the horse belongs to a different organization", async () => {
+		mockGetHorseById.mockResolvedValue({ id: "h1", organizationId: "org-other" });
+
+		await expect(call(createAudioUploadUrl, okInput, ctx)).rejects.toMatchObject({
+			code: "NOT_FOUND",
+		});
+		expect(mockGetSignedUploadUrl).not.toHaveBeenCalled();
+	});
 });

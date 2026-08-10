@@ -201,15 +201,26 @@ export function WellbeingTimeline({ horseId }: WellbeingTimelineProps) {
 									</div>
 									<div className="gap-2 flex">
 										{!update.publishedAt && (
-											<Button
-												type="button"
-												size="sm"
-												variant="outline"
-												onClick={() => handlePublish(update.id, true)}
-												loading={publishMutation.isPending}
-											>
-												{t("admin.horses.wellbeing.publish")}
-											</Button>
+											<>
+												<Button
+													type="button"
+													size="sm"
+													variant="outline"
+													onClick={() => handlePublish(update.id, true)}
+													loading={publishMutation.isPending}
+												>
+													{t("admin.horses.wellbeing.publish")}
+												</Button>
+												<Button
+													type="button"
+													size="sm"
+													variant="ghost"
+													onClick={() => handlePublish(update.id, false)}
+													loading={publishMutation.isPending}
+												>
+													{t("admin.horses.wellbeing.publishQuiet")}
+												</Button>
+											</>
 										)}
 										<Button
 											type="button"

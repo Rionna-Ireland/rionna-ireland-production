@@ -355,7 +355,8 @@
 				"add": "Add update",
 				"draftBadge": "Draft",
 				"publishedBadge": "Published {date}",
-				"publish": "Publish",
+				"publish": "Publish & notify",
+				"publishQuiet": "Publish quietly",
 				"delete": "Delete",
 				"notifications": {
 					"created": "Wellbeing update saved.",

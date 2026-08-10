@@ -39,32 +39,40 @@ function wellbeingBody(type: HorseWellbeingType, horseName: string): string {
  * still succeeds.
  */
 async function notifyFollowers(update: NotifiableUpdate): Promise<void> {
-	const horse = await getHorseById(update.horseId);
-	const horseName = horse?.name ?? "Your horse";
+	try {
+		const horse = await getHorseById(update.horseId);
+		const horseName = horse?.name ?? "Your horse";
 
-	const delivery = await sendPush({
-		organizationId: update.organizationId,
-		triggerType: "HORSE_WELLBEING",
-		triggerRefId: update.id,
-		title: `${horseName} – wellbeing update`,
-		body: wellbeingBody(update.type, horseName),
-		data: { screen: "horse", horseId: update.horseId },
-		followersOfHorseId: update.horseId,
-	});
-
-	if (delivery.attempted > 0 && delivery.sent === 0) {
-		logger.warn("[wellbeing] publish-with-notify push delivery failed for the whole audience", {
-			horseId: update.horseId,
-			updateId: update.id,
-			failed: delivery.failed,
+		const delivery = await sendPush({
+			organizationId: update.organizationId,
+			triggerType: "HORSE_WELLBEING",
+			triggerRefId: update.id,
+			title: `${horseName} – wellbeing update`,
+			body: wellbeingBody(update.type, horseName),
+			data: { screen: "horse", horseId: update.horseId },
+			followersOfHorseId: update.horseId,
 		});
-	} else {
-		logger.info("[wellbeing] publish-with-notify push summary", {
+
+		if (delivery.attempted > 0 && delivery.sent === 0) {
+			logger.warn("[wellbeing] publish-with-notify push delivery failed for the whole audience", {
+				horseId: update.horseId,
+				updateId: update.id,
+				failed: delivery.failed,
+			});
+		} else {
+			logger.info("[wellbeing] publish-with-notify push summary", {
+				horseId: update.horseId,
+				updateId: update.id,
+				attempted: delivery.attempted,
+				sent: delivery.sent,
+				failed: delivery.failed,
+			});
+		}
+	} catch (error) {
+		logger.error("[wellbeing] publish-with-notify push delivery threw", {
 			horseId: update.horseId,
 			updateId: update.id,
-			attempted: delivery.attempted,
-			sent: delivery.sent,
-			failed: delivery.failed,
+			error,
 		});
 	}
 }
