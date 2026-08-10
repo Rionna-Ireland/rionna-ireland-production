@@ -20,7 +20,7 @@ export interface FollowMutationResult {
  * S8-04 §5 org-level kill-switch. Default ON — absent or any value other
  * than the literal `false` is treated as enabled.
  */
-async function horseFollowsEnabled(organizationId: string): Promise<boolean> {
+export async function horseFollowsEnabled(organizationId: string): Promise<boolean> {
 	const org = await db.organization.findUnique({
 		where: { id: organizationId },
 		select: { metadata: true },

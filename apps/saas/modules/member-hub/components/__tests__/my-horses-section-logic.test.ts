@@ -7,6 +7,7 @@ import {
 	formatDistance,
 	formatResultDetail,
 	getOrdinal,
+	isDisabledFollowResult,
 	isNextRunForHorse,
 	isPendingForHorse,
 	pedigreeLines,
@@ -170,6 +171,24 @@ describe("recentResults", () => {
 
 	it("defaults to undefined entries as an empty array", () => {
 		expect(recentResults(undefined)).toEqual([]);
+	});
+});
+
+describe("isDisabledFollowResult", () => {
+	it("is true for the org-disabled-kill-switch payload", () => {
+		expect(isDisabledFollowResult({ ok: false, disabled: true })).toBe(true);
+	});
+
+	it("is false for a successful follow/unfollow payload", () => {
+		expect(isDisabledFollowResult({ ok: true, isFollowing: true })).toBe(false);
+		expect(isDisabledFollowResult({ ok: true, isFollowing: false })).toBe(false);
+	});
+
+	it("is false for missing/malformed data", () => {
+		expect(isDisabledFollowResult(undefined)).toBe(false);
+		expect(isDisabledFollowResult(null)).toBe(false);
+		expect(isDisabledFollowResult({})).toBe(false);
+		expect(isDisabledFollowResult("nope")).toBe(false);
 	});
 });
 

@@ -18,6 +18,16 @@
  * entirely (logged) rather than churning Circle memberships for a disabled
  * feature. Re-enabling the flag heals any drift on the next run.
  *
+ * Follows are pre-filtered the same way the §1 backfill script
+ * (`backfill-horse-space-joins.ts`) does before a `HorseFollow` row is
+ * counted as an attempt: `syncCircleSpaceMembership` returns `ok:false` for
+ * two benign, structural, non-error cases — the member has no
+ * `circleMemberId` yet (not Circle-provisioned) or the horse has no active
+ * `circleSpaceId` — and those would otherwise be indistinguishable from a
+ * genuine join failure, permanently inflating `failed` and making "daily
+ * reconcile runs green" unobservable. Rows that don't clear the pre-filter
+ * are counted as `skipped`, not attempted.
+ *
  * @see Architecture/specs/S8-04-horse-space-membership-reconciliation.md
  */
 
@@ -33,8 +43,15 @@ export interface ReconcileSpaceMembershipsSummary {
 	orgsProcessed: number;
 	orgsSkippedDisabled: number;
 	totalFollows: number;
+	/** Pre-filtered out: member not yet Circle-provisioned, or horse has no active space. */
+	skipped: number;
 	joined: number;
 	failed: number;
+}
+
+interface Candidate {
+	userId: string;
+	horseId: string;
 }
 
 export async function reconcileSpaceMemberships(): Promise<ReconcileSpaceMembershipsSummary> {
@@ -43,6 +60,7 @@ export async function reconcileSpaceMemberships(): Promise<ReconcileSpaceMembers
 	let orgsProcessed = 0;
 	let orgsSkippedDisabled = 0;
 	let totalFollows = 0;
+	let skipped = 0;
 	let joined = 0;
 	let failed = 0;
 
@@ -65,14 +83,46 @@ export async function reconcileSpaceMemberships(): Promise<ReconcileSpaceMembers
 		totalFollows += follows.length;
 		if (follows.length === 0) continue;
 
+		// Pre-filter the way backfill-horse-space-joins.ts does: only attempt a
+		// join for follows whose member is Circle-provisioned and whose horse
+		// has an active Circle space. Everything else is a structural skip, not
+		// a failure — there's nothing to join yet.
+		const userIds = [...new Set(follows.map((f) => f.userId))];
+		const horseIds = [...new Set(follows.map((f) => f.horseId))];
+
+		const members = await db.member.findMany({
+			where: { organizationId: org.id, userId: { in: userIds } },
+			select: { userId: true, circleMemberId: true },
+		});
+		const circleMemberIdByUserId = new Map(members.map((m) => [m.userId, m.circleMemberId]));
+
+		const horses = await db.horse.findMany({
+			where: { organizationId: org.id, id: { in: horseIds } },
+			select: { id: true, circleSpaceId: true, circleSpaceStatus: true },
+		});
+		const horseById = new Map(horses.map((h) => [h.id, h]));
+
+		const candidates: Candidate[] = [];
+		for (const follow of follows) {
+			const hasMember = Boolean(circleMemberIdByUserId.get(follow.userId));
+			const horse = horseById.get(follow.horseId);
+			const hasActiveSpace = Boolean(horse?.circleSpaceId) && horse?.circleSpaceStatus === "active";
+			if (!hasMember || !hasActiveSpace) {
+				skipped++;
+				continue;
+			}
+			candidates.push({ userId: follow.userId, horseId: follow.horseId });
+		}
+		if (candidates.length === 0) continue;
+
 		await runBounded(
 			CONCURRENCY,
-			follows.map((follow) => async () => {
+			candidates.map((candidate) => async () => {
 				try {
 					const outcome = await syncCircleSpaceMembership({
 						organizationId: org.id,
-						userId: follow.userId,
-						horseId: follow.horseId,
+						userId: candidate.userId,
+						horseId: candidate.horseId,
 						action: "join",
 					});
 					if (outcome.ok) {
@@ -85,8 +135,8 @@ export async function reconcileSpaceMemberships(): Promise<ReconcileSpaceMembers
 					logger.warn("[Circle] Space membership reconcile: join threw unexpectedly", {
 						surface: "circle.space_membership_reconcile",
 						organizationId: org.id,
-						userId: follow.userId,
-						horseId: follow.horseId,
+						userId: candidate.userId,
+						horseId: candidate.horseId,
 						error: error instanceof Error ? error.message : String(error),
 					});
 				}
@@ -98,6 +148,7 @@ export async function reconcileSpaceMemberships(): Promise<ReconcileSpaceMembers
 		orgsProcessed,
 		orgsSkippedDisabled,
 		totalFollows,
+		skipped,
 		joined,
 		failed,
 	};

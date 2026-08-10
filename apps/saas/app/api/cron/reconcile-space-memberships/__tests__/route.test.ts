@@ -29,7 +29,7 @@ vi.mock("@repo/logs", () => ({
 }));
 
 // Import after mocks are registered.
-import { POST } from "../route";
+import { GET, POST } from "../route";
 
 const ORIGINAL_CRON_SECRET = process.env.CRON_SECRET;
 
@@ -71,7 +71,8 @@ describe("POST /api/cron/reconcile-space-memberships", () => {
 			orgsProcessed: 1,
 			orgsSkippedDisabled: 0,
 			totalFollows: 42,
-			joined: 40,
+			skipped: 3,
+			joined: 37,
 			failed: 2,
 		};
 		mockReconcileSpaceMemberships.mockResolvedValueOnce(summary);
@@ -108,5 +109,54 @@ describe("POST /api/cron/reconcile-space-memberships", () => {
 			"space_membership.reconcile.cron.complete",
 			expect.anything(),
 		);
+	});
+});
+
+describe("GET /api/cron/reconcile-space-memberships (native Vercel Cron)", () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		process.env.CRON_SECRET = "test-secret";
+	});
+
+	afterAll(() => {
+		process.env.CRON_SECRET = ORIGINAL_CRON_SECRET;
+	});
+
+	it("is aliased to the same handler as POST — Vercel Cron invokes with GET", () => {
+		expect(GET).toBe(POST);
+	});
+
+	it("returns 401 when authorization header is missing", async () => {
+		const request = new Request("http://localhost/api/cron/reconcile-space-memberships", {
+			method: "GET",
+		});
+
+		const response = await GET(request);
+
+		expect(response.status).toBe(401);
+		expect(mockReconcileSpaceMemberships).not.toHaveBeenCalled();
+	});
+
+	it("runs the reconcile and returns a summary with the correct bearer, mirroring Vercel Cron's Authorization header", async () => {
+		const summary = {
+			orgsProcessed: 1,
+			orgsSkippedDisabled: 0,
+			totalFollows: 5,
+			skipped: 0,
+			joined: 5,
+			failed: 0,
+		};
+		mockReconcileSpaceMemberships.mockResolvedValueOnce(summary);
+
+		const request = new Request("http://localhost/api/cron/reconcile-space-memberships", {
+			method: "GET",
+			headers: { authorization: "Bearer test-secret" },
+		});
+
+		const response = await GET(request);
+
+		expect(response.status).toBe(200);
+		expect(await response.json()).toEqual({ ok: true, summary });
+		expect(mockReconcileSpaceMemberships).toHaveBeenCalledTimes(1);
 	});
 });

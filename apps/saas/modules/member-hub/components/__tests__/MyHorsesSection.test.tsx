@@ -8,9 +8,23 @@ interface SwitchSpyProps {
 }
 
 const switchPropsByLabel = new Map<string, SwitchSpyProps>();
-const followMutate = vi.fn();
-const unfollowMutate = vi.fn();
-const invalidateQueries = vi.fn();
+
+const { followMutate, unfollowMutate, invalidateQueries, toastError, setQueryData } = vi.hoisted(() => ({
+	followMutate: vi.fn(),
+	unfollowMutate: vi.fn(),
+	invalidateQueries: vi.fn(),
+	toastError: vi.fn(),
+	setQueryData: vi.fn(),
+}));
+
+// Overridden per-test to drive the `horses.followsEnabled` query's `data`,
+// and what the simulated `mutate()` resolves with. `vi.hoisted` so the
+// hoisted `vi.mock` factories below (which run before these would otherwise
+// be initialized) can close over live `let` bindings.
+const followsEnabledState = vi.hoisted(() => ({ data: { enabled: true } as { enabled: boolean } | undefined }));
+const mutationResolutionState = vi.hoisted(() => ({
+	value: { ok: true } as { ok: boolean; disabled?: boolean } | Error,
+}));
 
 const mockHorses = [
 	{
@@ -50,7 +64,7 @@ vi.mock("@repo/ui/components/switch", () => ({
 }));
 
 vi.mock("@repo/ui/components/toast", () => ({
-	toastError: vi.fn(),
+	toastError,
 }));
 
 vi.mock("next-intl", () => ({
@@ -67,20 +81,51 @@ vi.mock("@tanstack/react-query", () => ({
 		if (options.queryKey?.[1] === "nextRun") {
 			return { data: undefined, isLoading: false };
 		}
+		if (options.queryKey?.[1] === "followsEnabled") {
+			return { data: followsEnabledState.data, isLoading: false };
+		}
 		return { data: mockHorses, isLoading: false };
 	},
 	useQueryClient: () => ({
 		cancelQueries: vi.fn(),
-		getQueryData: vi.fn(),
-		setQueryData: vi.fn(),
+		getQueryData: vi.fn(() => "previous-snapshot"),
+		setQueryData,
 		invalidateQueries: invalidateQueries,
 	}),
-	useMutation: (options: { mutationFn?: unknown }) => {
+	useMutation: (options: {
+		onMutate?: (vars: unknown) => unknown;
+		onSuccess?: (data: unknown, vars: unknown, context: unknown) => unknown;
+		onError?: (error: unknown, vars: unknown, context: unknown) => unknown;
+		onSettled?: () => unknown;
+	}) => {
 		// Distinguish the follow vs unfollow mutation by identity of the options
 		// object passed in — the component builds one per direction.
 		const isFollow = options === followOptionsRef.current;
+		const spy = isFollow ? followMutate : unfollowMutate;
 		return {
-			mutate: isFollow ? followMutate : unfollowMutate,
+			// Simulates the real mutate() lifecycle (onMutate -> resolve/reject ->
+			// onSuccess/onError -> onSettled) so tests can drive the resolved
+			// payload set on `mutationResolutionState` and assert the component's
+			// rollback logic runs, not just that `mutate` was called with args.
+			//
+			// The component's real `onMutate` is async (it awaits
+			// `cancelQueries`), so real react-query awaits it before calling
+			// onSuccess/onError with the resolved context. This mock stands in
+			// a synchronously-known context (`{ previous: "previous-snapshot" }`,
+			// matching the `getQueryData` stub below) rather than awaiting the
+			// real `onMutate` promise, so tests don't need to flush microtasks
+			// to observe the rollback.
+			mutate: (vars: unknown) => {
+				spy(vars);
+				options.onMutate?.(vars);
+				const context = { previous: "previous-snapshot" };
+				if (mutationResolutionState.value instanceof Error) {
+					options.onError?.(mutationResolutionState.value, vars, context);
+				} else {
+					options.onSuccess?.(mutationResolutionState.value, vars, context);
+				}
+				options.onSettled?.();
+			},
 			isPending: false,
 			variables: undefined,
 		};
@@ -99,6 +144,9 @@ vi.mock("@shared/lib/orpc-query-utils", () => ({
 			},
 			nextRun: {
 				queryOptions: (input: unknown) => ({ queryKey: ["horses", "nextRun", input] }),
+			},
+			followsEnabled: {
+				queryOptions: (input: unknown) => ({ queryKey: ["horses", "followsEnabled", input] }),
 			},
 			follow: {
 				mutationOptions: (opts: unknown) => {
@@ -125,6 +173,10 @@ afterEach(() => {
 	followMutate.mockClear();
 	unfollowMutate.mockClear();
 	invalidateQueries.mockClear();
+	toastError.mockClear();
+	setQueryData.mockClear();
+	followsEnabledState.data = { enabled: true };
+	mutationResolutionState.value = { ok: true };
 });
 
 describe("MyHorsesSection", () => {
@@ -175,5 +227,47 @@ describe("MyHorsesSection", () => {
 
 		expect(followMutate).toHaveBeenCalledWith({ horseId: "h2", organizationId: "org_1" });
 		expect(unfollowMutate).not.toHaveBeenCalled();
+	});
+
+	it("hides every follow switch when the org-level horseFollows kill-switch is off", () => {
+		followsEnabledState.data = { enabled: false };
+
+		renderToStaticMarkup(<MyHorsesSection organizationId="org_1" />);
+
+		expect(switchPropsByLabel.size).toBe(0);
+	});
+
+	it("rolls back the optimistic flip and toasts when the mutation resolves disabled (S8-04 §5)", () => {
+		// The kill-switch flag itself hasn't loaded as false yet (so the switch
+		// is still visible), but the mutation resolves `{ ok: false, disabled: true }`
+		// — the org went from enabled to disabled between page load and the click.
+		mutationResolutionState.value = { ok: false, disabled: true };
+
+		renderToStaticMarkup(<MyHorsesSection organizationId="org_1" />);
+
+		const followedSwitch = switchPropsByLabel.get(
+			'app.dashboard.myHorses.toggleLabel:{"name":"Shadowfax"}',
+		);
+		followedSwitch?.onCheckedChange(false);
+
+		expect(unfollowMutate).toHaveBeenCalledWith({ horseId: "h1", organizationId: "org_1" });
+		expect(setQueryData).toHaveBeenCalledWith(
+			expect.arrayContaining(["horses", "list", expect.anything()]),
+			"previous-snapshot",
+		);
+		expect(toastError).toHaveBeenCalledWith("app.dashboard.myHorses.followError");
+	});
+
+	it("does not roll back or toast when the mutation resolves ok", () => {
+		mutationResolutionState.value = { ok: true };
+
+		renderToStaticMarkup(<MyHorsesSection organizationId="org_1" />);
+
+		const followedSwitch = switchPropsByLabel.get(
+			'app.dashboard.myHorses.toggleLabel:{"name":"Shadowfax"}',
+		);
+		followedSwitch?.onCheckedChange(false);
+
+		expect(toastError).not.toHaveBeenCalled();
 	});
 });

@@ -37,6 +37,22 @@ export function shouldHideSection(isLoading: boolean, horses: FollowableHorse[] 
 	return !isLoading && (!horses || horses.length === 0);
 }
 
+/**
+ * S8-04 §5: `followHorseProcedure`/`unfollowHorseProcedure` resolve
+ * successfully (no thrown `ORPCError`) with `{ ok: false, disabled: true }`
+ * when the org-level `features.horseFollows` kill-switch is off — the
+ * mutation's `onError` never fires for this case, so callers must check the
+ * resolved data themselves to know the optimistic flip needs rolling back.
+ */
+export function isDisabledFollowResult(data: unknown): boolean {
+	return (
+		!!data &&
+		typeof data === "object" &&
+		"ok" in data &&
+		(data as { ok: unknown }).ok === false
+	);
+}
+
 /** Whether a follow/unfollow mutation is in flight for this specific horse row. */
 export function isPendingForHorse(
 	mutation: { isPending: boolean; variables?: { horseId: string } | undefined },
