@@ -157,17 +157,18 @@ model Organization {
   purchases          Purchase[]
 
   // Racing domain (S1-02)
-  horses       Horse[]
-  trainers     Trainer[]
-  jockeys      Jockey[]
-  courses      Course[]
-  meetings     Meeting[]
-  races        Race[]
-  raceEntries  RaceEntry[]
-  newsPosts    NewsPost[]
-  pushLogs     PushLog[]
-  memberPosts  MemberPost[]
-  horseFollows HorseFollow[]
+  horses           Horse[]
+  trainers         Trainer[]
+  jockeys          Jockey[]
+  courses          Course[]
+  meetings         Meeting[]
+  races            Race[]
+  raceEntries      RaceEntry[]
+  newsPosts        NewsPost[]
+  pushLogs         PushLog[]
+  memberPosts      MemberPost[]
+  horseFollows     HorseFollow[]
+  wellbeingUpdates HorseWellbeingUpdate[]
 
   @@unique([slug])
   @@map("organization")
@@ -310,8 +311,17 @@ model Horse {
   status HorseStatus @default(IN_TRAINING)
 
   bio            String? @db.Text
+  // Long-form narrative (S8-01 §5/§6) — richer than `bio`, meant for the
+  // "Story & pedigree" profile section. Kept separate from `bio` so existing
+  // short-bio readers/writers are unaffected.
+  story          String? @db.Text
   trainerNotes   String? @db.Text
   photos         Json    @default("[]")
+  // Audio notes (S8-01 §5/§6) — parallel array to `photos`, same {url, caption}
+  // shape, kept separate rather than adding a `kind` discriminator to `photos`
+  // so every existing `photos` reader (mobile, marketing site, admin gallery)
+  // stays untouched.
+  audioNotes     Json    @default("[]")
   pedigree       Json?
   ownershipBlurb String?
 
@@ -339,9 +349,10 @@ model Horse {
   latestEntryId String? @unique
   nextEntryId   String? @unique
 
-  entries     RaceEntry[]
-  memberPosts MemberPost[]
-  followers   HorseFollow[]
+  entries          RaceEntry[]
+  memberPosts      MemberPost[]
+  followers        HorseFollow[]
+  wellbeingUpdates HorseWellbeingUpdate[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -351,6 +362,36 @@ model Horse {
   @@index([organizationId, publishedAt])
   @@index([organizationId, publicProfileAt])
   @@map("horse")
+}
+
+// Wellbeing timeline (S8-01 §6) — admin-authored, member-read. Curated club
+// content (not community-generated), so it's "ours" under D10 the same way
+// NewsPost/MemberPost are.
+enum HorseWellbeingType {
+  VET
+  TRAINING
+  REHAB
+  REST
+}
+
+model HorseWellbeingUpdate {
+  id             String             @id @default(cuid())
+  horseId        String
+  organizationId String
+  type           HorseWellbeingType
+  body           String             @db.Text
+  publishedAt    DateTime?
+  notifyMembers  Boolean            @default(false)
+
+  horse        Horse        @relation(fields: [horseId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([horseId, publishedAt])
+  @@index([organizationId])
+  @@map("horse_wellbeing_update")
 }
 
 model HorseFollow {
@@ -498,6 +539,10 @@ model RaceEntry {
   performanceRating Int?
   starRating        Int?
 
+  // Replay link (S8-01 §5/§6) — admin-set link to race footage, surfaced on
+  // the member Horse Profile's declarations/results section.
+  replayUrl String?
+
   notifiedStates Json @default("[]")
 
   createdAt DateTime @default(now())
@@ -616,6 +661,7 @@ enum PushTriggerType {
   CIRCLE_REACTION
   CIRCLE_DM
   CIRCLE_HORSE_DISCUSSION
+  HORSE_WELLBEING
 }
 
 enum PushStatus {

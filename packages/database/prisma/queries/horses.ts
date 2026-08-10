@@ -69,8 +69,10 @@ export async function createHorse(data: {
 	name: string;
 	status?: HorseStatus;
 	bio?: string;
+	story?: string;
 	trainerNotes?: string;
 	photos?: Prisma.InputJsonValue;
+	audioNotes?: Prisma.InputJsonValue;
 	pedigree?: Prisma.InputJsonValue;
 	ownershipBlurb?: string;
 	circleSpaceId?: string;
@@ -207,6 +209,19 @@ export async function getPublishedHorseById(horseId: string) {
 				},
 			},
 		},
+	});
+}
+
+export async function getRaceEntryById(entryId: string) {
+	return db.raceEntry.findUnique({
+		where: { id: entryId },
+	});
+}
+
+export async function updateRaceEntryReplayUrl(entryId: string, replayUrl: string | null) {
+	return db.raceEntry.update({
+		where: { id: entryId },
+		data: { replayUrl },
 	});
 }
 
