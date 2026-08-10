@@ -11,8 +11,8 @@
 import { db, parseOrgMetadata } from "@repo/database";
 import { logger } from "@repo/logs";
 
-import { createCircleService } from "./circle/index";
 import { syncCircleSpaceMembership } from "./circle-space-membership";
+import { createCircleService } from "./circle/index";
 
 /**
  * Provision a new member in Circle.
@@ -93,14 +93,11 @@ export async function provisionCircleMember(
 			data: { circleProfileConfirmedAt: new Date() },
 		});
 	} else {
-		logger.warn(
-			"[Circle] Profile pre-confirm failed; will retry lazily on first session",
-			{
-				surface: "circle.provisioning",
-				memberId: member.id,
-				reason: confirm.reason,
-			},
-		);
+		logger.warn("[Circle] Profile pre-confirm failed; will retry lazily on first session", {
+			surface: "circle.provisioning",
+			memberId: member.id,
+			reason: confirm.reason,
+		});
 	}
 
 	// S6-07 Surface D: auto-follow the new member to every published horse in
@@ -118,9 +115,15 @@ export async function provisionCircleMember(
 	// space (same package, direct import — no cycle). Best-effort/sequential,
 	// stays inside this same catch-all; a join failure never blocks or
 	// unwinds provisioning.
+	//
+	// S8-04 §5: skip entirely when the org's features.horseFollows kill-switch
+	// is off — no follow rows created while disabled (per the spec's
+	// consumer table).
 	try {
-		const horseAutoFollow = parseOrgMetadata(org.metadata ?? null).horseAutoFollow;
-		if (horseAutoFollow !== false) {
+		const metadata = parseOrgMetadata(org.metadata ?? null);
+		const horseAutoFollow = metadata.horseAutoFollow;
+		const horseFollowsEnabled = metadata.features?.horseFollows !== false;
+		if (horseFollowsEnabled && horseAutoFollow !== false) {
 			const publishedHorses = await db.horse.findMany({
 				where: { organizationId: member.organizationId, publishedAt: { not: null } },
 				select: { id: true },
@@ -169,9 +172,10 @@ export async function provisionCircleMember(
  * guided-removal orchestration uses it to decide whether to proceed to the
  * irreversible Member-row delete.
  */
-export async function deactivateCircleMember(
-	member: { id: string; circleMemberId: string },
-): Promise<boolean> {
+export async function deactivateCircleMember(member: {
+	id: string;
+	circleMemberId: string;
+}): Promise<boolean> {
 	const dbMember = await db.member.findUnique({
 		where: { id: member.id },
 		include: { organization: true },
@@ -183,17 +187,14 @@ export async function deactivateCircleMember(
 
 	if (!outcome.ok) {
 		// Don't throw — reconciliation will retry on next tick.
-		logger.error(
-			"[Circle] Member deactivation failed; deferring to reconciliation",
-			{
-				surface: "circle.provisioning",
-				memberId: member.id,
-				organizationId: dbMember.organizationId,
-				circleMemberId: member.circleMemberId,
-				reason: outcome.reason,
-				retriable: outcome.retriable,
-			},
-		);
+		logger.error("[Circle] Member deactivation failed; deferring to reconciliation", {
+			surface: "circle.provisioning",
+			memberId: member.id,
+			organizationId: dbMember.organizationId,
+			circleMemberId: member.circleMemberId,
+			reason: outcome.reason,
+			retriable: outcome.retriable,
+		});
 		return false;
 	}
 
@@ -214,9 +215,10 @@ export async function deactivateCircleMember(
  * Reactivate a member in Circle.
  * Called when subscription transitions from canceled to active.
  */
-export async function reactivateCircleMember(
-	member: { id: string; circleMemberId: string },
-): Promise<void> {
+export async function reactivateCircleMember(member: {
+	id: string;
+	circleMemberId: string;
+}): Promise<void> {
 	const dbMember = await db.member.findUnique({
 		where: { id: member.id },
 		include: { organization: true },
@@ -236,17 +238,14 @@ export async function reactivateCircleMember(
 	});
 
 	if (!outcome.ok) {
-		logger.error(
-			"[Circle] Member reactivation failed; deferring to reconciliation",
-			{
-				surface: "circle.provisioning",
-				memberId: member.id,
-				organizationId: dbMember.organizationId,
-				circleMemberId: member.circleMemberId,
-				reason: outcome.reason,
-				retriable: outcome.retriable,
-			},
-		);
+		logger.error("[Circle] Member reactivation failed; deferring to reconciliation", {
+			surface: "circle.provisioning",
+			memberId: member.id,
+			organizationId: dbMember.organizationId,
+			circleMemberId: member.circleMemberId,
+			reason: outcome.reason,
+			retriable: outcome.retriable,
+		});
 		return;
 	}
 
@@ -265,9 +264,7 @@ export async function reactivateCircleMember(
  * Delete a member and all their content from Circle.
  * Called from user deletion hook (GDPR).
  */
-export async function deleteCircleMember(
-	circleMemberId: string,
-): Promise<void> {
+export async function deleteCircleMember(circleMemberId: string): Promise<void> {
 	const member = await db.member.findFirst({
 		where: { circleMemberId },
 		include: { organization: true },

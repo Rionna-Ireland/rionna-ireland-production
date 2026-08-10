@@ -1,4 +1,5 @@
 import { call } from "@orpc/server";
+import type { OrganizationMetadata } from "@repo/database/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
@@ -8,6 +9,7 @@ const {
 	mockGetMemberToken,
 	mockHorseFindMany,
 	mockGetFollowedHorseIds,
+	mockParseOrgMetadata,
 } = vi.hoisted(() => ({
 	mockGetSession: vi.fn(),
 	mockOrgFindUnique: vi.fn(),
@@ -15,6 +17,9 @@ const {
 	mockGetMemberToken: vi.fn(),
 	mockHorseFindMany: vi.fn(),
 	mockGetFollowedHorseIds: vi.fn(),
+	mockParseOrgMetadata: vi.fn(
+		(): OrganizationMetadata => ({ circle: { communityDomain: "community.rionna.com" } }),
+	),
 }));
 
 vi.mock("@repo/auth", () => ({
@@ -27,7 +32,7 @@ vi.mock("@repo/database", () => ({
 		member: { findFirst: mockMemberFindFirst },
 		horse: { findMany: mockHorseFindMany },
 	},
-	parseOrgMetadata: vi.fn(() => ({ circle: { communityDomain: "community.rionna.com" } })),
+	parseOrgMetadata: mockParseOrgMetadata,
 }));
 
 vi.mock("../../racing/horses/lib/horse-follows", () => ({
@@ -247,6 +252,37 @@ describe("getMemberFeed (horse follow filter)", () => {
 			ctx,
 		);
 		expect(res.items.some((i) => i.spaceId === "9")).toBe(false);
+	});
+});
+
+describe("getMemberFeed (S8-04 §5 kill-switch)", () => {
+	// Same fixture as the horse-follow-filter suite: space 9 is horse-1's
+	// space, space 10 is not a horse space.
+	beforeEach(() => {
+		vi.clearAllMocks();
+		clearMemberFeedCache();
+		mockGetSession.mockResolvedValue({ user: USER, session: SESSION });
+		mockOrgFindUnique.mockResolvedValue({ id: ORG_ID, slug: "rionna", metadata: null });
+		mockMemberFindFirst.mockResolvedValue({ circleMemberId: "82236270" });
+		mockGetMemberToken.mockResolvedValue({ ok: true, data: { accessToken: "jwt" } });
+		mockHorseFindMany.mockResolvedValue([{ id: "horse-1", circleSpaceId: "9" }]);
+		mockParseOrgMetadata.mockReturnValue({
+			circle: { communityDomain: "community.rionna.com" },
+			features: { horseFollows: false },
+		});
+	});
+
+	it("bypasses the follow filter entirely — every horse space shown, not an empty feed", async () => {
+		mockGetFollowedHorseIds.mockResolvedValue(new Set()); // not followed — would normally be dropped
+		vi.stubGlobal("fetch", routeFetch());
+		const res = await call(
+			getMemberFeed,
+			{ organizationId: ORG_ID, page: 1, perPage: 15 },
+			ctx,
+		);
+		expect(res.ok).toBe(true);
+		expect(res.items.map((i) => i.id).sort()).toEqual(["1", "2"]); // space 9 no longer dropped
+		expect(mockGetFollowedHorseIds).not.toHaveBeenCalled();
 	});
 });
 

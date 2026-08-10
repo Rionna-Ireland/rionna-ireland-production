@@ -1,21 +1,34 @@
 import { call } from "@orpc/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockGetSession, mockUpsert, mockDeleteMany, mockMemberFindFirst, mockHorseFindFirst } =
-	vi.hoisted(() => ({
-		mockGetSession: vi.fn(),
-		mockUpsert: vi.fn(),
-		mockDeleteMany: vi.fn(),
-		mockMemberFindFirst: vi.fn(),
-		mockHorseFindFirst: vi.fn(),
-	}));
+const {
+	mockGetSession,
+	mockUpsert,
+	mockDeleteMany,
+	mockMemberFindFirst,
+	mockHorseFindFirst,
+	mockOrgFindUnique,
+} = vi.hoisted(() => ({
+	mockGetSession: vi.fn(),
+	mockUpsert: vi.fn(),
+	mockDeleteMany: vi.fn(),
+	mockMemberFindFirst: vi.fn(),
+	mockHorseFindFirst: vi.fn(),
+	mockOrgFindUnique: vi.fn(),
+}));
 vi.mock("@repo/auth", () => ({ auth: { api: { getSession: mockGetSession } } }));
 vi.mock("@repo/database", () => ({
 	db: {
 		horseFollow: { upsert: mockUpsert, deleteMany: mockDeleteMany },
 		member: { findFirst: mockMemberFindFirst },
 		horse: { findFirst: mockHorseFindFirst },
+		organization: { findUnique: mockOrgFindUnique },
 	},
+	parseOrgMetadata: (raw: string | null) => (raw ? JSON.parse(raw) : {}),
+}));
+
+vi.mock("@repo/payments/lib/circle-space-membership", () => ({
+	syncCircleSpaceMembership: vi.fn().mockResolvedValue({ ok: true }),
 }));
 
 const { mockInvalidateFeedCache } = vi.hoisted(() => ({
@@ -38,6 +51,7 @@ beforeEach(() => {
 	mockDeleteMany.mockResolvedValue({ count: 1 });
 	mockMemberFindFirst.mockResolvedValue({ id: "m-1" });
 	mockHorseFindFirst.mockResolvedValue({ id: "h-1" });
+	mockOrgFindUnique.mockResolvedValue({ metadata: null });
 });
 
 describe("followHorseProcedure", () => {
@@ -125,5 +139,27 @@ describe("input organizationId (web dashboard — session has no active org)", (
 		await expect(call(followHorseProcedure, { horseId: "h-1" }, ctx)).rejects.toMatchObject({
 			code: "BAD_REQUEST",
 		});
+	});
+});
+
+describe("S8-04 §5 kill-switch", () => {
+	beforeEach(() => {
+		mockOrgFindUnique.mockResolvedValue({
+			metadata: JSON.stringify({ features: { horseFollows: false } }),
+		});
+	});
+
+	it("followHorseProcedure returns ok:false, disabled:true — no DB write, no cache invalidation", async () => {
+		const res = await call(followHorseProcedure, { horseId: "h-1" }, ctx);
+		expect(res).toEqual({ ok: false, disabled: true });
+		expect(mockUpsert).not.toHaveBeenCalled();
+		expect(mockInvalidateFeedCache).not.toHaveBeenCalled();
+	});
+
+	it("unfollowHorseProcedure returns ok:false, disabled:true — no DB write, no cache invalidation", async () => {
+		const res = await call(unfollowHorseProcedure, { horseId: "h-1" }, ctx);
+		expect(res).toEqual({ ok: false, disabled: true });
+		expect(mockDeleteMany).not.toHaveBeenCalled();
+		expect(mockInvalidateFeedCache).not.toHaveBeenCalled();
 	});
 });

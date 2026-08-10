@@ -13,6 +13,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // Mock @repo/database
 const mockFindMany = vi.fn();
 const mockHorseFollowFindMany = vi.fn();
+const mockOrgFindUnique = vi.fn();
 
 vi.mock("@repo/database", () => ({
 	db: {
@@ -20,7 +21,9 @@ vi.mock("@repo/database", () => ({
 		horseFollow: {
 			findMany: (...args: unknown[]) => mockHorseFollowFindMany(...args),
 		},
+		organization: { findUnique: (...args: unknown[]) => mockOrgFindUnique(...args) },
 	},
+	parseOrgMetadata: (raw: string | null) => (raw ? JSON.parse(raw) : {}),
 }));
 
 import { getAudienceTokens, getPrefKey } from "../audience";
@@ -78,6 +81,7 @@ describe("getPrefKey", () => {
 describe("getAudienceTokens", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mockOrgFindUnique.mockResolvedValue({ metadata: null });
 	});
 
 	it("restricts to followers when followersOfHorseId is set", async () => {
@@ -210,9 +214,7 @@ describe("getAudienceTokens", () => {
 			triggerType: "HORSE_DECLARED",
 		});
 
-		expect(tokens).toEqual([
-			{ expoPushToken: "ExponentPushToken[def]", userId: "user-2" },
-		]);
+		expect(tokens).toEqual([{ expoPushToken: "ExponentPushToken[def]", userId: "user-2" }]);
 	});
 
 	it("excludes users with newsPost preference disabled for NEWS_POST trigger", async () => {
@@ -442,5 +444,45 @@ describe("getAudienceTokens", () => {
 				);
 			});
 		}
+	});
+
+	// S8-04 §5: the kill-switch's most important row — disabling follows must
+	// never silently kill race pushes.
+	describe("S8-04 §5 kill-switch: followersOfHorseId falls back to all members", () => {
+		it("falls back to all members when features.horseFollows is disabled", async () => {
+			mockOrgFindUnique.mockResolvedValue({
+				metadata: JSON.stringify({ features: { horseFollows: false } }),
+			});
+			mockFindMany.mockResolvedValue([
+				{ expoPushToken: "tok-1", userId: "u-1", user: { pushPreferences: {} } },
+				{ expoPushToken: "tok-2", userId: "u-2", user: { pushPreferences: {} } },
+			]);
+
+			const tokens = await getAudienceTokens({
+				organizationId: "org-1",
+				triggerType: "HORSE_DECLARED",
+				followersOfHorseId: "h-1",
+			});
+
+			expect(tokens.map((t) => t.expoPushToken)).toEqual(["tok-1", "tok-2"]);
+			expect(mockHorseFollowFindMany).not.toHaveBeenCalled();
+		});
+
+		it("still filters to followers when features.horseFollows is enabled (default)", async () => {
+			mockOrgFindUnique.mockResolvedValue({ metadata: null });
+			mockFindMany.mockResolvedValue([
+				{ expoPushToken: "tok-1", userId: "u-1", user: { pushPreferences: {} } },
+				{ expoPushToken: "tok-2", userId: "u-2", user: { pushPreferences: {} } },
+			]);
+			mockHorseFollowFindMany.mockResolvedValue([{ userId: "u-1" }]);
+
+			const tokens = await getAudienceTokens({
+				organizationId: "org-1",
+				triggerType: "HORSE_DECLARED",
+				followersOfHorseId: "h-1",
+			});
+
+			expect(tokens.map((t) => t.expoPushToken)).toEqual(["tok-1"]);
+		});
 	});
 });

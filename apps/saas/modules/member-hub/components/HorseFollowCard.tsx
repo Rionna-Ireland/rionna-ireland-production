@@ -28,6 +28,12 @@ interface HorseFollowCardProps {
 	horse: HorseFollowCardHorse;
 	nextRun: NextRunEntry | undefined;
 	isNextRun: boolean;
+	/**
+	 * S8-04 §5 org-level kill-switch. When `false`, the follow switch is
+	 * hidden entirely — the spec requires the control to be hidden/greyed,
+	 * and a disabled org's mutation would otherwise silently no-op.
+	 */
+	followsEnabled: boolean;
 	toggleDisabled: boolean;
 	onToggle: (checked: boolean) => void;
 }
@@ -41,6 +47,7 @@ export function HorseFollowCard({
 	horse,
 	nextRun,
 	isNextRun,
+	followsEnabled,
 	toggleDisabled,
 	onToggle,
 }: HorseFollowCardProps) {
@@ -67,12 +74,14 @@ export function HorseFollowCard({
 							</p>
 						) : null}
 					</div>
-					<Switch
-						checked={horse.isFollowing}
-						disabled={toggleDisabled}
-						aria-label={t("app.dashboard.myHorses.toggleLabel", { name: horse.name })}
-						onCheckedChange={onToggle}
-					/>
+					{followsEnabled ? (
+						<Switch
+							checked={horse.isFollowing}
+							disabled={toggleDisabled}
+							aria-label={t("app.dashboard.myHorses.toggleLabel", { name: horse.name })}
+							onCheckedChange={onToggle}
+						/>
+					) : null}
 				</div>
 
 				{pedigree.length > 0 ? (
