@@ -19,6 +19,7 @@ export const updateHorse = adminProcedure
 			slug: z.string().optional(),
 			status: z.enum(["PRE_TRAINING", "IN_TRAINING", "REHAB", "RETIRED", "SOLD"]).optional(),
 			bio: z.string().nullable().optional(),
+			story: z.string().nullable().optional(),
 			trainerNotes: z.string().nullable().optional(),
 			ownershipBlurb: z.string().nullable().optional(),
 			pedigree: z
@@ -30,6 +31,15 @@ export const updateHorse = adminProcedure
 				.nullable()
 				.optional(),
 			photos: z
+				.array(
+					z.object({
+						url: z.string(),
+						caption: z.string(),
+					}),
+				)
+				.nullable()
+				.optional(),
+			audioNotes: z
 				.array(
 					z.object({
 						url: z.string(),
@@ -53,11 +63,14 @@ export const updateHorse = adminProcedure
 			throw new ORPCError("NOT_FOUND", { message: "Horse not found" });
 		}
 
-		const { horseId, photos, pedigree, ...rest } = input;
+		const { horseId, photos, audioNotes, pedigree, ...rest } = input;
 
 		const data: Record<string, unknown> = { ...rest };
 		if (photos !== undefined) {
 			data.photos = photos ?? [];
+		}
+		if (audioNotes !== undefined) {
+			data.audioNotes = audioNotes ?? [];
 		}
 		if (pedigree !== undefined) {
 			data.pedigree = pedigree;
