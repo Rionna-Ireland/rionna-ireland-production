@@ -7,13 +7,14 @@
 import { call } from "@orpc/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockGetSession, mockGetHorseById, mockGetSignedUploadUrl, mockGetPublicUrl } =
-	vi.hoisted(() => ({
+const { mockGetSession, mockGetHorseById, mockGetSignedUploadUrl, mockGetPublicUrl } = vi.hoisted(
+	() => ({
 		mockGetSession: vi.fn(),
 		mockGetHorseById: vi.fn(),
 		mockGetSignedUploadUrl: vi.fn(),
 		mockGetPublicUrl: vi.fn(),
-	}));
+	}),
+);
 
 vi.mock("@repo/auth", () => ({ auth: { api: { getSession: mockGetSession } } }));
 

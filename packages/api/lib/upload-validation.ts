@@ -13,11 +13,7 @@ import { z } from "zod";
 export const MAX_IMAGE_UPLOAD_BYTES = 10 * 1024 * 1024;
 
 /** Client-declared byte size for a presigned image PUT, capped at 10 MB. */
-export const imageFileSizeSchema = z
-	.number()
-	.int()
-	.positive()
-	.max(MAX_IMAGE_UPLOAD_BYTES);
+export const imageFileSizeSchema = z.number().int().positive().max(MAX_IMAGE_UPLOAD_BYTES);
 
 /**
  * Audio notes (S8-01 §5/§6) — short admin-uploaded clips, not multi-hour
@@ -27,11 +23,7 @@ export const imageFileSizeSchema = z
 export const MAX_AUDIO_UPLOAD_BYTES = 25 * 1024 * 1024;
 
 /** Client-declared byte size for a presigned audio PUT, capped at 25 MB. */
-export const audioFileSizeSchema = z
-	.number()
-	.int()
-	.positive()
-	.max(MAX_AUDIO_UPLOAD_BYTES);
+export const audioFileSizeSchema = z.number().int().positive().max(MAX_AUDIO_UPLOAD_BYTES);
 
 /**
  * Filenames are concatenated into storage keys — restrict to a single safe path

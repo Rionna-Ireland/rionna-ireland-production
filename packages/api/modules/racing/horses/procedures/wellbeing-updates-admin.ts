@@ -33,7 +33,10 @@ export const listWellbeingUpdatesProcedure = adminProcedure
 	})
 	.input(z.object({ horseId: z.string() }))
 	.handler(async ({ input, context }) => {
-		return listWellbeingTimeline({ organizationId: requireOrg(context), horseId: input.horseId });
+		return listWellbeingTimeline({
+			organizationId: requireOrg(context),
+			horseId: input.horseId,
+		});
 	});
 
 export const createWellbeingUpdateProcedure = adminProcedure

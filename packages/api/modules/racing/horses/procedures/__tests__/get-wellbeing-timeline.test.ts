@@ -31,7 +31,9 @@ beforeEach(() => {
 describe("getWellbeingTimelineProcedure", () => {
 	it("returns the published timeline for a published horse in the caller's org", async () => {
 		mockFindFirst.mockResolvedValue({ id: "h-1" });
-		mockListPublishedWellbeingTimeline.mockResolvedValue([{ id: "w-1", publishedAt: new Date() }]);
+		mockListPublishedWellbeingTimeline.mockResolvedValue([
+			{ id: "w-1", publishedAt: new Date() },
+		]);
 
 		const res = await call(getWellbeingTimelineProcedure, { horseId: "h-1" }, ctx);
 
@@ -49,7 +51,9 @@ describe("getWellbeingTimelineProcedure", () => {
 	it("throws NOT_FOUND for a horse not published in this org", async () => {
 		mockFindFirst.mockResolvedValue(null);
 
-		await expect(call(getWellbeingTimelineProcedure, { horseId: "h-1" }, ctx)).rejects.toThrow();
+		await expect(
+			call(getWellbeingTimelineProcedure, { horseId: "h-1" }, ctx),
+		).rejects.toThrow();
 		expect(mockListPublishedWellbeingTimeline).not.toHaveBeenCalled();
 	});
 });

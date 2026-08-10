@@ -35,10 +35,13 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { AudioNoteGallery } from "./AudioNoteGallery";
 import { HorseVisibilityToggle } from "./HorseVisibilityToggle";
 import { PhotoGallery } from "./PhotoGallery";
 import { ProviderHorseSearch } from "./ProviderHorseSearch";
+import { ResultsReplayLinks } from "./ResultsReplayLinks";
 import { TrainerModal } from "./TrainerModal";
+import { WellbeingTimeline } from "./WellbeingTimeline";
 
 const horseFormSchema = z.object({
 	name: z.string().min(1),
@@ -49,6 +52,7 @@ const horseFormSchema = z.object({
 	providerEntityId: z.string().optional(),
 	circleSpaceId: z.string().optional(),
 	bio: z.string().optional(),
+	story: z.string().optional(),
 	trainerNotes: z.string().optional(),
 	ownershipBlurb: z.string().optional(),
 	sire: z.string().optional(),
@@ -84,6 +88,7 @@ export function HorseForm({ horseId }: HorseFormProps) {
 
 	const [trainerModalOpen, setTrainerModalOpen] = useState(false);
 	const [photos, setPhotos] = useState<Array<{ url: string; caption: string }>>([]);
+	const [audioNotes, setAudioNotes] = useState<Array<{ url: string; caption: string }>>([]);
 
 	const isEdit = !!horseId;
 
@@ -126,6 +131,7 @@ export function HorseForm({ horseId }: HorseFormProps) {
 			providerEntityId: "",
 			circleSpaceId: "",
 			bio: "",
+			story: "",
 			trainerNotes: "",
 			ownershipBlurb: "",
 			sire: "",
@@ -160,6 +166,7 @@ export function HorseForm({ horseId }: HorseFormProps) {
 				providerEntityId: horse.providerEntityId ?? "",
 				circleSpaceId: horse.circleSpaceId ?? "",
 				bio: horse.bio ?? "",
+				story: horse.story ?? "",
 				trainerNotes: horse.trainerNotes ?? "",
 				ownershipBlurb: horse.ownershipBlurb ?? "",
 				sire: pedigree?.sire ?? "",
@@ -171,6 +178,11 @@ export function HorseForm({ horseId }: HorseFormProps) {
 			setPhotos(
 				Array.isArray(horse.photos)
 					? (horse.photos as Array<{ url: string; caption: string }>)
+					: [],
+			);
+			setAudioNotes(
+				Array.isArray(horse.audioNotes)
+					? (horse.audioNotes as Array<{ url: string; caption: string }>)
 					: [],
 			);
 		}
@@ -194,10 +206,12 @@ export function HorseForm({ horseId }: HorseFormProps) {
 					providerEntityId: values.providerEntityId || null,
 					circleSpaceId: values.circleSpaceId || null,
 					bio: values.bio || null,
+					story: values.story || null,
 					trainerNotes: values.trainerNotes || null,
 					ownershipBlurb: values.ownershipBlurb || null,
 					pedigree: pedigreeData ?? null,
 					photos: photos.length > 0 ? photos : null,
+					audioNotes: audioNotes.length > 0 ? audioNotes : null,
 					publishedAt: values.published ? (horse?.publishedAt ?? new Date()) : null,
 					publicProfileAt: values.publicProfile
 						? (horse?.publicProfileAt ?? new Date())
@@ -220,6 +234,7 @@ export function HorseForm({ horseId }: HorseFormProps) {
 					providerEntityId: values.providerEntityId || undefined,
 					circleSpaceId: values.circleSpaceId || undefined,
 					bio: values.bio || undefined,
+					story: values.story || undefined,
 					trainerNotes: values.trainerNotes || undefined,
 					ownershipBlurb: values.ownershipBlurb || undefined,
 					pedigree: pedigreeData,
@@ -593,6 +608,23 @@ export function HorseForm({ horseId }: HorseFormProps) {
 
 							<FormField
 								control={form.control}
+								name="story"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>{t("admin.horses.form.story")}</FormLabel>
+										<FormDescription>
+											{t("admin.horses.form.storyHint")}
+										</FormDescription>
+										<FormControl>
+											<Textarea rows={6} {...field} />
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+
+							<FormField
+								control={form.control}
 								name="trainerNotes"
 								render={({ field }) => (
 									<FormItem>
@@ -626,7 +658,7 @@ export function HorseForm({ horseId }: HorseFormProps) {
 								<h3 className="mb-1 font-medium">
 									{t("admin.horses.form.pedigree")}
 								</h3>
-								<p className="text-muted-foreground mb-3 text-sm">
+								<p className="mb-3 text-sm text-muted-foreground">
 									{t("admin.horses.form.pedigreeHint")}
 								</p>
 								<div className="gap-4 md:grid-cols-3 grid grid-cols-1">
@@ -686,6 +718,21 @@ export function HorseForm({ horseId }: HorseFormProps) {
 								/>
 							</div>
 
+							{/* Audio Notes */}
+							<div>
+								<h3 className="mb-1 font-medium">
+									{t("admin.horses.form.audioNotes")}
+								</h3>
+								<p className="mb-3 text-sm text-muted-foreground">
+									{t("admin.horses.form.audioNotesHint")}
+								</p>
+								<AudioNoteGallery
+									horseId={horseId ?? null}
+									audioNotes={audioNotes}
+									onChange={setAudioNotes}
+								/>
+							</div>
+
 							{/* Publish Toggle */}
 							<FormField
 								control={form.control}
@@ -732,7 +779,7 @@ export function HorseForm({ horseId }: HorseFormProps) {
 										horseId={horse.id}
 										visibility={horse.circleSpaceVisibility}
 									/>
-									<p className="text-muted-foreground text-sm">
+									<p className="text-sm text-muted-foreground">
 										{t("admin.community.visibilityHelp")}
 									</p>
 								</div>
@@ -763,6 +810,10 @@ export function HorseForm({ horseId }: HorseFormProps) {
 					</Form>
 				</CardContent>
 			</Card>
+
+			{isEdit && horseId && <WellbeingTimeline horseId={horseId} />}
+
+			{isEdit && horseId && <ResultsReplayLinks horseId={horseId} />}
 
 			<TrainerModal
 				organizationId={organizationId}

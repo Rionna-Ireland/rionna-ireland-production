@@ -265,7 +265,10 @@ describe("deleteWellbeingUpdateById", () => {
 	it("returns false and doesn't delete when not owned by this org", async () => {
 		mockGetWellbeingUpdateById.mockResolvedValue({ id: "w-1", organizationId: "org-other" });
 
-		const result = await deleteWellbeingUpdateById({ organizationId: "org-1", updateId: "w-1" });
+		const result = await deleteWellbeingUpdateById({
+			organizationId: "org-1",
+			updateId: "w-1",
+		});
 
 		expect(result).toBe(false);
 		expect(mockDeleteWellbeingUpdate).not.toHaveBeenCalled();
@@ -274,7 +277,10 @@ describe("deleteWellbeingUpdateById", () => {
 	it("deletes and returns true when owned by this org", async () => {
 		mockGetWellbeingUpdateById.mockResolvedValue({ id: "w-1", organizationId: "org-1" });
 
-		const result = await deleteWellbeingUpdateById({ organizationId: "org-1", updateId: "w-1" });
+		const result = await deleteWellbeingUpdateById({
+			organizationId: "org-1",
+			updateId: "w-1",
+		});
 
 		expect(mockDeleteWellbeingUpdate).toHaveBeenCalledWith("w-1");
 		expect(result).toBe(true);

@@ -1,5 +1,8 @@
 import { ORPCError } from "@orpc/client";
-import { getRaceEntryById, updateRaceEntryReplayUrl as updateRaceEntryReplayUrlQuery } from "@repo/database";
+import {
+	getRaceEntryById,
+	updateRaceEntryReplayUrl as updateRaceEntryReplayUrlQuery,
+} from "@repo/database";
 import { z } from "zod";
 
 import { adminProcedure } from "../../../../orpc/procedures";

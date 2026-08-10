@@ -129,11 +129,7 @@ describe("publishWellbeingUpdateProcedure", () => {
 	it("delegates notifyMembers through to the service", async () => {
 		mockPublishWellbeingUpdate.mockResolvedValue({ id: "w-1", publishedAt: new Date() });
 
-		await call(
-			publishWellbeingUpdateProcedure,
-			{ updateId: "w-1", notifyMembers: true },
-			ctx,
-		);
+		await call(publishWellbeingUpdateProcedure, { updateId: "w-1", notifyMembers: true }, ctx);
 
 		expect(mockPublishWellbeingUpdate).toHaveBeenCalledWith({
 			organizationId: "org-1",
