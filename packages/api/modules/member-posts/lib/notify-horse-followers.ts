@@ -8,13 +8,29 @@ export interface NotifyHorseFollowersInput {
 	memberPostId: string;
 	title: string;
 	horseName: string;
+	updateType: string | null;
+}
+
+const UPDATE_TYPE_LABELS: Record<string, string> = {
+	trainer: "Trainer",
+	wellbeing: "Wellbeing",
+	general: "General",
+	race: "Race notes",
+};
+
+function pushBody(horseName: string, updateType: string | null): string {
+	const label = updateType ? UPDATE_TYPE_LABELS[updateType] : undefined;
+	return label
+		? `${horseName} has a new ${label} update.`
+		: `${horseName} has a new update.`;
 }
 
 /**
- * Fires a HORSE_WELLBEING push scoped to a horse's followers when a
- * wellbeing-type horse update is published with "Notify followers" checked
- * (S8-01a2 — the consolidated replacement for the deleted standalone
- * wellbeing timeline's publish-with-notify).
+ * Fires a HORSE_UPDATE push scoped to a horse's followers when any
+ * admin-authored horse update (trainer/wellbeing/general/race) is published
+ * with "Notify followers" checked (S8-01a3 — one shared trigger + preference
+ * covering all update types, replacing the wellbeing-only HORSE_WELLBEING
+ * push).
  *
  * Best-effort: publishMemberPost has already committed the published row —
  * a total push delivery failure (or a throw from sendPush itself) is
@@ -24,10 +40,10 @@ export async function notifyHorseFollowers(input: NotifyHorseFollowersInput): Pr
 	try {
 		const delivery = await sendPush({
 			organizationId: input.organizationId,
-			triggerType: "HORSE_WELLBEING",
+			triggerType: "HORSE_UPDATE",
 			triggerRefId: input.memberPostId,
 			title: input.title,
-			body: `${input.horseName} has a new wellbeing update.`,
+			body: pushBody(input.horseName, input.updateType),
 			data: { screen: "horse", horseId: input.horseId },
 			followersOfHorseId: input.horseId,
 		});

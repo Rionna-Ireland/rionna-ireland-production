@@ -109,13 +109,11 @@ export const publishMemberPost = adminProcedure
 		});
 
 		// Best-effort, after the publish result is recorded: notify a horse's
-		// followers on a wellbeing-type update, if the composer asked for it
-		// (S8-01a2 — mirrors the deleted standalone wellbeing timeline).
+		// followers on ANY update type, if the composer asked for it (S8-01a3 —
+		// one shared "horse updates" preference/trigger covering all four
+		// admin-authored update types, replacing the wellbeing-only gate).
 		const shouldNotifyFollowers =
-			input.notifyFollowers &&
-			post.audienceType === "horse" &&
-			post.updateType === "wellbeing" &&
-			Boolean(post.horseId);
+			input.notifyFollowers && post.audienceType === "horse" && Boolean(post.horseId);
 		if (shouldNotifyFollowers && post.horseId) {
 			await notifyHorseFollowers({
 				organizationId: post.organizationId,
@@ -123,6 +121,7 @@ export const publishMemberPost = adminProcedure
 				memberPostId: post.id,
 				title: post.title,
 				horseName: post.horse?.name ?? "Your horse",
+				updateType: post.updateType ?? null,
 			});
 		}
 

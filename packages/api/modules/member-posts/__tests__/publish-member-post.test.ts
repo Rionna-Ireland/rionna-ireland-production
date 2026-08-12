@@ -192,33 +192,29 @@ describe("publishMemberPost (S2-09)", () => {
 		expect(mockCreatePost).not.toHaveBeenCalled();
 	});
 
-	describe("notifyFollowers (S8-01a2)", () => {
-		it("notifies the horse's followers when notifyFollowers is set on a wellbeing update", async () => {
-			mockGetMemberPostById.mockResolvedValue(draftPost({ updateType: "wellbeing" }));
+	describe("notifyFollowers (S8-01a3)", () => {
+		it.each(["race", "trainer", "wellbeing", "general"] as const)(
+			"notifies the horse's followers when notifyFollowers is set on a %s update",
+			async (updateType) => {
+				mockGetMemberPostById.mockResolvedValue(draftPost({ updateType }));
 
-			await call(publishMemberPost, { memberPostId: "mp1", notifyFollowers: true }, ctx);
+				await call(publishMemberPost, { memberPostId: "mp1", notifyFollowers: true }, ctx);
 
-			expect(mockNotifyHorseFollowers).toHaveBeenCalledWith({
-				organizationId: "org1",
-				horseId: "h1",
-				memberPostId: "mp1",
-				title: "Trainer update",
-				horseName: "Pink Diamond Lass",
-			});
-		});
+				expect(mockNotifyHorseFollowers).toHaveBeenCalledWith({
+					organizationId: "org1",
+					horseId: "h1",
+					memberPostId: "mp1",
+					title: "Trainer update",
+					horseName: "Pink Diamond Lass",
+					updateType,
+				});
+			},
+		);
 
 		it("does not notify when notifyFollowers is omitted", async () => {
 			mockGetMemberPostById.mockResolvedValue(draftPost({ updateType: "wellbeing" }));
 
 			await call(publishMemberPost, { memberPostId: "mp1" }, ctx);
-
-			expect(mockNotifyHorseFollowers).not.toHaveBeenCalled();
-		});
-
-		it("does not notify a non-wellbeing update even when notifyFollowers is set", async () => {
-			mockGetMemberPostById.mockResolvedValue(draftPost({ updateType: "trainer" }));
-
-			await call(publishMemberPost, { memberPostId: "mp1", notifyFollowers: true }, ctx);
 
 			expect(mockNotifyHorseFollowers).not.toHaveBeenCalled();
 		});
