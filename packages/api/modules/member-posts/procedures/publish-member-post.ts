@@ -7,6 +7,7 @@ import { z } from "zod";
 
 import { adminProcedure } from "../../../orpc/procedures";
 import { fetchImageBytes } from "../lib/fetch-image-bytes";
+import { notifyHorseFollowers } from "../lib/notify-horse-followers";
 
 /**
  * Publish a member-post draft to its Circle space (publish-immediately) and
@@ -22,7 +23,7 @@ export const publishMemberPost = adminProcedure
 		tags: ["MemberPosts"],
 		summary: "Publish a member post draft to its Circle space",
 	})
-	.input(z.object({ memberPostId: z.string() }))
+	.input(z.object({ memberPostId: z.string(), notifyFollowers: z.boolean().optional() }))
 	.handler(async ({ input }) => {
 		const post = await getMemberPostById(input.memberPostId);
 		if (!post) {
@@ -101,12 +102,29 @@ export const publishMemberPost = adminProcedure
 			publishError: null,
 		});
 
-		// TODO(S8-01): push to the horse's followers once the follow model exists.
 		logger.info("[MemberPost] Published", {
 			memberPostId: post.id,
 			circlePostId: created.data.circlePostId,
 			audienceType: post.audienceType,
 		});
+
+		// Best-effort, after the publish result is recorded: notify a horse's
+		// followers on a wellbeing-type update, if the composer asked for it
+		// (S8-01a2 — mirrors the deleted standalone wellbeing timeline).
+		const shouldNotifyFollowers =
+			input.notifyFollowers &&
+			post.audienceType === "horse" &&
+			post.updateType === "wellbeing" &&
+			Boolean(post.horseId);
+		if (shouldNotifyFollowers && post.horseId) {
+			await notifyHorseFollowers({
+				organizationId: post.organizationId,
+				horseId: post.horseId,
+				memberPostId: post.id,
+				title: post.title,
+				horseName: post.horse?.name ?? "Your horse",
+			});
+		}
 
 		return {
 			ok: true as const,
