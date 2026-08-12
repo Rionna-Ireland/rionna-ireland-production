@@ -11,12 +11,16 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const mockHorseFindFirst = vi.fn();
 const mockOrganizationFindUnique = vi.fn();
 const mockHorseWellbeingUpdateUpdate = vi.fn().mockResolvedValue({});
+const mockHorseWellbeingUpdateFindUnique = vi.fn();
 
 vi.mock("@repo/database", () => ({
 	db: {
 		horse: { findFirst: (...args: unknown[]) => mockHorseFindFirst(...args) },
 		organization: { findUnique: (...args: unknown[]) => mockOrganizationFindUnique(...args) },
-		horseWellbeingUpdate: { update: (...args: unknown[]) => mockHorseWellbeingUpdateUpdate(...args) },
+		horseWellbeingUpdate: {
+			update: (...args: unknown[]) => mockHorseWellbeingUpdateUpdate(...args),
+			findUnique: (...args: unknown[]) => mockHorseWellbeingUpdateFindUnique(...args),
+		},
 	},
 }));
 
@@ -56,6 +60,16 @@ describe("postWellbeingToCircle", () => {
 		});
 		mockOrganizationFindUnique.mockResolvedValue({ slug: "the-club" });
 		mockCreatePost.mockResolvedValue({ ok: true, data: { circlePostId: "post-1" } });
+		mockHorseWellbeingUpdateFindUnique.mockResolvedValue({ circlePostId: null });
+	});
+
+	it("skips creating a second post when the row already has a circlePostId (republish)", async () => {
+		mockHorseWellbeingUpdateFindUnique.mockResolvedValue({ circlePostId: "post-existing" });
+
+		await postWellbeingToCircle(baseInput());
+
+		expect(mockCreatePost).not.toHaveBeenCalled();
+		expect(mockHorseWellbeingUpdateUpdate).not.toHaveBeenCalled();
 	});
 
 	it("creates the post and persists circlePostId when the space is active", async () => {

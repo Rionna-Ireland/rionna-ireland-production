@@ -192,8 +192,9 @@ export async function publishWellbeingUpdate(params: {
 		notifyMembers: params.notifyMembers,
 	});
 
-	// S8-01 A1: cross-post on ANY publish (quiet or notify) — the Circle
-	// createPost idempotency key keeps a republish from double-posting.
+	// S8-01 A1: cross-post on ANY publish (quiet or notify) — the helper's
+	// circlePostId guard (plus the Circle Idempotency-Key) keeps a republish
+	// from double-posting.
 	await postWellbeingToCircle({
 		organizationId: updated.organizationId,
 		updateId: updated.id,

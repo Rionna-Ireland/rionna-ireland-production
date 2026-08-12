@@ -58,6 +58,21 @@ export async function postWellbeingToCircle(input: PostWellbeingToCircleInput): 
 	try {
 		const { organizationId, updateId, horseId, type, body } = input;
 
+		// Republish guard: if a Circle post already exists for this row, don't
+		// create another. (The Idempotency-Key on createPost is the second line
+		// of defence; this one doesn't depend on Circle honoring it.)
+		const existing = await db.horseWellbeingUpdate.findUnique({
+			where: { id: updateId },
+			select: { circlePostId: true },
+		});
+		if (existing?.circlePostId) {
+			logger.info("[postWellbeingToCircle] Circle post already exists — skipping", {
+				updateId,
+				circlePostId: existing.circlePostId,
+			});
+			return;
+		}
+
 		const horse = await db.horse.findFirst({
 			where: { id: horseId, organizationId },
 			select: { name: true, circleSpaceId: true, circleSpaceStatus: true },
