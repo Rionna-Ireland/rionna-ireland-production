@@ -465,6 +465,26 @@ export class MockServerCircleService implements CircleService {
 		};
 	}
 
+	async deletePost(circlePostId: string): Promise<CircleCallOutcome<void>> {
+		let response: Response;
+		try {
+			response = await fetch(`${this.baseUrl}/api/admin/v2/posts/${circlePostId}`, {
+				method: "DELETE",
+				headers: this.adminHeaders(),
+			});
+		} catch (err) {
+			return { ok: false, reason: "network", retriable: true, raw: err };
+		}
+
+		if (!response.ok && response.status !== 404) {
+			const raw = await this.readError(response, "Mock server delete post failed");
+			const { reason, retriable } = classifyStatus(response.status);
+			return { ok: false, reason, retriable, raw };
+		}
+
+		return { ok: true, data: undefined };
+	}
+
 	async createDirectUpload(
 		params: CreateDirectUploadParams,
 	): Promise<CircleCallOutcome<CreateDirectUploadResult>> {
