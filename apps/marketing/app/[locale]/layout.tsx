@@ -11,7 +11,6 @@ import { NextIntlClientProvider } from "next-intl";
 import { getMessages, setRequestLocale } from "next-intl/server";
 import { ThemeProvider } from "next-themes";
 import localFont from "next/font/local";
-import { Plus_Jakarta_Sans, IBM_Plex_Mono } from "next/font/google";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import type { PropsWithChildren } from "react";
@@ -27,16 +26,18 @@ const ppEiko = localFont({
 	variable: "--font-display",
 });
 
-const plusJakarta = Plus_Jakarta_Sans({
-	subsets: ["latin"],
+// Vendored (next/font/local) — next/font/google resolves against Google Fonts
+// at build time and its pinned file URLs went 404, breaking Vercel builds.
+const plusJakarta = localFont({
+	src: "../../public/fonts/PlusJakartaSans-Variable.woff2",
 	variable: "--font-sans",
-	weight: ["400", "500", "600"],
+	weight: "200 800",
 });
 
-const ibmPlexMono = IBM_Plex_Mono({
-	subsets: ["latin"],
+const ibmPlexMono = localFont({
+	src: "../../public/fonts/IBMPlexMono-Regular.woff2",
 	variable: "--font-mono",
-	weight: ["400"],
+	weight: "400",
 });
 
 const locales = Object.keys(i18nConfig.locales) as string[];
