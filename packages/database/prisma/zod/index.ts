@@ -4,7 +4,6 @@
  */
 
 import * as z from 'zod';
-import { Prisma } from '../generated/client';
 // File: TransactionIsolationLevel.schema.ts
 
 export const TransactionIsolationLevelSchema = z.enum(['ReadUncommitted', 'ReadCommitted', 'RepeatableRead', 'Serializable'])
@@ -91,7 +90,7 @@ export type HorseScalarFieldEnum = z.infer<typeof HorseScalarFieldEnumSchema>;
 
 // File: HorseWellbeingUpdateScalarFieldEnum.schema.ts
 
-export const HorseWellbeingUpdateScalarFieldEnumSchema = z.enum(['id', 'horseId', 'organizationId', 'type', 'body', 'publishedAt', 'notifyMembers', 'createdAt', 'updatedAt'])
+export const HorseWellbeingUpdateScalarFieldEnumSchema = z.enum(['id', 'horseId', 'organizationId', 'type', 'body', 'publishedAt', 'notifyMembers', 'circlePostId', 'createdAt', 'updatedAt'])
 
 export type HorseWellbeingUpdateScalarFieldEnum = z.infer<typeof HorseWellbeingUpdateScalarFieldEnumSchema>;
 
@@ -513,6 +512,7 @@ export const HorseWellbeingUpdateSchema = z.object({
   body: z.string(),
   publishedAt: z.date().nullish(),
   notifyMembers: z.boolean(),
+  circlePostId: z.string().nullish(),
   createdAt: z.date(),
   updatedAt: z.date(),
 });
