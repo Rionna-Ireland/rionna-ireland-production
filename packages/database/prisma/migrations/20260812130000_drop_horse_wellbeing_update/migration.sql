@@ -9,3 +9,7 @@ DROP TABLE IF EXISTS "horse_wellbeing_update" CASCADE;
 
 -- DropEnum
 DROP TYPE IF EXISTS "HorseWellbeingType";
+
+-- S8-01a2: audio notes are dropped too (never shipped past QA seeding).
+-- AlterTable
+ALTER TABLE "horse" DROP COLUMN IF EXISTS "audioNotes";

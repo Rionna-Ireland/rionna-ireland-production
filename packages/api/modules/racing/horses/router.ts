@@ -1,4 +1,3 @@
-import { createAudioUploadUrl } from "./procedures/create-audio-upload-url";
 import { createHorse } from "./procedures/create-horse";
 import { createPhotoUploadUrl } from "./procedures/create-photo-upload-url";
 import { createTrainer } from "./procedures/create-trainer";
@@ -33,7 +32,6 @@ export const horsesAdminRouter = {
 	retryCircleSpace: retryHorseSpaceProvisioning,
 	setSpaceVisibility: setHorseSpaceVisibility,
 	createPhotoUploadUrl: createPhotoUploadUrl,
-	createAudioUploadUrl: createAudioUploadUrl,
 	listFollowers: listFollowersProcedure,
 	addFollower: addFollowerProcedure,
 	removeFollower: removeFollowerProcedure,

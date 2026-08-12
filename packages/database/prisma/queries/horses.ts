@@ -72,7 +72,6 @@ export async function createHorse(data: {
 	story?: string;
 	trainerNotes?: string;
 	photos?: Prisma.InputJsonValue;
-	audioNotes?: Prisma.InputJsonValue;
 	pedigree?: Prisma.InputJsonValue;
 	ownershipBlurb?: string;
 	circleSpaceId?: string;

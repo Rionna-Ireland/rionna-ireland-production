@@ -39,15 +39,6 @@ export const updateHorse = adminProcedure
 				)
 				.nullable()
 				.optional(),
-			audioNotes: z
-				.array(
-					z.object({
-						url: z.string(),
-						caption: z.string(),
-					}),
-				)
-				.nullable()
-				.optional(),
 			circleSpaceId: z.string().nullable().optional(),
 			trainerId: z.string().nullable().optional(),
 			sortOrder: z.number().optional(),
@@ -63,14 +54,11 @@ export const updateHorse = adminProcedure
 			throw new ORPCError("NOT_FOUND", { message: "Horse not found" });
 		}
 
-		const { horseId, photos, audioNotes, pedigree, ...rest } = input;
+		const { horseId, photos, pedigree, ...rest } = input;
 
 		const data: Record<string, unknown> = { ...rest };
 		if (photos !== undefined) {
 			data.photos = photos ?? [];
-		}
-		if (audioNotes !== undefined) {
-			data.audioNotes = audioNotes ?? [];
 		}
 		if (pedigree !== undefined) {
 			data.pedigree = pedigree;

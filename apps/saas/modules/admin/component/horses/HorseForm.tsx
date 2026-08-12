@@ -35,7 +35,6 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
-import { AudioNoteGallery } from "./AudioNoteGallery";
 import { HorseVisibilityToggle } from "./HorseVisibilityToggle";
 import { PhotoGallery } from "./PhotoGallery";
 import { ProviderHorseSearch } from "./ProviderHorseSearch";
@@ -87,7 +86,6 @@ export function HorseForm({ horseId }: HorseFormProps) {
 
 	const [trainerModalOpen, setTrainerModalOpen] = useState(false);
 	const [photos, setPhotos] = useState<Array<{ url: string; caption: string }>>([]);
-	const [audioNotes, setAudioNotes] = useState<Array<{ url: string; caption: string }>>([]);
 
 	const isEdit = !!horseId;
 
@@ -179,11 +177,6 @@ export function HorseForm({ horseId }: HorseFormProps) {
 					? (horse.photos as Array<{ url: string; caption: string }>)
 					: [],
 			);
-			setAudioNotes(
-				Array.isArray(horse.audioNotes)
-					? (horse.audioNotes as Array<{ url: string; caption: string }>)
-					: [],
-			);
 		}
 	}, [horse]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -210,7 +203,6 @@ export function HorseForm({ horseId }: HorseFormProps) {
 					ownershipBlurb: values.ownershipBlurb || null,
 					pedigree: pedigreeData ?? null,
 					photos: photos.length > 0 ? photos : null,
-					audioNotes: audioNotes.length > 0 ? audioNotes : null,
 					publishedAt: values.published ? (horse?.publishedAt ?? new Date()) : null,
 					publicProfileAt: values.publicProfile
 						? (horse?.publicProfileAt ?? new Date())
@@ -714,21 +706,6 @@ export function HorseForm({ horseId }: HorseFormProps) {
 									horseId={horseId ?? null}
 									photos={photos}
 									onChange={setPhotos}
-								/>
-							</div>
-
-							{/* Audio Notes */}
-							<div>
-								<h3 className="mb-1 font-medium">
-									{t("admin.horses.form.audioNotes")}
-								</h3>
-								<p className="mb-3 text-sm text-muted-foreground">
-									{t("admin.horses.form.audioNotesHint")}
-								</p>
-								<AudioNoteGallery
-									horseId={horseId ?? null}
-									audioNotes={audioNotes}
-									onChange={setAudioNotes}
 								/>
 							</div>
 

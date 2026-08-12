@@ -316,11 +316,6 @@ model Horse {
   story          String? @db.Text
   trainerNotes   String? @db.Text
   photos         Json    @default("[]")
-  // Audio notes (S8-01 §5/§6) — parallel array to `photos`, same {url, caption}
-  // shape, kept separate rather than adding a `kind` discriminator to `photos`
-  // so every existing `photos` reader (mobile, marketing site, admin gallery)
-  // stays untouched.
-  audioNotes     Json    @default("[]")
   pedigree       Json?
   ownershipBlurb String?
 
