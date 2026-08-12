@@ -168,7 +168,8 @@
 				"types": {
 					"trainer": "Trainer update",
 					"wellbeing": "Wellbeing / vet update",
-					"general": "General update"
+					"general": "General update",
+					"race": "Race notes"
 				},
 				"audienceMembers": "🔒 Members",
 				"chooseHorsePrompt": "Choose a horse first — you pick who sees this before you write.",
@@ -176,6 +177,8 @@
 				"content": "Update",
 				"videoUrlLabel": "Video URL (optional)",
 				"videoUrlPlaceholder": "Paste a YouTube/Vimeo link to embed",
+				"notifyFollowers": "Notify followers",
+				"notifyFollowersHint": "Send a push notification to this horse's followers.",
 				"saveDraft": "Save draft",
 				"publish": "Publish to members",
 				"publishTo": "Post to Members · {horse}",
@@ -285,6 +288,8 @@
 				"circleSpaceId": "Circle Space ID",
 				"circleSpaceIdHint": "Leave blank — a private discussion space is created automatically when you save. Only paste an ID to link an existing Circle space.",
 				"bio": "Bio",
+				"story": "Story",
+				"storyHint": "Long-form narrative for the Horse Profile's \"Story & pedigree\" section — the fuller story behind the short bio above.",
 				"trainerNotes": "Trainer Notes",
 				"ownershipBlurb": "Ownership Blurb",
 				"pedigree": "Pedigree",
@@ -328,6 +333,18 @@
 				"notifications": {
 					"created": "Trainer has been created.",
 					"error": "Could not create trainer. Please try again."
+				}
+			},
+			"results": {
+				"title": "Results & replay links",
+				"description": "Set the replay-video link surfaced on the member Horse Profile.",
+				"loading": "Loading entries…",
+				"empty": "No race entries yet.",
+				"replayUrlPlaceholder": "https://…",
+				"save": "Save",
+				"notifications": {
+					"saved": "Replay link saved.",
+					"error": "Could not save the replay link."
 				}
 			}
 		},

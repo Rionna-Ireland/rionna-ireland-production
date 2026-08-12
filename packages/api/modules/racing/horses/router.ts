@@ -9,6 +9,7 @@ import {
 	listFollowersProcedure,
 	removeFollowerProcedure,
 } from "./procedures/horse-followers-admin";
+import { listHorseEntries } from "./procedures/list-horse-entries";
 import { listHorses } from "./procedures/list-horses";
 import { listTrainers } from "./procedures/list-trainers";
 import { publishHorses } from "./procedures/publish-horses";
@@ -17,6 +18,7 @@ import { searchProvider } from "./procedures/search-provider";
 import { setHorseSpaceVisibility } from "./procedures/set-horse-space-visibility";
 import { syncHorse } from "./procedures/sync-horse";
 import { updateHorse } from "./procedures/update-horse";
+import { updateRaceEntryReplayUrl } from "./procedures/update-race-entry-replay-url";
 
 export const horsesAdminRouter = {
 	list: listHorses,
@@ -34,6 +36,8 @@ export const horsesAdminRouter = {
 	addFollower: addFollowerProcedure,
 	removeFollower: removeFollowerProcedure,
 	followAllMembers: followAllMembersProcedure,
+	listEntries: listHorseEntries,
+	updateEntryReplayUrl: updateRaceEntryReplayUrl,
 	trainers: {
 		list: listTrainers,
 		create: createTrainer,

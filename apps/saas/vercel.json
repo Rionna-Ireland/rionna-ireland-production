@@ -11,6 +11,10 @@
 		{
 			"path": "/api/cron/reconcile",
 			"schedule": "0 3 * * *"
+		},
+		{
+			"path": "/api/cron/reconcile-space-memberships",
+			"schedule": "0 4 * * *"
 		}
 	]
 }

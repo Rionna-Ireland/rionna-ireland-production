@@ -69,6 +69,7 @@ export async function createHorse(data: {
 	name: string;
 	status?: HorseStatus;
 	bio?: string;
+	story?: string;
 	trainerNotes?: string;
 	photos?: Prisma.InputJsonValue;
 	pedigree?: Prisma.InputJsonValue;
@@ -207,6 +208,31 @@ export async function getPublishedHorseById(horseId: string) {
 				},
 			},
 		},
+	});
+}
+
+/** Recent entries for a horse (admin results/replay-link editing). */
+export async function getHorseEntriesForAdmin(horseId: string, limit: number = 20) {
+	return db.raceEntry.findMany({
+		where: { horseId },
+		include: {
+			race: { include: { meeting: { include: { course: true } } } },
+		},
+		orderBy: { race: { postTime: "desc" } },
+		take: limit,
+	});
+}
+
+export async function getRaceEntryById(entryId: string) {
+	return db.raceEntry.findUnique({
+		where: { id: entryId },
+	});
+}
+
+export async function updateRaceEntryReplayUrl(entryId: string, replayUrl: string | null) {
+	return db.raceEntry.update({
+		where: { id: entryId },
+		data: { replayUrl },
 	});
 }
 

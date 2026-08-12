@@ -304,6 +304,12 @@ export interface CircleService {
 
 	/** Create a rich-text post in a space (a horse's space, or community-wide). */
 	createPost(params: CreatePostParams): Promise<CircleCallOutcome<CreatePostResult>>;
+	/**
+	 * Delete a post by its Circle post id (generic — best-effort cleanup for
+	 * any cross-posted/published content). A post that's already gone (404) is
+	 * treated as success — the desired end-state is already met.
+	 */
+	deletePost(circlePostId: string): Promise<CircleCallOutcome<void>>;
 	/** Register + upload image bytes, returning a signed_id for `attachments`. */
 	uploadImage(params: UploadImageParams): Promise<CircleCallOutcome<UploadImageResult>>;
 	/**

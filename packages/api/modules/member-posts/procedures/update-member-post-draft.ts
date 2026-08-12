@@ -19,7 +19,7 @@ export const updateMemberPostDraft = adminProcedure
 		z.object({
 			memberPostId: z.string(),
 			title: z.string().min(1).optional(),
-			updateType: z.enum(["trainer", "wellbeing", "general"]).nullable().optional(),
+			updateType: z.enum(["trainer", "wellbeing", "general", "race"]).nullable().optional(),
 			bodyJson: z.unknown().optional(),
 			bodyHtml: z.string().nullable().optional(),
 			videoUrl: z.string().url().nullable().optional(),

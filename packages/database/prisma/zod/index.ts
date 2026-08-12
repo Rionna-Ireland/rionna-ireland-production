@@ -85,7 +85,7 @@ export type UserNotificationPreferenceScalarFieldEnum = z.infer<typeof UserNotif
 
 // File: HorseScalarFieldEnum.schema.ts
 
-export const HorseScalarFieldEnumSchema = z.enum(['id', 'organizationId', 'slug', 'name', 'providerEntityId', 'providerLastSync', 'status', 'bio', 'trainerNotes', 'photos', 'pedigree', 'ownershipBlurb', 'circleSpaceId', 'circleSpaceStatus', 'circleSpaceProvisionedAt', 'circleSpaceVisibility', 'trainerId', 'sortOrder', 'publishedAt', 'publicProfileAt', 'latestEntryId', 'nextEntryId', 'createdAt', 'updatedAt'])
+export const HorseScalarFieldEnumSchema = z.enum(['id', 'organizationId', 'slug', 'name', 'providerEntityId', 'providerLastSync', 'status', 'bio', 'story', 'trainerNotes', 'photos', 'pedigree', 'ownershipBlurb', 'circleSpaceId', 'circleSpaceStatus', 'circleSpaceProvisionedAt', 'circleSpaceVisibility', 'trainerId', 'sortOrder', 'publishedAt', 'publicProfileAt', 'latestEntryId', 'nextEntryId', 'createdAt', 'updatedAt'])
 
 export type HorseScalarFieldEnum = z.infer<typeof HorseScalarFieldEnumSchema>;
 
@@ -127,7 +127,7 @@ export type RaceScalarFieldEnum = z.infer<typeof RaceScalarFieldEnumSchema>;
 
 // File: RaceEntryScalarFieldEnum.schema.ts
 
-export const RaceEntryScalarFieldEnumSchema = z.enum(['id', 'organizationId', 'providerEntityId', 'horseId', 'raceId', 'status', 'draw', 'weightLbs', 'jockeyId', 'trainerId', 'finishingPosition', 'beatenLengths', 'ratingAchieved', 'timeformComment', 'performanceRating', 'starRating', 'notifiedStates', 'createdAt', 'updatedAt'])
+export const RaceEntryScalarFieldEnumSchema = z.enum(['id', 'organizationId', 'providerEntityId', 'horseId', 'raceId', 'status', 'draw', 'weightLbs', 'jockeyId', 'trainerId', 'finishingPosition', 'beatenLengths', 'ratingAchieved', 'timeformComment', 'performanceRating', 'starRating', 'replayUrl', 'notifiedStates', 'createdAt', 'updatedAt'])
 
 export type RaceEntryScalarFieldEnum = z.infer<typeof RaceEntryScalarFieldEnumSchema>;
 
@@ -235,7 +235,7 @@ export type DevicePlatform = z.infer<typeof DevicePlatformSchema>;
 
 // File: PushTriggerType.schema.ts
 
-export const PushTriggerTypeSchema = z.enum(['HORSE_DECLARED', 'HORSE_NON_RUNNER', 'RACE_RESULT', 'TRAINER_POST', 'NEWS_POST', 'SYSTEM', 'CIRCLE_MENTION', 'CIRCLE_REPLY', 'CIRCLE_REACTION', 'CIRCLE_DM', 'CIRCLE_HORSE_DISCUSSION'])
+export const PushTriggerTypeSchema = z.enum(['HORSE_DECLARED', 'HORSE_NON_RUNNER', 'RACE_RESULT', 'TRAINER_POST', 'NEWS_POST', 'SYSTEM', 'CIRCLE_MENTION', 'CIRCLE_REPLY', 'CIRCLE_REACTION', 'CIRCLE_DM', 'CIRCLE_HORSE_DISCUSSION', 'HORSE_WELLBEING', 'HORSE_UPDATE'])
 
 export type PushTriggerType = z.infer<typeof PushTriggerTypeSchema>;
 
@@ -468,6 +468,7 @@ export const HorseSchema = z.object({
   providerLastSync: z.date().nullish(),
   status: HorseStatusSchema.default("IN_TRAINING"),
   bio: z.string().nullish(),
+  story: z.string().nullish(),
   trainerNotes: z.string().nullish(),
   photos: z.unknown().refine((val) => { const getDepth = (obj: unknown, depth: number = 0): number => { if (depth > 10) return depth; if (obj === null || typeof obj !== 'object') return depth; const values = Object.values(obj as Record<string, unknown>); if (values.length === 0) return depth; return Math.max(...values.map(v => getDepth(v, depth + 1))); }; return getDepth(val) <= 10; }, "JSON nesting depth exceeds maximum of 10").default("[]"),
   pedigree: z.unknown().refine((val) => { const getDepth = (obj: unknown, depth: number = 0): number => { if (depth > 10) return depth; if (obj === null || typeof obj !== 'object') return depth; const values = Object.values(obj as Record<string, unknown>); if (values.length === 0) return depth; return Math.max(...values.map(v => getDepth(v, depth + 1))); }; return getDepth(val) <= 10; }, "JSON nesting depth exceeds maximum of 10").nullish(),
@@ -604,6 +605,7 @@ export const RaceEntrySchema = z.object({
   timeformComment: z.string().nullish(),
   performanceRating: z.number().int().nullish(),
   starRating: z.number().int().nullish(),
+  replayUrl: z.string().nullish(),
   notifiedStates: z.unknown().refine((val) => { const getDepth = (obj: unknown, depth: number = 0): number => { if (depth > 10) return depth; if (obj === null || typeof obj !== 'object') return depth; const values = Object.values(obj as Record<string, unknown>); if (values.length === 0) return depth; return Math.max(...values.map(v => getDepth(v, depth + 1))); }; return getDepth(val) <= 10; }, "JSON nesting depth exceeds maximum of 10").default("[]"),
   createdAt: z.date(),
   updatedAt: z.date(),

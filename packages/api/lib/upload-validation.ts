@@ -13,11 +13,7 @@ import { z } from "zod";
 export const MAX_IMAGE_UPLOAD_BYTES = 10 * 1024 * 1024;
 
 /** Client-declared byte size for a presigned image PUT, capped at 10 MB. */
-export const imageFileSizeSchema = z
-	.number()
-	.int()
-	.positive()
-	.max(MAX_IMAGE_UPLOAD_BYTES);
+export const imageFileSizeSchema = z.number().int().positive().max(MAX_IMAGE_UPLOAD_BYTES);
 
 /**
  * Filenames are concatenated into storage keys — restrict to a single safe path

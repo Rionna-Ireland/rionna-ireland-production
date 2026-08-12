@@ -565,6 +565,40 @@ export class RealCircleService implements CircleService {
 		};
 	}
 
+	async deletePost(circlePostId: string): Promise<CircleCallOutcome<void>> {
+		let response: Response;
+		try {
+			response = await fetch(`${CIRCLE_ADMIN_BASE}/posts/${circlePostId}`, {
+				method: "DELETE",
+				headers: {
+					Authorization: `Bearer ${this.adminToken}`,
+				},
+			});
+		} catch (err) {
+			logger.warn("[Circle] Delete post fetch failed (network)", {
+				circlePostId,
+				error: err instanceof Error ? err.message : String(err),
+			});
+			return { ok: false, reason: "network", retriable: true, raw: err };
+		}
+
+		// 404 = already gone, treat as success
+		if (!response.ok && response.status !== 404) {
+			const body = await response.text().catch(() => undefined);
+			const { reason, retriable } = classifyStatus(response.status);
+			logger.error("[Circle] Delete post failed", {
+				status: response.status,
+				body,
+				circlePostId,
+				reason,
+			});
+			return { ok: false, reason, retriable, raw: body };
+		}
+
+		logger.info("[Circle] Deleted post", { circlePostId });
+		return { ok: true, data: undefined };
+	}
+
 	async createDirectUpload(
 		params: CreateDirectUploadParams,
 	): Promise<CircleCallOutcome<CreateDirectUploadResult>> {

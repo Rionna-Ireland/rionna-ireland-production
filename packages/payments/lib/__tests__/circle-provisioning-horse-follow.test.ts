@@ -207,4 +207,42 @@ describe("provisionCircleMember — horse auto-follow (S6-07 Surface D)", () => 
 			await expect(provisionCircleMember(MEMBER, "idem-key")).resolves.toBeUndefined();
 		});
 	});
+
+	describe("S8-04 §5 kill-switch", () => {
+		it("skips auto-follow entirely when features.horseFollows is false, even with horseAutoFollow unset", async () => {
+			mockParseOrgMetadata.mockReturnValue({ features: { horseFollows: false } });
+
+			await provisionCircleMember(MEMBER, "idem-key");
+
+			expect(mockHorseFindMany).not.toHaveBeenCalled();
+			expect(mockHorseFollowCreateMany).not.toHaveBeenCalled();
+			expect(mockSyncCircleSpaceMembership).not.toHaveBeenCalled();
+		});
+
+		it("skips auto-follow when features.horseFollows is false even if horseAutoFollow is explicitly true", async () => {
+			mockParseOrgMetadata.mockReturnValue({
+				features: { horseFollows: false },
+				horseAutoFollow: true,
+			});
+
+			await provisionCircleMember(MEMBER, "idem-key");
+
+			expect(mockHorseFollowCreateMany).not.toHaveBeenCalled();
+			expect(mockSyncCircleSpaceMembership).not.toHaveBeenCalled();
+		});
+
+		it("auto-follows normally when features.horseFollows is true (explicit enable)", async () => {
+			mockParseOrgMetadata.mockReturnValue({ features: { horseFollows: true } });
+
+			await provisionCircleMember(MEMBER, "idem-key");
+
+			expect(mockHorseFollowCreateMany).toHaveBeenCalledWith({
+				data: [
+					{ organizationId: ORG_ID, userId: "u1", horseId: "h1" },
+					{ organizationId: ORG_ID, userId: "u1", horseId: "h2" },
+				],
+				skipDuplicates: true,
+			});
+		});
+	});
 });

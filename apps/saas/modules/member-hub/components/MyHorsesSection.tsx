@@ -9,6 +9,7 @@ import { HorseFollowCard, type HorseFollowCardHorse } from "./HorseFollowCard";
 import {
 	applyFollowToggle,
 	countFollowing,
+	isDisabledFollowResult,
 	isNextRunForHorse,
 	isPendingForHorse,
 	shouldHideSection,
@@ -42,6 +43,15 @@ export function MyHorsesSection({ organizationId }: MyHorsesSectionProps) {
 		enabled: !!organizationId,
 	});
 
+	// S8-04 §5: org-level kill-switch. Default to enabled while loading so the
+	// controls don't flash disabled on first paint; once the query resolves
+	// `false` the switches hide for the rest of the session.
+	const { data: followsEnabledData } = useQuery({
+		...orpc.horses.followsEnabled.queryOptions({ input: { organizationId } }),
+		enabled: !!organizationId,
+	});
+	const followsEnabled = followsEnabledData?.enabled ?? true;
+
 	const feedQueryKey = orpc.circle.getMemberFeed.key();
 
 	// One rollback triangle (optimistic flip → revert + toast on error →
@@ -64,6 +74,15 @@ export function MyHorsesSection({ organizationId }: MyHorsesSectionProps) {
 		toastError(t("app.dashboard.myHorses.followError"));
 	}
 
+	// S8-04 §5: the mutation resolves (doesn't throw) when the org-level
+	// kill-switch is off — `onError` never fires, so the optimistic flip has
+	// to be rolled back from `onSuccess` by inspecting the resolved payload.
+	function onSuccess(data: unknown, context?: { previous?: typeof horses }) {
+		if (isDisabledFollowResult(data)) {
+			onError(context);
+		}
+	}
+
 	function onSettled() {
 		void queryClient.invalidateQueries({ queryKey: listQueryOptions.queryKey });
 		void queryClient.invalidateQueries({ queryKey: feedQueryKey });
@@ -72,6 +91,7 @@ export function MyHorsesSection({ organizationId }: MyHorsesSectionProps) {
 	const followMutation = useMutation(
 		orpc.horses.follow.mutationOptions({
 			onMutate: ({ horseId }) => onMutate(horseId, true),
+			onSuccess: (data, _vars, context) => onSuccess(data, context),
 			onError: (_error, _vars, context) => onError(context),
 			onSettled,
 		}),
@@ -79,6 +99,7 @@ export function MyHorsesSection({ organizationId }: MyHorsesSectionProps) {
 	const unfollowMutation = useMutation(
 		orpc.horses.unfollow.mutationOptions({
 			onMutate: ({ horseId }) => onMutate(horseId, false),
+			onSuccess: (data, _vars, context) => onSuccess(data, context),
 			onError: (_error, _vars, context) => onError(context),
 			onSettled,
 		}),
@@ -107,11 +128,13 @@ export function MyHorsesSection({ organizationId }: MyHorsesSectionProps) {
 						horse={horse as HorseFollowCardHorse}
 						nextRun={nextRun ?? undefined}
 						isNextRun={isNextRunForHorse(nextRun, horse.id)}
+						followsEnabled={followsEnabled}
 						toggleDisabled={
 							isPendingForHorse(followMutation, horse.id) ||
 							isPendingForHorse(unfollowMutation, horse.id)
 						}
 						onToggle={(checked) => {
+							if (!followsEnabled) return;
 							if (checked) {
 								followMutation.mutate({ horseId: horse.id, organizationId });
 							} else {

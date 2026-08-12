@@ -291,6 +291,20 @@ export class MockCircleService implements CircleService {
 		return { ok: true, data: { circlePostId, status: "published" } };
 	}
 
+	async deletePost(circlePostId: string): Promise<CircleCallOutcome<void>> {
+		if (!this.posts.has(circlePostId)) {
+			// Already gone — treat as success, mirrors real.ts's 404 handling.
+			logger.info("[MockCircle] Delete post: already gone, treating as success", {
+				circlePostId,
+			});
+			return { ok: true, data: undefined };
+		}
+
+		this.posts.delete(circlePostId);
+		logger.info("[MockCircle] Deleted post", { circlePostId });
+		return { ok: true, data: undefined };
+	}
+
 	async uploadImage(params: UploadImageParams): Promise<CircleCallOutcome<UploadImageResult>> {
 		const n = this.nextUploadId++;
 		const signedId = `mock-signed-id-${n}`;

@@ -19,6 +19,7 @@ export const updateHorse = adminProcedure
 			slug: z.string().optional(),
 			status: z.enum(["PRE_TRAINING", "IN_TRAINING", "REHAB", "RETIRED", "SOLD"]).optional(),
 			bio: z.string().nullable().optional(),
+			story: z.string().nullable().optional(),
 			trainerNotes: z.string().nullable().optional(),
 			ownershipBlurb: z.string().nullable().optional(),
 			pedigree: z

@@ -4,7 +4,7 @@ import { z } from "zod";
 import { adminProcedure } from "../../../orpc/procedures";
 
 const audienceType = z.enum(["horse", "community"]);
-const updateType = z.enum(["trainer", "wellbeing", "general"]);
+const updateType = z.enum(["trainer", "wellbeing", "general", "race"]);
 
 /**
  * Create a member-post draft. Nothing reaches Circle here — the draft is

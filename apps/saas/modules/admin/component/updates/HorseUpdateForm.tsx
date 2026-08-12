@@ -27,6 +27,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@repo/ui/components/select";
+import { Switch } from "@repo/ui/components/switch";
 import { toastError, toastSuccess } from "@repo/ui/components/toast";
 import { useRouter } from "@shared/hooks/router";
 import { orpc } from "@shared/lib/orpc-query-utils";
@@ -82,6 +83,7 @@ export function HorseUpdateForm({ memberPostId }: HorseUpdateFormProps) {
 	const deferredPreviewDoc = useDeferredValue(previewDoc);
 	const [isUploading, setIsUploading] = useState(false);
 	const [fallback, setFallback] = useState<{ circleUrl: string | null } | null>(null);
+	const [notifyFollowers, setNotifyFollowers] = useState(true);
 
 	const isEdit = !!memberPostId;
 
@@ -215,7 +217,10 @@ export function HorseUpdateForm({ memberPostId }: HorseUpdateFormProps) {
 		setFallback(null);
 		try {
 			const id = await ensureDraftId(values);
-			const outcome = await publishMutation.mutateAsync({ memberPostId: id });
+			const outcome = await publishMutation.mutateAsync({
+				memberPostId: id,
+				notifyFollowers,
+			});
 			const resolution = resolvePublishOutcome(outcome, { communityDomain });
 			await queryClient.invalidateQueries({ queryKey: orpc.memberPosts.admin.list.key() });
 			await queryClient.invalidateQueries({ queryKey: orpc.memberPosts.admin.find.key() });
@@ -399,6 +404,20 @@ export function HorseUpdateForm({ memberPostId }: HorseUpdateFormProps) {
 									</div>
 								) : null}
 							</div>
+
+							{/* Any update type: opt in to a push for this horse's followers */}
+							{!isPublished && (
+								<label className="gap-2 text-sm flex items-center">
+									<Switch
+										checked={notifyFollowers}
+										onCheckedChange={setNotifyFollowers}
+									/>
+									{t("admin.updates.form.notifyFollowers")}
+									<span className="text-xs text-muted-foreground">
+										{t("admin.updates.form.notifyFollowersHint")}
+									</span>
+								</label>
+							)}
 
 							{/* Fail-safe: Circle publish failed → post directly in Circle */}
 							{fallback && (

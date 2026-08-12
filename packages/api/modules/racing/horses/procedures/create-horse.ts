@@ -26,6 +26,7 @@ export const createHorse = adminProcedure
 			slug: z.string().optional(),
 			status: z.enum(["PRE_TRAINING", "IN_TRAINING", "REHAB", "RETIRED", "SOLD"]).optional(),
 			bio: z.string().optional(),
+			story: z.string().optional(),
 			trainerNotes: z.string().optional(),
 			ownershipBlurb: z.string().optional(),
 			pedigree: z
@@ -74,6 +75,7 @@ export const createHorse = adminProcedure
 			slug,
 			status: input.status,
 			bio: input.bio,
+			story: input.story,
 			trainerNotes: input.trainerNotes,
 			ownershipBlurb: input.ownershipBlurb,
 			pedigree: input.pedigree,

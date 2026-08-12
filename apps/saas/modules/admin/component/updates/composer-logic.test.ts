@@ -18,10 +18,11 @@ import {
 
 describe("composer-logic (S2-09)", () => {
 	describe("isMemberUpdateType", () => {
-		it("accepts the three update types and rejects anything else", () => {
+		it("accepts the four update types and rejects anything else", () => {
 			expect(isMemberUpdateType("trainer")).toBe(true);
 			expect(isMemberUpdateType("wellbeing")).toBe(true);
 			expect(isMemberUpdateType("general")).toBe(true);
+			expect(isMemberUpdateType("race")).toBe(true);
 			expect(isMemberUpdateType("nonsense")).toBe(false);
 		});
 	});

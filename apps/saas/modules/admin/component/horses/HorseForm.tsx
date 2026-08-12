@@ -38,6 +38,7 @@ import { z } from "zod";
 import { HorseVisibilityToggle } from "./HorseVisibilityToggle";
 import { PhotoGallery } from "./PhotoGallery";
 import { ProviderHorseSearch } from "./ProviderHorseSearch";
+import { ResultsReplayLinks } from "./ResultsReplayLinks";
 import { TrainerModal } from "./TrainerModal";
 
 const horseFormSchema = z.object({
@@ -49,6 +50,7 @@ const horseFormSchema = z.object({
 	providerEntityId: z.string().optional(),
 	circleSpaceId: z.string().optional(),
 	bio: z.string().optional(),
+	story: z.string().optional(),
 	trainerNotes: z.string().optional(),
 	ownershipBlurb: z.string().optional(),
 	sire: z.string().optional(),
@@ -126,6 +128,7 @@ export function HorseForm({ horseId }: HorseFormProps) {
 			providerEntityId: "",
 			circleSpaceId: "",
 			bio: "",
+			story: "",
 			trainerNotes: "",
 			ownershipBlurb: "",
 			sire: "",
@@ -160,6 +163,7 @@ export function HorseForm({ horseId }: HorseFormProps) {
 				providerEntityId: horse.providerEntityId ?? "",
 				circleSpaceId: horse.circleSpaceId ?? "",
 				bio: horse.bio ?? "",
+				story: horse.story ?? "",
 				trainerNotes: horse.trainerNotes ?? "",
 				ownershipBlurb: horse.ownershipBlurb ?? "",
 				sire: pedigree?.sire ?? "",
@@ -194,6 +198,7 @@ export function HorseForm({ horseId }: HorseFormProps) {
 					providerEntityId: values.providerEntityId || null,
 					circleSpaceId: values.circleSpaceId || null,
 					bio: values.bio || null,
+					story: values.story || null,
 					trainerNotes: values.trainerNotes || null,
 					ownershipBlurb: values.ownershipBlurb || null,
 					pedigree: pedigreeData ?? null,
@@ -220,6 +225,7 @@ export function HorseForm({ horseId }: HorseFormProps) {
 					providerEntityId: values.providerEntityId || undefined,
 					circleSpaceId: values.circleSpaceId || undefined,
 					bio: values.bio || undefined,
+					story: values.story || undefined,
 					trainerNotes: values.trainerNotes || undefined,
 					ownershipBlurb: values.ownershipBlurb || undefined,
 					pedigree: pedigreeData,
@@ -593,6 +599,23 @@ export function HorseForm({ horseId }: HorseFormProps) {
 
 							<FormField
 								control={form.control}
+								name="story"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>{t("admin.horses.form.story")}</FormLabel>
+										<FormDescription>
+											{t("admin.horses.form.storyHint")}
+										</FormDescription>
+										<FormControl>
+											<Textarea rows={6} {...field} />
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+
+							<FormField
+								control={form.control}
 								name="trainerNotes"
 								render={({ field }) => (
 									<FormItem>
@@ -626,7 +649,7 @@ export function HorseForm({ horseId }: HorseFormProps) {
 								<h3 className="mb-1 font-medium">
 									{t("admin.horses.form.pedigree")}
 								</h3>
-								<p className="text-muted-foreground mb-3 text-sm">
+								<p className="mb-3 text-sm text-muted-foreground">
 									{t("admin.horses.form.pedigreeHint")}
 								</p>
 								<div className="gap-4 md:grid-cols-3 grid grid-cols-1">
@@ -732,7 +755,7 @@ export function HorseForm({ horseId }: HorseFormProps) {
 										horseId={horse.id}
 										visibility={horse.circleSpaceVisibility}
 									/>
-									<p className="text-muted-foreground text-sm">
+									<p className="text-sm text-muted-foreground">
 										{t("admin.community.visibilityHelp")}
 									</p>
 								</div>
@@ -763,6 +786,8 @@ export function HorseForm({ horseId }: HorseFormProps) {
 					</Form>
 				</CardContent>
 			</Card>
+
+			{isEdit && horseId && <ResultsReplayLinks horseId={horseId} />}
 
 			<TrainerModal
 				organizationId={organizationId}
