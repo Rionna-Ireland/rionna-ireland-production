@@ -83,7 +83,7 @@ export function HorseUpdateForm({ memberPostId }: HorseUpdateFormProps) {
 	const deferredPreviewDoc = useDeferredValue(previewDoc);
 	const [isUploading, setIsUploading] = useState(false);
 	const [fallback, setFallback] = useState<{ circleUrl: string | null } | null>(null);
-	const [notifyFollowers, setNotifyFollowers] = useState(false);
+	const [notifyFollowers, setNotifyFollowers] = useState(true);
 
 	const isEdit = !!memberPostId;
 
