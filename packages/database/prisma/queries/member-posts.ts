@@ -86,3 +86,27 @@ export async function getMemberPosts({
 export async function deleteMemberPost(id: string) {
 	return await db.memberPost.delete({ where: { id } });
 }
+
+/** Member-facing horse updates — published only, newest first (S8-01a2). */
+export async function listPublishedHorseUpdates(params: {
+	organizationId: string;
+	horseId: string;
+}) {
+	return await db.memberPost.findMany({
+		where: {
+			organizationId: params.organizationId,
+			horseId: params.horseId,
+			audienceType: "horse",
+			status: "published",
+		},
+		select: {
+			id: true,
+			updateType: true,
+			title: true,
+			bodyJson: true,
+			publishedAt: true,
+			circlePostId: true,
+		},
+		orderBy: { publishedAt: "desc" },
+	});
+}
