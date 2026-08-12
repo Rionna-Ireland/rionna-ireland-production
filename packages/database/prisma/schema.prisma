@@ -382,6 +382,11 @@ model HorseWellbeingUpdate {
   body           String             @db.Text
   publishedAt    DateTime?
   notifyMembers  Boolean            @default(false)
+  /// S8-01 Amendment A1: id of the Circle post this update was cross-posted
+  /// to (snapshot at publish time; null until a successful cross-post, and
+  /// for updates published before A1 shipped). Circle is a projection —
+  /// this column is denormalized, never the source of truth.
+  circlePostId   String?
 
   horse        Horse        @relation(fields: [horseId], references: [id], onDelete: Cascade)
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
