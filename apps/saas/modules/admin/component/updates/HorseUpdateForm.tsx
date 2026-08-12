@@ -219,7 +219,7 @@ export function HorseUpdateForm({ memberPostId }: HorseUpdateFormProps) {
 			const id = await ensureDraftId(values);
 			const outcome = await publishMutation.mutateAsync({
 				memberPostId: id,
-				notifyFollowers: values.updateType === "wellbeing" ? notifyFollowers : undefined,
+				notifyFollowers,
 			});
 			const resolution = resolvePublishOutcome(outcome, { communityDomain });
 			await queryClient.invalidateQueries({ queryKey: orpc.memberPosts.admin.list.key() });
@@ -405,8 +405,8 @@ export function HorseUpdateForm({ memberPostId }: HorseUpdateFormProps) {
 								) : null}
 							</div>
 
-							{/* Wellbeing-only: opt in to a push for this horse's followers */}
-							{updateType === "wellbeing" && !isPublished && (
+							{/* Any update type: opt in to a push for this horse's followers */}
+							{!isPublished && (
 								<label className="gap-2 text-sm flex items-center">
 									<Switch
 										checked={notifyFollowers}

@@ -178,7 +178,7 @@
 				"videoUrlLabel": "Video URL (optional)",
 				"videoUrlPlaceholder": "Paste a YouTube/Vimeo link to embed",
 				"notifyFollowers": "Notify followers",
-				"notifyFollowersHint": "Sends a push to this horse's followers only.",
+				"notifyFollowersHint": "Send a push notification to this horse's followers.",
 				"saveDraft": "Save draft",
 				"publish": "Publish to members",
 				"publishTo": "Post to Members · {horse}",
