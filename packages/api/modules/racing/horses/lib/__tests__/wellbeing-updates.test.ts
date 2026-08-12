@@ -17,6 +17,8 @@ const {
 	mockListPublishedWellbeingUpdates,
 	mockGetHorseById,
 	mockSendPush,
+	mockPostWellbeingToCircle,
+	mockDeleteWellbeingCirclePost,
 } = vi.hoisted(() => ({
 	mockCreateWellbeingUpdate: vi.fn(),
 	mockGetWellbeingUpdateById: vi.fn(),
@@ -26,6 +28,8 @@ const {
 	mockListPublishedWellbeingUpdates: vi.fn(),
 	mockGetHorseById: vi.fn(),
 	mockSendPush: vi.fn(),
+	mockPostWellbeingToCircle: vi.fn(),
+	mockDeleteWellbeingCirclePost: vi.fn(),
 }));
 
 vi.mock("@repo/database", () => ({
@@ -46,6 +50,11 @@ vi.mock("../../../../push/service", () => ({
 	sendPush: mockSendPush,
 }));
 
+vi.mock("../post-wellbeing-to-circle", () => ({
+	postWellbeingToCircle: mockPostWellbeingToCircle,
+	deleteWellbeingCirclePost: mockDeleteWellbeingCirclePost,
+}));
+
 import {
 	createWellbeingUpdate,
 	deleteWellbeingUpdateById,
@@ -57,15 +66,18 @@ beforeEach(() => {
 	vi.clearAllMocks();
 	mockGetHorseById.mockResolvedValue({ id: "h-1", name: "Pink Diamond Lass" });
 	mockSendPush.mockResolvedValue({ attempted: 1, sent: 1, failed: 0 });
+	mockPostWellbeingToCircle.mockResolvedValue(undefined);
+	mockDeleteWellbeingCirclePost.mockResolvedValue(undefined);
 });
 
 describe("createWellbeingUpdate", () => {
-	it("creates a draft (publishedAt null) and never pushes when publish is omitted", async () => {
+	it("creates a draft (publishedAt null) and never pushes or cross-posts when publish is omitted", async () => {
 		mockCreateWellbeingUpdate.mockResolvedValue({
 			id: "w-1",
 			horseId: "h-1",
 			organizationId: "org-1",
 			type: "VET",
+			body: "Routine checkup, all clear.",
 			publishedAt: null,
 		});
 
@@ -80,14 +92,16 @@ describe("createWellbeingUpdate", () => {
 			expect.objectContaining({ publishedAt: null, notifyMembers: false }),
 		);
 		expect(mockSendPush).not.toHaveBeenCalled();
+		expect(mockPostWellbeingToCircle).not.toHaveBeenCalled();
 	});
 
-	it("publishes immediately but does not push when notifyMembers is false", async () => {
+	it("publishes immediately, cross-posts, but does not push when notifyMembers is false (quiet publish)", async () => {
 		mockCreateWellbeingUpdate.mockResolvedValue({
 			id: "w-1",
 			horseId: "h-1",
 			organizationId: "org-1",
 			type: "TRAINING",
+			body: "Back cantering this week.",
 			publishedAt: new Date(),
 		});
 
@@ -101,14 +115,22 @@ describe("createWellbeingUpdate", () => {
 		});
 
 		expect(mockSendPush).not.toHaveBeenCalled();
+		expect(mockPostWellbeingToCircle).toHaveBeenCalledWith({
+			organizationId: "org-1",
+			updateId: "w-1",
+			horseId: "h-1",
+			type: "TRAINING",
+			body: "Back cantering this week.",
+		});
 	});
 
-	it("publish + notifyMembers fires a HORSE_WELLBEING push scoped to the horse's followers", async () => {
+	it("publish + notifyMembers fires a HORSE_WELLBEING push scoped to the horse's followers, and cross-posts", async () => {
 		mockCreateWellbeingUpdate.mockResolvedValue({
 			id: "w-1",
 			horseId: "h-1",
 			organizationId: "org-1",
 			type: "REHAB",
+			body: "Progressing well in the pool.",
 			publishedAt: new Date(),
 		});
 
@@ -129,6 +151,13 @@ describe("createWellbeingUpdate", () => {
 				followersOfHorseId: "h-1",
 			}),
 		);
+		expect(mockPostWellbeingToCircle).toHaveBeenCalledWith({
+			organizationId: "org-1",
+			updateId: "w-1",
+			horseId: "h-1",
+			type: "REHAB",
+			body: "Progressing well in the pool.",
+		});
 	});
 
 	it("does not throw when the push delivery itself throws — the create already committed", async () => {
@@ -137,6 +166,7 @@ describe("createWellbeingUpdate", () => {
 			horseId: "h-1",
 			organizationId: "org-1",
 			type: "REHAB",
+			body: "Progressing well in the pool.",
 			publishedAt: new Date(),
 		});
 		mockSendPush.mockRejectedValue(new Error("db unavailable"));
@@ -173,9 +203,10 @@ describe("publishWellbeingUpdate", () => {
 		expect(result).toBeNull();
 		expect(mockUpdateWellbeingUpdate).not.toHaveBeenCalled();
 		expect(mockSendPush).not.toHaveBeenCalled();
+		expect(mockPostWellbeingToCircle).not.toHaveBeenCalled();
 	});
 
-	it("sets publishedAt and fires a push when notifyMembers is true", async () => {
+	it("sets publishedAt, fires a push, and cross-posts when notifyMembers is true", async () => {
 		mockGetWellbeingUpdateById.mockResolvedValue({
 			id: "w-1",
 			organizationId: "org-1",
@@ -188,6 +219,7 @@ describe("publishWellbeingUpdate", () => {
 			organizationId: "org-1",
 			horseId: "h-1",
 			type: "REST",
+			body: "Standing down for the week.",
 			publishedAt: new Date(),
 		});
 
@@ -208,6 +240,46 @@ describe("publishWellbeingUpdate", () => {
 				triggerRefId: "w-1",
 			}),
 		);
+		expect(mockPostWellbeingToCircle).toHaveBeenCalledWith({
+			organizationId: "org-1",
+			updateId: "w-1",
+			horseId: "h-1",
+			type: "REST",
+			body: "Standing down for the week.",
+		});
+	});
+
+	it("cross-posts even when notifyMembers is false (quiet publish)", async () => {
+		mockGetWellbeingUpdateById.mockResolvedValue({
+			id: "w-1",
+			organizationId: "org-1",
+			horseId: "h-1",
+			type: "VET",
+			publishedAt: null,
+		});
+		mockUpdateWellbeingUpdate.mockResolvedValue({
+			id: "w-1",
+			organizationId: "org-1",
+			horseId: "h-1",
+			type: "VET",
+			body: "All clear at the vet check.",
+			publishedAt: new Date(),
+		});
+
+		await publishWellbeingUpdate({
+			organizationId: "org-1",
+			updateId: "w-1",
+			notifyMembers: false,
+		});
+
+		expect(mockSendPush).not.toHaveBeenCalled();
+		expect(mockPostWellbeingToCircle).toHaveBeenCalledWith({
+			organizationId: "org-1",
+			updateId: "w-1",
+			horseId: "h-1",
+			type: "VET",
+			body: "All clear at the vet check.",
+		});
 	});
 
 	it("does not move publishedAt for an already-published entry", async () => {
@@ -322,10 +394,15 @@ describe("deleteWellbeingUpdateById", () => {
 
 		expect(result).toBe(false);
 		expect(mockDeleteWellbeingUpdate).not.toHaveBeenCalled();
+		expect(mockDeleteWellbeingCirclePost).not.toHaveBeenCalled();
 	});
 
-	it("deletes and returns true when owned by this org", async () => {
-		mockGetWellbeingUpdateById.mockResolvedValue({ id: "w-1", organizationId: "org-1" });
+	it("deletes and returns true when owned by this org, with no Circle cleanup when circlePostId is null", async () => {
+		mockGetWellbeingUpdateById.mockResolvedValue({
+			id: "w-1",
+			organizationId: "org-1",
+			circlePostId: null,
+		});
 
 		const result = await deleteWellbeingUpdateById({
 			organizationId: "org-1",
@@ -333,6 +410,27 @@ describe("deleteWellbeingUpdateById", () => {
 		});
 
 		expect(mockDeleteWellbeingUpdate).toHaveBeenCalledWith("w-1");
+		expect(mockDeleteWellbeingCirclePost).not.toHaveBeenCalled();
+		expect(result).toBe(true);
+	});
+
+	it("best-effort deletes the cross-posted Circle post when circlePostId is set (S8-01 A1)", async () => {
+		mockGetWellbeingUpdateById.mockResolvedValue({
+			id: "w-1",
+			organizationId: "org-1",
+			circlePostId: "post-1",
+		});
+
+		const result = await deleteWellbeingUpdateById({
+			organizationId: "org-1",
+			updateId: "w-1",
+		});
+
+		expect(mockDeleteWellbeingUpdate).toHaveBeenCalledWith("w-1");
+		expect(mockDeleteWellbeingCirclePost).toHaveBeenCalledWith({
+			organizationId: "org-1",
+			circlePostId: "post-1",
+		});
 		expect(result).toBe(true);
 	});
 });

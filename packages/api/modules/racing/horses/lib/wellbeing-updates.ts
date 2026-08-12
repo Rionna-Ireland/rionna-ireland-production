@@ -11,6 +11,7 @@ import type { HorseWellbeingType } from "@repo/database";
 import { logger } from "@repo/logs";
 
 import { sendPush } from "../../../push/service";
+import { deleteWellbeingCirclePost, postWellbeingToCircle } from "./post-wellbeing-to-circle";
 
 interface NotifiableUpdate {
 	id: string;
@@ -97,6 +98,18 @@ export async function createWellbeingUpdate(params: {
 		notifyMembers,
 	});
 
+	if (publish) {
+		// S8-01 A1: cross-post to the horse's Circle space on ANY publish (quiet
+		// or notify) — notifyMembers only controls our push, not the cross-post.
+		await postWellbeingToCircle({
+			organizationId: created.organizationId,
+			updateId: created.id,
+			horseId: created.horseId,
+			type: created.type,
+			body: created.body,
+		});
+	}
+
 	if (publish && notifyMembers) {
 		await notifyFollowers(created);
 	}
@@ -132,7 +145,11 @@ export async function updateWellbeingUpdateFields(params: {
 	});
 }
 
-/** Returns false if the update doesn't exist or isn't owned by this org. */
+/**
+ * Returns false if the update doesn't exist or isn't owned by this org.
+ * Best-effort deletes the cross-posted Circle post (S8-01 A1) when one
+ * exists — a Circle failure never blocks the row delete from succeeding.
+ */
 export async function deleteWellbeingUpdateById(params: {
 	organizationId: string;
 	updateId: string;
@@ -142,6 +159,14 @@ export async function deleteWellbeingUpdateById(params: {
 		return false;
 	}
 	await deleteWellbeingUpdateQuery(params.updateId);
+
+	if (existing.circlePostId) {
+		await deleteWellbeingCirclePost({
+			organizationId: params.organizationId,
+			circlePostId: existing.circlePostId,
+		});
+	}
+
 	return true;
 }
 
@@ -165,6 +190,16 @@ export async function publishWellbeingUpdate(params: {
 	const updated = await updateWellbeingUpdateQuery(params.updateId, {
 		publishedAt: existing.publishedAt ?? new Date(),
 		notifyMembers: params.notifyMembers,
+	});
+
+	// S8-01 A1: cross-post on ANY publish (quiet or notify) — the Circle
+	// createPost idempotency key keeps a republish from double-posting.
+	await postWellbeingToCircle({
+		organizationId: updated.organizationId,
+		updateId: updated.id,
+		horseId: updated.horseId,
+		type: updated.type,
+		body: updated.body,
 	});
 
 	if (params.notifyMembers) {
