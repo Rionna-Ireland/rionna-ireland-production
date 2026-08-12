@@ -73,8 +73,12 @@ describe("getPrefKey", () => {
 		expect(getPrefKey("CIRCLE_HORSE_DISCUSSION")).toBe("circleHorseDiscussion");
 	});
 
-	it("maps HORSE_WELLBEING to horseWellbeing", () => {
-		expect(getPrefKey("HORSE_WELLBEING")).toBe("horseWellbeing");
+	it("maps HORSE_WELLBEING (legacy) to horseUpdates", () => {
+		expect(getPrefKey("HORSE_WELLBEING")).toBe("horseUpdates");
+	});
+
+	it("maps HORSE_UPDATE to horseUpdates", () => {
+		expect(getPrefKey("HORSE_UPDATE")).toBe("horseUpdates");
 	});
 });
 
@@ -112,40 +116,45 @@ describe("getAudienceTokens", () => {
 		});
 	});
 
-	// S8-01 §3/§6: wellbeing-update publish-with-notify targets followers of
-	// that horse only, intersected with the horseWellbeing preference.
-	it("targets only followers of the horse for HORSE_WELLBEING, respecting the horseWellbeing pref", async () => {
-		mockFindMany.mockResolvedValue([
-			{
-				expoPushToken: "tok-follower-enabled",
-				userId: "u-1",
-				user: { pushPreferences: {} },
-			},
-			{
-				expoPushToken: "tok-follower-disabled",
-				userId: "u-2",
-				user: { pushPreferences: { horseWellbeing: false } },
-			},
-			{
-				expoPushToken: "tok-non-follower",
-				userId: "u-3",
-				user: { pushPreferences: {} },
-			},
-		]);
-		mockHorseFollowFindMany.mockResolvedValue([{ userId: "u-1" }, { userId: "u-2" }]);
+	// S8-01a3: horse-update publish-with-notify targets followers of that
+	// horse only, intersected with the shared horseUpdates preference — for
+	// HORSE_UPDATE (current trigger for all four update types) and the
+	// legacy HORSE_WELLBEING value alike.
+	it.each(["HORSE_UPDATE", "HORSE_WELLBEING"] as const)(
+		"targets only followers of the horse for %s, respecting the horseUpdates pref",
+		async (triggerType) => {
+			mockFindMany.mockResolvedValue([
+				{
+					expoPushToken: "tok-follower-enabled",
+					userId: "u-1",
+					user: { pushPreferences: {} },
+				},
+				{
+					expoPushToken: "tok-follower-disabled",
+					userId: "u-2",
+					user: { pushPreferences: { horseUpdates: false } },
+				},
+				{
+					expoPushToken: "tok-non-follower",
+					userId: "u-3",
+					user: { pushPreferences: {} },
+				},
+			]);
+			mockHorseFollowFindMany.mockResolvedValue([{ userId: "u-1" }, { userId: "u-2" }]);
 
-		const tokens = await getAudienceTokens({
-			organizationId: "org-1",
-			triggerType: "HORSE_WELLBEING",
-			followersOfHorseId: "h-1",
-		});
+			const tokens = await getAudienceTokens({
+				organizationId: "org-1",
+				triggerType,
+				followersOfHorseId: "h-1",
+			});
 
-		expect(tokens.map((t) => t.expoPushToken)).toEqual(["tok-follower-enabled"]);
-		expect(mockHorseFollowFindMany).toHaveBeenCalledWith({
-			where: { organizationId: "org-1", horseId: "h-1" },
-			select: { userId: true },
-		});
-	});
+			expect(tokens.map((t) => t.expoPushToken)).toEqual(["tok-follower-enabled"]);
+			expect(mockHorseFollowFindMany).toHaveBeenCalledWith({
+				where: { organizationId: "org-1", horseId: "h-1" },
+				select: { userId: true },
+			});
+		},
+	);
 
 	it("is org-wide (unchanged) when followersOfHorseId is omitted", async () => {
 		mockFindMany.mockResolvedValue([
