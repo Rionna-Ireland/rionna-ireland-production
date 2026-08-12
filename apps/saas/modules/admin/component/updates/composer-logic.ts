@@ -5,7 +5,7 @@
  * so they can be unit-tested. The component is thin wiring over these.
  */
 
-export const MEMBER_UPDATE_TYPES = ["trainer", "wellbeing", "general"] as const;
+export const MEMBER_UPDATE_TYPES = ["trainer", "wellbeing", "general", "race"] as const;
 
 export type MemberUpdateType = (typeof MEMBER_UPDATE_TYPES)[number];
 

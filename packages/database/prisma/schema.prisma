@@ -608,7 +608,7 @@ model MemberPost {
   audienceType String // "horse" | "community"
   horseId      String?
   horse        Horse?  @relation(fields: [horseId], references: [id], onDelete: SetNull)
-  updateType   String? // "trainer" | "wellbeing" | "general" (horse updates only)
+  updateType   String? // "trainer" | "wellbeing" | "general" | "race" (horse updates only)
 
   title    String
   bodyJson Json    @default("{}") // Novel/TipTap JSONContent (pre-Circle authoring state)
