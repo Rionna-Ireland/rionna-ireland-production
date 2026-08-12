@@ -4,7 +4,6 @@ export {
   NotificationTarget,
   NotificationType,
   HorseStatus,
-  HorseWellbeingType,
   RaceEntryStatus,
   DevicePlatform,
   PushTriggerType,

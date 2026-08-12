@@ -168,7 +168,6 @@ model Organization {
   pushLogs         PushLog[]
   memberPosts      MemberPost[]
   horseFollows     HorseFollow[]
-  wellbeingUpdates HorseWellbeingUpdate[]
 
   @@unique([slug])
   @@map("organization")
@@ -352,7 +351,6 @@ model Horse {
   entries          RaceEntry[]
   memberPosts      MemberPost[]
   followers        HorseFollow[]
-  wellbeingUpdates HorseWellbeingUpdate[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -362,41 +360,6 @@ model Horse {
   @@index([organizationId, publishedAt])
   @@index([organizationId, publicProfileAt])
   @@map("horse")
-}
-
-// Wellbeing timeline (S8-01 §6) — admin-authored, member-read. Curated club
-// content (not community-generated), so it's "ours" under D10 the same way
-// NewsPost/MemberPost are.
-enum HorseWellbeingType {
-  VET
-  TRAINING
-  REHAB
-  REST
-}
-
-model HorseWellbeingUpdate {
-  id             String             @id @default(cuid())
-  horseId        String
-  organizationId String
-  type           HorseWellbeingType
-  body           String             @db.Text
-  publishedAt    DateTime?
-  notifyMembers  Boolean            @default(false)
-  /// S8-01 Amendment A1: id of the Circle post this update was cross-posted
-  /// to (snapshot at publish time; null until a successful cross-post, and
-  /// for updates published before A1 shipped). Circle is a projection —
-  /// this column is denormalized, never the source of truth.
-  circlePostId   String?
-
-  horse        Horse        @relation(fields: [horseId], references: [id], onDelete: Cascade)
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([horseId, publishedAt])
-  @@index([organizationId])
-  @@map("horse_wellbeing_update")
 }
 
 model HorseFollow {

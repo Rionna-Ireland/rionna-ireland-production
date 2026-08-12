@@ -89,12 +89,6 @@ export const HorseScalarFieldEnumSchema = z.enum(['id', 'organizationId', 'slug'
 
 export type HorseScalarFieldEnum = z.infer<typeof HorseScalarFieldEnumSchema>;
 
-// File: HorseWellbeingUpdateScalarFieldEnum.schema.ts
-
-export const HorseWellbeingUpdateScalarFieldEnumSchema = z.enum(['id', 'horseId', 'organizationId', 'type', 'body', 'publishedAt', 'notifyMembers', 'circlePostId', 'createdAt', 'updatedAt'])
-
-export type HorseWellbeingUpdateScalarFieldEnum = z.infer<typeof HorseWellbeingUpdateScalarFieldEnumSchema>;
-
 // File: HorseFollowScalarFieldEnum.schema.ts
 
 export const HorseFollowScalarFieldEnumSchema = z.enum(['id', 'organizationId', 'userId', 'horseId', 'createdAt'])
@@ -226,12 +220,6 @@ export type NotificationTarget = z.infer<typeof NotificationTargetSchema>;
 export const HorseStatusSchema = z.enum(['PRE_TRAINING', 'IN_TRAINING', 'REHAB', 'RETIRED', 'SOLD'])
 
 export type HorseStatus = z.infer<typeof HorseStatusSchema>;
-
-// File: HorseWellbeingType.schema.ts
-
-export const HorseWellbeingTypeSchema = z.enum(['VET', 'TRAINING', 'REHAB', 'REST'])
-
-export type HorseWellbeingType = z.infer<typeof HorseWellbeingTypeSchema>;
 
 // File: RaceEntryStatus.schema.ts
 
@@ -501,24 +489,6 @@ export const HorseSchema = z.object({
 });
 
 export type HorseType = z.infer<typeof HorseSchema>;
-
-
-// File: HorseWellbeingUpdate.schema.ts
-
-export const HorseWellbeingUpdateSchema = z.object({
-  id: z.string(),
-  horseId: z.string(),
-  organizationId: z.string(),
-  type: HorseWellbeingTypeSchema,
-  body: z.string(),
-  publishedAt: z.date().nullish(),
-  notifyMembers: z.boolean(),
-  circlePostId: z.string().nullish(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
-});
-
-export type HorseWellbeingUpdateType = z.infer<typeof HorseWellbeingUpdateSchema>;
 
 
 // File: HorseFollow.schema.ts

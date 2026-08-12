@@ -20,13 +20,6 @@ import { setHorseSpaceVisibility } from "./procedures/set-horse-space-visibility
 import { syncHorse } from "./procedures/sync-horse";
 import { updateHorse } from "./procedures/update-horse";
 import { updateRaceEntryReplayUrl } from "./procedures/update-race-entry-replay-url";
-import {
-	createWellbeingUpdateProcedure,
-	deleteWellbeingUpdateProcedure,
-	listWellbeingUpdatesProcedure,
-	publishWellbeingUpdateProcedure,
-	updateWellbeingUpdateProcedure,
-} from "./procedures/wellbeing-updates-admin";
 
 export const horsesAdminRouter = {
 	list: listHorses,
@@ -47,13 +40,6 @@ export const horsesAdminRouter = {
 	followAllMembers: followAllMembersProcedure,
 	listEntries: listHorseEntries,
 	updateEntryReplayUrl: updateRaceEntryReplayUrl,
-	wellbeing: {
-		list: listWellbeingUpdatesProcedure,
-		create: createWellbeingUpdateProcedure,
-		update: updateWellbeingUpdateProcedure,
-		delete: deleteWellbeingUpdateProcedure,
-		publish: publishWellbeingUpdateProcedure,
-	},
 	trainers: {
 		list: listTrainers,
 		create: createTrainer,

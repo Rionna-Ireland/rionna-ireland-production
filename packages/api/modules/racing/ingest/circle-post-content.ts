@@ -138,36 +138,3 @@ export function buildCirclePostContent(
 	const body = `${horse.name} completed the ${raceName} at ${courseName}.${buildDetailsBlock(race, entry, "rode")}`;
 	return { title: `${horse.name} completed the race`, body };
 }
-
-// --- Wellbeing cross-post (S8-01 Amendment A1) ------------------------------
-
-export type CirclePostContentWellbeingType = "VET" | "TRAINING" | "REHAB" | "REST";
-
-export interface CirclePostContentWellbeing {
-	horseName: string;
-	type: CirclePostContentWellbeingType;
-	body: string;
-}
-
-const WELLBEING_TYPE_LABELS: Record<CirclePostContentWellbeingType, string> = {
-	VET: "Vet",
-	TRAINING: "Training",
-	REHAB: "Rehab",
-	REST: "Rest",
-};
-
-/**
- * S8-05 note: classification depends on this title shape — a stable
- * "<Horse> — wellbeing update: <Type>" prefix distinct from the
- * declaration/result templates above. Changing the shape needs a matching
- * change to S8-05's classifier + shared fixtures.
- */
-export function buildWellbeingCirclePostContent(
-	input: CirclePostContentWellbeing,
-): CirclePostContent {
-	const typeLabel = WELLBEING_TYPE_LABELS[input.type];
-	return {
-		title: `${input.horseName} — wellbeing update: ${typeLabel}`,
-		body: input.body,
-	};
-}

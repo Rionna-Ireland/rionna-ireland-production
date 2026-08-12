@@ -338,37 +338,6 @@
 					"error": "Could not create trainer. Please try again."
 				}
 			},
-			"wellbeing": {
-				"title": "Wellbeing timeline",
-				"description": "Admin-authored vet notes, training progress, and rehab/rest status — distinct from Horse updates, which post to the Circle community feed.",
-				"loading": "Loading timeline…",
-				"empty": "No wellbeing updates yet.",
-				"typeLabel": "Type",
-				"types": {
-					"VET": "Vet",
-					"TRAINING": "Training",
-					"REHAB": "Rehab",
-					"REST": "Rest"
-				},
-				"bodyLabel": "Note",
-				"bodyPlaceholder": "What's the update?",
-				"publishNow": "Publish now",
-				"notifyMembers": "Notify followers",
-				"notifyMembersHint": "Sends a push to this horse's followers only.",
-				"add": "Add update",
-				"draftBadge": "Draft",
-				"publishedBadge": "Published {date}",
-				"publish": "Publish & notify",
-				"publishQuiet": "Publish quietly",
-				"delete": "Delete",
-				"notifications": {
-					"created": "Wellbeing update saved.",
-					"published": "Published — followers notified.",
-					"publishedNoNotify": "Published.",
-					"deleted": "Wellbeing update deleted.",
-					"error": "Something went wrong. Please try again."
-				}
-			},
 			"results": {
 				"title": "Results & replay links",
 				"description": "Set the replay-video link surfaced on the member Horse Profile.",

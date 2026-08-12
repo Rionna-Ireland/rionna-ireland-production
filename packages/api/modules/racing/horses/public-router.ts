@@ -4,7 +4,6 @@ import { getHorseUpdatesProcedure } from "./procedures/get-horse-updates";
 import { getLatestResultsProcedure } from "./procedures/get-latest-results";
 import { getNextRunProcedure } from "./procedures/get-next-run";
 import { getPublishedHorse } from "./procedures/get-published-horse";
-import { getWellbeingTimelineProcedure } from "./procedures/get-wellbeing-timeline";
 import { listFollowingProcedure } from "./procedures/list-following";
 import { listPublishedHorses } from "./procedures/list-published-horses";
 
@@ -16,7 +15,6 @@ export const horsesPublicRouter = {
 	follow: followHorseProcedure,
 	unfollow: unfollowHorseProcedure,
 	following: listFollowingProcedure,
-	wellbeing: getWellbeingTimelineProcedure,
 	updates: getHorseUpdatesProcedure,
 	followsEnabled: getHorseFollowsEnabledProcedure,
 };

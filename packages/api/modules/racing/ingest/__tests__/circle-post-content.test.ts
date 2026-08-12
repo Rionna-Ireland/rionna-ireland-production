@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildCirclePostContent, buildWellbeingCirclePostContent, formatDistance } from "../circle-post-content";
+import { buildCirclePostContent, formatDistance } from "../circle-post-content";
 
 const horse = { id: "h-1", name: "My Boy Harry" };
 const race = {
@@ -161,40 +161,5 @@ describe("buildCirclePostContent", () => {
 	it("non-postable status → null", () => {
 		expect(buildCirclePostContent("NON_RUNNER", horse, race, noEntryDetail, undefined)).toBeNull();
 		expect(buildCirclePostContent("ENTERED", horse, race, noEntryDetail, undefined)).toBeNull();
-	});
-});
-
-describe("buildWellbeingCirclePostContent (S8-01 Amendment A1)", () => {
-	it.each([
-		["VET", "Vet"],
-		["TRAINING", "Training"],
-		["REHAB", "Rehab"],
-		["REST", "Rest"],
-	] as const)("%s → title carries the horse name and a stable '%s' type marker", (type, label) => {
-		const c = buildWellbeingCirclePostContent({
-			horseName: "My Boy Harry",
-			type,
-			body: "Routine checkup, all clear.",
-		});
-		expect(c.title).toBe(`My Boy Harry — wellbeing update: ${label}`);
-	});
-
-	it("body is the member-authored text verbatim, not rewritten", () => {
-		const c = buildWellbeingCirclePostContent({
-			horseName: "My Boy Harry",
-			type: "REHAB",
-			body: "Progressing well in the pool, three sessions this week.",
-		});
-		expect(c.body).toBe("Progressing well in the pool, three sessions this week.");
-	});
-
-	it("title shape is stable and distinct from declaration/result templates (S8-05 classification)", () => {
-		const c = buildWellbeingCirclePostContent({
-			horseName: "My Boy Harry",
-			type: "VET",
-			body: "All clear.",
-		});
-		expect(c.title).toContain("wellbeing update");
-		expect(c.title).not.toMatch(/declared|runs in|finished|won/i);
 	});
 });

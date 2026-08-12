@@ -41,7 +41,6 @@ import { PhotoGallery } from "./PhotoGallery";
 import { ProviderHorseSearch } from "./ProviderHorseSearch";
 import { ResultsReplayLinks } from "./ResultsReplayLinks";
 import { TrainerModal } from "./TrainerModal";
-import { WellbeingTimeline } from "./WellbeingTimeline";
 
 const horseFormSchema = z.object({
 	name: z.string().min(1),
@@ -810,8 +809,6 @@ export function HorseForm({ horseId }: HorseFormProps) {
 					</Form>
 				</CardContent>
 			</Card>
-
-			{isEdit && horseId && <WellbeingTimeline horseId={horseId} />}
 
 			{isEdit && horseId && <ResultsReplayLinks horseId={horseId} />}
 
