@@ -14,10 +14,7 @@
 		"seed:staging": "dotenv -e ../../.env.staging -- tsx prisma/seed.ts",
 		"seed:production": "dotenv -e ../../.env.production -- tsx prisma/seed.ts",
 		"studio": "dotenv -c -e ../../.env -- prisma studio",
-		"type-check": "tsc --noEmit",
-		"backfill:horse-space-joins": "dotenv -c -e ../../.env -- tsx scripts/backfill-horse-space-joins.ts",
-		"backfill:horse-space-joins:staging": "dotenv -e ../../.env.staging -- tsx scripts/backfill-horse-space-joins.ts",
-		"backfill:horse-space-joins:production": "dotenv -e ../../.env.production -- tsx scripts/backfill-horse-space-joins.ts"
+		"type-check": "tsc --noEmit"
 	},
 	"dependencies": {
 		"@paralleldrive/cuid2": "^3.3.0",
@@ -30,7 +27,6 @@
 	},
 	"devDependencies": {
 		"@repo/tsconfig": "workspace:*",
-		"@repo/payments": "workspace:*",
 		"@types/node": "catalog:",
 		"dotenv": "catalog:",
 		"dotenv-cli": "catalog:",

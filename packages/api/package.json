@@ -4,6 +4,9 @@
 	"main": "./index.ts",
 	"scripts": {
 		"clean": "git clean -xdf .cache .turbo dist node_modules",
+		"backfill:horse-space-joins": "dotenv -c -e ../../.env -- tsx scripts/backfill-horse-space-joins.ts",
+		"backfill:horse-space-joins:staging": "dotenv -e ../../.env.staging -- tsx scripts/backfill-horse-space-joins.ts",
+		"backfill:horse-space-joins:production": "dotenv -e ../../.env.production -- tsx scripts/backfill-horse-space-joins.ts",
 		"test": "vitest run",
 		"test:watch": "vitest",
 		"test:coverage": "vitest run --coverage",
@@ -41,6 +44,8 @@
 	"devDependencies": {
 		"@repo/tsconfig": "workspace:*",
 		"@types/react": "catalog:",
+		"dotenv-cli": "catalog:",
+		"tsx": "catalog:",
 		"@types/sanitize-html": "^2.16.1",
 		"@vitest/coverage-v8": "catalog:",
 		"encoding": "^0.1.13",

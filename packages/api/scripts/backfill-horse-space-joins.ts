@@ -23,7 +23,7 @@
  * — so reruns are safe.
  *
  * Run per env (mirrors the seed script / backfix-enable-post-likes pattern):
- *   cd packages/database
+ *   cd packages/api
  *   pnpm exec dotenv -e ../../.env         -- pnpm exec tsx scripts/backfill-horse-space-joins.ts          # local/dev tokens
  *   pnpm exec dotenv -e ../../.env.staging -- pnpm exec tsx scripts/backfill-horse-space-joins.ts
  *   pnpm exec dotenv -e ../../.env.production -- pnpm exec tsx scripts/backfill-horse-space-joins.ts
@@ -42,8 +42,7 @@
 // reimplementing the join call.
 import { syncCircleSpaceMembership } from "@repo/payments/lib/circle-space-membership";
 
-import { db } from "../prisma/client";
-import { parseOrgMetadata } from "../types/organization-metadata";
+import { db, parseOrgMetadata } from "@repo/database";
 
 const CONCURRENCY = 5;
 
