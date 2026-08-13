@@ -6,7 +6,6 @@ import { getMemberPost } from "./procedures/get-member-post";
 import { getNotificationBadgeCount } from "./procedures/get-notification-badge-count";
 import { getPostComments } from "./procedures/get-post-comments";
 import { getSessionToken } from "./procedures/get-session-token";
-import { getTrainerPosts } from "./procedures/get-trainer-posts";
 import { revokeSession } from "./procedures/revoke-session";
 import { setPostLike } from "./procedures/set-post-like";
 
@@ -19,7 +18,6 @@ export const circleRouter = {
 	getPostComments,
 	getNotificationBadgeCount,
 	getSessionToken,
-	getTrainerPosts,
 	revokeSession,
 	setPostLike,
 };
