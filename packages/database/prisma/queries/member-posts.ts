@@ -110,3 +110,29 @@ export async function listPublishedHorseUpdates(params: {
 		orderBy: { publishedAt: "desc" },
 	});
 }
+
+/**
+ * Latest published trainer-type horse updates, org-wide, for published
+ * horses only (S8-07) — feeds the Pulse "Trainer Updates" tile.
+ */
+export async function listLatestTrainerUpdates(params: { organizationId: string; limit: number }) {
+	return await db.memberPost.findMany({
+		where: {
+			organizationId: params.organizationId,
+			audienceType: "horse",
+			updateType: "trainer",
+			status: "published",
+			horse: { publishedAt: { not: null } },
+		},
+		select: {
+			id: true,
+			title: true,
+			bodyJson: true,
+			publishedAt: true,
+			horseId: true,
+			horse: { select: { id: true, name: true } },
+		},
+		orderBy: { publishedAt: "desc" },
+		take: params.limit,
+	});
+}
