@@ -72,6 +72,7 @@ describe("createCircleVideoUpload (S2-12)", () => {
 			uploadHeaders: { "Content-Type": "video/mp4", "Content-MD5": "abc==" },
 			cdnUrl: "https://assets-v2.circle.so/abc",
 			signedId: "signed-1",
+			attachableSgid: "sgid-1",
 		});
 	});
 

@@ -13,7 +13,13 @@ declare module "@tiptap/core" {
 	interface Commands<ReturnType> {
 		embed: {
 			/** Insert a video / oEmbed block carrying the source url (+ optional poster). */
-			setEmbed: (options: { url: string; poster?: string }) => ReturnType;
+			setEmbed: (options: {
+				url: string;
+				poster?: string;
+				signedId?: string;
+				attachableSgid?: string;
+				contentType?: string;
+			}) => ReturnType;
 		};
 	}
 }
@@ -118,8 +124,11 @@ export const Embed = Node.create({
 		return {
 			url: { default: null },
 			// Editor-only poster thumbnail (data URL) for uploaded videos; not emitted
-			// to Circle (the serializer mints the player from `url`).
+			// to Circle (the serializer mints a `file` block from signedId).
 			poster: { default: null, renderHTML: () => ({}) },
+			signedId: { default: null, renderHTML: () => ({}) },
+			attachableSgid: { default: null, renderHTML: () => ({}) },
+			contentType: { default: null, renderHTML: () => ({}) },
 		};
 	},
 
@@ -152,9 +161,18 @@ export const Embed = Node.create({
 	addCommands() {
 		return {
 			setEmbed:
-				({ url, poster }) =>
+				({ url, poster, signedId, attachableSgid, contentType }) =>
 				({ commands }) =>
-					commands.insertContent({ type: this.name, attrs: { url, poster: poster ?? null } }),
+					commands.insertContent({
+						type: this.name,
+						attrs: {
+							url,
+							poster: poster ?? null,
+							signedId: signedId ?? null,
+							attachableSgid: attachableSgid ?? null,
+							contentType: contentType ?? null,
+						},
+					}),
 		};
 	},
 });

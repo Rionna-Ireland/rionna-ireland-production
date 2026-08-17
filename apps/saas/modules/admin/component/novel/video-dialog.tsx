@@ -14,7 +14,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@repo/ui/components/ta
 import { type EditorInstance, getUrlFromString } from "novel";
 import { useState } from "react";
 
-export type VideoUploadHandler = (file: File, onProgress?: (pct: number) => void) => Promise<string>;
+import type { UploadedCircleVideo } from "@admin/lib/circle-video-upload";
+
+export type VideoUploadHandler = (
+	file: File,
+	onProgress?: (pct: number) => void,
+) => Promise<UploadedCircleVideo>;
 
 interface VideoDialogProps {
 	editor: EditorInstance | null;
@@ -101,11 +106,17 @@ export function VideoDialog({ editor, open, onOpenChange, onUploadVideo }: Video
 		setError(null);
 		setProgress(0);
 		try {
-			const [cdnUrl, poster] = await Promise.all([
+			const [uploaded, poster] = await Promise.all([
 				onUploadVideo(file, setProgress),
 				generatePoster(file),
 			]);
-			editor.chain().focus().setEmbed({ url: cdnUrl, poster }).run();
+			editor.chain().focus().setEmbed({
+				url: uploaded.url,
+				poster,
+				signedId: uploaded.signedId,
+				attachableSgid: uploaded.attachableSgid,
+				contentType: uploaded.contentType,
+			}).run();
 			close();
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Upload failed");

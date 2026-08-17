@@ -179,7 +179,8 @@ export interface CreateDirectUploadResult {
 	uploadUrl: string;
 	/** Headers Circle requires on the PUT (e.g. Content-Type, Content-MD5). */
 	uploadHeaders: Record<string, string>;
-	/** Circle CDN blob url — feed to `createEmbed` to render an inline video player. */
+	/** Circle CDN blob url — used for in-editor preview; native video publish uses signedId. */
+	cdnUrl?: string;
 	cdnUrl?: string;
 }
 
@@ -315,8 +316,9 @@ export interface CircleService {
 	/**
 	 * Register a blob with Circle and return its presigned S3 PUT URL, so a client
 	 * can upload the bytes directly (browser → Circle S3). Used for admin video
-	 * uploads (the bytes never pass through our server). The returned `cdnUrl` is
-	 * fed to `createEmbed` at publish to render an inline player.
+	 * uploads (the bytes never pass through our server). The returned
+	 * `signedId` / `attachableSgid` become a Circle `file` block at publish
+	 * (not `/embeds` / iframely — that rejects iPhone .mov).
 	 */
 	createDirectUpload(
 		params: CreateDirectUploadParams,

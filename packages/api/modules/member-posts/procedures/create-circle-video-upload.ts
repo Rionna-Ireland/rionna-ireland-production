@@ -12,8 +12,10 @@ const MAX_VIDEO_BYTES = 500 * 1024 * 1024; // 500 MB
  * Register a video blob with Circle and hand the client a presigned S3 URL so it
  * can PUT the bytes directly (browser → Circle S3 — verified CORS-open; the bytes
  * never pass through our server, dodging Vercel's request-body cap). The returned
- * `cdnUrl` is stored on an editor `embed` node and minted into an inline player at
- * publish via the serializer's `createEmbed`.
+ * `cdnUrl` + `signedId` + `attachableSgid` are stored on an editor `embed` node.
+ * At publish the serializer emits a Circle `file` block (native uploads cannot
+ * go through `/embeds` / iframely — that 4xxs on iPhone .mov and used to fail
+ * the whole post). YouTube/Vimeo paste still uses `createEmbed`.
  */
 export const createCircleVideoUpload = adminProcedure
 	.route({
@@ -62,5 +64,6 @@ export const createCircleVideoUpload = adminProcedure
 			uploadHeaders: result.data.uploadHeaders,
 			cdnUrl: result.data.cdnUrl,
 			signedId: result.data.signedId,
+			attachableSgid: result.data.attachableSgid,
 		};
 	});

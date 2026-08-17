@@ -15,7 +15,10 @@ export function localDocToHydrated(doc: unknown): HydratedNode | null {
 		if (node.type === "image" && node.attrs) {
 			attrs = { ...node.attrs, url: node.attrs.url ?? node.attrs.src };
 		} else if (node.type === "embed" && typeof node.attrs?.url === "string") {
-			attrs = { ...node.attrs, _resolved: { url: node.attrs.url } };
+			attrs = {
+				...node.attrs,
+				_resolved: { url: node.attrs.url, content_type: node.attrs.contentType },
+			};
 		}
 		const next: HydratedNode = attrs === node.attrs ? { ...node } : { ...node, attrs };
 		if (Array.isArray(node.content)) next.content = node.content.map(walk);
