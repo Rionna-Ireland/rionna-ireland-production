@@ -148,6 +148,8 @@
 				"createTitle": "Post a community announcement",
 				"editTitle": "Edit community announcement",
 				"audience": "Everyone in the club",
+				"notifyMembers": "Notify members",
+				"notifyMembersHint": "Send a push notification to all members.",
 				"publish": "Post to all members",
 				"published": "Announcement posted to all members.",
 				"list": {

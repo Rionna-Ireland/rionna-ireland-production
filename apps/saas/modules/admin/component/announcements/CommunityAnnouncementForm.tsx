@@ -21,6 +21,7 @@ import {
 	FormMessage,
 } from "@repo/ui/components/form";
 import { Input } from "@repo/ui/components/input";
+import { Switch } from "@repo/ui/components/switch";
 import { toastError, toastSuccess } from "@repo/ui/components/toast";
 import { useRouter } from "@shared/hooks/router";
 import { orpc } from "@shared/lib/orpc-query-utils";
@@ -61,6 +62,7 @@ export function CommunityAnnouncementForm({ memberPostId }: CommunityAnnouncemen
 	const [hasBody, setHasBody] = useState(false);
 	const [isUploading, setIsUploading] = useState(false);
 	const [fallback, setFallback] = useState<{ circleUrl: string | null } | null>(null);
+	const [notifyMembers, setNotifyMembers] = useState(true);
 
 	const isEdit = !!memberPostId;
 
@@ -157,7 +159,10 @@ export function CommunityAnnouncementForm({ memberPostId }: CommunityAnnouncemen
 		setFallback(null);
 		try {
 			const id = await ensureDraftId(values);
-			const outcome = await publishMutation.mutateAsync({ memberPostId: id });
+			const outcome = await publishMutation.mutateAsync({
+				memberPostId: id,
+				notifyMembers,
+			});
 			const resolution = resolvePublishOutcome(outcome, { communityDomain });
 			await queryClient.invalidateQueries({ queryKey: orpc.memberPosts.admin.list.key() });
 			await queryClient.invalidateQueries({ queryKey: orpc.memberPosts.admin.find.key() });
@@ -247,6 +252,18 @@ export function CommunityAnnouncementForm({ memberPostId }: CommunityAnnouncemen
 								</div>
 							</div>
 
+							{!isPublished && (
+								<label className="gap-2 text-sm flex items-center">
+									<Switch
+										checked={notifyMembers}
+										onCheckedChange={setNotifyMembers}
+									/>
+									{t("admin.updates.community.notifyMembers")}
+									<span className="text-xs text-muted-foreground">
+										{t("admin.updates.community.notifyMembersHint")}
+									</span>
+								</label>
+							)}
 
 							{fallback && (
 								<div className="border-amber-300 bg-amber-50 p-4 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100 rounded-md border">

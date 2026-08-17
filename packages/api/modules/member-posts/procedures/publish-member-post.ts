@@ -7,6 +7,7 @@ import { z } from "zod";
 
 import { adminProcedure } from "../../../orpc/procedures";
 import { fetchImageBytes } from "../lib/fetch-image-bytes";
+import { notifyCommunityMembers } from "../lib/notify-community-members";
 import { notifyHorseFollowers } from "../lib/notify-horse-followers";
 
 /**
@@ -23,7 +24,13 @@ export const publishMemberPost = adminProcedure
 		tags: ["MemberPosts"],
 		summary: "Publish a member post draft to its Circle space",
 	})
-	.input(z.object({ memberPostId: z.string(), notifyFollowers: z.boolean().optional() }))
+	.input(
+		z.object({
+			memberPostId: z.string(),
+			notifyFollowers: z.boolean().optional(),
+			notifyMembers: z.boolean().optional(),
+		}),
+	)
 	.handler(async ({ input }) => {
 		const post = await getMemberPostById(input.memberPostId);
 		if (!post) {
@@ -125,6 +132,16 @@ export const publishMemberPost = adminProcedure
 			});
 		}
 
+		if (input.notifyMembers && post.audienceType === "community") {
+			const communityDomain = parseOrgMetadata(org.metadata).circle?.communityDomain;
+			await notifyCommunityMembers({
+				organizationId: post.organizationId,
+				memberPostId: post.id,
+				title: post.title,
+				circlePostUrl: circlePostUrl(communityDomain, created.data.circlePostId),
+			});
+		}
+
 		return {
 			ok: true as const,
 			circlePostId: created.data.circlePostId,
@@ -141,4 +158,13 @@ function resolveCircleSpaceId(
 	}
 	// community → org-level community space id (slice 5 wires the composer).
 	return parseOrgMetadata(orgMetadata).circle?.communitySpaceId ?? null;
+}
+
+function circlePostUrl(
+	communityDomain: string | undefined,
+	circlePostId: string,
+): string | undefined {
+	if (!communityDomain) return undefined;
+	const host = communityDomain.replace(/^https?:\/\//, "").replace(/\/+$/, "");
+	return host ? `https://${host}/posts/${circlePostId}` : undefined;
 }
