@@ -22,7 +22,6 @@
  *      `attachableSgid` from `direct_uploads` and rewrite to a Circle `file`
  *      block instead. Circle-CDN urls without a blob id degrade to a link so
  *      a draft still publishes.
-
  *  - a legacy `videoUrl` option → one `embed` node appended to the body (kept for
  *    drafts authored before inline embeds; new posts carry embeds in the body).
  *  - `taskList`/`taskItem` downconvert to `bulletList`/`listItem`; any node outside
@@ -104,10 +103,17 @@ function isOEmbedVideoUrl(url: string): boolean {
 
 function isCircleAssetUrl(url: string): boolean {
 	const host = hostnameOf(url);
-	return host === "assets-v2.circle.so" || host === "assets.circle.so" || Boolean(host?.endsWith(".circle.so"));
+	return (
+		host === "assets-v2.circle.so" ||
+		host === "assets.circle.so" ||
+		Boolean(host?.endsWith(".circle.so"))
+	);
 }
 
-function strAttr(attrs: Record<string, unknown> | undefined, ...keys: string[]): string | undefined {
+function strAttr(
+	attrs: Record<string, unknown> | undefined,
+	...keys: string[]
+): string | undefined {
 	if (!attrs) return undefined;
 	for (const key of keys) {
 		const value = attrs[key];

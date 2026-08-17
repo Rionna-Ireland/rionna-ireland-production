@@ -181,7 +181,6 @@ export interface CreateDirectUploadResult {
 	uploadHeaders: Record<string, string>;
 	/** Circle CDN blob url — used for in-editor preview; native video publish uses signedId. */
 	cdnUrl?: string;
-	cdnUrl?: string;
 }
 
 export interface CreateEmbedParams {
