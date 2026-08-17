@@ -133,7 +133,7 @@ export function VideoDialog({ editor, open, onOpenChange, onUploadVideo }: Video
 						<TabsContent value="upload" className="space-y-3">
 							<input
 								type="file"
-								accept="video/*"
+								accept="video/mp4,video/quicktime,video/webm,.mp4,.mov,.m4v,video/*"
 								disabled={progress !== null}
 								onChange={onPickFile}
 								className="block w-full text-sm file:mr-3 file:rounded-md file:border file:bg-muted file:px-3 file:py-1.5"

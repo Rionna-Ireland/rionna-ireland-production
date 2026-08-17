@@ -5,6 +5,8 @@ import { useMutation } from "@tanstack/react-query";
 import { useCallback } from "react";
 import SparkMD5 from "spark-md5";
 
+import { resolveVideoUploadMeta, typedVideoBlob } from "./circle-video-upload-meta";
+
 /** Base64-encoded MD5 of the file bytes — the `checksum` Circle's direct_uploads wants. */
 async function computeMd5Base64(file: File): Promise<string> {
 	const CHUNK = 2 * 1024 * 1024;
@@ -20,7 +22,7 @@ async function computeMd5Base64(file: File): Promise<string> {
 function putWithProgress(
 	url: string,
 	headers: Record<string, string>,
-	file: File,
+	body: Blob,
 	onProgress?: (pct: number) => void,
 ): Promise<void> {
 	return new Promise((resolve, reject) => {
@@ -57,7 +59,7 @@ function putWithProgress(
 			);
 		xhr.onerror = () => settle(() => reject(new Error("Upload network error")));
 		xhr.onabort = () => settle(() => reject(new Error("Upload aborted")));
-		xhr.send(file);
+		xhr.send(body);
 	});
 }
 
@@ -71,15 +73,21 @@ export function useCircleVideoUpload(organizationId: string) {
 
 	return useCallback(
 		async (file: File, onProgress?: (pct: number) => void): Promise<string> => {
+			const meta = await resolveVideoUploadMeta(file);
 			const checksum = await computeMd5Base64(file);
 			const reg = await register.mutateAsync({
 				organizationId,
-				filename: file.name,
-				contentType: file.type,
+				filename: meta.filename,
+				contentType: meta.contentType,
 				byteSize: file.size,
 				checksum,
 			});
-			await putWithProgress(reg.uploadUrl, reg.uploadHeaders, file, onProgress);
+			await putWithProgress(
+				reg.uploadUrl,
+				reg.uploadHeaders,
+				typedVideoBlob(file, meta.contentType),
+				onProgress,
+			);
 			if (!reg.cdnUrl) throw new Error("Circle did not return a video URL");
 			return reg.cdnUrl;
 		},

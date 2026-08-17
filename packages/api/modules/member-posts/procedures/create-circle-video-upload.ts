@@ -26,7 +26,10 @@ export const createCircleVideoUpload = adminProcedure
 		z.object({
 			organizationId: z.string(),
 			filename: z.string().min(1),
-			contentType: z.string().refine((c) => c.startsWith("video/"), "Must be a video file"),
+			contentType: z
+				.string()
+				.transform((c) => c.split(";")[0]?.trim().toLowerCase() ?? "")
+				.refine((c) => c.startsWith("video/"), "Must be a video file"),
 			byteSize: z.number().int().positive().max(MAX_VIDEO_BYTES),
 			/** Base64-encoded MD5 of the file bytes, computed in-browser. */
 			checksum: z.string().min(1),

@@ -82,6 +82,42 @@ describe("createCircleVideoUpload (S2-12)", () => {
 		expect(mockCreateDirectUpload).not.toHaveBeenCalled();
 	});
 
+	it("rejects an empty content type (iOS Safari camera often reports File.type as '')", async () => {
+		await expect(
+			call(createCircleVideoUpload, { ...INPUT, contentType: "" }, ctx),
+		).rejects.toThrow();
+		expect(mockCreateDirectUpload).not.toHaveBeenCalled();
+	});
+
+	it("accepts video/quicktime from iPhone .mov recordings", async () => {
+		await call(
+			createCircleVideoUpload,
+			{ ...INPUT, filename: "capturedvideo.MOV", contentType: "video/quicktime" },
+			ctx,
+		);
+		expect(mockCreateDirectUpload).toHaveBeenCalledWith({
+			filename: "capturedvideo.MOV",
+			contentType: "video/quicktime",
+			byteSize: 1024,
+			checksum: "abc==",
+		});
+	});
+
+	it("strips codec parameters from iPhone MIME types before registering with Circle", async () => {
+		await call(
+			createCircleVideoUpload,
+			{
+				...INPUT,
+				filename: "capturedvideo.MOV",
+				contentType: 'video/quicktime; codecs="hvc1"',
+			},
+			ctx,
+		);
+		expect(mockCreateDirectUpload).toHaveBeenCalledWith(
+			expect.objectContaining({ contentType: "video/quicktime" }),
+		);
+	});
+
 	it("throws when the organization is not found", async () => {
 		mockOrgFindUnique.mockResolvedValue(null);
 		await expect(call(createCircleVideoUpload, INPUT, ctx)).rejects.toThrow();
