@@ -4,8 +4,8 @@ packages:
   - tooling/*
 
 catalog:
-  '@ai-sdk/anthropic': ^3.0.66
-  '@ai-sdk/openai': ^3.0.50
+  '@ai-sdk/anthropic': ^4.0.39
+  '@ai-sdk/openai': ^4.0.42
   '@ai-sdk/react': ^3.0.148
   '@aws-sdk/client-s3': 3.437.0
   '@aws-sdk/s3-request-presigner': 3.437.0
@@ -27,7 +27,7 @@ catalog:
   '@tailwindcss/postcss': ^4.2.2
   '@types/js-cookie': ^3.0.4
   '@types/mdx': ^2.0.13
-  '@types/node': 25.5.2
+  '@types/node': 26.2.0
   '@types/nodemailer': ^8.0.0
   '@types/nprogress': ^0.2.3
   '@types/react': 19.2.14
@@ -63,8 +63,8 @@ catalog:
   nuqs: ^2.8.9
   openai: ^6.33.0
   oslo: ^1.2.1
-  oxfmt: ^0.43.0
-  oxlint: ^1.58.0
+  oxfmt: ^0.63.0
+  oxlint: ^1.78.0
   pg: ^8.20.0
   postcss: 8.5.8
   prettier: 3.8.1

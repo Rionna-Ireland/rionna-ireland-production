@@ -8,7 +8,7 @@
 		"type-check": "tsc --noEmit"
 	},
 	"dependencies": {
-		"@react-email/components": "^1.0.11",
+		"@react-email/components": "^1.0.12",
 		"@react-email/render": "^2.0.5",
 		"@repo/i18n": "workspace:*",
 		"@repo/logs": "workspace:*",
@@ -17,7 +17,7 @@
 		"nodemailer": "^8.0.5",
 		"react": "catalog:",
 		"react-dom": "catalog:",
-		"react-email": "^5.2.10",
+		"react-email": "^6.9.2",
 		"resend": "^6.10.0",
 		"use-intl": "catalog:"
 	},
