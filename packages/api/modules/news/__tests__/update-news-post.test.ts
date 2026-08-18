@@ -100,7 +100,14 @@ describe("updateNewsPost — publish notifications (FABLE_AUDIT P1)", () => {
 		await call(updateNewsPost, publishInput, ctx);
 
 		expect(mockClaimNotification).toHaveBeenCalledWith("n1");
-		expect(mockSendPush).toHaveBeenCalled();
+		expect(mockSendPush).toHaveBeenCalledWith({
+			organizationId: "org1",
+			triggerType: "NEWS_POST",
+			triggerRefId: "n1",
+			title: "New post: Updated",
+			body: "Updated",
+			data: { screen: "news", newsPostId: "updated" },
+		});
 		expect(mockSendNewsNotificationEmails).toHaveBeenCalled();
 	});
 

@@ -24,6 +24,7 @@ const {
 	mockSerialize,
 	mockCreatePost,
 	mockNotifyHorseFollowers,
+	mockNotifyCommunityMembers,
 } = vi.hoisted(() => ({
 	mockGetSession: vi.fn(),
 	mockGetMemberPostById: vi.fn(),
@@ -34,6 +35,7 @@ const {
 	mockSerialize: vi.fn(),
 	mockCreatePost: vi.fn(),
 	mockNotifyHorseFollowers: vi.fn(),
+	mockNotifyCommunityMembers: vi.fn(),
 }));
 
 vi.mock("@repo/auth", () => ({
@@ -58,6 +60,10 @@ vi.mock("@repo/payments/lib/circle", () => ({
 
 vi.mock("../lib/notify-horse-followers", () => ({
 	notifyHorseFollowers: mockNotifyHorseFollowers,
+}));
+
+vi.mock("../lib/notify-community-members", () => ({
+	notifyCommunityMembers: mockNotifyCommunityMembers,
 }));
 
 import { publishMemberPost } from "../procedures/publish-member-post";
@@ -105,6 +111,7 @@ describe("publishMemberPost (S2-09)", () => {
 		});
 		mockUpdateMemberPost.mockImplementation((id, data) => ({ id, ...data }));
 		mockNotifyHorseFollowers.mockResolvedValue(undefined);
+		mockNotifyCommunityMembers.mockResolvedValue(undefined);
 	});
 
 	it("publishes a draft to the horse's space and records the published row", async () => {
@@ -219,13 +226,63 @@ describe("publishMemberPost (S2-09)", () => {
 			expect(mockNotifyHorseFollowers).not.toHaveBeenCalled();
 		});
 
-		it("does not notify a community post even when notifyFollowers is set", async () => {
+		it("does not notify horse followers for a community post even when notifyFollowers is set", async () => {
+			mockParseOrgMetadata.mockReturnValue({
+				circle: { communitySpaceId: "2695457", communityDomain: "rionna.circle.so" },
+			});
 			mockGetMemberPostById.mockResolvedValue(
 				draftPost({ audienceType: "community", updateType: "wellbeing", horseId: null, horse: null }),
 			);
 
 			await call(publishMemberPost, { memberPostId: "mp1", notifyFollowers: true }, ctx);
 
+			expect(mockNotifyHorseFollowers).not.toHaveBeenCalled();
+			expect(mockNotifyCommunityMembers).not.toHaveBeenCalled();
+		});
+
+		it("notifies all members when notifyMembers is set on a community announcement", async () => {
+			mockParseOrgMetadata.mockReturnValue({
+				circle: { communitySpaceId: "2695457", communityDomain: "rionna.circle.so" },
+			});
+			mockGetMemberPostById.mockResolvedValue(
+				draftPost({
+					audienceType: "community",
+					title: "Club dinner Friday",
+					horseId: null,
+					horse: null,
+				}),
+			);
+
+			await call(publishMemberPost, { memberPostId: "mp1", notifyMembers: true }, ctx);
+
+			expect(mockNotifyHorseFollowers).not.toHaveBeenCalled();
+			expect(mockNotifyCommunityMembers).toHaveBeenCalledWith({
+				organizationId: "org1",
+				memberPostId: "mp1",
+				title: "Club dinner Friday",
+				circlePostUrl: "https://rionna.circle.so/posts/5001",
+			});
+		});
+
+		it("does not notify members when notifyMembers is omitted on a community announcement", async () => {
+			mockParseOrgMetadata.mockReturnValue({
+				circle: { communitySpaceId: "2695457" },
+			});
+			mockGetMemberPostById.mockResolvedValue(
+				draftPost({ audienceType: "community", horseId: null, horse: null }),
+			);
+
+			await call(publishMemberPost, { memberPostId: "mp1" }, ctx);
+
+			expect(mockNotifyCommunityMembers).not.toHaveBeenCalled();
+		});
+
+		it("does not notify members when notifyMembers is set on a horse update", async () => {
+			mockGetMemberPostById.mockResolvedValue(draftPost({ updateType: "trainer" }));
+
+			await call(publishMemberPost, { memberPostId: "mp1", notifyMembers: true }, ctx);
+
+			expect(mockNotifyCommunityMembers).not.toHaveBeenCalled();
 			expect(mockNotifyHorseFollowers).not.toHaveBeenCalled();
 		});
 
@@ -236,6 +293,7 @@ describe("publishMemberPost (S2-09)", () => {
 			await call(publishMemberPost, { memberPostId: "mp1", notifyFollowers: true }, ctx);
 
 			expect(mockNotifyHorseFollowers).not.toHaveBeenCalled();
+			expect(mockNotifyCommunityMembers).not.toHaveBeenCalled();
 		});
 
 		it("does not notify on the idempotent already-published short-circuit", async () => {
@@ -243,9 +301,14 @@ describe("publishMemberPost (S2-09)", () => {
 				draftPost({ status: "published", circlePostId: "9999", updateType: "wellbeing" }),
 			);
 
-			await call(publishMemberPost, { memberPostId: "mp1", notifyFollowers: true }, ctx);
+			await call(
+				publishMemberPost,
+				{ memberPostId: "mp1", notifyFollowers: true, notifyMembers: true },
+				ctx,
+			);
 
 			expect(mockNotifyHorseFollowers).not.toHaveBeenCalled();
+			expect(mockNotifyCommunityMembers).not.toHaveBeenCalled();
 		});
 	});
 });

@@ -281,6 +281,82 @@ describe("serializeNovelDocToCircle — Circle block allow-list (S2-12)", () => 
 		expect(outcome).toMatchObject({ ok: false, reason: "invalid_input" });
 	});
 
+	it("rewrites an uploaded iPhone video to a file block and never calls iframely", async () => {
+		const { deps, createEmbed } = makeDeps();
+		const doc = {
+			type: "doc" as const,
+			content: [
+				PARA("Gallop:"),
+				{
+					type: "embed",
+					attrs: {
+						url: "https://assets-v2.circle.so/capturedvideo.MOV",
+						signedId: "signed-vid",
+						attachableSgid: "attach-sgid",
+						contentType: "video/quicktime",
+					},
+				},
+			],
+		};
+
+		const outcome = await serializeNovelDocToCircle(doc, {}, deps);
+
+		if (!outcome.ok) throw new Error("expected ok");
+		expect(createEmbed).not.toHaveBeenCalled();
+		expect(outcome.tiptapBody.body.content).toEqual([
+			PARA("Gallop:"),
+			{
+				type: "file",
+				attrs: {
+					sgid: "attach-sgid",
+					signed_id: "signed-vid",
+					url: "https://assets-v2.circle.so/capturedvideo.MOV",
+					content_type: "video/quicktime",
+				},
+			},
+		]);
+	});
+
+	it("does not fail the post when iframely rejects a Circle CDN .mov (url-only draft)", async () => {
+		const createEmbed = vi
+			.fn()
+			.mockResolvedValue({ ok: false, reason: "invalid_input", retriable: false });
+		const { deps } = makeDeps({ createEmbed });
+		const doc = {
+			type: "doc" as const,
+			content: [
+				PARA("Clip"),
+				{ type: "embed", attrs: { url: "https://assets-v2.circle.so/abc/capturedvideo.MOV" } },
+			],
+		};
+
+		const outcome = await serializeNovelDocToCircle(doc, {}, deps);
+
+		if (!outcome.ok) throw new Error("expected ok");
+		expect(createEmbed).not.toHaveBeenCalled();
+		expect(outcome.tiptapBody.body.content).toEqual([
+			PARA("Clip"),
+			{
+				type: "paragraph",
+				content: [
+					{
+						type: "text",
+						text: "https://assets-v2.circle.so/abc/capturedvideo.MOV",
+						marks: [
+							{
+								type: "link",
+								attrs: {
+									href: "https://assets-v2.circle.so/abc/capturedvideo.MOV",
+									target: "_blank",
+								},
+							},
+						],
+					},
+				],
+			},
+		]);
+	});
+
 	it("downconverts legacy taskList/taskItem to bulletList/listItem (dropping checked)", async () => {
 		const { deps } = makeDeps();
 		const doc = {

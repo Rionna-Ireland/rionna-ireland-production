@@ -24,6 +24,36 @@ function str(value: unknown): string | null {
 	return typeof value === "string" && value.length > 0 ? value : null;
 }
 
+function httpsUrl(value: unknown): string | null {
+	const s = str(value);
+	if (!s) return null;
+	try {
+		const protocol = new URL(s).protocol;
+		return protocol === "https:" || protocol === "http:" ? s : null;
+	} catch {
+		return null;
+	}
+}
+
+function isVideoContent(url: string | null, contentType: unknown): boolean {
+	if (typeof contentType === "string" && contentType.toLowerCase().startsWith("video/")) {
+		return true;
+	}
+	return Boolean(url && /\.(mov|mp4|m4v|webm|ogv)(\?|#|$)/i.test(url));
+}
+
+function VideoPlayer({ src, poster }: { src: string; poster?: string | null }) {
+	return (
+		<video
+			src={src}
+			poster={poster || undefined}
+			controls
+			playsInline
+			className="my-6 w-full rounded-xl"
+		/>
+	);
+}
+
 export function circleDocHasContent(doc: unknown): boolean {
 	return Boolean(
 		doc &&
@@ -135,10 +165,32 @@ function renderNode(node: HydratedNode, key: string): ReactNode {
 					</div>
 				);
 			}
-			return str(embed?.url) ? (
+			const mediaUrl = httpsUrl(embed?.url) ?? httpsUrl(node.attrs?.url);
+			if (isVideoContent(mediaUrl, node.attrs?.contentType ?? node.attrs?.content_type)) {
+				return <VideoPlayer key={key} src={mediaUrl!} poster={str(node.attrs?.poster)} />;
+			}
+			return mediaUrl ? (
 				<p key={key}>
-					<a href={str(embed?.url)!} target="_blank" rel="noopener noreferrer">
+					<a href={mediaUrl} target="_blank" rel="noopener noreferrer">
 						View media
+					</a>
+				</p>
+			) : null;
+		}
+		case "file": {
+			const file = (node.attrs?._resolved as Record<string, unknown> | null) ?? null;
+			const src =
+				httpsUrl(file?.url) ?? httpsUrl(node.attrs?.url) ?? httpsUrl(file?.download_url);
+			const contentType = file?.content_type ?? node.attrs?.content_type ?? node.attrs?.contentType;
+			if (src && isVideoContent(src, contentType)) {
+				return <VideoPlayer key={key} src={src} />;
+			}
+			const name =
+				str(file?.filename) ?? str(node.attrs?.filename) ?? (src ? "Download file" : null);
+			return src ? (
+				<p key={key}>
+					<a href={src} target="_blank" rel="noopener noreferrer">
+						{name}
 					</a>
 				</p>
 			) : null;
@@ -162,9 +214,9 @@ function renderNode(node: HydratedNode, key: string): ReactNode {
 				</div>
 			);
 		}
-		// NOTE(S2-18): `mention` and `file` are Circle-authored (authorable:false in the
-		// block registry) and not yet rendered — they fall through to `default` and render
-		// nothing. Tracked follow-up: render an @mention chip and a file-download link.
+		// NOTE(S2-18): `mention` is Circle-authored (authorable:false) and not yet
+		// rendered — it falls through to `default`. `file` (native uploaded video)
+		// is handled above.
 		default:
 			return node.content ? <Fragment key={key}>{children()}</Fragment> : null;
 	}

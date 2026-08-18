@@ -5,6 +5,7 @@ import { nanoid } from "nanoid";
 import { z } from "zod";
 
 import { adminProcedure } from "../../../orpc/procedures";
+import { notifyNewsMembers } from "../lib/notify-news-members";
 import { sanitizeNewsHtml } from "../lib/sanitize-news-html";
 
 export const createNewsPost = adminProcedure
@@ -59,6 +60,17 @@ export const createNewsPost = adminProcedure
 			notifyMembersOnPublish: input.notifyMembersOnPublish,
 			authorUserId: context.user.id,
 		});
+
+		if (input.publish && input.notifyMembersOnPublish) {
+			await notifyNewsMembers({
+				id: post.id,
+				organizationId: post.organizationId,
+				title: post.title,
+				subtitle: post.subtitle,
+				featuredImageUrl: post.featuredImageUrl,
+				slug: post.slug,
+			});
+		}
 
 		return post;
 	});

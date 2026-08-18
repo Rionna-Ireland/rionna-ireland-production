@@ -89,3 +89,49 @@ describe("CircleTiptapRenderer embed sanitization (Kimi H3)", () => {
 		expect(html).toContain("View media");
 	});
 });
+
+describe("CircleTiptapRenderer native video (file block)", () => {
+	it("renders a video/quicktime file node as an inline player", () => {
+		const html = render({
+			type: "doc",
+			content: [
+				{
+					type: "file",
+					attrs: {
+						sgid: "F1",
+						_resolved: {
+							url: "https://assets-v2.circle.so/capturedvideo.MOV",
+							content_type: "video/quicktime",
+							filename: "capturedvideo.MOV",
+						},
+					},
+				},
+			],
+		});
+		expect(html).toContain("<video");
+		expect(html).toContain('src="https://assets-v2.circle.so/capturedvideo.MOV"');
+		expect(html.toLowerCase()).toContain("playsinline");
+	});
+
+	it("renders a non-video file as a download link", () => {
+		const html = render({
+			type: "doc",
+			content: [
+				{
+					type: "file",
+					attrs: {
+						sgid: "F2",
+						_resolved: {
+							url: "https://assets-v2.circle.so/notes.pdf",
+							content_type: "application/pdf",
+							filename: "notes.pdf",
+						},
+					},
+				},
+			],
+		});
+		expect(html).not.toContain("<video");
+		expect(html).toContain("notes.pdf");
+		expect(html).toContain('href="https://assets-v2.circle.so/notes.pdf"');
+	});
+});

@@ -65,14 +65,20 @@ function putWithProgress(
 
 /**
  * Upload a video file directly to Circle (browser → Circle S3, nothing through our
- * server) and return the Circle CDN url. The url is stored on an editor `embed`
- * node and minted into an inline player at publish by the serializer's createEmbed.
+ * server). Native uploads publish as a Circle `file` block (signedId), not iframely.
  */
+export type UploadedCircleVideo = {
+	url: string;
+	signedId: string;
+	attachableSgid?: string;
+	contentType: string;
+};
+
 export function useCircleVideoUpload(organizationId: string) {
 	const register = useMutation(orpc.memberPosts.admin.createVideoUpload.mutationOptions());
 
 	return useCallback(
-		async (file: File, onProgress?: (pct: number) => void): Promise<string> => {
+		async (file: File, onProgress?: (pct: number) => void): Promise<UploadedCircleVideo> => {
 			const meta = await resolveVideoUploadMeta(file);
 			const checksum = await computeMd5Base64(file);
 			const reg = await register.mutateAsync({
@@ -88,8 +94,13 @@ export function useCircleVideoUpload(organizationId: string) {
 				typedVideoBlob(file, meta.contentType),
 				onProgress,
 			);
-			if (!reg.cdnUrl) throw new Error("Circle did not return a video URL");
-			return reg.cdnUrl;
+			if (!reg.signedId) throw new Error("Circle did not return a video id");
+			return {
+				url: reg.cdnUrl ?? "",
+				signedId: reg.signedId,
+				attachableSgid: reg.attachableSgid,
+				contentType: meta.contentType,
+			};
 		},
 		[register, organizationId],
 	);

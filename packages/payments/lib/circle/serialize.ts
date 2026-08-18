@@ -14,8 +14,14 @@
  *    (Post-level `attachments` does NOT render inline — it silently no-ops; the
  *    image must carry its `signed_id` inside the body, just as `embed` carries
  *    its `sgid`. Circle resolves `url` + `inline_attachments` server-side.)
- *  - inline `embed` nodes (video etc.) mint a Circle sgid from their `url` via
- *    `createEmbed` and are rewritten to `{ type:"embed", attrs:{ sgid } }`.
+ *  - inline `embed` nodes:
+ *      YouTube/Vimeo/etc. mint a Circle sgid via `createEmbed` (iframely oEmbed)
+ *      and rewrite to `{ type:"embed", attrs:{ sgid } }`.
+ *      Native uploads (iPhone .mov etc.) cannot be oEmbedded — iframely 4xxs
+ *      and the whole publish used to fail. Those nodes carry `signedId` /
+ *      `attachableSgid` from `direct_uploads` and rewrite to a Circle `file`
+ *      block instead. Circle-CDN urls without a blob id degrade to a link so
+ *      a draft still publishes.
  *  - a legacy `videoUrl` option → one `embed` node appended to the body (kept for
  *    drafts authored before inline embeds; new posts carry embeds in the body).
  *  - `taskList`/`taskItem` downconvert to `bulletList`/`listItem`; any node outside
@@ -63,6 +69,89 @@ export type SerializeOutcome =
 
 const IMAGE_NODE_TYPE = "image";
 const EMBED_NODE_TYPE = "embed";
+const FILE_NODE_TYPE = "file";
+
+const OEMBED_HOSTS = new Set([
+	"youtube.com",
+	"www.youtube.com",
+	"m.youtube.com",
+	"youtu.be",
+	"vimeo.com",
+	"www.vimeo.com",
+	"player.vimeo.com",
+	"wistia.com",
+	"www.wistia.com",
+	"fast.wistia.net",
+	"loom.com",
+	"www.loom.com",
+]);
+
+function hostnameOf(url: string): string | null {
+	try {
+		return new URL(url).hostname.toLowerCase();
+	} catch {
+		return null;
+	}
+}
+
+function isOEmbedVideoUrl(url: string): boolean {
+	const host = hostnameOf(url);
+	if (!host) return false;
+	if (OEMBED_HOSTS.has(host)) return true;
+	return host.endsWith(".wistia.com") || host.endsWith(".wistia.net");
+}
+
+function isCircleAssetUrl(url: string): boolean {
+	const host = hostnameOf(url);
+	return (
+		host === "assets-v2.circle.so" ||
+		host === "assets.circle.so" ||
+		Boolean(host?.endsWith(".circle.so"))
+	);
+}
+
+function strAttr(
+	attrs: Record<string, unknown> | undefined,
+	...keys: string[]
+): string | undefined {
+	if (!attrs) return undefined;
+	for (const key of keys) {
+		const value = attrs[key];
+		if (typeof value === "string" && value.length > 0) return value;
+	}
+	return undefined;
+}
+
+/** Native Circle blob (from direct_uploads) → `file` block. Null if we only have a URL. */
+function uploadedVideoFileNode(attrs: Record<string, unknown> | undefined): TiptapNode | null {
+	const sgid = strAttr(attrs, "attachableSgid", "attachable_sgid");
+	const signedId = strAttr(attrs, "signedId", "signed_id");
+	if (!sgid && !signedId) return null;
+	const url = strAttr(attrs, "url");
+	const contentType = strAttr(attrs, "contentType", "content_type") ?? "video/mp4";
+	return {
+		type: FILE_NODE_TYPE,
+		attrs: {
+			...(sgid ? { sgid } : {}),
+			...(signedId ? { signed_id: signedId } : {}),
+			...(url ? { url } : {}),
+			content_type: contentType,
+		},
+	};
+}
+
+function linkParagraph(url: string): TiptapNode {
+	return {
+		type: "paragraph",
+		content: [
+			{
+				type: "text",
+				text: url,
+				marks: [{ type: "link", attrs: { href: url, target: "_blank" } }],
+			},
+		],
+	};
+}
 
 type Failure = { reason: SerializeFailure; raw?: unknown };
 
@@ -94,8 +183,24 @@ export async function serializeNovelDocToCircle(
 				continue;
 			}
 
-			if (node.type === EMBED_NODE_TYPE && typeof node.attrs?.url === "string") {
-				const embed = await deps.circle.createEmbed({ url: node.attrs.url });
+			if (node.type === EMBED_NODE_TYPE) {
+				const fileNode = uploadedVideoFileNode(node.attrs);
+				if (fileNode) {
+					out.push(fileNode);
+					continue;
+				}
+
+				const url = strAttr(node.attrs, "url");
+				if (!url) continue;
+
+				// Iframely (`POST /embeds`) is YouTube/Vimeo/Wistia. A Circle CDN
+				// .mov from iPhone camera 4xxs and used to fail the whole publish.
+				if (!isOEmbedVideoUrl(url) && isCircleAssetUrl(url)) {
+					out.push(linkParagraph(url));
+					continue;
+				}
+
+				const embed = await deps.circle.createEmbed({ url });
 				if (!embed.ok) {
 					failure.value = { reason: embed.reason, raw: embed.raw };
 					break;
