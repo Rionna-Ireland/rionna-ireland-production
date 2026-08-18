@@ -203,6 +203,7 @@ model Member {
   @@unique([organizationId, userId])
   @@index([organizationId])
   @@index([userId])
+  @@index([circleMemberId])
   @@map("member")
 }
 

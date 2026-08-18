@@ -78,9 +78,8 @@ const {
 }));
 
 vi.mock("@repo/database", async () => {
-	const { parseOrgMetadata } = await vi.importActual<
-		typeof import("@repo/database/types")
-	>("@repo/database/types");
+	const { parseOrgMetadata } =
+		await vi.importActual<typeof import("@repo/database/types")>("@repo/database/types");
 	return {
 		parseOrgMetadata,
 		db: {
@@ -110,6 +109,7 @@ vi.mock("../../push/service", () => ({
 // Imports under test — pulled after mocks so the Prisma shim is active.
 import { MockServerCircleService } from "@repo/payments/lib/circle";
 import type { CircleService } from "@repo/payments/lib/circle/types";
+
 import { runCirclePollTick } from "../poller";
 
 // ──────────────────────────────────────────────
@@ -150,22 +150,21 @@ function makeOrg({
 	};
 }
 
-function makeMember(overrides: {
-	id?: string;
-	userId?: string;
-	circleMemberId?: string | null;
-	circleLastSeenNotificationId?: string | null;
-	circleLastPolledAt?: Date | null;
-} = {}) {
+function makeMember(
+	overrides: {
+		id?: string;
+		userId?: string;
+		circleMemberId?: string | null;
+		circleLastSeenNotificationId?: string | null;
+		circleLastPolledAt?: Date | null;
+	} = {},
+) {
 	return {
 		id: overrides.id ?? "m-int-1",
 		userId: overrides.userId ?? "u-int-1",
 		circleMemberId:
-			overrides.circleMemberId === undefined
-				? CIRCLE_MEMBER_ID
-				: overrides.circleMemberId,
-		circleLastSeenNotificationId:
-			overrides.circleLastSeenNotificationId ?? null,
+			overrides.circleMemberId === undefined ? CIRCLE_MEMBER_ID : overrides.circleMemberId,
+		circleLastSeenNotificationId: overrides.circleLastSeenNotificationId ?? null,
 		circleLastPolledAt: overrides.circleLastPolledAt ?? null,
 	};
 }
@@ -208,317 +207,309 @@ describe("Circle poller integration against circle-mock", () => {
 		}
 		// Reset circle-mock to seeded state once per file so sibling test
 		// files (or a prior interactive session) don't bleed in.
-		await fetch(`${BASE_URL}/__mock/reset`, { method: "POST" }).catch(
-			() => undefined,
-		);
+		await fetch(`${BASE_URL}/__mock/reset`, { method: "POST" }).catch(() => undefined);
 	});
 
 	beforeEach((ctx) => {
 		if (!mockAvailable) ctx.skip();
-			vi.clearAllMocks();
-			mockOrgFindMany.mockResolvedValue([]);
-			mockMemberFindMany.mockResolvedValue([]);
-			mockMemberUpdate.mockResolvedValue({});
-			mockHorseFindMany.mockResolvedValue([]);
-			mockSendPush.mockResolvedValue(undefined);
+		vi.clearAllMocks();
+		mockOrgFindMany.mockResolvedValue([]);
+		mockMemberFindMany.mockResolvedValue([]);
+		mockMemberUpdate.mockResolvedValue({});
+		mockHorseFindMany.mockResolvedValue([]);
+		mockSendPush.mockResolvedValue(undefined);
+	});
+
+	it("scenario 1 — baseline: fresh member, no pushes, cursor advances to 1109", async () => {
+		mockOrgFindMany.mockResolvedValue([makeOrg()]);
+		mockMemberFindMany.mockResolvedValue([makeMember({ circleLastSeenNotificationId: null })]);
+
+		const factory = vi.fn(() => makeRealService());
+		const metrics = await runCirclePollTick({
+			now: NOW,
+			makeCircleService: factory,
+			sendPush: mockSendPush as never,
 		});
 
-		it("scenario 1 — baseline: fresh member, no pushes, cursor advances to 1109", async () => {
-			mockOrgFindMany.mockResolvedValue([makeOrg()]);
-			mockMemberFindMany.mockResolvedValue([
-				makeMember({ circleLastSeenNotificationId: null }),
-			]);
+		expect(factory).toHaveBeenCalledWith(ORG_SLUG);
+		expect(metrics.membersPolled).toBe(1);
+		expect(metrics.baselined).toBe(1);
+		expect(metrics.pushesSent).toBe(0);
+		expect(metrics.notificationsFetched).toBe(9);
+		expect(mockSendPush).not.toHaveBeenCalled();
+		// Cursor advances to the last seeded id in one baseline sweep.
+		expect(mockMemberUpdate).toHaveBeenCalledWith({
+			where: { id: "m-int-1" },
+			data: {
+				circleLastPolledAt: NOW,
+				circleLastSeenNotificationId: "1109",
+			},
+		});
+	});
 
-			const factory = vi.fn(() => makeRealService());
-			const metrics = await runCirclePollTick({
-				now: NOW,
-				makeCircleService: factory,
-				sendPush: mockSendPush as never,
-			});
+	it("scenario 2 — steady state: cursor 1105 → 1109 fires pushes for 1106/1107 only", async () => {
+		// Cursor mid-history, recent poll. Circle-mock should return
+		// 1106–1109 (4 records); mapper fires pushes for 1106 (reaction)
+		// and 1107 (dm). 1108+1109 are admin_event → suppressed.
+		mockOrgFindMany.mockResolvedValue([makeOrg()]);
+		mockMemberFindMany.mockResolvedValue([
+			makeMember({
+				circleLastSeenNotificationId: "1105",
+				circleLastPolledAt: new Date(NOW.getTime() - 60_000),
+			}),
+		]);
 
-			expect(factory).toHaveBeenCalledWith(ORG_SLUG);
-			expect(metrics.membersPolled).toBe(1);
-			expect(metrics.baselined).toBe(1);
-			expect(metrics.pushesSent).toBe(0);
-			expect(metrics.notificationsFetched).toBe(9);
-			expect(mockSendPush).not.toHaveBeenCalled();
-			// Cursor advances to the last seeded id in one baseline sweep.
-			expect(mockMemberUpdate).toHaveBeenCalledWith({
-				where: { id: "m-int-1" },
-				data: {
-					circleLastPolledAt: NOW,
-					circleLastSeenNotificationId: "1109",
-				},
-			});
+		const factory = vi.fn(() => makeRealService());
+		const metrics = await runCirclePollTick({
+			now: NOW,
+			makeCircleService: factory,
+			sendPush: mockSendPush as never,
 		});
 
-		it("scenario 2 — steady state: cursor 1105 → 1109 fires pushes for 1106/1107 only", async () => {
-			// Cursor mid-history, recent poll. Circle-mock should return
-			// 1106–1109 (4 records); mapper fires pushes for 1106 (reaction)
-			// and 1107 (dm). 1108+1109 are admin_event → suppressed.
-			mockOrgFindMany.mockResolvedValue([makeOrg()]);
-			mockMemberFindMany.mockResolvedValue([
-				makeMember({
-					circleLastSeenNotificationId: "1105",
-					circleLastPolledAt: new Date(NOW.getTime() - 60_000),
-				}),
-			]);
+		expect(metrics.notificationsFetched).toBe(4);
+		expect(metrics.pushesSent).toBe(2);
+		expect(metrics.baselined).toBe(0);
 
-			const factory = vi.fn(() => makeRealService());
-			const metrics = await runCirclePollTick({
-				now: NOW,
-				makeCircleService: factory,
-				sendPush: mockSendPush as never,
-			});
-
-			expect(metrics.notificationsFetched).toBe(4);
-			expect(metrics.pushesSent).toBe(2);
-			expect(metrics.baselined).toBe(0);
-
-			// Assert the two pushes we expect (in id order — the poller walks
-			// items in the order MockServerCircleService returns them, which
-			// is ascending by id).
-			const pushCalls = mockSendPush.mock.calls.map((c) => c[0]);
-			expect(pushCalls).toHaveLength(2);
-			expect(pushCalls[0]).toMatchObject({
-				organizationId: ORG_ID,
-				targetUserId: "u-int-1",
-				triggerType: "CIRCLE_REACTION",
-				triggerRefId: "1106",
-			});
-			expect(pushCalls[1]).toMatchObject({
-				organizationId: ORG_ID,
-				targetUserId: "u-int-1",
-				triggerType: "CIRCLE_DM",
-				triggerRefId: "1107",
-			});
-
-			// Cursor advances to 1109 (the last id in the page).
-			expect(mockMemberUpdate).toHaveBeenCalledWith({
-				where: { id: "m-int-1" },
-				data: expect.objectContaining({
-					circleLastPolledAt: NOW,
-					circleLastSeenNotificationId: "1109",
-				}),
-			});
+		// Assert the two pushes we expect (in id order — the poller walks
+		// items in the order MockServerCircleService returns them, which
+		// is ascending by id).
+		const pushCalls = mockSendPush.mock.calls.map((c) => c[0]);
+		expect(pushCalls).toHaveLength(2);
+		expect(pushCalls[0]).toMatchObject({
+			organizationId: ORG_ID,
+			targetUserId: "u-int-1",
+			triggerType: "CIRCLE_REACTION",
+			triggerRefId: "1106",
+		});
+		expect(pushCalls[1]).toMatchObject({
+			organizationId: ORG_ID,
+			targetUserId: "u-int-1",
+			triggerType: "CIRCLE_DM",
+			triggerRefId: "1107",
 		});
 
-		it("scenario 3 — full steady sweep from cursor 0 fires all 6 mapped pushes", async () => {
-			// Cursor 0 + recent poll → steady (not baseline). Exercises every
-			// notification_type normalisation path in one go.
-			mockOrgFindMany.mockResolvedValue([makeOrg()]);
-			mockMemberFindMany.mockResolvedValue([
-				makeMember({
-					circleLastSeenNotificationId: "0",
-					circleLastPolledAt: new Date(NOW.getTime() - 60_000),
-				}),
-			]);
+		// Cursor advances to 1109 (the last id in the page).
+		expect(mockMemberUpdate).toHaveBeenCalledWith({
+			where: { id: "m-int-1" },
+			data: expect.objectContaining({
+				circleLastPolledAt: NOW,
+				circleLastSeenNotificationId: "1109",
+			}),
+		});
+	});
 
-			const factory = vi.fn(() => makeRealService());
-			const metrics = await runCirclePollTick({
-				now: NOW,
-				makeCircleService: factory,
-				sendPush: mockSendPush as never,
-			});
+	it("scenario 3 — full steady sweep from cursor 0 fires all 6 mapped pushes", async () => {
+		// Cursor 0 + recent poll → steady (not baseline). Exercises every
+		// notification_type normalisation path in one go.
+		mockOrgFindMany.mockResolvedValue([makeOrg()]);
+		mockMemberFindMany.mockResolvedValue([
+			makeMember({
+				circleLastSeenNotificationId: "0",
+				circleLastPolledAt: new Date(NOW.getTime() - 60_000),
+			}),
+		]);
 
-			expect(metrics.notificationsFetched).toBe(9);
-			expect(metrics.pushesSent).toBe(EXPECTED_STEADY_STATE_PUSHES);
-
-			const triggers = mockSendPush.mock.calls.map((c) => c[0].triggerType);
-			expect(triggers).toEqual([
-				"TRAINER_POST", // 1101
-				"CIRCLE_MENTION", // 1103
-				"CIRCLE_REPLY", // 1104
-				"CIRCLE_MENTION", // 1105
-				"CIRCLE_REACTION", // 1106
-				"CIRCLE_DM", // 1107
-			]);
+		const factory = vi.fn(() => makeRealService());
+		const metrics = await runCirclePollTick({
+			now: NOW,
+			makeCircleService: factory,
+			sendPush: mockSendPush as never,
 		});
 
-		it("scenario 4 — not_found drift: unknown circle member id resets cursor + logs", async () => {
-			// Circle-mock's auth_token endpoint returns 404 for unseeded
-			// community_member_id, which `MockServerCircleService.getMemberToken`
-			// classifies as `not_found` → poller drift branch.
-			mockOrgFindMany.mockResolvedValue([makeOrg()]);
-			mockMemberFindMany.mockResolvedValue([
-				makeMember({
-					id: "m-missing",
-					userId: "u-missing",
-					circleMemberId: UNKNOWN_CIRCLE_MEMBER_ID,
-					circleLastSeenNotificationId: "123",
-					circleLastPolledAt: new Date(NOW.getTime() - 60_000),
-				}),
-			]);
+		expect(metrics.notificationsFetched).toBe(9);
+		expect(metrics.pushesSent).toBe(EXPECTED_STEADY_STATE_PUSHES);
 
-			const factory = vi.fn(() => makeRealService());
-			const metrics = await runCirclePollTick({
-				now: NOW,
-				makeCircleService: factory,
-				sendPush: mockSendPush as never,
-			});
+		const triggers = mockSendPush.mock.calls.map((c) => c[0].triggerType);
+		expect(triggers).toEqual([
+			"TRAINER_POST", // 1101
+			"CIRCLE_MENTION", // 1103
+			"CIRCLE_REPLY", // 1104
+			"CIRCLE_MENTION", // 1105
+			"CIRCLE_REACTION", // 1106
+			"CIRCLE_DM", // 1107
+		]);
+	});
 
-			expect(metrics.driftDetected).toBe(1);
-			expect(metrics.errors).toBe(1); // drift counts as a non-ok outcome
-			expect(metrics.pushesSent).toBe(0);
-			expect(mockSendPush).not.toHaveBeenCalled();
+	it("scenario 4 — not_found drift: unknown circle member id resets cursor + logs", async () => {
+		// Circle-mock's auth_token endpoint returns 404 for unseeded
+		// community_member_id, which `MockServerCircleService.getMemberToken`
+		// classifies as `not_found` → poller drift branch.
+		mockOrgFindMany.mockResolvedValue([makeOrg()]);
+		mockMemberFindMany.mockResolvedValue([
+			makeMember({
+				id: "m-missing",
+				userId: "u-missing",
+				circleMemberId: UNKNOWN_CIRCLE_MEMBER_ID,
+				circleLastSeenNotificationId: "123",
+				circleLastPolledAt: new Date(NOW.getTime() - 60_000),
+			}),
+		]);
 
-			// Drift path resets cursor (to re-baseline on recovery) and does
-			// NOT bump circleLastPolledAt.
-			expect(mockMemberUpdate).toHaveBeenCalledWith({
-				where: { id: "m-missing" },
-				data: { circleLastSeenNotificationId: null },
-			});
-			expect(mockLoggerWarn).toHaveBeenCalledWith(
-				"circle.drift.detected",
-				expect.objectContaining({
-					reason: "not_found",
-					memberId: "m-missing",
-					circleMemberId: UNKNOWN_CIRCLE_MEMBER_ID,
-				}),
-			);
+		const factory = vi.fn(() => makeRealService());
+		const metrics = await runCirclePollTick({
+			now: NOW,
+			makeCircleService: factory,
+			sendPush: mockSendPush as never,
 		});
 
-		it("scenario 5 — paged fetch: two ticks with per_page=3 walk the history", async () => {
-			// We exercise circle-mock's real `after_id + per_page` loop by
-			// calling `runCirclePollTick` twice with a limit of 3. The first
-			// tick baselines to id 1103 (3 seeded records); the second tick
-			// is steady-state and consumes the next page. `limit` is not a
-			// PollTickDeps flag, so we override the service to pass per_page=3
-			// by wrapping `getMemberNotifications`.
-			mockOrgFindMany.mockResolvedValue([makeOrg()]);
+		expect(metrics.driftDetected).toBe(1);
+		expect(metrics.errors).toBe(1); // drift counts as a non-ok outcome
+		expect(metrics.pushesSent).toBe(0);
+		expect(mockSendPush).not.toHaveBeenCalled();
 
-			let cursor: string | null = null;
-			let polledAt: Date | null = null;
-			// beforeEach resets the member shape each tick — we retain state
-			// across ticks by reading from a closure and re-injecting it.
-			mockMemberFindMany.mockImplementation(async () => [
-				makeMember({
-					circleLastSeenNotificationId: cursor,
-					circleLastPolledAt: polledAt,
-				}),
-			]);
-			mockMemberUpdate.mockImplementation(async ({ data }: { data: Record<string, unknown> }) => {
-				if (typeof data.circleLastSeenNotificationId === "string") {
-					cursor = data.circleLastSeenNotificationId as string;
-				}
-				if (data.circleLastPolledAt instanceof Date) {
-					polledAt = data.circleLastPolledAt;
-				}
-				return {};
-			});
+		// Drift path resets cursor (to re-baseline on recovery) and does
+		// NOT bump circleLastPolledAt.
+		expect(mockMemberUpdate).toHaveBeenCalledWith({
+			where: { id: "m-missing" },
+			data: { circleLastSeenNotificationId: null },
+		});
+		expect(mockLoggerWarn).toHaveBeenCalledWith(
+			"circle.drift.detected",
+			expect.objectContaining({
+				reason: "not_found",
+				memberId: "m-missing",
+				circleMemberId: UNKNOWN_CIRCLE_MEMBER_ID,
+			}),
+		);
+	});
 
-			// Thin wrapper service that forces per_page=3 on every call.
-			const baseSvc = makeRealService();
-			const pagedSvc: CircleService = {
-				...(baseSvc as unknown as Record<string, unknown>),
-				createMember: baseSvc.createMember.bind(baseSvc),
-				deactivateMember: baseSvc.deactivateMember.bind(baseSvc),
-				reactivateMember: baseSvc.reactivateMember.bind(baseSvc),
-				deleteMember: baseSvc.deleteMember.bind(baseSvc),
-				getMemberToken: baseSvc.getMemberToken.bind(baseSvc),
-				getMemberNotifications: (circleMemberId, opts) =>
-					baseSvc.getMemberNotifications(circleMemberId, {
-						...opts,
-						limit: 3,
-					}),
-			} as CircleService;
-			const factory = vi.fn(() => pagedSvc);
+	it("scenario 5 — paged fetch: two ticks with per_page=3 walk the history", async () => {
+		// We exercise circle-mock's real `after_id + per_page` loop by
+		// calling `runCirclePollTick` twice with a limit of 3. The first
+		// tick baselines to id 1103 (3 seeded records); the second tick
+		// is steady-state and consumes the next page. `limit` is not a
+		// PollTickDeps flag, so we override the service to pass per_page=3
+		// by wrapping `getMemberNotifications`.
+		mockOrgFindMany.mockResolvedValue([makeOrg()]);
 
-			// Tick 1 — baseline, cursor null → 1103
-			const t1 = new Date(NOW.getTime());
-			const m1 = await runCirclePollTick({
-				now: t1,
-				makeCircleService: factory,
-				sendPush: mockSendPush as never,
-			});
-			expect(m1.baselined).toBe(1);
-			expect(m1.notificationsFetched).toBe(3);
-			expect(cursor).toBe("1103");
-
-			// Tick 2 — steady state, 1103 → 1106 (next 3 records)
-			mockSendPush.mockClear();
-			mockMemberUpdate.mockClear();
-			const t2 = new Date(NOW.getTime() + 60_000);
-			const m2 = await runCirclePollTick({
-				now: t2,
-				makeCircleService: factory,
-				sendPush: mockSendPush as never,
-			});
-			expect(m2.baselined).toBe(0);
-			expect(m2.notificationsFetched).toBe(3);
-			// 1104 comment_created + 1105 comment_mention + 1106 reaction → 3 pushes
-			expect(m2.pushesSent).toBe(3);
-			expect(cursor).toBe("1106");
+		let cursor: string | null = null;
+		let polledAt: Date | null = null;
+		// beforeEach resets the member shape each tick — we retain state
+		// across ticks by reading from a closure and re-injecting it.
+		mockMemberFindMany.mockImplementation(async () => [
+			makeMember({
+				circleLastSeenNotificationId: cursor,
+				circleLastPolledAt: polledAt,
+			}),
+		]);
+		mockMemberUpdate.mockImplementation(async ({ data }: { data: Record<string, unknown> }) => {
+			if (typeof data.circleLastSeenNotificationId === "string") {
+				cursor = data.circleLastSeenNotificationId as string;
+			}
+			if (data.circleLastPolledAt instanceof Date) {
+				polledAt = data.circleLastPolledAt;
+			}
+			return {};
 		});
 
-		it("scenario 7 — enabledCategories: only trainer_post pushes fire; mention/reply/reaction/dm suppressed", async () => {
-			// Org admin has opted out of everything but trainer_post. Full
-			// steady sweep from cursor 0 should still fetch all 9 seeded
-			// notifications (metrics reflect that) but only the TRAINER_POST
-			// mapping (id 1101) fires a push; every other mapped push —
-			// mentions, replies, reactions, dms — is suppressed at the org
-			// filter before sendPush is called.
-			const org = makeOrg();
-			const parsed = JSON.parse(org.metadata);
-			parsed.circle.poll.enabledCategories = ["trainer_post"];
-			org.metadata = JSON.stringify(parsed);
-
-			mockOrgFindMany.mockResolvedValue([org]);
-			mockMemberFindMany.mockResolvedValue([
-				makeMember({
-					circleLastSeenNotificationId: "0",
-					circleLastPolledAt: new Date(NOW.getTime() - 60_000),
+		// Thin wrapper service that forces per_page=3 on every call.
+		const baseSvc = makeRealService();
+		const pagedSvc: CircleService = {
+			...(baseSvc as unknown as Record<string, unknown>),
+			createMember: baseSvc.createMember.bind(baseSvc),
+			deactivateMember: baseSvc.deactivateMember.bind(baseSvc),
+			reactivateMember: baseSvc.reactivateMember.bind(baseSvc),
+			deleteMember: baseSvc.deleteMember.bind(baseSvc),
+			getMemberToken: baseSvc.getMemberToken.bind(baseSvc),
+			getMemberNotifications: (circleMemberId, opts) =>
+				baseSvc.getMemberNotifications(circleMemberId, {
+					...opts,
+					limit: 3,
 				}),
-			]);
+		} as CircleService;
+		const factory = vi.fn(() => pagedSvc);
 
-			const factory = vi.fn(() => makeRealService());
-			const metrics = await runCirclePollTick({
-				now: NOW,
-				makeCircleService: factory,
-				sendPush: mockSendPush as never,
-			});
+		// Tick 1 — baseline, cursor null → 1103
+		const t1 = new Date(NOW.getTime());
+		const m1 = await runCirclePollTick({
+			now: t1,
+			makeCircleService: factory,
+			sendPush: mockSendPush as never,
+		});
+		expect(m1.baselined).toBe(1);
+		expect(m1.notificationsFetched).toBe(3);
+		expect(cursor).toBe("1103");
 
-			expect(metrics.notificationsFetched).toBe(9);
-			expect(metrics.pushesSent).toBe(1);
+		// Tick 2 — steady state, 1103 → 1106 (next 3 records)
+		mockSendPush.mockClear();
+		mockMemberUpdate.mockClear();
+		const t2 = new Date(NOW.getTime() + 60_000);
+		const m2 = await runCirclePollTick({
+			now: t2,
+			makeCircleService: factory,
+			sendPush: mockSendPush as never,
+		});
+		expect(m2.baselined).toBe(0);
+		expect(m2.notificationsFetched).toBe(3);
+		// 1104 comment_created + 1105 comment_mention + 1106 reaction → 3 pushes
+		expect(m2.pushesSent).toBe(3);
+		expect(cursor).toBe("1106");
+	});
 
-			const triggers = mockSendPush.mock.calls.map((c) => c[0].triggerType);
-			expect(triggers).toEqual(["TRAINER_POST"]);
+	it("scenario 7 — enabledCategories: only trainer_post pushes fire; mention/reply/reaction/dm suppressed", async () => {
+		// Org admin has opted out of everything but trainer_post. Full
+		// steady sweep from cursor 0 should still fetch all 9 seeded
+		// notifications (metrics reflect that) but only the TRAINER_POST
+		// mapping (id 1101) fires a push; every other mapped push —
+		// mentions, replies, reactions, dms — is suppressed at the org
+		// filter before sendPush is called.
+		const org = makeOrg();
+		const parsed = JSON.parse(org.metadata);
+		parsed.circle.poll.enabledCategories = ["trainer_post"];
+		org.metadata = JSON.stringify(parsed);
 
-			// Cursor still advances to the tail of the sweep.
-			expect(mockMemberUpdate).toHaveBeenCalledWith({
-				where: { id: "m-int-1" },
-				data: expect.objectContaining({
-					circleLastPolledAt: NOW,
-					circleLastSeenNotificationId: "1109",
-				}),
-			});
+		mockOrgFindMany.mockResolvedValue([org]);
+		mockMemberFindMany.mockResolvedValue([
+			makeMember({
+				circleLastSeenNotificationId: "0",
+				circleLastPolledAt: new Date(NOW.getTime() - 60_000),
+			}),
+		]);
+
+		const factory = vi.fn(() => makeRealService());
+		const metrics = await runCirclePollTick({
+			now: NOW,
+			makeCircleService: factory,
+			sendPush: mockSendPush as never,
 		});
 
-		it("scenario 6 — empty page: already-caught-up cursor bumps polled-at only", async () => {
-			mockOrgFindMany.mockResolvedValue([makeOrg()]);
-			mockMemberFindMany.mockResolvedValue([
-				makeMember({
-					circleLastSeenNotificationId: "1109",
-					circleLastPolledAt: new Date(NOW.getTime() - 60_000),
-				}),
-			]);
+		expect(metrics.notificationsFetched).toBe(9);
+		expect(metrics.pushesSent).toBe(1);
 
-			const factory = vi.fn(() => makeRealService());
-			const metrics = await runCirclePollTick({
-				now: NOW,
-				makeCircleService: factory,
-				sendPush: mockSendPush as never,
-			});
+		const triggers = mockSendPush.mock.calls.map((c) => c[0].triggerType);
+		expect(triggers).toEqual(["TRAINER_POST"]);
 
-			expect(metrics.notificationsFetched).toBe(0);
-			expect(metrics.pushesSent).toBe(0);
-			expect(metrics.baselined).toBe(0);
-			expect(mockSendPush).not.toHaveBeenCalled();
-
-			// Empty page writes only circleLastPolledAt — cursor untouched.
-			expect(mockMemberUpdate).toHaveBeenCalledWith({
-				where: { id: "m-int-1" },
-				data: { circleLastPolledAt: NOW },
-			});
+		// Cursor still advances to the tail of the sweep.
+		expect(mockMemberUpdate).toHaveBeenCalledWith({
+			where: { id: "m-int-1" },
+			data: expect.objectContaining({
+				circleLastPolledAt: NOW,
+				circleLastSeenNotificationId: "1109",
+			}),
 		});
+	});
+
+	it("scenario 6 — empty page: recent heartbeat coalesces the member write", async () => {
+		mockOrgFindMany.mockResolvedValue([makeOrg()]);
+		mockMemberFindMany.mockResolvedValue([
+			makeMember({
+				circleLastSeenNotificationId: "1109",
+				circleLastPolledAt: new Date(NOW.getTime() - 23 * 60 * 60 * 1_000),
+			}),
+		]);
+
+		const factory = vi.fn(() => makeRealService());
+		const metrics = await runCirclePollTick({
+			now: NOW,
+			makeCircleService: factory,
+			sendPush: mockSendPush as never,
+		});
+
+		expect(metrics.notificationsFetched).toBe(0);
+		expect(metrics.pushesSent).toBe(0);
+		expect(metrics.baselined).toBe(0);
+		expect(mockSendPush).not.toHaveBeenCalled();
+
+		expect(mockMemberUpdate).not.toHaveBeenCalled();
+	});
 });

@@ -12,9 +12,14 @@ import { logger } from "@repo/logs";
 import { MockCircleService } from "./mock";
 import { MockServerCircleService } from "./mock-server";
 import { RealCircleService } from "./real";
+import type { RealCircleServiceOptions } from "./real";
 import type { CircleService } from "./types";
 
 export type CircleMode = "mock_service" | "mock_server" | "real";
+export type CircleServiceFactoryOptions = Pick<
+	RealCircleServiceOptions,
+	"notificationsRequestTimeoutMs"
+>;
 
 const CIRCLE_ADMIN_BASE = "https://app.circle.so/api/admin/v2";
 const CIRCLE_HEADLESS_BASE = "https://app.circle.so/api/headless/v1";
@@ -84,7 +89,10 @@ function getRealCircleTokens(orgSlug: string) {
 	};
 }
 
-export function createCircleService(orgSlug: string): CircleService {
+export function createCircleService(
+	orgSlug: string,
+	options?: CircleServiceFactoryOptions,
+): CircleService {
 	const mode = getCircleMode();
 
 	if (mode === "mock_service") {
@@ -108,7 +116,7 @@ export function createCircleService(orgSlug: string): CircleService {
 		throw new Error(`[Circle] CIRCLE_MODE=real but tokens are missing for org "${orgSlug}"`);
 	}
 
-	return new RealCircleService(adminToken, headlessToken);
+	return new RealCircleService(adminToken, headlessToken, options);
 }
 
 export type { CircleService } from "./types";
@@ -132,7 +140,8 @@ export type {
 export { CircleApiError } from "./types";
 export { MockCircleService } from "./mock";
 export { MockServerCircleService } from "./mock-server";
-export { RealCircleService } from "./real";
+export { parseRetryAfterMs, RealCircleService } from "./real";
+export type { RealCircleServiceOptions } from "./real";
 export { serializeNovelDocToCircle } from "./serialize";
 export type {
 	NovelDoc,

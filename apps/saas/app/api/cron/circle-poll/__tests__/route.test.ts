@@ -9,6 +9,7 @@
  *   4. Poller throws → route propagates (Next default 500)
  */
 
+import type { PollTickMetrics } from "@repo/api/modules/circle/poller";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockRunCirclePollTick, mockLoggerInfo } = vi.hoisted(() => ({
@@ -68,15 +69,33 @@ describe("POST /api/cron/circle-poll", () => {
 
 	it("runs the poller and returns metrics with the correct bearer", async () => {
 		const metrics = {
+			tickMs: 1_234,
 			organizationsScanned: 2,
 			membersEligible: 14,
+			membersDue: 12,
 			membersPolled: 14,
 			notificationsFetched: 8,
 			pushesSent: 5,
+			pushesSuppressedByPolicy: 2,
 			baselined: 1,
 			driftDetected: 0,
+			cursorWrites: 6,
+			heartbeatWrites: 3,
+			leaseAcquired: 2,
+			leaseCollisions: 0,
+			coordinationErrors: 0,
+			requestBudgetUsed: 14,
+			budgetWouldDefer: 0,
+			deferredByBudget: 0,
+			deferredByBackoff: 0,
+			rateLimited: 0,
+			timedOut: 0,
+			safetyModes: ["enforce"],
+			deliveryProfiles: ["personalized_only"],
+			cadenceMinutes: [15],
+			requestBudgets: [700],
 			errors: 0,
-		};
+		} satisfies PollTickMetrics;
 		mockRunCirclePollTick.mockResolvedValueOnce(metrics);
 
 		const request = new Request("http://localhost/api/cron/circle-poll", {
@@ -92,10 +111,7 @@ describe("POST /api/cron/circle-poll", () => {
 		expect(mockRunCirclePollTick).toHaveBeenCalledTimes(1);
 		expect(mockRunCirclePollTick).toHaveBeenCalledWith();
 
-		expect(mockLoggerInfo).toHaveBeenCalledWith(
-			"circle.poll.cron.complete",
-			metrics,
-		);
+		expect(mockLoggerInfo).toHaveBeenCalledWith("circle.poll.cron.complete", metrics);
 	});
 
 	it("propagates errors when the poller throws", async () => {
