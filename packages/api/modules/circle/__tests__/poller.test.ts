@@ -22,7 +22,7 @@
  *  17. enabledCategories filter — suppresses out-of-category pushes
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 
 // ──────────────────────────────────────────────
 // Mocks — vi.mock is hoisted
@@ -54,9 +54,8 @@ vi.mock("@repo/database", async () => {
 	// Pull pure helpers (no Prisma client init) from the leaf module so
 	// `parseOrgMetadata` keeps real behaviour without tripping the
 	// "DATABASE_URL is not set" guard when the Prisma singleton boots.
-	const { parseOrgMetadata } = await vi.importActual<
-		typeof import("@repo/database/types")
-	>("@repo/database/types");
+	const { parseOrgMetadata } =
+		await vi.importActual<typeof import("@repo/database/types")>("@repo/database/types");
 	return {
 		parseOrgMetadata,
 		db: {
@@ -88,13 +87,10 @@ vi.mock("../../push/service", () => ({
 // Imports under test
 // ──────────────────────────────────────────────
 
-import {
-	mapperTriggerToCategory,
-	pollOneMember,
-	runBounded,
-	runCirclePollTick,
-} from "../poller";
 import type { CircleService } from "@repo/payments/lib/circle/types";
+
+import type { PollCoordination } from "../poll-coordination";
+import { mapperTriggerToCategory, pollOneMember, runBounded, runCirclePollTick } from "../poller";
 
 // ──────────────────────────────────────────────
 // Fixtures
@@ -141,28 +137,75 @@ function makeOrg(pollEnabled = true, cadenceMinutes = 1) {
 	};
 }
 
-function makeMember(overrides: Partial<{
-	id: string;
-	userId: string;
-	circleMemberId: string | null;
-	circleLastSeenNotificationId: string | null;
-	circleLastPolledAt: Date | null;
-}> = {}) {
+function makeOrgWithPollPolicy(
+	policy: Partial<{
+		safetyMode: "observe" | "enforce";
+		requestBudget: number;
+		requestTimeoutMs: number;
+	}>,
+) {
+	const org = makeOrg();
+	const parsed = JSON.parse(org.metadata);
+	Object.assign(parsed.circle.poll, {
+		...policy,
+		...(policy.requestBudget !== undefined
+			? { maxRequestsPerFiveMinutes: policy.requestBudget }
+			: {}),
+	});
+	delete parsed.circle.poll.requestBudget;
+	org.metadata = JSON.stringify(parsed);
+	return org;
+}
+
+type PollCoordinationMock = {
+	acquireLease: Mock<PollCoordination["acquireLease"]>;
+	releaseLease: Mock<PollCoordination["releaseLease"]>;
+	consumeRequestBudget: Mock<PollCoordination["consumeRequestBudget"]>;
+	getBackoff: Mock<PollCoordination["getBackoff"]>;
+	recordRateLimit: Mock<PollCoordination["recordRateLimit"]>;
+};
+
+function makeCoordination(overrides: Partial<PollCoordination> = {}): PollCoordinationMock {
+	return {
+		acquireLease: vi.fn(async () => ({ acquired: true, ownerToken: "owner-1" })),
+		releaseLease: vi.fn(async () => true),
+		consumeRequestBudget: vi.fn(async (limit: number, now: Date) => ({
+			allowed: true,
+			used: 1,
+			limit,
+			resetAt: new Date(now.getTime() + 5 * 60_000),
+		})),
+		getBackoff: vi.fn(async () => ({ active: false })),
+		recordRateLimit: vi.fn(async () => ({ active: true })),
+		...overrides,
+	} as PollCoordinationMock;
+}
+
+function makeMember(
+	overrides: Partial<{
+		id: string;
+		userId: string;
+		circleMemberId: string | null;
+		circleLastSeenNotificationId: string | null;
+		circleLastPolledAt: Date | null;
+	}> = {},
+) {
 	return {
 		id: overrides.id ?? "m1",
 		userId: overrides.userId ?? "u1",
 		circleMemberId: overrides.circleMemberId ?? "cm-1",
-		circleLastSeenNotificationId:
-			overrides.circleLastSeenNotificationId ?? null,
+		circleLastSeenNotificationId: overrides.circleLastSeenNotificationId ?? null,
 		circleLastPolledAt: overrides.circleLastPolledAt ?? null,
 	};
 }
 
-function makeNotification(partial: Partial<{
-	id: string;
-	type: "post" | "comment" | "mention" | "reaction" | "dm" | "admin_event";
-	spaceId?: string;
-}>) {
+function makeNotification(
+	partial: Partial<{
+		id: string;
+		type: "post" | "comment" | "mention" | "reaction" | "dm" | "admin_event";
+		spaceId?: string;
+	}>,
+) {
 	return {
 		id: partial.id ?? "n1",
 		type: partial.type ?? "mention",
@@ -247,6 +290,9 @@ describe("runCirclePollTick", () => {
 		expect(metrics.baselined).toBe(1);
 		expect(metrics.pushesSent).toBe(0);
 		expect(metrics.notificationsFetched).toBe(2);
+		expect(metrics.membersDue).toBe(1);
+		expect(metrics.cursorWrites).toBe(1);
+		expect(metrics.heartbeatWrites).toBe(0);
 		expect(mockMemberUpdate).toHaveBeenCalledWith({
 			where: { id: "m1" },
 			data: {
@@ -259,7 +305,10 @@ describe("runCirclePollTick", () => {
 	it("case 3: steady state — fans out pushes and advances cursor", async () => {
 		mockOrgFindMany.mockResolvedValue([makeOrg()]);
 		mockMemberFindMany.mockResolvedValue([
-			makeMember({ circleLastSeenNotificationId: "n5", circleLastPolledAt: new Date(NOW.getTime() - 60_000) }),
+			makeMember({
+				circleLastSeenNotificationId: "n5",
+				circleLastPolledAt: new Date(NOW.getTime() - 60_000),
+			}),
 		]);
 		mockGetMemberNotifications.mockResolvedValue({
 			ok: true,
@@ -300,7 +349,10 @@ describe("runCirclePollTick", () => {
 	it("case 4: suppressed types (admin_event) don't push but still advance", async () => {
 		mockOrgFindMany.mockResolvedValue([makeOrg()]);
 		mockMemberFindMany.mockResolvedValue([
-			makeMember({ circleLastSeenNotificationId: "n0", circleLastPolledAt: new Date(NOW.getTime() - 60_000) }),
+			makeMember({
+				circleLastSeenNotificationId: "n0",
+				circleLastPolledAt: new Date(NOW.getTime() - 60_000),
+			}),
 		]);
 		mockGetMemberNotifications.mockResolvedValue({
 			ok: true,
@@ -317,13 +369,17 @@ describe("runCirclePollTick", () => {
 
 		expect(mockSendPush).not.toHaveBeenCalled();
 		expect(metrics.pushesSent).toBe(0);
+		expect(metrics.cursorWrites).toBe(1);
 		expect(metrics.notificationsFetched).toBe(1);
 	});
 
-	it("case 5: empty page bumps circleLastPolledAt, no cursor change", async () => {
+	it("case 5: empty unchanged page inside 24 hours performs no member write", async () => {
 		mockOrgFindMany.mockResolvedValue([makeOrg()]);
 		mockMemberFindMany.mockResolvedValue([
-			makeMember({ circleLastSeenNotificationId: "n5", circleLastPolledAt: new Date(NOW.getTime() - 60_000) }),
+			makeMember({
+				circleLastSeenNotificationId: "n5",
+				circleLastPolledAt: new Date(NOW.getTime() - 23 * 60 * 60 * 1_000),
+			}),
 		]);
 		mockGetMemberNotifications.mockResolvedValue({
 			ok: true,
@@ -336,10 +392,7 @@ describe("runCirclePollTick", () => {
 		});
 
 		expect(mockSendPush).not.toHaveBeenCalled();
-		expect(mockMemberUpdate).toHaveBeenCalledWith({
-			where: { id: "m1" },
-			data: { circleLastPolledAt: NOW },
-		});
+		expect(mockMemberUpdate).not.toHaveBeenCalled();
 	});
 
 	it("case 6: dormant-return re-baselines when circleLastPolledAt > 30 days ago", async () => {
@@ -420,7 +473,10 @@ describe("runCirclePollTick", () => {
 	it("case 7: not_found drift logs circle.drift.detected and resets cursor", async () => {
 		mockOrgFindMany.mockResolvedValue([makeOrg()]);
 		mockMemberFindMany.mockResolvedValue([
-			makeMember({ circleLastSeenNotificationId: "n9", circleLastPolledAt: new Date(NOW.getTime() - 60_000) }),
+			makeMember({
+				circleLastSeenNotificationId: "n9",
+				circleLastPolledAt: new Date(NOW.getTime() - 60_000),
+			}),
 		]);
 		mockGetMemberNotifications.mockResolvedValue({
 			ok: false,
@@ -453,7 +509,10 @@ describe("runCirclePollTick", () => {
 	it("case 8: non-retriable auth failure — no DB write, errors bumped", async () => {
 		mockOrgFindMany.mockResolvedValue([makeOrg()]);
 		mockMemberFindMany.mockResolvedValue([
-			makeMember({ circleLastSeenNotificationId: "n1", circleLastPolledAt: new Date(NOW.getTime() - 60_000) }),
+			makeMember({
+				circleLastSeenNotificationId: "n1",
+				circleLastPolledAt: new Date(NOW.getTime() - 60_000),
+			}),
 		]);
 		mockGetMemberNotifications.mockResolvedValue({
 			ok: false,
@@ -475,7 +534,10 @@ describe("runCirclePollTick", () => {
 	it("case 9: retriable rate_limited failure — no DB write, errors bumped", async () => {
 		mockOrgFindMany.mockResolvedValue([makeOrg()]);
 		mockMemberFindMany.mockResolvedValue([
-			makeMember({ circleLastSeenNotificationId: "n1", circleLastPolledAt: new Date(NOW.getTime() - 60_000) }),
+			makeMember({
+				circleLastSeenNotificationId: "n1",
+				circleLastPolledAt: new Date(NOW.getTime() - 60_000),
+			}),
 		]);
 		mockGetMemberNotifications.mockResolvedValue({
 			ok: false,
@@ -549,7 +611,10 @@ describe("runCirclePollTick", () => {
 	it("case 12: sendPush throw is swallowed per-item, cursor still advances", async () => {
 		mockOrgFindMany.mockResolvedValue([makeOrg()]);
 		mockMemberFindMany.mockResolvedValue([
-			makeMember({ circleLastSeenNotificationId: "n0", circleLastPolledAt: new Date(NOW.getTime() - 60_000) }),
+			makeMember({
+				circleLastSeenNotificationId: "n0",
+				circleLastPolledAt: new Date(NOW.getTime() - 60_000),
+			}),
 		]);
 		mockGetMemberNotifications.mockResolvedValue({
 			ok: true,
@@ -561,9 +626,7 @@ describe("runCirclePollTick", () => {
 				nextCursor: "n2",
 			},
 		});
-		mockSendPush
-			.mockRejectedValueOnce(new Error("Expo 500"))
-			.mockResolvedValueOnce(undefined);
+		mockSendPush.mockRejectedValueOnce(new Error("Expo 500")).mockResolvedValueOnce(undefined);
 
 		const metrics = await runCirclePollTick({
 			now: NOW,
@@ -587,7 +650,10 @@ describe("runCirclePollTick", () => {
 	it("case 13: horse-space post routes to CIRCLE_HORSE_DISCUSSION", async () => {
 		mockOrgFindMany.mockResolvedValue([makeOrg()]);
 		mockMemberFindMany.mockResolvedValue([
-			makeMember({ circleLastSeenNotificationId: "n0", circleLastPolledAt: new Date(NOW.getTime() - 60_000) }),
+			makeMember({
+				circleLastSeenNotificationId: "n0",
+				circleLastPolledAt: new Date(NOW.getTime() - 60_000),
+			}),
 		]);
 		mockHorseFindMany.mockResolvedValue([
 			{ id: "h-1", name: "Thunderbolt", circleSpaceId: "sp-42" },
@@ -656,6 +722,45 @@ describe("runCirclePollTick", () => {
 		});
 	});
 
+	it("personalized_only suppresses a reaction push but still advances the cursor", async () => {
+		const org = makeOrg();
+		const parsed = JSON.parse(org.metadata);
+		parsed.circle.poll.deliveryProfile = "personalized_only";
+		org.metadata = JSON.stringify(parsed);
+
+		mockOrgFindMany.mockResolvedValue([org]);
+		mockMemberFindMany.mockResolvedValue([
+			makeMember({
+				circleLastSeenNotificationId: "n5",
+				circleLastPolledAt: new Date(NOW.getTime() - 60_000),
+			}),
+		]);
+		mockGetMemberNotifications.mockResolvedValue({
+			ok: true,
+			data: {
+				items: [makeNotification({ id: "n6", type: "reaction" })],
+				nextCursor: "n6",
+			},
+		});
+
+		const metrics = await runCirclePollTick({
+			now: NOW,
+			makeCircleService: makeCircleServiceFactory,
+		});
+
+		expect(mockSendPush).not.toHaveBeenCalled();
+		expect(metrics.pushesSent).toBe(0);
+		expect(metrics.pushesSuppressedByPolicy).toBe(1);
+		expect(metrics.cursorWrites).toBe(1);
+		expect(mockMemberUpdate).toHaveBeenCalledWith({
+			where: { id: "m1" },
+			data: {
+				circleLastPolledAt: NOW,
+				circleLastSeenNotificationId: "n6",
+			},
+		});
+	});
+
 	it("case 14: PushToken freshness filter appears in the member query", async () => {
 		mockOrgFindMany.mockResolvedValue([makeOrg()]);
 		mockMemberFindMany.mockResolvedValue([]);
@@ -673,6 +778,387 @@ describe("runCirclePollTick", () => {
 		const gte: Date = args.where.user.pushTokens.some.lastSeenAt.gte;
 		const expected = NOW.getTime() - 30 * 24 * 60 * 60 * 1000;
 		expect(Math.abs(gte.getTime() - expected)).toBeLessThan(1000);
+	});
+
+	it("enforce mode skips the org when another poller owns its lease", async () => {
+		const coordination = makeCoordination({
+			acquireLease: vi.fn(async () => ({ acquired: false })),
+		});
+		mockOrgFindMany.mockResolvedValue([makeOrgWithPollPolicy({ safetyMode: "enforce" })]);
+
+		const metrics = await runCirclePollTick({ now: NOW, coordination });
+
+		expect(coordination.acquireLease).toHaveBeenCalledWith(ORG_ID, NOW);
+		expect(mockMemberFindMany).not.toHaveBeenCalled();
+		expect(metrics.leaseCollisions).toBe(1);
+		expect(metrics.membersPolled).toBe(0);
+	});
+
+	it("observe mode records a lease collision but preserves the legacy poll", async () => {
+		const coordination = makeCoordination({
+			acquireLease: vi.fn(async () => ({ acquired: false })),
+		});
+		mockOrgFindMany.mockResolvedValue([makeOrgWithPollPolicy({ safetyMode: "observe" })]);
+		mockMemberFindMany.mockResolvedValue([makeMember()]);
+		mockGetMemberNotifications.mockResolvedValue({
+			ok: true,
+			data: { items: [], nextCursor: null },
+		});
+
+		const metrics = await runCirclePollTick({
+			now: NOW,
+			coordination,
+			makeCircleService: makeCircleServiceFactory,
+		});
+
+		expect(mockGetMemberNotifications).toHaveBeenCalledTimes(1);
+		expect(metrics.leaseCollisions).toBe(1);
+		expect(metrics.membersPolled).toBe(1);
+	});
+
+	it("enforce mode admits only the first two of three members when the budget is two", async () => {
+		let used = 0;
+		const coordination = makeCoordination({
+			consumeRequestBudget: vi.fn(async (limit: number, now: Date) => {
+				used += 1;
+				return {
+					allowed: used <= limit,
+					used,
+					limit,
+					resetAt: new Date(now.getTime() + 5 * 60_000),
+				};
+			}),
+		});
+		mockOrgFindMany.mockResolvedValue([
+			makeOrgWithPollPolicy({ safetyMode: "enforce", requestBudget: 2 }),
+		]);
+		mockMemberFindMany.mockResolvedValue([
+			makeMember({ id: "m1", circleMemberId: "cm-1" }),
+			makeMember({ id: "m2", circleMemberId: "cm-2" }),
+			makeMember({ id: "m3", circleMemberId: "cm-3" }),
+		]);
+		mockGetMemberNotifications.mockResolvedValue({
+			ok: true,
+			data: { items: [], nextCursor: null },
+		});
+
+		const metrics = await runCirclePollTick({
+			now: NOW,
+			concurrency: 1,
+			coordination,
+			makeCircleService: makeCircleServiceFactory,
+		});
+
+		expect(coordination.consumeRequestBudget).toHaveBeenCalledTimes(3);
+		expect(mockGetMemberNotifications).toHaveBeenCalledTimes(2);
+		expect(metrics.membersPolled).toBe(2);
+		expect(metrics.deferredByBudget).toBe(1);
+		expect(metrics.budgetWouldDefer).toBe(1);
+		expect(metrics.requestBudgetUsed).toBe(3);
+		expect(metrics.errors).toBe(0);
+	});
+
+	it("observe mode records exhausted budget but continues polling", async () => {
+		let used = 0;
+		const coordination = makeCoordination({
+			consumeRequestBudget: vi.fn(async (limit: number, now: Date) => {
+				used += 1;
+				return {
+					allowed: used <= limit,
+					used,
+					limit,
+					resetAt: new Date(now.getTime() + 5 * 60_000),
+				};
+			}),
+		});
+		mockOrgFindMany.mockResolvedValue([
+			makeOrgWithPollPolicy({ safetyMode: "observe", requestBudget: 1 }),
+		]);
+		mockMemberFindMany.mockResolvedValue([
+			makeMember({ id: "m1", circleMemberId: "cm-1" }),
+			makeMember({ id: "m2", circleMemberId: "cm-2" }),
+		]);
+		mockGetMemberNotifications.mockResolvedValue({
+			ok: true,
+			data: { items: [], nextCursor: null },
+		});
+
+		const metrics = await runCirclePollTick({
+			now: NOW,
+			concurrency: 1,
+			coordination,
+			makeCircleService: makeCircleServiceFactory,
+		});
+
+		expect(mockGetMemberNotifications).toHaveBeenCalledTimes(2);
+		expect(metrics.membersPolled).toBe(2);
+		expect(metrics.budgetWouldDefer).toBe(1);
+		expect(metrics.deferredByBudget).toBe(0);
+	});
+
+	it("uses the operation clock when a long tick crosses into a fresh budget window", async () => {
+		let wallClock = new Date("2026-08-18T12:04:59.900Z");
+		const clock = vi.fn(() => new Date(wallClock));
+		const usedByWindow = new Map<number, number>();
+		const coordination = makeCoordination({
+			consumeRequestBudget: vi.fn(async (limit: number, at: Date) => {
+				const window = Math.floor(at.getTime() / (5 * 60_000));
+				const used = (usedByWindow.get(window) ?? 0) + 1;
+				usedByWindow.set(window, used);
+				return {
+					allowed: used <= limit,
+					used,
+					limit,
+					resetAt: new Date((window + 1) * 5 * 60_000),
+				};
+			}),
+		});
+		mockOrgFindMany.mockResolvedValue([
+			makeOrgWithPollPolicy({ safetyMode: "enforce", requestBudget: 1 }),
+		]);
+		mockMemberFindMany.mockResolvedValue([
+			makeMember({ id: "m1", circleMemberId: "cm-1" }),
+			makeMember({ id: "m2", circleMemberId: "cm-2" }),
+		]);
+		let outboundCalls = 0;
+		mockGetMemberNotifications.mockImplementation(async () => {
+			outboundCalls += 1;
+			if (outboundCalls === 1) {
+				wallClock = new Date("2026-08-18T12:05:00.100Z");
+			}
+			return { ok: true, data: { items: [], nextCursor: null } };
+		});
+
+		const metrics = await runCirclePollTick({
+			now: NOW,
+			clock,
+			concurrency: 1,
+			coordination,
+			makeCircleService: makeCircleServiceFactory,
+		});
+
+		expect(mockGetMemberNotifications).toHaveBeenCalledTimes(2);
+		expect(coordination.acquireLease).toHaveBeenCalledWith(
+			ORG_ID,
+			new Date("2026-08-18T12:04:59.900Z"),
+		);
+		expect(coordination.consumeRequestBudget).toHaveBeenNthCalledWith(
+			1,
+			1,
+			new Date("2026-08-18T12:04:59.900Z"),
+		);
+		expect(coordination.consumeRequestBudget).toHaveBeenNthCalledWith(
+			2,
+			1,
+			new Date("2026-08-18T12:05:00.100Z"),
+		);
+		expect(metrics.deferredByBudget).toBe(0);
+	});
+
+	it("enforce mode defers an active shared backoff before consuming budget", async () => {
+		const coordination = makeCoordination({
+			getBackoff: vi.fn(async () => ({
+				active: true,
+				retryAt: new Date(NOW.getTime() + 42_000),
+				retryAfterMs: 42_000,
+			})),
+		});
+		mockOrgFindMany.mockResolvedValue([makeOrgWithPollPolicy({ safetyMode: "enforce" })]);
+		mockMemberFindMany.mockResolvedValue([makeMember()]);
+
+		const metrics = await runCirclePollTick({
+			now: NOW,
+			coordination,
+			makeCircleService: makeCircleServiceFactory,
+		});
+
+		expect(coordination.consumeRequestBudget).not.toHaveBeenCalled();
+		expect(mockGetMemberNotifications).not.toHaveBeenCalled();
+		expect(mockMemberUpdate).not.toHaveBeenCalled();
+		expect(metrics.deferredByBackoff).toBe(1);
+		expect(metrics.membersPolled).toBe(0);
+		expect(metrics.errors).toBe(0);
+	});
+
+	it("records a 429 backoff and defers the next member with concurrency one", async () => {
+		let backoffActive = false;
+		const coordination = makeCoordination({
+			getBackoff: vi.fn(async () =>
+				backoffActive
+					? {
+							active: true,
+							retryAt: new Date(NOW.getTime() + 42_000),
+							retryAfterMs: 42_000,
+						}
+					: { active: false },
+			),
+			recordRateLimit: vi.fn(async () => {
+				backoffActive = true;
+				return {
+					active: true,
+					retryAt: new Date(NOW.getTime() + 42_000),
+					retryAfterMs: 42_000,
+				};
+			}),
+		});
+		mockOrgFindMany.mockResolvedValue([makeOrgWithPollPolicy({ safetyMode: "enforce" })]);
+		mockMemberFindMany.mockResolvedValue([
+			makeMember({ id: "m1", circleMemberId: "cm-1" }),
+			makeMember({ id: "m2", circleMemberId: "cm-2" }),
+		]);
+		mockGetMemberNotifications.mockResolvedValue({
+			ok: false,
+			reason: "rate_limited",
+			retriable: true,
+			retryAfterMs: 42_000,
+		});
+
+		const metrics = await runCirclePollTick({
+			now: NOW,
+			concurrency: 1,
+			coordination,
+			makeCircleService: makeCircleServiceFactory,
+		});
+
+		expect(mockGetMemberNotifications).toHaveBeenCalledTimes(1);
+		expect(coordination.recordRateLimit).toHaveBeenCalledWith(42_000, NOW);
+		expect(metrics.rateLimited).toBe(1);
+		expect(metrics.deferredByBackoff).toBe(1);
+		expect(metrics.membersPolled).toBe(1);
+		expect(metrics.errors).toBe(1);
+	});
+
+	it("records a late 429 from response time instead of tick start", async () => {
+		let wallClock = new Date("2026-08-18T12:00:00Z");
+		const clock = vi.fn(() => new Date(wallClock));
+		const coordination = makeCoordination();
+		mockOrgFindMany.mockResolvedValue([makeOrgWithPollPolicy({ safetyMode: "enforce" })]);
+		mockMemberFindMany.mockResolvedValue([makeMember()]);
+		mockGetMemberNotifications.mockImplementationOnce(async () => {
+			wallClock = new Date("2026-08-18T12:04:30Z");
+			return {
+				ok: false,
+				reason: "rate_limited",
+				retriable: true,
+				retryAfterMs: 30_000,
+			};
+		});
+
+		await runCirclePollTick({
+			now: NOW,
+			clock,
+			coordination,
+			makeCircleService: makeCircleServiceFactory,
+		});
+
+		expect(coordination.recordRateLimit).toHaveBeenCalledWith(
+			30_000,
+			new Date("2026-08-18T12:04:30Z"),
+		);
+	});
+
+	it("fails open when coordination throws and records the coordination error", async () => {
+		const coordination = makeCoordination({
+			getBackoff: vi.fn(async () => {
+				throw new Error("redis unavailable");
+			}),
+		});
+		mockOrgFindMany.mockResolvedValue([makeOrgWithPollPolicy({ safetyMode: "enforce" })]);
+		mockMemberFindMany.mockResolvedValue([makeMember()]);
+		mockGetMemberNotifications.mockResolvedValue({
+			ok: true,
+			data: { items: [], nextCursor: null },
+		});
+
+		const metrics = await runCirclePollTick({
+			now: NOW,
+			coordination,
+			makeCircleService: makeCircleServiceFactory,
+		});
+
+		expect(mockGetMemberNotifications).toHaveBeenCalledTimes(1);
+		expect(metrics.coordinationErrors).toBe(1);
+		expect(metrics.membersPolled).toBe(1);
+		expect(mockLoggerWarn).toHaveBeenCalledWith(
+			"[CirclePoller] coordination failed open",
+			expect.objectContaining({ operation: "getBackoff", memberId: "m1" }),
+		);
+	});
+
+	it("threads the default 8000ms request timeout through the service factory", async () => {
+		mockOrgFindMany.mockResolvedValue([makeOrg()]);
+		mockMemberFindMany.mockResolvedValue([makeMember()]);
+		mockGetMemberNotifications.mockResolvedValue({
+			ok: true,
+			data: { items: [], nextCursor: null },
+		});
+
+		const metrics = await runCirclePollTick({
+			now: NOW,
+			coordination: null,
+			makeCircleService: makeCircleServiceFactory,
+		});
+
+		expect(makeCircleServiceFactory).toHaveBeenCalledWith(ORG_SLUG, {
+			notificationsRequestTimeoutMs: 8_000,
+		});
+		expect(metrics.safetyModes).toEqual(["observe"]);
+		expect(metrics.deliveryProfiles).toEqual(["legacy_all"]);
+		expect(metrics.cadenceMinutes).toEqual([1]);
+		expect(metrics.requestBudgets).toEqual([700]);
+		expect(metrics.tickMs).toBeGreaterThanOrEqual(0);
+	});
+
+	it("counts adapter aborts as timed out polls", async () => {
+		mockOrgFindMany.mockResolvedValue([makeOrg()]);
+		mockMemberFindMany.mockResolvedValue([makeMember()]);
+		mockGetMemberNotifications.mockResolvedValue({
+			ok: false,
+			reason: "network",
+			retriable: true,
+			raw: { name: "AbortError" },
+		});
+
+		const metrics = await runCirclePollTick({
+			now: NOW,
+			coordination: null,
+			makeCircleService: makeCircleServiceFactory,
+		});
+
+		expect(metrics.timedOut).toBe(1);
+		expect(metrics.membersPolled).toBe(1);
+		expect(metrics.errors).toBe(1);
+	});
+
+	it("releases an acquired lease when organization setup throws", async () => {
+		const coordination = makeCoordination();
+		mockOrgFindMany.mockResolvedValue([makeOrgWithPollPolicy({ safetyMode: "enforce" })]);
+		mockMemberFindMany.mockRejectedValue(new Error("database unavailable"));
+
+		await expect(runCirclePollTick({ now: NOW, coordination })).rejects.toThrow(
+			"database unavailable",
+		);
+
+		expect(coordination.releaseLease).toHaveBeenCalledWith(ORG_ID, "owner-1");
+	});
+
+	it("releases an acquired lease after a successful organization poll", async () => {
+		const coordination = makeCoordination();
+		mockOrgFindMany.mockResolvedValue([makeOrgWithPollPolicy({ safetyMode: "enforce" })]);
+		mockMemberFindMany.mockResolvedValue([makeMember()]);
+		mockGetMemberNotifications.mockResolvedValue({
+			ok: true,
+			data: { items: [], nextCursor: null },
+		});
+
+		const metrics = await runCirclePollTick({
+			now: NOW,
+			coordination,
+			makeCircleService: makeCircleServiceFactory,
+		});
+
+		expect(metrics.leaseAcquired).toBe(1);
+		expect(coordination.releaseLease).toHaveBeenCalledWith(ORG_ID, "owner-1");
 	});
 });
 
@@ -716,12 +1202,11 @@ describe("mapperTriggerToCategory", () => {
 });
 
 // ──────────────────────────────────────────────
-// pollOneMember direct unit test (doubles as verification of
-// circleLastPolledAt write on successful polls).
+// pollOneMember direct test for the successful-poll heartbeat boundary.
 // ──────────────────────────────────────────────
 
-describe("pollOneMember circleLastPolledAt bumps", () => {
-	it("bumps circleLastPolledAt on a successful empty-page poll", async () => {
+describe("pollOneMember circleLastPolledAt heartbeat", () => {
+	it("writes only circleLastPolledAt when an unchanged poll reaches 24 hours", async () => {
 		mockGetMemberNotifications.mockResolvedValue({
 			ok: true,
 			data: { items: [], nextCursor: null },
@@ -731,7 +1216,7 @@ describe("pollOneMember circleLastPolledAt bumps", () => {
 			{
 				member: makeMember({
 					circleLastSeenNotificationId: "n5",
-					circleLastPolledAt: new Date(NOW.getTime() - 60_000),
+					circleLastPolledAt: new Date(NOW.getTime() - 24 * 60 * 60 * 1_000),
 				}),
 				org: {
 					id: ORG_ID,
@@ -752,6 +1237,8 @@ describe("pollOneMember circleLastPolledAt bumps", () => {
 		);
 
 		expect(outcome.ok).toBe(true);
+		expect(outcome.cursorWrites).toBe(0);
+		expect(outcome.heartbeatWrites).toBe(1);
 		expect(mockMemberUpdate).toHaveBeenCalledWith({
 			where: { id: "m1" },
 			data: { circleLastPolledAt: NOW },

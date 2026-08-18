@@ -33,7 +33,7 @@ vi.mock("@circleco/headless-server-sdk", () => ({
 	})),
 }));
 
-import { RealCircleService } from "@repo/payments/lib/circle";
+import { parseRetryAfterMs, RealCircleService } from "@repo/payments/lib/circle";
 
 function makeService() {
 	return new RealCircleService("admin-token", "headless-app-token");
@@ -48,6 +48,32 @@ function mockFetchJson(status: number, jsonBody: unknown) {
 	};
 	return vi.fn().mockResolvedValueOnce(res);
 }
+
+describe("parseRetryAfterMs", () => {
+	it("parses delta-seconds", () => {
+		expect(parseRetryAfterMs("120", new Date("2026-08-18T12:00:00.000Z"))).toBe(120_000);
+	});
+
+	it("parses an HTTP-date relative to the supplied clock", () => {
+		expect(
+			parseRetryAfterMs(
+				"Tue, 18 Aug 2026 12:02:00 GMT",
+				new Date("2026-08-18T12:00:00.000Z"),
+			),
+		).toBe(120_000);
+	});
+
+	it.each([null, undefined, "", "not-a-delay", "-1", "1.5"])(
+		"falls back to 60 seconds for missing or invalid value %s",
+		(value) => {
+			expect(parseRetryAfterMs(value, new Date("2026-08-18T12:00:00.000Z"))).toBe(60_000);
+		},
+	);
+
+	it.each(["900", "Tue, 18 Aug 2026 12:10:00 GMT"])("caps value %s at five minutes", (value) => {
+		expect(parseRetryAfterMs(value, new Date("2026-08-18T12:00:00.000Z"))).toBe(300_000);
+	});
+});
 
 describe("RealCircleService.getMemberNotifications", () => {
 	let svc: RealCircleService;
@@ -72,6 +98,7 @@ describe("RealCircleService.getMemberNotifications", () => {
 	});
 
 	afterEach(() => {
+		vi.useRealTimers();
 		vi.unstubAllGlobals();
 		vi.restoreAllMocks();
 	});
@@ -131,7 +158,8 @@ describe("RealCircleService.getMemberNotifications", () => {
 						actor_name: "Tom Power",
 						notifiable_title: "TEST",
 						notifiable_type: "Comment",
-						action_web_url: "https://community.rionna-e53dba.club/c/test-horse/test-4c6646#comment_wrapper_101781701",
+						action_web_url:
+							"https://community.rionna-e53dba.club/c/test-horse/test-4c6646#comment_wrapper_101781701",
 						notifiable: {
 							id: 101781701,
 							post_id: 31956060,
@@ -221,7 +249,8 @@ describe("RealCircleService.getMemberNotifications", () => {
 						actor_name: "Tom Power",
 						notifiable_title: "I love the horses",
 						notifiable_type: "Comment",
-						action_web_url: "https://community.rionna-e53dba.club/c/test-horse/i-love-the-horses#comment_wrapper_101696496",
+						action_web_url:
+							"https://community.rionna-e53dba.club/c/test-horse/i-love-the-horses#comment_wrapper_101696496",
 						notifiable: {
 							id: 101696496,
 							post_id: 31926598,
@@ -268,7 +297,8 @@ describe("RealCircleService.getMemberNotifications", () => {
 						actor_name: "Tom Power",
 						notifiable_title: "Wow I love horses!",
 						notifiable_type: "Post",
-						action_web_url: "https://community.rionna-e53dba.club/c/test-horse/wow-i-love-horses",
+						action_web_url:
+							"https://community.rionna-e53dba.club/c/test-horse/wow-i-love-horses",
 						notifiable: {
 							id: 31953658,
 							community_id: 517885,
@@ -316,7 +346,8 @@ describe("RealCircleService.getMemberNotifications", () => {
 						actor_name: "Tom Power",
 						notifiable_title: "Lol",
 						notifiable_type: "Comment",
-						action_web_url: "https://community.rionna-e53dba.club/c/test-horse/lol#comment_wrapper_101784330",
+						action_web_url:
+							"https://community.rionna-e53dba.club/c/test-horse/lol#comment_wrapper_101784330",
 						notifiable: {
 							id: 101784330,
 							post_id: 31957125,
@@ -400,7 +431,35 @@ describe("RealCircleService.getMemberNotifications", () => {
 		const outcome = await svc.getMemberNotifications("42", {
 			sinceNotificationId: null,
 		});
-		expect(outcome).toMatchObject({ ok: false, reason: "rate_limited", retriable: true });
+		expect(outcome).toMatchObject({
+			ok: false,
+			reason: "rate_limited",
+			retriable: true,
+			retryAfterMs: 60_000,
+		});
+	});
+
+	it("surfaces parsed Retry-After timing on a 429", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn().mockResolvedValueOnce({
+				ok: false,
+				status: 429,
+				headers: new Headers({ "Retry-After": "120" }),
+				text: async () => JSON.stringify({ error: "rate limited" }),
+			}),
+		);
+
+		const outcome = await svc.getMemberNotifications("42", {
+			sinceNotificationId: null,
+		});
+
+		expect(outcome).toMatchObject({
+			ok: false,
+			reason: "rate_limited",
+			retriable: true,
+			retryAfterMs: 120_000,
+		});
 	});
 
 	it("maps 500 to server_error / retriable", async () => {
@@ -409,6 +468,7 @@ describe("RealCircleService.getMemberNotifications", () => {
 			sinceNotificationId: null,
 		});
 		expect(outcome).toMatchObject({ ok: false, reason: "server_error", retriable: true });
+		expect(outcome).not.toHaveProperty("retryAfterMs");
 	});
 
 	it("maps fetch network errors to network / retriable", async () => {
@@ -417,6 +477,151 @@ describe("RealCircleService.getMemberNotifications", () => {
 			sinceNotificationId: null,
 		});
 		expect(outcome).toMatchObject({ ok: false, reason: "network", retriable: true });
+	});
+
+	it("passes an abort signal to the notifications fetch", async () => {
+		const fetchMock = mockFetchJson(200, { records: [] });
+		vi.stubGlobal("fetch", fetchMock);
+
+		await svc.getMemberNotifications("42", { sinceNotificationId: null });
+
+		const init = fetchMock.mock.calls[0]?.[1] as RequestInit | undefined;
+		expect(init?.signal).toBeInstanceOf(AbortSignal);
+	});
+
+	it("maps a notifications request timeout to retriable network failure", async () => {
+		vi.useFakeTimers();
+		svc = new RealCircleService("admin-token", "headless-app-token", {
+			notificationsRequestTimeoutMs: 25,
+		});
+		vi.spyOn(svc, "getMemberToken").mockResolvedValue({
+			ok: true,
+			data: {
+				accessToken: "jwt-for-member",
+				refreshToken: "refresh",
+				expiresAt: "2026-06-10T12:00:00.000Z",
+			},
+		});
+		const fetchMock = vi.fn(
+			(_url: URL, init?: RequestInit) =>
+				new Promise<Response>((_resolve, reject) => {
+					init?.signal?.addEventListener(
+						"abort",
+						() => reject(new DOMException("Timed out", "AbortError")),
+						{ once: true },
+					);
+				}),
+		);
+		vi.stubGlobal("fetch", fetchMock);
+
+		const outcomePromise = svc.getMemberNotifications("42", {
+			sinceNotificationId: null,
+		});
+		await vi.advanceTimersByTimeAsync(0);
+		expect(fetchMock).toHaveBeenCalledOnce();
+		await vi.advanceTimersByTimeAsync(25);
+
+		await expect(outcomePromise).resolves.toMatchObject({
+			ok: false,
+			reason: "network",
+			retriable: true,
+		});
+	});
+
+	it("bounds token lookup with the notifications request deadline", async () => {
+		vi.useFakeTimers();
+		svc = new RealCircleService("admin-token", "headless-app-token", {
+			notificationsRequestTimeoutMs: 25,
+		});
+		vi.spyOn(svc, "getMemberToken").mockReturnValue(new Promise<never>(() => {}));
+		const fetchMock = vi.fn();
+		vi.stubGlobal("fetch", fetchMock);
+
+		const outcomePromise = svc.getMemberNotifications("42", {
+			sinceNotificationId: null,
+		});
+		await vi.advanceTimersByTimeAsync(25);
+
+		await expect(outcomePromise).resolves.toMatchObject({
+			ok: false,
+			reason: "network",
+			retriable: true,
+			raw: expect.objectContaining({ name: "AbortError" }),
+		});
+		expect(fetchMock).not.toHaveBeenCalled();
+	});
+
+	it("keeps the deadline active while reading the notifications response body", async () => {
+		vi.useFakeTimers();
+		svc = new RealCircleService("admin-token", "headless-app-token", {
+			notificationsRequestTimeoutMs: 25,
+		});
+		vi.spyOn(svc, "getMemberToken").mockResolvedValue({
+			ok: true,
+			data: {
+				accessToken: "jwt-for-member",
+				refreshToken: "refresh",
+				expiresAt: "2026-06-10T12:00:00.000Z",
+			},
+		});
+		const observed: { signal: AbortSignal | null } = { signal: null };
+		const fetchMock = vi.fn(async (_url: URL, init?: RequestInit) => {
+			observed.signal = init?.signal ?? null;
+			return {
+				ok: true,
+				status: 200,
+				// Simulate a body reader that does not implement signal cancellation.
+				json: () => new Promise<never>(() => {}),
+			};
+		});
+		vi.stubGlobal("fetch", fetchMock);
+
+		const outcomePromise = svc.getMemberNotifications("42", {
+			sinceNotificationId: null,
+		});
+		await vi.advanceTimersByTimeAsync(0);
+		expect(fetchMock).toHaveBeenCalledOnce();
+		await vi.advanceTimersByTimeAsync(25);
+
+		await expect(outcomePromise).resolves.toMatchObject({
+			ok: false,
+			reason: "network",
+			retriable: true,
+			raw: expect.objectContaining({ name: "AbortError" }),
+		});
+		expect(observed.signal?.aborted).toBe(true);
+	});
+
+	it("defaults the notifications request timeout to eight seconds", async () => {
+		vi.useFakeTimers();
+		const observed: { signal: AbortSignal | null } = { signal: null };
+		const fetchMock = vi.fn(
+			(_url: URL, init?: RequestInit) =>
+				new Promise<Response>((_resolve, reject) => {
+					observed.signal = init?.signal ?? null;
+					observed.signal?.addEventListener(
+						"abort",
+						() => reject(new DOMException("Timed out", "AbortError")),
+						{ once: true },
+					);
+				}),
+		);
+		vi.stubGlobal("fetch", fetchMock);
+
+		const outcomePromise = svc.getMemberNotifications("42", {
+			sinceNotificationId: null,
+		});
+		await vi.advanceTimersByTimeAsync(0);
+		await vi.advanceTimersByTimeAsync(7_999);
+		expect(observed.signal).not.toBeNull();
+		expect(observed.signal?.aborted).toBe(false);
+
+		await vi.advanceTimersByTimeAsync(1);
+		await expect(outcomePromise).resolves.toMatchObject({
+			ok: false,
+			reason: "network",
+			retriable: true,
+		});
 	});
 
 	it("propagates sinceNotificationId as after_id query param", async () => {
@@ -520,9 +725,27 @@ describe("RealCircleService.getMemberNotifications", () => {
 			"fetch",
 			mockFetchJson(200, {
 				records: [
-					{ id: 102, notification_type: "post_created", created_at: "t3", subject: { type: "post", id: 3 }, text: "" },
-					{ id: 101, notification_type: "post_created", created_at: "t2", subject: { type: "post", id: 2 }, text: "" },
-					{ id: 100, notification_type: "post_created", created_at: "t1", subject: { type: "post", id: 1 }, text: "" },
+					{
+						id: 102,
+						notification_type: "post_created",
+						created_at: "t3",
+						subject: { type: "post", id: 3 },
+						text: "",
+					},
+					{
+						id: 101,
+						notification_type: "post_created",
+						created_at: "t2",
+						subject: { type: "post", id: 2 },
+						text: "",
+					},
+					{
+						id: 100,
+						notification_type: "post_created",
+						created_at: "t1",
+						subject: { type: "post", id: 1 },
+						text: "",
+					},
 				],
 			}),
 		);
@@ -545,9 +768,27 @@ describe("RealCircleService.getMemberNotifications", () => {
 			"fetch",
 			mockFetchJson(200, {
 				records: [
-					{ id: 100, notification_type: "post_created", created_at: "t1", subject: { type: "post", id: 1 }, text: "" },
-					{ id: 101, notification_type: "post_created", created_at: "t2", subject: { type: "post", id: 2 }, text: "" },
-					{ id: 102, notification_type: "post_created", created_at: "t3", subject: { type: "post", id: 3 }, text: "" },
+					{
+						id: 100,
+						notification_type: "post_created",
+						created_at: "t1",
+						subject: { type: "post", id: 1 },
+						text: "",
+					},
+					{
+						id: 101,
+						notification_type: "post_created",
+						created_at: "t2",
+						subject: { type: "post", id: 2 },
+						text: "",
+					},
+					{
+						id: 102,
+						notification_type: "post_created",
+						created_at: "t3",
+						subject: { type: "post", id: 3 },
+						text: "",
+					},
 				],
 			}),
 		);
@@ -565,9 +806,27 @@ describe("RealCircleService.getMemberNotifications", () => {
 			"fetch",
 			mockFetchJson(200, {
 				records: [
-					{ id: 100, notification_type: "post_created", created_at: "t1", subject: { type: "post", id: 1 }, text: "old" },
-					{ id: 101, notification_type: "post_created", created_at: "t2", subject: { type: "post", id: 2 }, text: "new" },
-					{ id: 102, notification_type: "post_created", created_at: "t3", subject: { type: "post", id: 3 }, text: "newest" },
+					{
+						id: 100,
+						notification_type: "post_created",
+						created_at: "t1",
+						subject: { type: "post", id: 1 },
+						text: "old",
+					},
+					{
+						id: 101,
+						notification_type: "post_created",
+						created_at: "t2",
+						subject: { type: "post", id: 2 },
+						text: "new",
+					},
+					{
+						id: 102,
+						notification_type: "post_created",
+						created_at: "t3",
+						subject: { type: "post", id: 3 },
+						text: "newest",
+					},
 				],
 			}),
 		);
@@ -594,8 +853,20 @@ describe("RealCircleService.getMemberNotifications", () => {
 			"fetch",
 			mockFetchJson(200, {
 				records: [
-					{ id: 100, notification_type: "post_created", created_at: "t1", subject: { type: "post", id: 1 }, text: "old" },
-					{ id: 101, notification_type: "post_created", created_at: "t2", subject: { type: "post", id: 2 }, text: "old" },
+					{
+						id: 100,
+						notification_type: "post_created",
+						created_at: "t1",
+						subject: { type: "post", id: 1 },
+						text: "old",
+					},
+					{
+						id: 101,
+						notification_type: "post_created",
+						created_at: "t2",
+						subject: { type: "post", id: 2 },
+						text: "old",
+					},
 				],
 			}),
 		);
@@ -644,10 +915,7 @@ describe("RealCircleService.confirmMemberProfile", () => {
 	});
 
 	it("treats 409 already-confirmed as idempotent success", async () => {
-		vi.stubGlobal(
-			"fetch",
-			mockFetchJson(409, { message: "You already created profile" }),
-		);
+		vi.stubGlobal("fetch", mockFetchJson(409, { message: "You already created profile" }));
 
 		const outcome = await svc.confirmMemberProfile("42", "Tom Power");
 
@@ -661,9 +929,7 @@ describe("RealCircleService.confirmMemberProfile", () => {
 		await svc.confirmMemberProfile("42", "Tom Power");
 
 		const [url, init] = fetchMock.mock.calls[0] ?? [];
-		expect(String(url)).toBe(
-			"https://app.circle.so/api/headless/v1/signup/profile",
-		);
+		expect(String(url)).toBe("https://app.circle.so/api/headless/v1/signup/profile");
 		expect(init).toMatchObject({
 			method: "PUT",
 			headers: {
@@ -709,10 +975,7 @@ describe("RealCircleService.confirmMemberProfile", () => {
 	});
 
 	it("maps fetch network errors to network / retriable", async () => {
-		vi.stubGlobal(
-			"fetch",
-			vi.fn().mockRejectedValueOnce(new Error("ECONNRESET")),
-		);
+		vi.stubGlobal("fetch", vi.fn().mockRejectedValueOnce(new Error("ECONNRESET")));
 
 		const outcome = await svc.confirmMemberProfile("42", "Tom Power");
 
@@ -769,12 +1032,8 @@ describe("RealCircleService.getMemberToken", () => {
 
 describe("RealCircleService.revokeMemberSession", () => {
 	let svc: RealCircleService;
-	let revokeMemberAPIToken: ReturnType<
-		typeof vi.fn<(accessToken: string) => Promise<unknown>>
-	>;
-	let revokeRefreshToken: ReturnType<
-		typeof vi.fn<(refreshToken: string) => Promise<unknown>>
-	>;
+	let revokeMemberAPIToken: ReturnType<typeof vi.fn<(accessToken: string) => Promise<unknown>>>;
+	let revokeRefreshToken: ReturnType<typeof vi.fn<(refreshToken: string) => Promise<unknown>>>;
 
 	function injectHeadless() {
 		(

@@ -15,19 +15,16 @@
  * - Dormant return (>30d since last successful poll): BASELINE — no pushes
  * - Drift (`not_found`): log `circle.drift.detected` + BASELINE-on-recovery
  * - Steady state: map notifications → sendPush, advance cursor
- * - Empty page: bump `circleLastPolledAt`, no cursor change
+ * - Empty page: no write until the configured heartbeat is due
  *
  * All errors are swallowed at the per-member boundary — a single failing
  * member never blocks the rest of the tick.
  */
 
-import {
-	db,
-	parseOrgMetadata,
-	type CircleNotificationCategory,
-} from "@repo/database";
+import { db, parseOrgMetadata, type CircleNotificationCategory } from "@repo/database";
 import { logger } from "@repo/logs";
 import { createCircleService } from "@repo/payments/lib/circle";
+import type { CircleServiceFactoryOptions } from "@repo/payments/lib/circle";
 import type {
 	CircleCallFailure,
 	CircleNotification,
@@ -41,6 +38,14 @@ import {
 	type CircleMapperTrigger,
 	type MapCtx,
 } from "./notification-mapper";
+import { createPollCoordinationFromEnv, type PollCoordination } from "./poll-coordination";
+import {
+	isPollerTriggerAllowed,
+	resolvePollPolicy,
+	shouldWritePollHeartbeat,
+	type CirclePollDeliveryProfile,
+	type CirclePollSafetyMode,
+} from "./poll-policy";
 import { pollShard } from "./poll-shard";
 
 const DORMANT_THRESHOLD_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
@@ -63,23 +68,47 @@ export const DEFAULT_ENABLED_CATEGORIES: CircleNotificationCategory[] = [
 ];
 
 export interface PollTickMetrics {
+	tickMs: number;
 	organizationsScanned: number;
 	membersEligible: number;
+	membersDue: number;
 	membersPolled: number;
 	notificationsFetched: number;
 	pushesSent: number;
+	pushesSuppressedByPolicy: number;
 	baselined: number;
 	driftDetected: number;
+	/** Member updates caused by cursor initialization, advance, or reset. */
+	cursorWrites: number;
+	/** Heartbeat-only member updates; cursor writes coalesce `circleLastPolledAt`. */
+	heartbeatWrites: number;
+	leaseAcquired: number;
+	leaseCollisions: number;
+	coordinationErrors: number;
+	requestBudgetUsed: number;
+	budgetWouldDefer: number;
+	deferredByBudget: number;
+	deferredByBackoff: number;
+	rateLimited: number;
+	timedOut: number;
+	safetyModes: CirclePollSafetyMode[];
+	deliveryProfiles: CirclePollDeliveryProfile[];
+	cadenceMinutes: number[];
+	requestBudgets: number[];
 	errors: number;
 }
 
 export interface PollTickDeps {
 	now?: Date;
+	/** Wall-clock seam for coordination timestamps; defaults to a fresh Date per operation. */
+	clock?: () => Date;
 	concurrency?: number;
 	/** Factory override — tests inject a fake CircleService. */
-	makeCircleService?: (orgSlug: string) => CircleService;
+	makeCircleService?: (orgSlug: string, options?: CircleServiceFactoryOptions) => CircleService;
 	/** sendPush override — tests avoid hitting Expo. */
 	sendPush?: typeof sendPush;
+	/** Explicit null disables coordination; undefined resolves the production adapter. */
+	coordination?: PollCoordination | null;
 }
 
 interface OrgPollConfig {
@@ -90,6 +119,8 @@ interface OrgPollConfig {
 	trainerUpdatesSpaceId?: string;
 	cadenceMinutes: number;
 	enabledCategories: CircleNotificationCategory[];
+	deliveryProfile?: CirclePollDeliveryProfile;
+	heartbeatHours?: number;
 	horseBySpace: (spaceId: string) => { id: string; name: string } | null;
 }
 
@@ -146,15 +177,79 @@ export interface PollOutcome {
 	ok: boolean;
 	notificationsFetched: number;
 	pushesSent: number;
+	pushesSuppressedByPolicy: number;
 	baselined: boolean;
 	driftDetected: boolean;
+	/** Update reason count, not the number of individual fields written. */
+	cursorWrites: number;
+	/** Heartbeat-only update reason; zero when coalesced into a cursor update. */
+	heartbeatWrites: number;
+	coordinationErrors: number;
+	requestBudgetUsed: number;
+	budgetWouldDefer: number;
+	deferredByBudget: boolean;
+	deferredByBackoff: boolean;
+	rateLimited: boolean;
+	timedOut: boolean;
 	/** CircleCallFailure reason when `ok === false`. */
 	reason?: CircleCallFailure;
 }
 
+interface PollOneMemberDeps {
+	now: Date;
+	clock?: () => Date;
+	sendPush: typeof sendPush;
+	coordination?: PollCoordination | null;
+	safetyMode?: CirclePollSafetyMode;
+	requestBudget?: number;
+}
+
+function pollOutcome(overrides: Partial<PollOutcome> = {}): PollOutcome {
+	return {
+		ok: true,
+		notificationsFetched: 0,
+		pushesSent: 0,
+		pushesSuppressedByPolicy: 0,
+		baselined: false,
+		driftDetected: false,
+		cursorWrites: 0,
+		heartbeatWrites: 0,
+		coordinationErrors: 0,
+		requestBudgetUsed: 0,
+		budgetWouldDefer: 0,
+		deferredByBudget: false,
+		deferredByBackoff: false,
+		rateLimited: false,
+		timedOut: false,
+		...overrides,
+	};
+}
+
+function coordinationFailedOpen(
+	operation: string,
+	error: unknown,
+	context: { organizationId: string; memberId?: string },
+): void {
+	logger.warn("[CirclePoller] coordination failed open", {
+		surface: "circle.poller",
+		operation,
+		...context,
+		error: error instanceof Error ? error.message : String(error),
+	});
+}
+
+function isAbortFailure(raw: unknown): boolean {
+	return (
+		typeof raw === "object" &&
+		raw !== null &&
+		"name" in raw &&
+		(raw as { name?: unknown }).name === "AbortError"
+	);
+}
+
 export async function pollOneMember(
 	input: MemberPollInput,
-	deps: { now: Date; sendPush: typeof sendPush },
+	deps: PollOneMemberDeps,
 ): Promise<PollOutcome> {
 	const { member, org } = input;
 	const { now } = deps;
@@ -162,25 +257,78 @@ export async function pollOneMember(
 	if (!member.circleMemberId) {
 		// Defensive — the caller query already filters this, but a member
 		// can race a deprovision in between.
-		return {
-			ok: true,
-			notificationsFetched: 0,
-			pushesSent: 0,
-			baselined: false,
-			driftDetected: false,
-		};
+		return pollOutcome();
 	}
 
 	const isFirstPoll = member.circleLastSeenNotificationId === null;
-	const isDormantReturn
-		= member.circleLastPolledAt !== null
-		&& now.getTime() - member.circleLastPolledAt.getTime() > DORMANT_THRESHOLD_MS;
+	const isDormantReturn =
+		member.circleLastPolledAt !== null &&
+		now.getTime() - member.circleLastPolledAt.getTime() > DORMANT_THRESHOLD_MS;
 	const isBaselinePoll = isFirstPoll || isDormantReturn;
+
+	let coordinationErrors = 0;
+	let requestBudgetUsed = 0;
+	let budgetWouldDefer = 0;
+	if (deps.coordination) {
+		try {
+			const backoff = await deps.coordination.getBackoff(deps.clock?.() ?? now);
+			if (backoff.active && deps.safetyMode === "enforce") {
+				return pollOutcome({ deferredByBackoff: true });
+			}
+		} catch (error) {
+			coordinationErrors += 1;
+			coordinationFailedOpen("getBackoff", error, {
+				organizationId: org.id,
+				memberId: member.id,
+			});
+		}
+
+		try {
+			const budget = await deps.coordination.consumeRequestBudget(
+				deps.requestBudget ?? 700,
+				deps.clock?.() ?? now,
+			);
+			requestBudgetUsed = budget.used;
+			if (!budget.allowed) {
+				budgetWouldDefer = 1;
+				if (deps.safetyMode === "enforce") {
+					return pollOutcome({
+						coordinationErrors,
+						requestBudgetUsed,
+						budgetWouldDefer,
+						deferredByBudget: true,
+					});
+				}
+			}
+		} catch (error) {
+			coordinationErrors += 1;
+			coordinationFailedOpen("consumeRequestBudget", error, {
+				organizationId: org.id,
+				memberId: member.id,
+			});
+		}
+	}
 
 	const page = await org.circleService.getMemberNotifications(member.circleMemberId, {
 		sinceNotificationId: isBaselinePoll ? null : member.circleLastSeenNotificationId,
 		limit: 50,
 	});
+
+	let rateLimited = false;
+	if (!page.ok && page.reason === "rate_limited") {
+		rateLimited = true;
+		if (deps.coordination) {
+			try {
+				await deps.coordination.recordRateLimit(page.retryAfterMs, deps.clock?.() ?? now);
+			} catch (error) {
+				coordinationErrors += 1;
+				coordinationFailedOpen("recordRateLimit", error, {
+					organizationId: org.id,
+					memberId: member.id,
+				});
+			}
+		}
+	}
 
 	if (!page.ok) {
 		if (page.reason === "not_found") {
@@ -204,14 +352,16 @@ export async function pollOneMember(
 					// did not succeed.
 				},
 			});
-			return {
+			return pollOutcome({
 				ok: false,
-				notificationsFetched: 0,
-				pushesSent: 0,
-				baselined: false,
 				driftDetected: true,
+				cursorWrites: 1,
+				coordinationErrors,
+				requestBudgetUsed,
+				budgetWouldDefer,
+				rateLimited,
 				reason: "not_found",
-			};
+			});
 		}
 
 		logger.warn("[CirclePoller] getMemberNotifications failed", {
@@ -221,14 +371,15 @@ export async function pollOneMember(
 			reason: page.reason,
 			retriable: page.retriable,
 		});
-		return {
+		return pollOutcome({
 			ok: false,
-			notificationsFetched: 0,
-			pushesSent: 0,
-			baselined: false,
-			driftDetected: false,
+			coordinationErrors,
+			requestBudgetUsed,
+			budgetWouldDefer,
+			rateLimited,
+			timedOut: page.reason === "network" && isAbortFailure(page.raw),
 			reason: page.reason,
-		};
+		});
 	}
 
 	const items = page.data.items;
@@ -245,51 +396,61 @@ export async function pollOneMember(
 					: {}),
 			},
 		});
-		return {
-			ok: true,
+		return pollOutcome({
 			notificationsFetched: items.length,
-			pushesSent: 0,
 			baselined: true,
-			driftDetected: false,
-		};
+			cursorWrites: nextCursor !== member.circleLastSeenNotificationId ? 1 : 0,
+			coordinationErrors,
+			requestBudgetUsed,
+			budgetWouldDefer,
+		});
 	}
 
 	// Steady state. `tryFanOut` enforces the org's `enabledCategories`
 	// filter per-item before calling `sendPush`.
 	let pushesSent = 0;
+	let pushesSuppressedByPolicy = 0;
 
 	for (const item of items) {
 		const push = await tryFanOut(item, member.userId, org, deps);
-		if (push) pushesSent += 1;
+		if (push.sent) pushesSent += 1;
+		if (push.suppressedByPolicy) pushesSuppressedByPolicy += 1;
 	}
 
-	// Persist cursor + polled-at in one write (empty page still bumps
-	// polled-at so the dormant check stays honest).
-	await db.member.update({
-		where: { id: member.id },
-		data: {
-			circleLastPolledAt: now,
-			...(nextCursor !== null && nextCursor !== member.circleLastSeenNotificationId
-				? { circleLastSeenNotificationId: nextCursor }
-				: {}),
-		},
-	});
+	const cursorChanged = nextCursor !== null && nextCursor !== member.circleLastSeenNotificationId;
+	const heartbeatDue = shouldWritePollHeartbeat(
+		member.circleLastPolledAt,
+		now,
+		org.heartbeatHours ?? 24,
+	);
+	if (cursorChanged || heartbeatDue) {
+		await db.member.update({
+			where: { id: member.id },
+			data: {
+				circleLastPolledAt: now,
+				...(cursorChanged ? { circleLastSeenNotificationId: nextCursor } : {}),
+			},
+		});
+	}
 
-	return {
-		ok: true,
+	return pollOutcome({
 		notificationsFetched: items.length,
 		pushesSent,
-		baselined: false,
-		driftDetected: false,
-	};
+		pushesSuppressedByPolicy,
+		cursorWrites: cursorChanged ? 1 : 0,
+		heartbeatWrites: !cursorChanged && heartbeatDue ? 1 : 0,
+		coordinationErrors,
+		requestBudgetUsed,
+		budgetWouldDefer,
+	});
 }
 
 async function tryFanOut(
 	item: CircleNotification,
 	userId: string,
 	org: OrgPollConfig,
-	deps: { now: Date; sendPush: typeof sendPush },
-): Promise<boolean> {
+	deps: PollOneMemberDeps,
+): Promise<{ sent: boolean; suppressedByPolicy: boolean }> {
 	const ctx: MapCtx = {
 		organizationId: org.id,
 		communityDomain: org.communityDomain,
@@ -298,14 +459,17 @@ async function tryFanOut(
 	};
 
 	const mapped = mapCircleNotification(item, ctx);
-	if (!mapped) return false;
+	if (!mapped) return { sent: false, suppressedByPolicy: false };
+	if (!isPollerTriggerAllowed(org.deliveryProfile ?? "legacy_all", mapped.triggerType)) {
+		return { sent: false, suppressedByPolicy: true };
+	}
 
 	// Per-org enabled-category filter. User-level push preferences (T10)
 	// are enforced separately inside `sendPush`; this is the org-admin
 	// opt-out surface.
 	const category = mapperTriggerToCategory(mapped.triggerType);
 	if (!org.enabledCategories.includes(category)) {
-		return false;
+		return { sent: false, suppressedByPolicy: false };
 	}
 
 	try {
@@ -318,7 +482,7 @@ async function tryFanOut(
 			data: mapped.data,
 			targetUserId: userId,
 		});
-		return true;
+		return { sent: true, suppressedByPolicy: false };
 	} catch (error) {
 		logger.error("[CirclePoller] sendPush threw", {
 			surface: "circle.poller",
@@ -327,7 +491,7 @@ async function tryFanOut(
 			circleNotificationId: item.id,
 			error: error instanceof Error ? error.message : String(error),
 		});
-		return false;
+		return { sent: false, suppressedByPolicy: false };
 	}
 }
 
@@ -335,23 +499,46 @@ async function tryFanOut(
 // runCirclePollTick
 // ──────────────────────────────────────────────
 
-export async function runCirclePollTick(
-	deps: PollTickDeps = {},
-): Promise<PollTickMetrics> {
+export async function runCirclePollTick(deps: PollTickDeps = {}): Promise<PollTickMetrics> {
+	const tickStartedAt = Date.now();
 	const now = deps.now ?? new Date();
+	const coordinationClock = deps.clock ?? (deps.now === undefined ? () => new Date() : () => now);
 	const concurrency = deps.concurrency ?? DEFAULT_CONCURRENCY;
 	const makeCircle = deps.makeCircleService ?? createCircleService;
 	const sendPushFn = deps.sendPush ?? sendPush;
+	let coordination = deps.coordination ?? null;
+	let coordinationResolved = deps.coordination !== undefined;
 
 	const metrics: PollTickMetrics = {
+		tickMs: 0,
 		organizationsScanned: 0,
 		membersEligible: 0,
+		membersDue: 0,
 		membersPolled: 0,
 		notificationsFetched: 0,
 		pushesSent: 0,
+		pushesSuppressedByPolicy: 0,
 		baselined: 0,
 		driftDetected: 0,
+		cursorWrites: 0,
+		heartbeatWrites: 0,
+		leaseAcquired: 0,
+		leaseCollisions: 0,
+		coordinationErrors: 0,
+		requestBudgetUsed: 0,
+		budgetWouldDefer: 0,
+		deferredByBudget: 0,
+		deferredByBackoff: 0,
+		rateLimited: 0,
+		timedOut: 0,
+		safetyModes: [],
+		deliveryProfiles: [],
+		cadenceMinutes: [],
+		requestBudgets: [],
 		errors: 0,
+	};
+	const observe = <T>(values: T[], value: T) => {
+		if (!values.includes(value)) values.push(value);
 	};
 
 	const orgs = await db.organization.findMany({
@@ -368,122 +555,210 @@ export async function runCirclePollTick(
 
 		metrics.organizationsScanned += 1;
 
-		const cadenceMinutes
-			= typeof poll.cadenceMinutes === "number" && poll.cadenceMinutes > 0
+		const cadenceMinutes =
+			typeof poll.cadenceMinutes === "number" && poll.cadenceMinutes > 0
 				? poll.cadenceMinutes
 				: DEFAULT_CADENCE_MINUTES;
 
-		const enabledCategories
-			= Array.isArray(poll.enabledCategories) && poll.enabledCategories.length > 0
+		const enabledCategories =
+			Array.isArray(poll.enabledCategories) && poll.enabledCategories.length > 0
 				? poll.enabledCategories
 				: DEFAULT_ENABLED_CATEGORIES;
+		const policy = resolvePollPolicy(poll);
+		observe(metrics.safetyModes, policy.safetyMode);
+		observe(metrics.deliveryProfiles, policy.deliveryProfile);
+		observe(metrics.cadenceMinutes, cadenceMinutes);
+		observe(metrics.requestBudgets, policy.maxRequestsPerFiveMinutes);
 
-		// Only pull members whose orgs have push-capable users with fresh
-		// tokens. The freshness filter trims load: members without any
-		// seen-recently PushToken can't receive anything anyway.
-		const members = await db.member.findMany({
-			where: {
-				organizationId: org.id,
-				circleMemberId: { not: null },
-				circleStatus: "active",
-				user: {
-					pushEnabled: true,
-					pushTokens: {
-						some: {
-							lastSeenAt: {
-								gte: new Date(
-									now.getTime() - FRESH_TOKEN_THRESHOLD_MS,
-								),
+		if (!coordinationResolved) {
+			coordinationResolved = true;
+			try {
+				coordination = createPollCoordinationFromEnv();
+				if (!coordination) {
+					metrics.coordinationErrors += 1;
+					coordinationFailedOpen(
+						"createPollCoordinationFromEnv",
+						new Error("UPSTASH_REDIS_REST_URL or token is not configured"),
+						{ organizationId: org.id },
+					);
+				}
+			} catch (error) {
+				metrics.coordinationErrors += 1;
+				coordinationFailedOpen("createPollCoordinationFromEnv", error, {
+					organizationId: org.id,
+				});
+			}
+		}
+
+		let leaseOwnerToken: string | undefined;
+		if (coordination) {
+			try {
+				const lease = await coordination.acquireLease(org.id, coordinationClock());
+				if (lease.acquired && lease.ownerToken) {
+					leaseOwnerToken = lease.ownerToken;
+					metrics.leaseAcquired += 1;
+				} else if (lease.acquired) {
+					throw new Error("coordination acquired a lease without an owner token");
+				} else {
+					metrics.leaseCollisions += 1;
+					if (policy.safetyMode === "enforce") continue;
+				}
+			} catch (error) {
+				metrics.coordinationErrors += 1;
+				coordinationFailedOpen("acquireLease", error, { organizationId: org.id });
+			}
+		}
+
+		try {
+			// Only pull members whose orgs have push-capable users with fresh
+			// tokens. The freshness filter trims load: members without any
+			// seen-recently PushToken can't receive anything anyway.
+			const members = await db.member.findMany({
+				where: {
+					organizationId: org.id,
+					circleMemberId: { not: null },
+					circleStatus: "active",
+					user: {
+						pushEnabled: true,
+						pushTokens: {
+							some: {
+								lastSeenAt: {
+									gte: new Date(now.getTime() - FRESH_TOKEN_THRESHOLD_MS),
+								},
 							},
 						},
 					},
 				},
-			},
-			select: {
-				id: true,
-				userId: true,
-				circleMemberId: true,
-				circleLastSeenNotificationId: true,
-				circleLastPolledAt: true,
-			},
-		});
-
-		metrics.membersEligible += members.length;
-
-		// Apply pollShard to pick just this minute's bucket.
-		const eligible = members.filter((m) =>
-			pollShard(m.id, now, cadenceMinutes),
-		);
-
-		if (eligible.length === 0) continue;
-
-		// Preload horse-by-space so each mapped item can resolve without an
-		// extra round-trip.
-		const horses = await db.horse.findMany({
-			where: {
-				organizationId: org.id,
-				circleSpaceId: { not: null },
-			},
-			select: { id: true, name: true, circleSpaceId: true },
-		});
-		const horseBySpaceMap = new Map(
-			horses
-				.filter((h): h is typeof h & { circleSpaceId: string } =>
-					typeof h.circleSpaceId === "string",
-				)
-				.map((h) => [h.circleSpaceId, { id: h.id, name: h.name }]),
-		);
-
-		let circleService: CircleService;
-		try {
-			circleService = makeCircle(org.slug);
-		} catch (error) {
-			logger.error("[CirclePoller] createCircleService failed", {
-				surface: "circle.poller",
-				organizationId: org.id,
-				slug: org.slug,
-				error: error instanceof Error ? error.message : String(error),
+				select: {
+					id: true,
+					userId: true,
+					circleMemberId: true,
+					circleLastSeenNotificationId: true,
+					circleLastPolledAt: true,
+				},
 			});
-			metrics.errors += 1;
-			continue;
-		}
 
-		const orgConfig: OrgPollConfig = {
-			id: org.id,
-			slug: org.slug,
-			circleService,
-			communityDomain: metadata.circle?.communityDomain,
-			trainerUpdatesSpaceId: metadata.circle?.trainerUpdatesSpaceId,
-			cadenceMinutes,
-			enabledCategories,
-			horseBySpace: (spaceId: string) => horseBySpaceMap.get(spaceId) ?? null,
-		};
+			metrics.membersEligible += members.length;
 
-		const tasks = eligible.map((member) => async () => {
-			try {
-				const outcome = await pollOneMember(
-					{ member, org: orgConfig },
-					{ now, sendPush: sendPushFn },
-				);
-				metrics.membersPolled += 1;
-				metrics.notificationsFetched += outcome.notificationsFetched;
-				metrics.pushesSent += outcome.pushesSent;
-				if (outcome.baselined) metrics.baselined += 1;
-				if (outcome.driftDetected) metrics.driftDetected += 1;
-				if (!outcome.ok) metrics.errors += 1;
-			} catch (error) {
-				metrics.errors += 1;
-				logger.error("[CirclePoller] pollOneMember threw", {
-					surface: "circle.poller",
-					memberId: member.id,
+			// Apply pollShard to pick just this minute's bucket.
+			const eligible = members.filter((m) => pollShard(m.id, now, cadenceMinutes));
+			metrics.membersDue += eligible.length;
+
+			if (eligible.length === 0) continue;
+
+			// Preload horse-by-space so each mapped item can resolve without an
+			// extra round-trip.
+			const horses = await db.horse.findMany({
+				where: {
 					organizationId: org.id,
+					circleSpaceId: { not: null },
+				},
+				select: { id: true, name: true, circleSpaceId: true },
+			});
+			const horseBySpaceMap = new Map(
+				horses
+					.filter(
+						(h): h is typeof h & { circleSpaceId: string } =>
+							typeof h.circleSpaceId === "string",
+					)
+					.map((h) => [h.circleSpaceId, { id: h.id, name: h.name }]),
+			);
+
+			let circleService: CircleService;
+			try {
+				circleService = makeCircle(org.slug, {
+					notificationsRequestTimeoutMs: policy.requestTimeoutMs,
+				});
+			} catch (error) {
+				logger.error("[CirclePoller] createCircleService failed", {
+					surface: "circle.poller",
+					organizationId: org.id,
+					slug: org.slug,
 					error: error instanceof Error ? error.message : String(error),
 				});
+				metrics.errors += 1;
+				continue;
 			}
-		});
 
-		await runBounded(concurrency, tasks);
+			const orgConfig: OrgPollConfig = {
+				id: org.id,
+				slug: org.slug,
+				circleService,
+				communityDomain: metadata.circle?.communityDomain,
+				trainerUpdatesSpaceId: metadata.circle?.trainerUpdatesSpaceId,
+				cadenceMinutes,
+				enabledCategories,
+				deliveryProfile: policy.deliveryProfile,
+				heartbeatHours: policy.heartbeatHours,
+				horseBySpace: (spaceId: string) => horseBySpaceMap.get(spaceId) ?? null,
+			};
+
+			const tasks = eligible.map((member) => async () => {
+				try {
+					const outcome = await pollOneMember(
+						{ member, org: orgConfig },
+						{
+							now,
+							clock: coordinationClock,
+							sendPush: sendPushFn,
+							coordination,
+							safetyMode: policy.safetyMode,
+							requestBudget: policy.maxRequestsPerFiveMinutes,
+						},
+					);
+					metrics.coordinationErrors += outcome.coordinationErrors;
+					metrics.requestBudgetUsed = Math.max(
+						metrics.requestBudgetUsed,
+						outcome.requestBudgetUsed,
+					);
+					metrics.budgetWouldDefer += outcome.budgetWouldDefer;
+					if (outcome.deferredByBudget) metrics.deferredByBudget += 1;
+					if (outcome.deferredByBackoff) metrics.deferredByBackoff += 1;
+					if (outcome.deferredByBudget || outcome.deferredByBackoff) return;
+
+					metrics.membersPolled += 1;
+					metrics.notificationsFetched += outcome.notificationsFetched;
+					metrics.pushesSent += outcome.pushesSent;
+					metrics.pushesSuppressedByPolicy += outcome.pushesSuppressedByPolicy;
+					metrics.cursorWrites += outcome.cursorWrites;
+					metrics.heartbeatWrites += outcome.heartbeatWrites;
+					if (outcome.baselined) metrics.baselined += 1;
+					if (outcome.driftDetected) metrics.driftDetected += 1;
+					if (outcome.rateLimited) metrics.rateLimited += 1;
+					if (outcome.timedOut) metrics.timedOut += 1;
+					if (!outcome.ok) metrics.errors += 1;
+				} catch (error) {
+					metrics.errors += 1;
+					logger.error("[CirclePoller] pollOneMember threw", {
+						surface: "circle.poller",
+						memberId: member.id,
+						organizationId: org.id,
+						error: error instanceof Error ? error.message : String(error),
+					});
+				}
+			});
+
+			await runBounded(concurrency, tasks);
+		} finally {
+			if (coordination && leaseOwnerToken) {
+				try {
+					const released = await coordination.releaseLease(org.id, leaseOwnerToken);
+					if (!released) {
+						metrics.coordinationErrors += 1;
+						coordinationFailedOpen(
+							"releaseLease",
+							new Error("owned lease was not released"),
+							{ organizationId: org.id },
+						);
+					}
+				} catch (error) {
+					metrics.coordinationErrors += 1;
+					coordinationFailedOpen("releaseLease", error, { organizationId: org.id });
+				}
+			}
+		}
 	}
 
+	metrics.tickMs = Date.now() - tickStartedAt;
 	return metrics;
 }

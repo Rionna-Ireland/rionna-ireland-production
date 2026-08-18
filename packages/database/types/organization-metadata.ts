@@ -6,6 +6,9 @@ export type CircleNotificationCategory =
 	| "event_reminder"
 	| "admin_event";
 
+export type CirclePollDeliveryProfile = "legacy_all" | "personalized_only";
+export type CirclePollSafetyMode = "observe" | "enforce";
+
 export interface OrganizationMetadata {
 	brand?: {
 		primaryColor?: string;
@@ -33,6 +36,11 @@ export interface OrganizationMetadata {
 			enabled: boolean;
 			cadenceMinutes: number;
 			enabledCategories: CircleNotificationCategory[];
+			deliveryProfile?: CirclePollDeliveryProfile;
+			safetyMode?: CirclePollSafetyMode;
+			maxRequestsPerFiveMinutes?: number;
+			heartbeatHours?: number;
+			requestTimeoutMs?: number;
 		};
 	};
 	billing?: {

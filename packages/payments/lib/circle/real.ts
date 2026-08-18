@@ -50,6 +50,42 @@ import type {
 
 const CIRCLE_ADMIN_BASE = "https://app.circle.so/api/admin/v2";
 const CIRCLE_HEADLESS_BASE = "https://app.circle.so/api/headless/v1";
+const DEFAULT_NOTIFICATIONS_REQUEST_TIMEOUT_MS = 8_000;
+const DEFAULT_RETRY_AFTER_MS = 60_000;
+const MAX_RETRY_AFTER_MS = 300_000;
+const HTTP_DATE_RE =
+	/^(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun), \d{2} (?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{4} \d{2}:\d{2}:\d{2} GMT$/;
+
+function isAbortError(error: unknown): boolean {
+	return (
+		typeof error === "object" &&
+		error !== null &&
+		"name" in error &&
+		(error as { name?: unknown }).name === "AbortError"
+	);
+}
+
+export interface RealCircleServiceOptions {
+	notificationsRequestTimeoutMs?: number;
+}
+
+export function parseRetryAfterMs(
+	value: string | null | undefined,
+	now: Date = new Date(),
+): number {
+	const trimmed = value?.trim();
+	if (trimmed && /^\d+$/.test(trimmed)) {
+		return Math.min(Number(trimmed) * 1_000, MAX_RETRY_AFTER_MS);
+	}
+	if (trimmed && HTTP_DATE_RE.test(trimmed)) {
+		const retryAt = Date.parse(trimmed);
+		if (!Number.isNaN(retryAt)) {
+			return Math.min(Math.max(0, retryAt - now.getTime()), MAX_RETRY_AFTER_MS);
+		}
+	}
+
+	return DEFAULT_RETRY_AFTER_MS;
+}
 
 // Re-exports preserved for existing import sites (tests, siblings).
 export { classifyStatus, compareIds, normaliseCircleNotification };
@@ -57,10 +93,17 @@ export { classifyStatus, compareIds, normaliseCircleNotification };
 export class RealCircleService implements CircleService {
 	private adminToken: string;
 	private headlessClient: ReturnType<typeof createClient>;
+	private notificationsRequestTimeoutMs: number;
 
-	constructor(adminToken: string, headlessAuthToken: string) {
+	constructor(
+		adminToken: string,
+		headlessAuthToken: string,
+		options: RealCircleServiceOptions = {},
+	) {
 		this.adminToken = adminToken;
 		this.headlessClient = createClient({ appToken: headlessAuthToken });
+		this.notificationsRequestTimeoutMs =
+			options.notificationsRequestTimeoutMs ?? DEFAULT_NOTIFICATIONS_REQUEST_TIMEOUT_MS;
 	}
 
 	async createMember(params: CreateMemberParams): Promise<CircleCallOutcome<CreateMemberResult>> {
@@ -311,6 +354,43 @@ export class RealCircleService implements CircleService {
 		circleMemberId: string,
 		opts: { sinceNotificationId: string | null; limit?: number },
 	): Promise<CircleCallOutcome<CircleNotificationPage>> {
+		const controller = new AbortController();
+		const timeoutError = new Error("Circle notifications request timed out");
+		timeoutError.name = "AbortError";
+		let timeout: ReturnType<typeof setTimeout> | undefined;
+		const deadline = new Promise<never>((_resolve, reject) => {
+			const onTimeout = () => {
+				controller.abort(timeoutError);
+				reject(timeoutError);
+			};
+			timeout = setTimeout(onTimeout, this.notificationsRequestTimeoutMs);
+		});
+
+		try {
+			// The Circle token SDK does not accept an AbortSignal. Racing the complete
+			// operation still bounds the caller and observes any later rejection, but
+			// the underlying SDK request may finish after this method has timed out.
+			return await Promise.race([
+				this.getMemberNotificationsOperation(circleMemberId, opts, controller.signal),
+				deadline,
+			]);
+		} catch (err) {
+			if (!isAbortError(err)) throw err;
+			logger.warn("[Circle] Notifications operation failed (network)", {
+				circleMemberId,
+				error: err instanceof Error ? err.message : String(err),
+			});
+			return { ok: false, reason: "network", retriable: true, raw: err };
+		} finally {
+			if (timeout !== undefined) clearTimeout(timeout);
+		}
+	}
+
+	private async getMemberNotificationsOperation(
+		circleMemberId: string,
+		opts: { sinceNotificationId: string | null; limit?: number },
+		signal: AbortSignal,
+	): Promise<CircleCallOutcome<CircleNotificationPage>> {
 		const tokenOutcome = await this.getMemberToken(circleMemberId);
 		if (!tokenOutcome.ok) {
 			logger.error("[Circle] getMemberToken failed for notifications poll", {
@@ -348,6 +428,7 @@ export class RealCircleService implements CircleService {
 					Authorization: `Bearer ${accessToken}`,
 					"Content-Type": "application/json",
 				},
+				signal,
 			});
 		} catch (err) {
 			logger.warn("[Circle] Notifications fetch failed (network)", {
@@ -358,8 +439,18 @@ export class RealCircleService implements CircleService {
 		}
 
 		if (!res.ok) {
-			const raw = await res.text().catch(() => undefined);
+			let raw: unknown;
+			try {
+				raw = await res.text();
+			} catch (err) {
+				if (isAbortError(err)) throw err;
+				raw = undefined;
+			}
 			const { reason, retriable } = classifyStatus(res.status);
+			const retryAfterMs =
+				res.status === 429
+					? parseRetryAfterMs(res.headers?.get?.("Retry-After"))
+					: undefined;
 			logger.warn("[Circle] Notifications fetch non-2xx", {
 				circleMemberId,
 				status: res.status,
@@ -371,13 +462,20 @@ export class RealCircleService implements CircleService {
 			if (res.status === 401 && tokenOutcome.data.fromCache) {
 				await clearCachedMemberToken(circleMemberId);
 			}
-			return { ok: false, reason, retriable, raw };
+			return {
+				ok: false,
+				reason,
+				retriable,
+				raw,
+				...(retryAfterMs === undefined ? {} : { retryAfterMs }),
+			};
 		}
 
 		let body: unknown;
 		try {
 			body = await res.json();
 		} catch (err) {
+			if (isAbortError(err)) throw err;
 			logger.warn("[Circle] Notifications response not JSON", {
 				circleMemberId,
 				error: err instanceof Error ? err.message : String(err),

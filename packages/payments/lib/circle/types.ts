@@ -114,7 +114,14 @@ export type CircleCallFailure =
 
 export type CircleCallOutcome<T> =
 	| { ok: true; data: T }
-	| { ok: false; reason: CircleCallFailure; retriable: boolean; raw?: unknown };
+	| {
+			ok: false;
+			reason: CircleCallFailure;
+			retriable: boolean;
+			raw?: unknown;
+			/** Parsed server backoff hint, populated for rate-limited responses. */
+			retryAfterMs?: number;
+	  };
 
 // ---------------------------------------------------------------------------
 // Publishing surface (S2-09) — native admin composers post INTO Circle.
