@@ -95,4 +95,17 @@ describe("getPublishedHorse (S9-05 invite-only gating)", () => {
 		);
 		expect((inaccessibleErr as Error).message).toBe((nonexistentErr as Error).message);
 	});
+
+	it("fetches the followed set exactly once — shared by the access check and isFollowing", async () => {
+		mockGetPublishedHorseById.mockResolvedValue({
+			id: "h-1",
+			organizationId: "org-1",
+			inviteOnly: true,
+		});
+		mockGetFollowedHorseIds.mockResolvedValue(new Set(["h-1"]));
+
+		await call(getPublishedHorse, { horseId: "h-1" }, ctx);
+
+		expect(mockGetFollowedHorseIds).toHaveBeenCalledTimes(1);
+	});
 });
