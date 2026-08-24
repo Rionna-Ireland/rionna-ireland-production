@@ -52,7 +52,12 @@ export async function provisionHorseSpace(horse: {
 		name: horse.name,
 		spaceGroupId,
 		spaceType: "basic",
-		isPrivate: true,
+		// Public, not private (S8-04 §4, probed 2026-08-24): Circle 401s a
+		// member-token self-join into a private space, so join-on-follow /
+		// backfill / reconcile only work when horse spaces are member-public.
+		// This is also the ratified S8-03 open-community model — following is
+		// a personal filter, not access control.
+		isPrivate: false,
 		// Stable across retries so Circle deduplicates rather than creating dupes
 		// (there is no delete-space API to clean them up).
 		idempotencyKey: `horse-space-${horse.id}`,
@@ -78,8 +83,9 @@ export async function provisionHorseSpace(horse: {
 		data: {
 			circleSpaceId: outcome.data.circleSpaceId,
 			circleSpaceStatus: "active",
-			// S6-07: open-space model — private until admin publishes it
-			circleSpaceVisibility: "private",
+			// Mirrors the isPrivate:false above (S8-04 §4) — must stay in sync
+			// with what createSpace was actually asked for.
+			circleSpaceVisibility: "public",
 			circleSpaceProvisionedAt: new Date(),
 		},
 	});

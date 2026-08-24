@@ -61,14 +61,14 @@ describe("provisionHorseSpace (S2-09 surface F)", () => {
 		mockHorseUpdate.mockResolvedValue({});
 	});
 
-	it("creates a private space under the club's space group and links it to the horse, defaulting circleSpaceVisibility to private (S6-07)", async () => {
+	it("creates a PUBLIC space under the club's space group and links it to the horse (S8-04 §4: private spaces reject member-token self-join, so the open-community model requires public horse spaces)", async () => {
 		await provisionHorseSpace(HORSE);
 
 		expect(mockCreateSpace).toHaveBeenCalledWith({
 			name: "Pink Diamond Lass",
 			spaceGroupId: "1081220",
 			spaceType: "basic",
-			isPrivate: true,
+			isPrivate: false,
 			idempotencyKey: "horse-space-h1",
 		});
 		expect(mockHorseUpdate).toHaveBeenCalledWith(
@@ -77,7 +77,7 @@ describe("provisionHorseSpace (S2-09 surface F)", () => {
 				data: expect.objectContaining({
 					circleSpaceId: "sp-9",
 					circleSpaceStatus: "active",
-					circleSpaceVisibility: "private",
+					circleSpaceVisibility: "public",
 					circleSpaceProvisionedAt: expect.any(Date),
 				}),
 			}),
