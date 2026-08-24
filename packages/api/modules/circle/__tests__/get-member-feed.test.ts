@@ -593,6 +593,37 @@ describe("getMemberFeed (S9-05 invite-only gating — spaceId branch)", () => {
 		expect(res.items.map((i) => i.id)).toEqual(["2"]);
 		expect(mockGetFollowedHorseIds).not.toHaveBeenCalled();
 	});
+
+	it("returns fail() (not a thrown error) when the horse lookup rejects — fails closed, never widens access", async () => {
+		mockHorseFindFirst.mockRejectedValue(new Error("db down"));
+		const fetchSpy = routeFetch();
+		vi.stubGlobal("fetch", fetchSpy);
+
+		const res = await call(
+			getMemberFeed,
+			{ organizationId: ORG_ID, page: 1, perPage: 15, spaceId: "9" },
+			ctx,
+		);
+
+		expect(res).toMatchObject({ ok: false, items: [], hasNextPage: false });
+		expect(fetchSpy).not.toHaveBeenCalled();
+	});
+
+	it("returns fail() (not a thrown error) when the follow lookup rejects for an invite-only space — fails closed, never widens access", async () => {
+		mockHorseFindFirst.mockResolvedValue({ id: "horse-1", inviteOnly: true });
+		mockGetFollowedHorseIds.mockRejectedValue(new Error("db down"));
+		const fetchSpy = routeFetch();
+		vi.stubGlobal("fetch", fetchSpy);
+
+		const res = await call(
+			getMemberFeed,
+			{ organizationId: ORG_ID, page: 1, perPage: 15, spaceId: "9" },
+			ctx,
+		);
+
+		expect(res).toMatchObject({ ok: false, items: [], hasNextPage: false });
+		expect(fetchSpy).not.toHaveBeenCalled();
+	});
 });
 
 describe("getMemberFeed (total per-space failure — Kimi M1)", () => {

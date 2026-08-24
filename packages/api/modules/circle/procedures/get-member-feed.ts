@@ -130,19 +130,36 @@ export const getMemberFeed = protectedProcedure
 		// control: an invite-only horse's space is still gated on follow status
 		// below, independent of the horseFollows kill-switch (never consulted).
 		if (input.spaceId) {
-			const spaceHorse = await db.horse.findFirst({
-				where: { circleSpaceId: input.spaceId, organizationId: input.organizationId },
-				select: { id: true, inviteOnly: true },
-			});
-			if (spaceHorse?.inviteOnly) {
-				const followedHorseIds = await getFollowedHorseIds({
-					organizationId: input.organizationId,
-					userId: user.id,
+			// Privacy fails closed — an error must never widen access: if we can't
+			// determine whether this space is an invite-only horse space (or, once
+			// we know it is, who follows it), we cannot safely serve it. Bail out
+			// with fail() rather than let either lookup's rejection fall through
+			// to a thrown error (this file's contract: member-facing paths never
+			// throw).
+			try {
+				const spaceHorse = await db.horse.findFirst({
+					where: { circleSpaceId: input.spaceId, organizationId: input.organizationId },
+					select: { id: true, inviteOnly: true },
 				});
-				if (!followedHorseIds.has(spaceHorse.id)) {
-					// Indistinguishable from a space with no posts — no existence leak.
-					return empty();
+				if (spaceHorse?.inviteOnly) {
+					const followedHorseIds = await getFollowedHorseIds({
+						organizationId: input.organizationId,
+						userId: user.id,
+					});
+					if (!followedHorseIds.has(spaceHorse.id)) {
+						// Indistinguishable from a space with no posts — no existence leak.
+						return empty();
+					}
 				}
+			} catch (error) {
+				logger.warn("[Circle] Member feed: space access-gate lookup threw, failing closed", {
+					surface: "circle.member_feed",
+					userId: user.id,
+					organizationId: input.organizationId,
+					spaceId: input.spaceId,
+					error: String(error),
+				});
+				return fail();
 			}
 			try {
 				const r = await fetch(
