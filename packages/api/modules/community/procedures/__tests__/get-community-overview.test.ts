@@ -39,6 +39,7 @@ const HORSES = [
 		circleSpaceId: "sp-1",
 		circleSpaceStatus: "active",
 		circleSpaceVisibility: "private",
+		inviteOnly: true,
 	},
 	{
 		id: "h2",
@@ -46,6 +47,7 @@ const HORSES = [
 		circleSpaceId: null,
 		circleSpaceStatus: null,
 		circleSpaceVisibility: null,
+		inviteOnly: false,
 	},
 ];
 
@@ -82,6 +84,7 @@ describe("runCommunityOverview (S6-07)", () => {
 				circleSpaceId: "sp-1",
 				circleSpaceStatus: "active",
 				circleSpaceVisibility: "private",
+				inviteOnly: true,
 				membersCount: 5,
 				postsCount: 12,
 			},
@@ -91,6 +94,7 @@ describe("runCommunityOverview (S6-07)", () => {
 				circleSpaceId: null,
 				circleSpaceStatus: null,
 				circleSpaceVisibility: null,
+				inviteOnly: false,
 			},
 		]);
 	});
@@ -110,6 +114,7 @@ describe("runCommunityOverview (S6-07)", () => {
 				circleSpaceId: "sp-1",
 				circleSpaceStatus: "active",
 				circleSpaceVisibility: "private",
+				inviteOnly: true,
 			},
 			{
 				horseId: "h2",
@@ -117,6 +122,7 @@ describe("runCommunityOverview (S6-07)", () => {
 				circleSpaceId: null,
 				circleSpaceStatus: null,
 				circleSpaceVisibility: null,
+				inviteOnly: false,
 			},
 		]);
 		expect(result.horseSpaces[0]?.membersCount).toBeUndefined();

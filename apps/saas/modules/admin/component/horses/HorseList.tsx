@@ -268,22 +268,10 @@ export function HorseList() {
 										</TableCell>
 										<TableCell className="py-2">
 											{horse.circleSpaceId ? (
-												<Badge
-													status={
-														horse.circleSpaceVisibility ===
-														"member_public"
-															? "success"
-															: "warning"
-													}
-												>
-													{horse.circleSpaceVisibility ===
-													"member_public"
-														? t(
-																"admin.community.visibilityPublic",
-															)
-														: t(
-																"admin.community.visibilityPrivate",
-															)}
+												<Badge status={horse.inviteOnly ? "warning" : "success"}>
+													{horse.inviteOnly
+														? t("admin.community.inviteOnly")
+														: t("admin.community.open")}
 												</Badge>
 											) : (
 												<Badge

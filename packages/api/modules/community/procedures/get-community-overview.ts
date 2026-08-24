@@ -13,6 +13,7 @@ export interface CommunityOverview {
 		circleSpaceId: string | null;
 		circleSpaceStatus: string | null;
 		circleSpaceVisibility: string | null;
+		inviteOnly: boolean;
 		membersCount?: number;
 		postsCount?: number;
 	}>;
@@ -26,7 +27,14 @@ export async function runCommunityOverview(organizationId: string): Promise<Comm
 	});
 	const horses = await db.horse.findMany({
 		where: { organizationId },
-		select: { id: true, name: true, circleSpaceId: true, circleSpaceStatus: true, circleSpaceVisibility: true },
+		select: {
+			id: true,
+			name: true,
+			circleSpaceId: true,
+			circleSpaceStatus: true,
+			circleSpaceVisibility: true,
+			inviteOnly: true,
+		},
 		orderBy: { name: "asc" },
 	});
 
@@ -63,6 +71,7 @@ export async function runCommunityOverview(organizationId: string): Promise<Comm
 			circleSpaceId: h.circleSpaceId,
 			circleSpaceStatus: h.circleSpaceStatus,
 			circleSpaceVisibility: h.circleSpaceVisibility,
+			inviteOnly: h.inviteOnly,
 			...(h.circleSpaceId ? (spaceById.get(h.circleSpaceId) ?? {}) : {}),
 		})),
 	};

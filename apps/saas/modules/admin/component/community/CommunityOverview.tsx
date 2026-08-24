@@ -1,6 +1,5 @@
 "use client";
 
-import { HorseVisibilityToggle } from "@admin/component/horses/HorseVisibilityToggle";
 import { Spinner } from "@repo/ui";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
@@ -167,11 +166,15 @@ export function CommunityOverview() {
 											)}
 										</TableCell>
 										<TableCell className="py-2">
-											<HorseVisibilityToggle
-												horseId={horse.horseId}
-												visibility={horse.circleSpaceVisibility}
-												disabled={!horse.circleSpaceId}
-											/>
+											{horse.inviteOnly ? (
+												<Badge status="warning">
+													{t("admin.community.inviteOnly")}
+												</Badge>
+											) : (
+												<Badge status="success">
+													{t("admin.community.open")}
+												</Badge>
+											)}
 										</TableCell>
 										<TableCell className="py-2">{horse.membersCount ?? "—"}</TableCell>
 										<TableCell className="py-2">{horse.postsCount ?? "—"}</TableCell>
