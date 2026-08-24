@@ -545,5 +545,49 @@ describe("getAudienceTokens", () => {
 			expect(tokens.map((t) => t.expoPushToken)).toEqual(["tok-1", "tok-2"]);
 			expect(mockHorseFollowFindMany).not.toHaveBeenCalled();
 		});
+
+		// Fail-closed: a missing horse row (e.g. deleted mid-flight) must never
+		// widen the audience. Only a horse positively confirmed as
+		// inviteOnly: false is treated as "safe to fall back to all members".
+		it("filters (to an empty audience) rather than falling back to all members when the horse row is missing, kill-switch off", async () => {
+			mockOrgFindUnique.mockResolvedValue({
+				metadata: JSON.stringify({ features: { horseFollows: false } }),
+			});
+			mockHorseFindUnique.mockResolvedValue(null);
+			mockFindMany.mockResolvedValue([
+				{ expoPushToken: "tok-1", userId: "u-1", user: { pushPreferences: {} } },
+				{ expoPushToken: "tok-2", userId: "u-2", user: { pushPreferences: {} } },
+			]);
+			mockHorseFollowFindMany.mockResolvedValue([]);
+
+			const tokens = await getAudienceTokens({
+				organizationId: "org-1",
+				triggerType: "HORSE_DECLARED",
+				followersOfHorseId: "h-deleted",
+			});
+
+			expect(tokens).toEqual([]);
+			expect(mockHorseFollowFindMany).toHaveBeenCalledWith({
+				where: { organizationId: "org-1", horseId: "h-deleted" },
+				select: { userId: true },
+			});
+		});
+
+		it("returns an empty audience for an invite-only horse with zero followers", async () => {
+			mockOrgFindUnique.mockResolvedValue({ metadata: null });
+			mockHorseFindUnique.mockResolvedValue({ inviteOnly: true });
+			mockFindMany.mockResolvedValue([
+				{ expoPushToken: "tok-1", userId: "u-1", user: { pushPreferences: {} } },
+			]);
+			mockHorseFollowFindMany.mockResolvedValue([]);
+
+			const tokens = await getAudienceTokens({
+				organizationId: "org-1",
+				triggerType: "HORSE_DECLARED",
+				followersOfHorseId: "h-invite-only-no-followers",
+			});
+
+			expect(tokens).toEqual([]);
+		});
 	});
 });

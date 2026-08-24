@@ -96,6 +96,10 @@ export async function getAudienceTokens(request: AudienceRequest): Promise<Audie
 		//
 		// S9-05: that fallback is a privacy leak for invite-only horses — they
 		// must always be filtered to followers, regardless of the kill-switch.
+		// Missing horse fails closed — never widen the audience on absent data:
+		// a horse row that can't be found (e.g. deleted mid-flight) is NOT proof
+		// it was open, so it's treated as invite-only for this purpose. Only a
+		// horse positively confirmed as inviteOnly: false skips the filter.
 		const [org, horse] = await Promise.all([
 			db.organization.findUnique({
 				where: { id: request.organizationId },
@@ -108,7 +112,7 @@ export async function getAudienceTokens(request: AudienceRequest): Promise<Audie
 		]);
 		const horseFollowsEnabled =
 			parseOrgMetadata(org?.metadata ?? null).features?.horseFollows !== false;
-		const mustFilter = horse?.inviteOnly === true || horseFollowsEnabled;
+		const mustFilter = horse?.inviteOnly !== false || horseFollowsEnabled;
 
 		if (mustFilter) {
 			const follows = await db.horseFollow.findMany({
