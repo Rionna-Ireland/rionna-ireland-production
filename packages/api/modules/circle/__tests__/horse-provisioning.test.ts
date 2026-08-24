@@ -58,14 +58,14 @@ describe("provisionHorseSpace (S2-09 surface F)", () => {
 		mockHorseUpdate.mockResolvedValue({});
 	});
 
-	it("creates a private space under the club's space group and links it to the horse", async () => {
+	it("creates a PUBLIC space under the club's space group and links it to the horse (S8-04 §4)", async () => {
 		await provisionHorseSpace(HORSE);
 
 		expect(mockCreateSpace).toHaveBeenCalledWith({
 			name: "Pink Diamond Lass",
 			spaceGroupId: "1081220",
 			spaceType: "basic",
-			isPrivate: true,
+			isPrivate: false,
 			idempotencyKey: "horse-space-h1",
 		});
 		expect(mockHorseUpdate).toHaveBeenCalledWith({
@@ -74,7 +74,7 @@ describe("provisionHorseSpace (S2-09 surface F)", () => {
 				circleSpaceId: "777",
 				circleSpaceStatus: "active",
 				circleSpaceProvisionedAt: expect.any(Date),
-				circleSpaceVisibility: "private",
+				circleSpaceVisibility: "public",
 			},
 		});
 	});
