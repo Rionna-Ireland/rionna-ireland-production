@@ -2,6 +2,7 @@ import { getNextRun } from "@repo/database";
 import { z } from "zod";
 
 import { protectedProcedure } from "../../../../orpc/procedures";
+import { getAccessibleHorseWhere } from "../lib/horse-access";
 
 export const getNextRunProcedure = protectedProcedure
 	.route({
@@ -15,6 +16,10 @@ export const getNextRunProcedure = protectedProcedure
 			organizationId: z.string(),
 		}),
 	)
-	.handler(async ({ input }) => {
-		return getNextRun(input.organizationId);
+	.handler(async ({ input, context }) => {
+		const horseWhere = await getAccessibleHorseWhere({
+			organizationId: input.organizationId,
+			userId: context.user.id,
+		});
+		return getNextRun(input.organizationId, horseWhere);
 	});

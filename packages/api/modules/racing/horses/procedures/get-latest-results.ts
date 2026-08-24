@@ -2,6 +2,7 @@ import { getLatestResults } from "@repo/database";
 import { z } from "zod";
 
 import { protectedProcedure } from "../../../../orpc/procedures";
+import { getAccessibleHorseWhere } from "../lib/horse-access";
 
 export const getLatestResultsProcedure = protectedProcedure
 	.route({
@@ -16,6 +17,10 @@ export const getLatestResultsProcedure = protectedProcedure
 			limit: z.number().min(1).max(20).default(3),
 		}),
 	)
-	.handler(async ({ input }) => {
-		return getLatestResults(input.organizationId, input.limit);
+	.handler(async ({ input, context }) => {
+		const horseWhere = await getAccessibleHorseWhere({
+			organizationId: input.organizationId,
+			userId: context.user.id,
+		});
+		return getLatestResults(input.organizationId, input.limit, horseWhere);
 	});

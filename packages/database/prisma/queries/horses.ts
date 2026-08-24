@@ -238,12 +238,19 @@ export async function updateRaceEntryReplayUrl(entryId: string, replayUrl: strin
 }
 
 // Next declared entry across all org horses
-export async function getNextRun(organizationId: string) {
+//
+// `horseWhere` (S9-05) restricts which horses' entries are eligible — pass
+// the caller's `getAccessibleHorseWhere(...)` result so an invite-only
+// horse's runs never surface to a member who doesn't follow it. This must
+// filter in the query: it's a `findFirst`, so a post-fetch filter could
+// return `null` even when an accessible run exists further down the list.
+export async function getNextRun(organizationId: string, horseWhere?: Prisma.HorseWhereInput) {
 	return db.raceEntry.findFirst({
 		where: {
 			organizationId,
 			status: "DECLARED",
 			race: { postTime: { gte: new Date() } },
+			...(horseWhere ? { horse: horseWhere } : {}),
 		},
 		include: {
 			horse: true,
@@ -255,12 +262,19 @@ export async function getNextRun(organizationId: string) {
 }
 
 // Latest finished results
-export async function getLatestResults(organizationId: string, limit: number = 3) {
+//
+// `horseWhere` (S9-05) — see `getNextRun` above.
+export async function getLatestResults(
+	organizationId: string,
+	limit: number = 3,
+	horseWhere?: Prisma.HorseWhereInput,
+) {
 	return db.raceEntry.findMany({
 		where: {
 			organizationId,
 			status: "RAN",
 			finishingPosition: { not: null },
+			...(horseWhere ? { horse: horseWhere } : {}),
 		},
 		include: {
 			horse: true,
