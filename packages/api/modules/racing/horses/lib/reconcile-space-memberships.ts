@@ -24,9 +24,12 @@
  * is treated as public when diffing.
  *
  * Respects the S8-04 §5 kill-switch: an org with
- * `OrganizationMetadata.features.horseFollows === false` is skipped
- * entirely (logged) rather than churning Circle memberships for a disabled
- * feature. Re-enabling the flag heals any drift on the next run.
+ * `OrganizationMetadata.features.horseFollows === false` has its
+ * `HorseFollow` membership re-assert pass skipped entirely (logged) rather
+ * than churning Circle memberships for a disabled feature. Re-enabling the
+ * flag heals any drift on the next run. The kill-switch disables the follow
+ * *feature*, never privacy: the S9-05 visibility re-assert below runs for
+ * every org regardless, including kill-switch-disabled ones.
  *
  * Follows are pre-filtered the same way the §1 backfill script
  * (`backfill-horse-space-joins.ts`) does before a `HorseFollow` row is
@@ -83,23 +86,18 @@ export async function reconcileSpaceMemberships(): Promise<ReconcileSpaceMembers
 
 	for (const org of orgs) {
 		const metadata = parseOrgMetadata(org.metadata);
-		if (metadata.features?.horseFollows === false) {
-			orgsSkippedDisabled++;
-			logger.info("[Circle] Space membership reconcile: org disabled, skipping", {
-				surface: "circle.space_membership_reconcile",
-				organizationId: org.id,
-			});
-			continue;
-		}
-		orgsProcessed++;
+		const followFeatureDisabled = metadata.features?.horseFollows === false;
 
 		// S9-05: re-assert Circle space visibility against Horse.inviteOnly for
 		// every org horse with an active space — independent of follows, so it
-		// runs even for orgs with zero HorseFollow rows. A horse's mirror
-		// (`circleSpaceVisibility`) can only ever be "private" or "public" going
-		// forward (see provisioning/update-horse), but historic rows may still
-		// carry the legacy "member_public" value; any non-"private" value is
-		// treated as public when diffing.
+		// runs even for orgs with zero HorseFollow rows, AND independent of the
+		// S8-04 §5 kill-switch below: the kill-switch disables the follow
+		// *feature*, never privacy, so a "disabled" org still gets its
+		// visibility drift healed. A horse's mirror (`circleSpaceVisibility`)
+		// can only ever be "private" or "public" going forward (see
+		// provisioning/update-horse), but historic rows may still carry the
+		// legacy "member_public" value; any non-"private" value is treated as
+		// public when diffing.
 		const activeHorses = await db.horse.findMany({
 			where: { organizationId: org.id, circleSpaceStatus: "active", circleSpaceId: { not: null } },
 			select: { id: true, circleSpaceId: true, inviteOnly: true, circleSpaceVisibility: true },
@@ -150,6 +148,18 @@ export async function reconcileSpaceMemberships(): Promise<ReconcileSpaceMembers
 				}
 			}
 		}
+
+		// S8-04 §5 kill-switch: skip the HorseFollow membership re-assert pass
+		// for a disabled org (visibility healing above already ran regardless).
+		if (followFeatureDisabled) {
+			orgsSkippedDisabled++;
+			logger.info("[Circle] Space membership reconcile: org disabled, skipping", {
+				surface: "circle.space_membership_reconcile",
+				organizationId: org.id,
+			});
+			continue;
+		}
+		orgsProcessed++;
 
 		const follows = await db.horseFollow.findMany({
 			where: { organizationId: org.id },

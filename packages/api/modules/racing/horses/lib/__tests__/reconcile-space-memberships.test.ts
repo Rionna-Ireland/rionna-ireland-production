@@ -363,16 +363,32 @@ describe("reconcileSpaceMemberships", () => {
 			expect(summary.visibilityFixed).toBe(2);
 		});
 
-		it("skips an org with features.horseFollows disabled entirely (no visibility calls either)", async () => {
+		it("skips the join pass for a disabled org but still runs S9-05 visibility healing (kill-switch disables the follow feature, never the privacy)", async () => {
 			mockOrgFindMany.mockResolvedValue([
 				{ id: "org-1", metadata: JSON.stringify({ features: { horseFollows: false } }), slug: "rionna" },
+			]);
+			mockHorseFindMany.mockResolvedValue([
+				{ id: "h-1", circleSpaceId: "space-h-1", inviteOnly: true, circleSpaceVisibility: "public" },
 			]);
 
 			const summary = await reconcileSpaceMemberships();
 
-			expect(mockHorseFindMany).not.toHaveBeenCalled();
-			expect(mockSetSpaceVisibility).not.toHaveBeenCalled();
-			expect(summary.visibilityFixed).toBe(0);
+			// The join re-assert pass is still skipped entirely for a disabled org.
+			expect(mockFollowFindMany).not.toHaveBeenCalled();
+			expect(mockSyncCircleSpaceMembership).not.toHaveBeenCalled();
+			expect(summary.orgsProcessed).toBe(0);
+			expect(summary.orgsSkippedDisabled).toBe(1);
+
+			// But the S9-05 privacy re-assert is not gated on the kill-switch — it
+			// still runs and heals the mismatch.
+			expect(mockHorseFindMany).toHaveBeenCalled();
+			expect(mockCreateCircleService).toHaveBeenCalledWith("rionna");
+			expect(mockSetSpaceVisibility).toHaveBeenCalledWith({ spaceId: "space-h-1", isPrivate: true });
+			expect(mockHorseUpdate).toHaveBeenCalledWith({
+				where: { id: "h-1" },
+				data: { circleSpaceVisibility: "private" },
+			});
+			expect(summary.visibilityFixed).toBe(1);
 		});
 	});
 });
