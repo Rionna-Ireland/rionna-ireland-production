@@ -3,6 +3,7 @@ import { db, listPublishedHorseUpdates } from "@repo/database";
 import { z } from "zod";
 
 import { protectedProcedure } from "../../../../orpc/procedures";
+import { canAccessHorse } from "../lib/horse-access";
 import { bodyTextFromJson } from "../lib/member-post-body-text";
 
 /**
@@ -32,9 +33,21 @@ export const getHorseUpdatesProcedure = protectedProcedure
 				organizationId: context.session.activeOrganizationId,
 				publishedAt: { not: null },
 			},
-			select: { id: true },
+			select: { id: true, inviteOnly: true },
 		});
 		if (!horse) {
+			throw new ORPCError("NOT_FOUND", { message: "Horse not found" });
+		}
+
+		// S9-05: an invite-only horse the caller doesn't follow is indistinguishable
+		// from a nonexistent one — same error, no existence leak.
+		if (
+			!(await canAccessHorse({
+				organizationId: context.session.activeOrganizationId,
+				userId: context.user.id,
+				horse,
+			}))
+		) {
 			throw new ORPCError("NOT_FOUND", { message: "Horse not found" });
 		}
 
