@@ -217,24 +217,45 @@ export const getMemberFeed = protectedProcedure
 		//  - the S9-05 *access* gate (invite-only horses, unfollowed → hidden)
 		//    always applies — it is NEVER conditioned on horseFollowsEnabled.
 		//
-		// Fail-safe: any error in the horse/follow lookups falls back to the
-		// unfiltered feed — feed availability beats filter correctness (this is
-		// the pre-existing convention for this code path).
-		let horseFilteredSpaces = typeFilteredSpaces;
-		try {
-			const orgHorses = await db.horse.findMany({
+		// Privacy fails closed — an error must never widen access. Two failure
+		// points, two different safe fallbacks:
+		//  - the horse-map lookup (classifies spaces as horse/invite-only) is
+		//    the only thing that lets us tell a horse space from a non-horse
+		//    one at all. If it fails we have no way to scope the damage, so we
+		//    can't safely show anything: bail out with the procedure's fail()
+		//    shape rather than guess.
+		//  - once we have the horse map, a follow-lookup failure can be scoped:
+		//    hide every known horse space (we don't know who follows what) but
+		//    keep showing the non-horse spaces we already know are safe.
+		const orgHorses = await db.horse
+			.findMany({
 				where: { organizationId: input.organizationId },
 				select: { id: true, circleSpaceId: true, inviteOnly: true },
+			})
+			.catch((error) => {
+				logger.warn("[Circle] Member feed: horse map lookup failed, cannot classify spaces", {
+					surface: "circle.member_feed",
+					userId: user.id,
+					organizationId: input.organizationId,
+					error: String(error),
+				});
+				return null;
 			});
-			const horseBySpaceId = new Map<string, { id: string; inviteOnly: boolean }>();
-			for (const horse of orgHorses) {
-				if (horse.circleSpaceId) {
-					horseBySpaceId.set(String(horse.circleSpaceId), {
-						id: horse.id,
-						inviteOnly: horse.inviteOnly,
-					});
-				}
+		if (orgHorses === null) {
+			return fail();
+		}
+		const horseBySpaceId = new Map<string, { id: string; inviteOnly: boolean }>();
+		for (const horse of orgHorses) {
+			if (horse.circleSpaceId) {
+				horseBySpaceId.set(String(horse.circleSpaceId), {
+					id: horse.id,
+					inviteOnly: horse.inviteOnly,
+				});
 			}
+		}
+
+		let horseFilteredSpaces = typeFilteredSpaces;
+		try {
 			const needsFollowedSet =
 				horseFollowsEnabled || [...horseBySpaceId.values()].some((h) => h.inviteOnly);
 			const followedHorseIds = needsFollowedSet
@@ -253,13 +274,18 @@ export const getMemberFeed = protectedProcedure
 				return followedHorseIds?.has(horse.id) ?? false;
 			});
 		} catch (error) {
-			logger.warn("[Circle] Member feed: horse follow filter failed, returning unfiltered feed", {
+			logger.warn("[Circle] Member feed: follow lookup failed, hiding all horse spaces", {
 				surface: "circle.member_feed",
 				userId: user.id,
 				organizationId: input.organizationId,
 				error: String(error),
 			});
-			horseFilteredSpaces = typeFilteredSpaces;
+			// Privacy fails closed — an error must never widen access: hide every
+			// horse space we know about (open or invite-only alike), leaving
+			// non-horse spaces untouched.
+			horseFilteredSpaces = typeFilteredSpaces.filter(
+				(space) => !horseBySpaceId.has(String(space.id)),
+			);
 		}
 		// S8-04 §5: horseFollowsEnabled === false skips the open-horse follow
 		// lookup entirely when no invite-only horse space is present — no extra

@@ -234,7 +234,11 @@ describe("getMemberFeed (horse follow filter)", () => {
 		expect(res.items.some((i) => i.id === "2")).toBe(true); // space 10 (non-horse) always present
 	});
 
-	it("falls back to the unfiltered feed when the follow lookup throws", async () => {
+	it("privacy fails closed: hides all horse spaces (but keeps non-horse spaces) when the follow lookup throws", async () => {
+		// horse-1's inviteOnly status is unknown from this point of view (the
+		// follow lookup is what would tell us whether the caller can see it) —
+		// an error here must never widen access, so every horse space is
+		// hidden, not just invite-only ones. Space 10 (non-horse) is unaffected.
 		mockGetFollowedHorseIds.mockRejectedValue(new Error("db down"));
 		vi.stubGlobal("fetch", routeFetch());
 		const res = await call(
@@ -243,7 +247,22 @@ describe("getMemberFeed (horse follow filter)", () => {
 			ctx,
 		);
 		expect(res.ok).toBe(true);
-		expect(res.items.map((i) => i.id).sort()).toEqual(["1", "2"]);
+		expect(res.items.map((i) => i.id)).toEqual(["2"]);
+	});
+
+	it("privacy fails closed: returns the fail() shape when the horse-map lookup itself throws — no space is shown, invite-only or not", async () => {
+		// Without the horse map we cannot classify ANY space as horse vs.
+		// non-horse, so we can't safely show anything — the scoped fallback
+		// (hide horse spaces, keep non-horse spaces) isn't available here.
+		mockHorseFindMany.mockRejectedValue(new Error("db down"));
+		vi.stubGlobal("fetch", routeFetch());
+		const res = await call(
+			getMemberFeed,
+			{ organizationId: ORG_ID, page: 1, perPage: 15 },
+			ctx,
+		);
+		expect(res).toMatchObject({ ok: false, items: [], hasNextPage: false });
+		expect(mockGetFollowedHorseIds).not.toHaveBeenCalled();
 	});
 
 	it("coerces numeric Circle space ids against string-stored horse.circleSpaceId", async () => {
