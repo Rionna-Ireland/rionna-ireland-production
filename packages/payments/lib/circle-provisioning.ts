@@ -119,13 +119,20 @@ export async function provisionCircleMember(
 	// S8-04 §5: skip entirely when the org's features.horseFollows kill-switch
 	// is off — no follow rows created while disabled (per the spec's
 	// consumer table).
+	//
+	// S9-05: invite-only horses are excluded from the query — auto-follow must
+	// not hand out access that's meant to be admin-invited.
 	try {
 		const metadata = parseOrgMetadata(org.metadata ?? null);
 		const horseAutoFollow = metadata.horseAutoFollow;
 		const horseFollowsEnabled = metadata.features?.horseFollows !== false;
 		if (horseFollowsEnabled && horseAutoFollow !== false) {
 			const publishedHorses = await db.horse.findMany({
-				where: { organizationId: member.organizationId, publishedAt: { not: null } },
+				where: {
+					organizationId: member.organizationId,
+					publishedAt: { not: null },
+					inviteOnly: false,
+				},
 				select: { id: true },
 			});
 			if (publishedHorses.length > 0) {

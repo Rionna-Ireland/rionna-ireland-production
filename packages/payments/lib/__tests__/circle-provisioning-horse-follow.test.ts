@@ -94,7 +94,7 @@ describe("provisionCircleMember — horse auto-follow (S6-07 Surface D)", () => 
 		await provisionCircleMember(MEMBER, "idem-key");
 
 		expect(mockHorseFindMany).toHaveBeenCalledWith({
-			where: { organizationId: ORG_ID, publishedAt: { not: null } },
+			where: { organizationId: ORG_ID, publishedAt: { not: null }, inviteOnly: false },
 			select: { id: true },
 		});
 		expect(mockHorseFollowCreateMany).toHaveBeenCalledWith({
@@ -159,6 +159,14 @@ describe("provisionCircleMember — horse auto-follow (S6-07 Surface D)", () => 
 		await provisionCircleMember(MEMBER, "idem-key");
 
 		expect(mockHorseFollowCreateMany).not.toHaveBeenCalled();
+	});
+
+	it("excludes invite-only horses from the auto-follow query (S9-05)", async () => {
+		await provisionCircleMember(MEMBER, "idem-key");
+
+		expect(mockHorseFindMany).toHaveBeenCalledWith(
+			expect.objectContaining({ where: expect.objectContaining({ inviteOnly: false }) }),
+		);
 	});
 
 	describe("Circle space-membership sync (S8-03 §3)", () => {
