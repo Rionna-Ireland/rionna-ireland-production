@@ -42,6 +42,7 @@ export const updateHorse = adminProcedure
 			circleSpaceId: z.string().nullable().optional(),
 			trainerId: z.string().nullable().optional(),
 			sortOrder: z.number().optional(),
+			inviteOnly: z.boolean().optional(),
 			publishedAt: z.date().nullable().optional(),
 			publicProfileAt: z.date().nullable().optional(),
 			providerEntityId: z.string().nullable().optional(),

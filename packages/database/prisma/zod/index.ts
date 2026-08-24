@@ -85,7 +85,7 @@ export type UserNotificationPreferenceScalarFieldEnum = z.infer<typeof UserNotif
 
 // File: HorseScalarFieldEnum.schema.ts
 
-export const HorseScalarFieldEnumSchema = z.enum(['id', 'organizationId', 'slug', 'name', 'providerEntityId', 'providerLastSync', 'status', 'bio', 'story', 'trainerNotes', 'photos', 'pedigree', 'ownershipBlurb', 'circleSpaceId', 'circleSpaceStatus', 'circleSpaceProvisionedAt', 'circleSpaceVisibility', 'trainerId', 'sortOrder', 'publishedAt', 'publicProfileAt', 'latestEntryId', 'nextEntryId', 'createdAt', 'updatedAt'])
+export const HorseScalarFieldEnumSchema = z.enum(['id', 'organizationId', 'slug', 'name', 'providerEntityId', 'providerLastSync', 'status', 'bio', 'story', 'trainerNotes', 'photos', 'pedigree', 'ownershipBlurb', 'circleSpaceId', 'circleSpaceStatus', 'circleSpaceProvisionedAt', 'circleSpaceVisibility', 'inviteOnly', 'trainerId', 'sortOrder', 'publishedAt', 'publicProfileAt', 'latestEntryId', 'nextEntryId', 'createdAt', 'updatedAt'])
 
 export type HorseScalarFieldEnum = z.infer<typeof HorseScalarFieldEnumSchema>;
 
@@ -477,6 +477,7 @@ export const HorseSchema = z.object({
   circleSpaceStatus: z.string().nullish(),
   circleSpaceProvisionedAt: z.date().nullish(),
   circleSpaceVisibility: z.string().default("private").nullish(),
+  inviteOnly: z.boolean(),
   trainerId: z.string().nullish(),
   sortOrder: z.number().int(),
   publishedAt: z.date().nullish(),

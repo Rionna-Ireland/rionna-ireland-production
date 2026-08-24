@@ -81,6 +81,7 @@ export async function createHorse(data: {
 	publishedAt?: Date | null;
 	publicProfileAt?: Date | null;
 	providerEntityId?: string;
+	inviteOnly?: boolean;
 }) {
 	return db.horse.create({
 		data,

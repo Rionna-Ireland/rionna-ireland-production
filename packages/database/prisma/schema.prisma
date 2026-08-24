@@ -329,6 +329,10 @@ model Horse {
   // "private" (provisioning default; pre-announcement) | "member_public" (whole member community).
   circleSpaceVisibility String? @default("private")
 
+  // S9-05: invite-only horses — hidden from and unfollowable by members
+  // unless an admin has added them (the HorseFollow row is the grant).
+  inviteOnly Boolean @default(false)
+
   trainerId String?
   trainer   Trainer? @relation(fields: [trainerId], references: [id])
 

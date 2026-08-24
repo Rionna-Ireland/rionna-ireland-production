@@ -39,6 +39,7 @@ export const createHorse = adminProcedure
 			circleSpaceId: z.string().optional(),
 			trainerId: z.string().optional(),
 			sortOrder: z.number().optional(),
+			inviteOnly: z.boolean().optional(),
 			publishedAt: z.date().nullable().optional(),
 			publicProfileAt: z.date().nullable().optional(),
 			providerEntityId: z.string().optional(),
@@ -86,6 +87,7 @@ export const createHorse = adminProcedure
 			publishedAt: input.publishedAt,
 			publicProfileAt: input.publicProfileAt,
 			providerEntityId: input.providerEntityId,
+			inviteOnly: input.inviteOnly,
 		});
 
 		// "A horse IS a Circle space" — auto-provision unless an existing space was
