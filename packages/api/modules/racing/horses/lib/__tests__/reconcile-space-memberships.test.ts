@@ -5,7 +5,10 @@ const {
 	mockFollowFindMany,
 	mockMemberFindMany,
 	mockHorseFindMany,
+	mockHorseUpdate,
 	mockSyncCircleSpaceMembership,
+	mockCreateCircleService,
+	mockSetSpaceVisibility,
 	mockLoggerInfo,
 	mockLoggerWarn,
 } = vi.hoisted(() => ({
@@ -13,7 +16,10 @@ const {
 	mockFollowFindMany: vi.fn(),
 	mockMemberFindMany: vi.fn(),
 	mockHorseFindMany: vi.fn(),
+	mockHorseUpdate: vi.fn(),
 	mockSyncCircleSpaceMembership: vi.fn(),
+	mockCreateCircleService: vi.fn(),
+	mockSetSpaceVisibility: vi.fn(),
 	mockLoggerInfo: vi.fn(),
 	mockLoggerWarn: vi.fn(),
 }));
@@ -23,13 +29,17 @@ vi.mock("@repo/database", () => ({
 		organization: { findMany: mockOrgFindMany },
 		horseFollow: { findMany: mockFollowFindMany },
 		member: { findMany: mockMemberFindMany },
-		horse: { findMany: mockHorseFindMany },
+		horse: { findMany: mockHorseFindMany, update: mockHorseUpdate },
 	},
 	parseOrgMetadata: (raw: string | null) => (raw ? JSON.parse(raw) : {}),
 }));
 
 vi.mock("@repo/payments/lib/circle-space-membership", () => ({
 	syncCircleSpaceMembership: mockSyncCircleSpaceMembership,
+}));
+
+vi.mock("@repo/payments/lib/circle", () => ({
+	createCircleService: mockCreateCircleService,
 }));
 
 vi.mock("@repo/logs", () => ({
@@ -46,9 +56,13 @@ beforeEach(() => {
 	vi.clearAllMocks();
 	mockSyncCircleSpaceMembership.mockResolvedValue({ ok: true });
 	// Default: every follow's member + horse clears the pre-filter, matching
-	// the pre-existing tests' assumption that follows are attempted.
+	// the pre-existing tests' assumption that follows are attempted. These
+	// fixture horses carry no inviteOnly/circleSpaceVisibility, so the S9-05
+	// visibility re-assert below finds nothing to fix by default.
 	mockMemberFindMany.mockResolvedValue([PROVISIONED_MEMBER("u-1"), PROVISIONED_MEMBER("u-2")]);
 	mockHorseFindMany.mockResolvedValue([ACTIVE_HORSE("h-1")]);
+	mockCreateCircleService.mockReturnValue({ setSpaceVisibility: mockSetSpaceVisibility });
+	mockSetSpaceVisibility.mockResolvedValue({ ok: true, data: { circleSpaceId: "space-x", isPrivate: true } });
 });
 
 describe("reconcileSpaceMemberships", () => {
@@ -80,6 +94,7 @@ describe("reconcileSpaceMemberships", () => {
 			skipped: 0,
 			joined: 2,
 			failed: 0,
+			visibilityFixed: 0,
 		});
 		expect(mockLoggerInfo).toHaveBeenCalledWith(
 			"[Circle] Space membership reconcile summary",
@@ -142,6 +157,7 @@ describe("reconcileSpaceMemberships", () => {
 				skipped: 0,
 				joined: 0,
 				failed: 0,
+				visibilityFixed: 0,
 			});
 			expect(mockLoggerInfo).toHaveBeenCalledWith(
 				"[Circle] Space membership reconcile: org disabled, skipping",
@@ -239,6 +255,124 @@ describe("reconcileSpaceMemberships", () => {
 			await reconcileSpaceMemberships();
 
 			expect(mockSyncCircleSpaceMembership).not.toHaveBeenCalled();
+		});
+	});
+
+	describe("S9-05: Circle space visibility re-assert", () => {
+		it("fixes a horse whose mirror says public but inviteOnly is true: setSpaceVisibility(isPrivate:true) + mirror + count", async () => {
+			mockOrgFindMany.mockResolvedValue([{ id: "org-1", metadata: null, slug: "rionna" }]);
+			mockFollowFindMany.mockResolvedValue([]);
+			mockHorseFindMany.mockResolvedValue([
+				{ id: "h-1", circleSpaceId: "space-h-1", inviteOnly: true, circleSpaceVisibility: "public" },
+			]);
+			mockSetSpaceVisibility.mockResolvedValue({
+				ok: true,
+				data: { circleSpaceId: "space-h-1", isPrivate: true },
+			});
+
+			const summary = await reconcileSpaceMemberships();
+
+			expect(mockCreateCircleService).toHaveBeenCalledWith("rionna");
+			expect(mockSetSpaceVisibility).toHaveBeenCalledWith({ spaceId: "space-h-1", isPrivate: true });
+			expect(mockHorseUpdate).toHaveBeenCalledWith({
+				where: { id: "h-1" },
+				data: { circleSpaceVisibility: "private" },
+			});
+			expect(summary.visibilityFixed).toBe(1);
+		});
+
+		it("fixes a horse whose mirror says private but inviteOnly is false: setSpaceVisibility(isPrivate:false) + mirror + count", async () => {
+			mockOrgFindMany.mockResolvedValue([{ id: "org-1", metadata: null, slug: "rionna" }]);
+			mockFollowFindMany.mockResolvedValue([]);
+			mockHorseFindMany.mockResolvedValue([
+				{ id: "h-1", circleSpaceId: "space-h-1", inviteOnly: false, circleSpaceVisibility: "private" },
+			]);
+			mockSetSpaceVisibility.mockResolvedValue({
+				ok: true,
+				data: { circleSpaceId: "space-h-1", isPrivate: false },
+			});
+
+			const summary = await reconcileSpaceMemberships();
+
+			expect(mockSetSpaceVisibility).toHaveBeenCalledWith({ spaceId: "space-h-1", isPrivate: false });
+			expect(mockHorseUpdate).toHaveBeenCalledWith({
+				where: { id: "h-1" },
+				data: { circleSpaceVisibility: "public" },
+			});
+			expect(summary.visibilityFixed).toBe(1);
+		});
+
+		it("treats any non-'private' mirror value (e.g. legacy 'member_public') as public when diffing", async () => {
+			mockOrgFindMany.mockResolvedValue([{ id: "org-1", metadata: null, slug: "rionna" }]);
+			mockFollowFindMany.mockResolvedValue([]);
+			mockHorseFindMany.mockResolvedValue([
+				{ id: "h-1", circleSpaceId: "space-h-1", inviteOnly: false, circleSpaceVisibility: "member_public" },
+			]);
+
+			const summary = await reconcileSpaceMemberships();
+
+			// inviteOnly:false + mirror already non-"private" (treated as public) -> no mismatch
+			expect(mockSetSpaceVisibility).not.toHaveBeenCalled();
+			expect(summary.visibilityFixed).toBe(0);
+		});
+
+		it("does not touch a horse whose mirror already agrees with inviteOnly", async () => {
+			mockOrgFindMany.mockResolvedValue([{ id: "org-1", metadata: null, slug: "rionna" }]);
+			mockFollowFindMany.mockResolvedValue([]);
+			mockHorseFindMany.mockResolvedValue([
+				{ id: "h-1", circleSpaceId: "space-h-1", inviteOnly: true, circleSpaceVisibility: "private" },
+				{ id: "h-2", circleSpaceId: "space-h-2", inviteOnly: false, circleSpaceVisibility: "public" },
+			]);
+
+			const summary = await reconcileSpaceMemberships();
+
+			expect(mockSetSpaceVisibility).not.toHaveBeenCalled();
+			expect(mockHorseUpdate).not.toHaveBeenCalled();
+			expect(summary.visibilityFixed).toBe(0);
+		});
+
+		it("on Circle failure: does not write the mirror, does not count as fixed, and warns", async () => {
+			mockOrgFindMany.mockResolvedValue([{ id: "org-1", metadata: null, slug: "rionna" }]);
+			mockFollowFindMany.mockResolvedValue([]);
+			mockHorseFindMany.mockResolvedValue([
+				{ id: "h-1", circleSpaceId: "space-h-1", inviteOnly: true, circleSpaceVisibility: "public" },
+			]);
+			mockSetSpaceVisibility.mockResolvedValue({ ok: false, reason: "server_error", retriable: true });
+
+			const summary = await reconcileSpaceMemberships();
+
+			expect(mockHorseUpdate).not.toHaveBeenCalled();
+			expect(summary.visibilityFixed).toBe(0);
+			expect(mockLoggerWarn).toHaveBeenCalledWith(
+				expect.stringContaining("[Circle]"),
+				expect.objectContaining({ horseId: "h-1" }),
+			);
+		});
+
+		it("fixes multiple horses in one org and sums visibilityFixed", async () => {
+			mockOrgFindMany.mockResolvedValue([{ id: "org-1", metadata: null, slug: "rionna" }]);
+			mockFollowFindMany.mockResolvedValue([]);
+			mockHorseFindMany.mockResolvedValue([
+				{ id: "h-1", circleSpaceId: "space-h-1", inviteOnly: true, circleSpaceVisibility: "public" },
+				{ id: "h-2", circleSpaceId: "space-h-2", inviteOnly: false, circleSpaceVisibility: "private" },
+			]);
+
+			const summary = await reconcileSpaceMemberships();
+
+			expect(mockSetSpaceVisibility).toHaveBeenCalledTimes(2);
+			expect(summary.visibilityFixed).toBe(2);
+		});
+
+		it("skips an org with features.horseFollows disabled entirely (no visibility calls either)", async () => {
+			mockOrgFindMany.mockResolvedValue([
+				{ id: "org-1", metadata: JSON.stringify({ features: { horseFollows: false } }), slug: "rionna" },
+			]);
+
+			const summary = await reconcileSpaceMemberships();
+
+			expect(mockHorseFindMany).not.toHaveBeenCalled();
+			expect(mockSetSpaceVisibility).not.toHaveBeenCalled();
+			expect(summary.visibilityFixed).toBe(0);
 		});
 	});
 });

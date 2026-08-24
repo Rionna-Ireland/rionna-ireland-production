@@ -89,6 +89,25 @@ describe("createHorse — Circle space provisioning (S2-09)", () => {
 		);
 	});
 
+	it("passes the new horse's inviteOnly through to provisionHorseSpace (S9-05)", async () => {
+		mockCreateHorse.mockResolvedValue({
+			id: "h1",
+			name: "Pink Diamond Lass",
+			organizationId: "org1",
+			inviteOnly: true,
+		});
+
+		await call(
+			createHorse,
+			{ organizationId: "org1", name: "Pink Diamond Lass", inviteOnly: true },
+			ctx,
+		);
+
+		expect(mockProvisionHorseSpace).toHaveBeenCalledWith(
+			expect.objectContaining({ id: "h1", inviteOnly: true }),
+		);
+	});
+
 	it("passes the publicProfileAt gate through to the row", async () => {
 		const reveal = new Date("2026-07-01T00:00:00.000Z");
 		await call(

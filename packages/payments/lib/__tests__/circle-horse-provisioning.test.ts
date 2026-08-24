@@ -115,4 +115,48 @@ describe("provisionHorseSpace (S2-09 surface F)", () => {
 		expect(mockCreateSpace).not.toHaveBeenCalled();
 		expect(mockHorseUpdate).not.toHaveBeenCalled();
 	});
+
+	describe("S9-05: space privacy derived from Horse.inviteOnly", () => {
+		it("creates a PRIVATE space and mirrors circleSpaceVisibility=private when inviteOnly:true", async () => {
+			await provisionHorseSpace({ ...HORSE, inviteOnly: true });
+
+			expect(mockCreateSpace).toHaveBeenCalledWith(
+				expect.objectContaining({ isPrivate: true }),
+			);
+			expect(mockHorseUpdate).toHaveBeenCalledWith(
+				expect.objectContaining({
+					where: { id: "h1" },
+					data: expect.objectContaining({ circleSpaceVisibility: "private" }),
+				}),
+			);
+		});
+
+		it("creates a PUBLIC space and mirrors circleSpaceVisibility=public when inviteOnly:false (explicit)", async () => {
+			await provisionHorseSpace({ ...HORSE, inviteOnly: false });
+
+			expect(mockCreateSpace).toHaveBeenCalledWith(
+				expect.objectContaining({ isPrivate: false }),
+			);
+			expect(mockHorseUpdate).toHaveBeenCalledWith(
+				expect.objectContaining({
+					where: { id: "h1" },
+					data: expect.objectContaining({ circleSpaceVisibility: "public" }),
+				}),
+			);
+		});
+
+		it("defaults to PUBLIC when inviteOnly is omitted", async () => {
+			await provisionHorseSpace(HORSE);
+
+			expect(mockCreateSpace).toHaveBeenCalledWith(
+				expect.objectContaining({ isPrivate: false }),
+			);
+			expect(mockHorseUpdate).toHaveBeenCalledWith(
+				expect.objectContaining({
+					where: { id: "h1" },
+					data: expect.objectContaining({ circleSpaceVisibility: "public" }),
+				}),
+			);
+		});
+	});
 });

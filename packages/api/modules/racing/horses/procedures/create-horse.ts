@@ -98,6 +98,7 @@ export const createHorse = adminProcedure
 				id: horse.id,
 				name: horse.name,
 				organizationId: horse.organizationId,
+				inviteOnly: horse.inviteOnly,
 			});
 			return (await getHorseById(horse.id)) ?? horse;
 		}

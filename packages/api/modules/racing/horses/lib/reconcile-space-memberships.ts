@@ -11,7 +11,17 @@
  *
  * At single-club scale this is O(follows) ≈ low hundreds of Circle calls/day
  * — comfortably inside quota (the member token cache means ~1 mint per
- * member, not per call). No DB writes.
+ * member, not per call). The membership pass itself makes no DB writes.
+ *
+ * Also re-asserts Circle space visibility (S9-05): for every org horse with
+ * an active space, `circleSpaceVisibility` (the DB mirror) is diffed against
+ * `Horse.inviteOnly` — the source of truth — and any mismatch is corrected
+ * Circle-first (`setSpaceVisibility`) before the mirror is written, counted
+ * in `visibilityFixed`. This is the pass's one source of DB writes, and it
+ * heals both `update-horse`'s Circle-first failures (mirror left stale) and
+ * any manual/out-of-band drift in Circle itself. Historic mirror rows may
+ * carry the legacy `"member_public"` value; any value other than `"private"`
+ * is treated as public when diffing.
  *
  * Respects the S8-04 §5 kill-switch: an org with
  * `OrganizationMetadata.features.horseFollows === false` is skipped
@@ -33,6 +43,7 @@
 
 import { db, parseOrgMetadata } from "@repo/database";
 import { logger } from "@repo/logs";
+import { createCircleService } from "@repo/payments/lib/circle";
 import { syncCircleSpaceMembership } from "@repo/payments/lib/circle-space-membership";
 
 import { runBounded } from "../../../circle/lib/run-bounded";
@@ -47,6 +58,11 @@ export interface ReconcileSpaceMembershipsSummary {
 	skipped: number;
 	joined: number;
 	failed: number;
+	/**
+	 * S9-05: horses whose `circleSpaceVisibility` mirror disagreed with
+	 * `inviteOnly` and were re-asserted against Circle + re-mirrored.
+	 */
+	visibilityFixed: number;
 }
 
 interface Candidate {
@@ -63,6 +79,7 @@ export async function reconcileSpaceMemberships(): Promise<ReconcileSpaceMembers
 	let skipped = 0;
 	let joined = 0;
 	let failed = 0;
+	let visibilityFixed = 0;
 
 	for (const org of orgs) {
 		const metadata = parseOrgMetadata(org.metadata);
@@ -75,6 +92,64 @@ export async function reconcileSpaceMemberships(): Promise<ReconcileSpaceMembers
 			continue;
 		}
 		orgsProcessed++;
+
+		// S9-05: re-assert Circle space visibility against Horse.inviteOnly for
+		// every org horse with an active space — independent of follows, so it
+		// runs even for orgs with zero HorseFollow rows. A horse's mirror
+		// (`circleSpaceVisibility`) can only ever be "private" or "public" going
+		// forward (see provisioning/update-horse), but historic rows may still
+		// carry the legacy "member_public" value; any non-"private" value is
+		// treated as public when diffing.
+		const activeHorses = await db.horse.findMany({
+			where: { organizationId: org.id, circleSpaceStatus: "active", circleSpaceId: { not: null } },
+			select: { id: true, circleSpaceId: true, inviteOnly: true, circleSpaceVisibility: true },
+		});
+
+		const mismatchedHorses = activeHorses.filter((horse) => {
+			if (!horse.circleSpaceId) return false;
+			const isInviteOnly = Boolean(horse.inviteOnly);
+			const mirroredPrivate = horse.circleSpaceVisibility === "private";
+			return isInviteOnly !== mirroredPrivate;
+		});
+
+		if (mismatchedHorses.length > 0 && !org.slug) {
+			logger.warn("[Circle] Space visibility reconcile: org has no slug, cannot build Circle service", {
+				surface: "circle.space_membership_reconcile",
+				organizationId: org.id,
+			});
+		}
+
+		if (mismatchedHorses.length > 0 && org.slug) {
+			const circle = createCircleService(org.slug);
+
+			for (const horse of mismatchedHorses) {
+				if (!horse.circleSpaceId) continue;
+
+				const isInviteOnly = Boolean(horse.inviteOnly);
+
+				const outcome = await circle.setSpaceVisibility({
+					spaceId: horse.circleSpaceId,
+					isPrivate: isInviteOnly,
+				});
+
+				if (outcome.ok) {
+					await db.horse.update({
+						where: { id: horse.id },
+						data: { circleSpaceVisibility: isInviteOnly ? "private" : "public" },
+					});
+					visibilityFixed++;
+				} else {
+					logger.warn("[Circle] Space visibility reconcile: setSpaceVisibility failed, mirror left stale", {
+						surface: "circle.space_membership_reconcile",
+						organizationId: org.id,
+						horseId: horse.id,
+						inviteOnly: isInviteOnly,
+						reason: outcome.reason,
+						retriable: outcome.retriable,
+					});
+				}
+			}
+		}
 
 		const follows = await db.horseFollow.findMany({
 			where: { organizationId: org.id },
@@ -151,6 +226,7 @@ export async function reconcileSpaceMemberships(): Promise<ReconcileSpaceMembers
 		skipped,
 		joined,
 		failed,
+		visibilityFixed,
 	};
 
 	logger.info("[Circle] Space membership reconcile summary", {

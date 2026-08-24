@@ -3,7 +3,10 @@
  *
  * Re-asserts a Circle space `join` for every `HorseFollow` row across all
  * orgs — heals silent join failures from S8-03's join-on-follow (which never
- * retries) and any drift that's crept in since. Idempotent, no DB writes.
+ * retries) and any drift that's crept in since. Also re-asserts each org
+ * horse's Circle space visibility against `Horse.inviteOnly` (S9-05),
+ * healing any drift in the `circleSpaceVisibility` mirror — this is the one
+ * source of DB writes in an otherwise read-only membership pass.
  *
  * Registered in `apps/saas/vercel.json` as a native Vercel Cron, which
  * invokes with `GET` (and, when `CRON_SECRET` is set, an

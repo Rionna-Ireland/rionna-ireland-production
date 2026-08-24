@@ -1,5 +1,7 @@
 import { ORPCError } from "@orpc/client";
-import { getHorseById, updateHorse as updateHorseQuery } from "@repo/database";
+import { db, getHorseById, updateHorse as updateHorseQuery } from "@repo/database";
+import { logger } from "@repo/logs";
+import { createCircleService } from "@repo/payments/lib/circle";
 import { z } from "zod";
 
 import { adminProcedure } from "../../../../orpc/procedures";
@@ -63,6 +65,50 @@ export const updateHorse = adminProcedure
 		}
 		if (pedigree !== undefined) {
 			data.pedigree = pedigree;
+		}
+
+		// S9-05: Circle space visibility is DERIVED from Horse.inviteOnly. Only
+		// act when the value actually changes and a space already exists to
+		// flip. Circle-first, DB-second per the pattern in
+		// set-horse-space-visibility.ts (lines 21-25): on Circle failure we
+		// still persist `inviteOnly` below (it's already in `data` via `rest`)
+		// but leave `circleSpaceVisibility` unmirrored and warn — the standing
+		// reconcile job heals the drift.
+		const nextInviteOnly = input.inviteOnly;
+		const inviteOnlyChanged =
+			nextInviteOnly !== undefined && nextInviteOnly !== existing.inviteOnly;
+
+		if (inviteOnlyChanged && existing.circleSpaceId && nextInviteOnly !== undefined) {
+			const org = await db.organization.findUnique({
+				where: { id: existing.organizationId },
+				select: { slug: true },
+			});
+
+			if (org?.slug) {
+				const circle = createCircleService(org.slug);
+				const outcome = await circle.setSpaceVisibility({
+					spaceId: existing.circleSpaceId,
+					isPrivate: nextInviteOnly,
+				});
+
+				if (outcome.ok) {
+					data.circleSpaceVisibility = nextInviteOnly ? "private" : "public";
+				} else {
+					logger.warn("[Circle] Horse space visibility flip failed; mirror left stale for reconcile to heal", {
+						surface: "circle.horse_space_visibility",
+						horseId,
+						inviteOnly: nextInviteOnly,
+						reason: outcome.reason,
+						retriable: outcome.retriable,
+					});
+				}
+			} else {
+				logger.warn("[Circle] No organization slug; cannot flip horse space visibility", {
+					surface: "circle.horse_space_visibility",
+					horseId,
+					organizationId: existing.organizationId,
+				});
+			}
 		}
 
 		return updateHorseQuery(horseId, data);
