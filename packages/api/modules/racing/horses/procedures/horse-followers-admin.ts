@@ -95,7 +95,7 @@ export const followAllMembersProcedure = adminProcedure
 			organizationId: requireOrg(context),
 			horseId: input.horseId,
 		});
-		if (!result.disabled) {
+		if (!result.disabled && !result.skippedInviteOnly) {
 			// Every member's feed filter changed — nuke all cached buffers.
 			clearMemberFeedCache();
 		}

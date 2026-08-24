@@ -140,6 +140,13 @@ describe("followAllMembersProcedure feed-cache clearing", () => {
 		expect(mockClearFeedCache).not.toHaveBeenCalled();
 		expect(res).toEqual({ added: 0, disabled: true });
 	});
+
+	it("S9-05: skips the cache clear when the target horse is invite-only (nothing changed)", async () => {
+		mockFollowAllMembers.mockResolvedValue({ added: 0, skippedInviteOnly: 1 });
+		const res = await call(followAllMembersProcedure, { horseId: "h-1" }, ctx);
+		expect(mockClearFeedCache).not.toHaveBeenCalled();
+		expect(res).toEqual({ added: 0, skippedInviteOnly: 1 });
+	});
 });
 
 describe("followAllMembersProcedure", () => {
