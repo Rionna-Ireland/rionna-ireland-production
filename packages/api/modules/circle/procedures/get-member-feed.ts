@@ -125,9 +125,25 @@ export const getMemberFeed = protectedProcedure
 
 		// Single-space feed (horse discussion): one Circle call, paged by Circle
 		// itself. Deliberately bypasses the merged buffer (never read or written)
-		// and the follow filter — reaching this path means the member opened the
-		// space explicitly.
+		// and the follow-filter *preference* — reaching this path means the
+		// member opened the space explicitly. This does NOT bypass S9-05 access
+		// control: an invite-only horse's space is still gated on follow status
+		// below, independent of the horseFollows kill-switch (never consulted).
 		if (input.spaceId) {
+			const spaceHorse = await db.horse.findFirst({
+				where: { circleSpaceId: input.spaceId, organizationId: input.organizationId },
+				select: { id: true, inviteOnly: true },
+			});
+			if (spaceHorse?.inviteOnly) {
+				const followedHorseIds = await getFollowedHorseIds({
+					organizationId: input.organizationId,
+					userId: user.id,
+				});
+				if (!followedHorseIds.has(spaceHorse.id)) {
+					// Indistinguishable from a space with no posts — no existence leak.
+					return empty();
+				}
+			}
 			try {
 				const r = await fetch(
 					`${base}/spaces/${encodeURIComponent(input.spaceId)}/posts?per_page=${input.perPage}&page=${input.page}&sort=latest`,
@@ -193,46 +209,61 @@ export const getMemberFeed = protectedProcedure
 			return type ? POST_SPACE_TYPES.has(type) : true;
 		});
 
-		// 1.5 Filter out unfollowed horse spaces (non-horse spaces always pass). Fail-safe:
-		// any error in the horse/follow lookups falls back to the unfiltered feed — feed
-		// availability beats filter correctness.
+		// 1.5 Filter out unfollowed horse spaces (non-horse spaces always pass).
+		//
+		// Two independent gates here:
+		//  - the *preference* filter (open horses, unfollowed → hidden) only
+		//    applies when `horseFollowsEnabled` (S8-04 §5).
+		//  - the S9-05 *access* gate (invite-only horses, unfollowed → hidden)
+		//    always applies — it is NEVER conditioned on horseFollowsEnabled.
+		//
+		// Fail-safe: any error in the horse/follow lookups falls back to the
+		// unfiltered feed — feed availability beats filter correctness (this is
+		// the pre-existing convention for this code path).
 		let horseFilteredSpaces = typeFilteredSpaces;
-		if (horseFollowsEnabled) {
-			try {
-				const orgHorses = await db.horse.findMany({
-					where: { organizationId: input.organizationId },
-					select: { id: true, circleSpaceId: true },
-				});
-				const horseIdBySpaceId = new Map<string, string>();
-				for (const horse of orgHorses) {
-					if (horse.circleSpaceId) {
-						horseIdBySpaceId.set(String(horse.circleSpaceId), horse.id);
-					}
+		try {
+			const orgHorses = await db.horse.findMany({
+				where: { organizationId: input.organizationId },
+				select: { id: true, circleSpaceId: true, inviteOnly: true },
+			});
+			const horseBySpaceId = new Map<string, { id: string; inviteOnly: boolean }>();
+			for (const horse of orgHorses) {
+				if (horse.circleSpaceId) {
+					horseBySpaceId.set(String(horse.circleSpaceId), {
+						id: horse.id,
+						inviteOnly: horse.inviteOnly,
+					});
 				}
-				const followedHorseIds = await getFollowedHorseIds({
-					organizationId: input.organizationId,
-					userId: user.id,
-				});
-				horseFilteredSpaces = typeFilteredSpaces.filter((space) => {
-					const horseId = horseIdBySpaceId.get(String(space.id));
-					if (!horseId) return true; // not a horse space — always pass
-					return followedHorseIds.has(horseId);
-				});
-			} catch (error) {
-				logger.warn(
-					"[Circle] Member feed: horse follow filter failed, returning unfiltered feed",
-					{
-						surface: "circle.member_feed",
-						userId: user.id,
-						organizationId: input.organizationId,
-						error: String(error),
-					},
-				);
-				horseFilteredSpaces = typeFilteredSpaces;
 			}
+			const needsFollowedSet =
+				horseFollowsEnabled || [...horseBySpaceId.values()].some((h) => h.inviteOnly);
+			const followedHorseIds = needsFollowedSet
+				? await getFollowedHorseIds({
+						organizationId: input.organizationId,
+						userId: user.id,
+					})
+				: null;
+			horseFilteredSpaces = typeFilteredSpaces.filter((space) => {
+				const horse = horseBySpaceId.get(String(space.id));
+				if (!horse) return true; // not a horse space — always pass
+				// S9-05: invite-only access gating — unconditional.
+				if (horse.inviteOnly) return followedHorseIds?.has(horse.id) ?? false;
+				// S8-04 §5: open-horse follow *preference* — only when enabled.
+				if (!horseFollowsEnabled) return true;
+				return followedHorseIds?.has(horse.id) ?? false;
+			});
+		} catch (error) {
+			logger.warn("[Circle] Member feed: horse follow filter failed, returning unfiltered feed", {
+				surface: "circle.member_feed",
+				userId: user.id,
+				organizationId: input.organizationId,
+				error: String(error),
+			});
+			horseFilteredSpaces = typeFilteredSpaces;
 		}
-		// S8-04 §5: horseFollowsEnabled === false leaves horseFilteredSpaces as
-		// typeFilteredSpaces (unfiltered) — no follow lookup, no Circle call.
+		// S8-04 §5: horseFollowsEnabled === false skips the open-horse follow
+		// lookup entirely when no invite-only horse space is present — no extra
+		// Circle-adjacent DB call for orgs that aren't using invite-only horses.
 
 		const spaces = horseFilteredSpaces.slice(0, MAX_SPACES);
 
