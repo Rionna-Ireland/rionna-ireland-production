@@ -86,6 +86,9 @@ export class MockCircleService implements CircleService {
 	private spaceGroupSummaries: CircleSpaceGroupSummary[] = [];
 	private spaceSummaries: CircleSpaceSummary[] = [];
 
+	// Invite-only horse spaces (S9-05) — space id -> set of member emails.
+	private spaceMembers = new Map<string, Set<string>>();
+
 	/** Test-only seeder: adds a space group to be returned by listSpaceGroups. */
 	__seedSpaceGroup(group: CircleSpaceGroupSummary): void {
 		this.spaceGroupSummaries.push(group);
@@ -435,6 +438,39 @@ export class MockCircleService implements CircleService {
 			isPrivate: params.isPrivate,
 		});
 		return { ok: true, data: { circleSpaceId: params.spaceId, isPrivate: params.isPrivate } };
+	}
+
+	async addSpaceMember(params: {
+		spaceId: string;
+		email: string;
+	}): Promise<CircleCallOutcome<{ spaceId: string; email: string }>> {
+		let members = this.spaceMembers.get(params.spaceId);
+		if (!members) {
+			members = new Set<string>();
+			this.spaceMembers.set(params.spaceId, members);
+		}
+		members.add(params.email);
+		logger.info("[MockCircle] Add space member", {
+			spaceId: params.spaceId,
+			email: params.email,
+		});
+		return { ok: true, data: { spaceId: params.spaceId, email: params.email } };
+	}
+
+	async removeSpaceMember(params: {
+		spaceId: string;
+		email: string;
+	}): Promise<CircleCallOutcome<{ spaceId: string; email: string }>> {
+		const members = this.spaceMembers.get(params.spaceId);
+		if (!members || !members.has(params.email)) {
+			return { ok: false, reason: "not_found", retriable: false };
+		}
+		members.delete(params.email);
+		logger.info("[MockCircle] Remove space member", {
+			spaceId: params.spaceId,
+			email: params.email,
+		});
+		return { ok: true, data: { spaceId: params.spaceId, email: params.email } };
 	}
 
 	/** Test helper: get current member count */

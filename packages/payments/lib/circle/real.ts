@@ -905,6 +905,74 @@ export class RealCircleService implements CircleService {
 		return { ok: true, data: { circleSpaceId: params.spaceId, isPrivate: params.isPrivate } };
 	}
 
+	async addSpaceMember(params: {
+		spaceId: string;
+		email: string;
+	}): Promise<CircleCallOutcome<{ spaceId: string; email: string }>> {
+		let response: Response;
+		try {
+			response = await fetch(`${CIRCLE_ADMIN_BASE}/space_members`, {
+				method: "POST",
+				headers: this.adminHeaders(),
+				body: JSON.stringify({ email: params.email, space_id: Number(params.spaceId) }),
+			});
+		} catch (err) {
+			return { ok: false, reason: "network", retriable: true, raw: err };
+		}
+		if (!response.ok) {
+			const raw = await response.text().catch(() => undefined);
+			const { reason, retriable } = classifyStatus(response.status);
+			logger.error("[Circle] Add space member failed", {
+				status: response.status,
+				spaceId: params.spaceId,
+				email: params.email,
+				reason,
+			});
+			return { ok: false, reason, retriable, raw };
+		}
+
+		logger.info("[Circle] Added space member", {
+			spaceId: params.spaceId,
+			email: params.email,
+		});
+		return { ok: true, data: { spaceId: params.spaceId, email: params.email } };
+	}
+
+	async removeSpaceMember(params: {
+		spaceId: string;
+		email: string;
+	}): Promise<CircleCallOutcome<{ spaceId: string; email: string }>> {
+		let response: Response;
+		try {
+			response = await fetch(
+				`${CIRCLE_ADMIN_BASE}/space_members?email=${encodeURIComponent(params.email)}&space_id=${encodeURIComponent(params.spaceId)}`,
+				{
+					method: "DELETE",
+					headers: this.adminHeaders(),
+				},
+			);
+		} catch (err) {
+			return { ok: false, reason: "network", retriable: true, raw: err };
+		}
+		if (!response.ok) {
+			const raw = await response.text().catch(() => undefined);
+			const { reason, retriable } = classifyStatus(response.status);
+			logger.error("[Circle] Remove space member failed", {
+				status: response.status,
+				spaceId: params.spaceId,
+				email: params.email,
+				reason,
+			});
+			return { ok: false, reason, retriable, raw };
+		}
+
+		logger.info("[Circle] Removed space member", {
+			spaceId: params.spaceId,
+			email: params.email,
+		});
+		return { ok: true, data: { spaceId: params.spaceId, email: params.email } };
+	}
+
 	async createEvent(params: CreateEventParams): Promise<CircleCallOutcome<CreateEventResult>> {
 		let response: Response;
 		try {
