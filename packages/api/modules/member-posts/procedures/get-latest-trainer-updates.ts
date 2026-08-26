@@ -3,6 +3,7 @@ import { db, listLatestTrainerUpdates } from "@repo/database";
 import { z } from "zod";
 
 import { protectedProcedure } from "../../../orpc/procedures";
+import { getAccessibleHorseWhere } from "../../racing/horses/lib/horse-access";
 import { bodyTextFromJson } from "../../racing/horses/lib/member-post-body-text";
 
 /**
@@ -33,9 +34,15 @@ export const getLatestTrainerUpdatesProcedure = protectedProcedure
 			throw new ORPCError("FORBIDDEN", { message: "Not a member of this organization" });
 		}
 
+		const horseWhere = await getAccessibleHorseWhere({
+			organizationId: input.organizationId,
+			userId: context.user.id,
+		});
+
 		const posts = await listLatestTrainerUpdates({
 			organizationId: input.organizationId,
 			limit: input.limit,
+			horseWhere,
 		});
 
 		return posts

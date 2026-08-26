@@ -114,15 +114,23 @@ export async function listPublishedHorseUpdates(params: {
 /**
  * Latest published trainer-type horse updates, org-wide, for published
  * horses only (S8-07) — feeds the Pulse "Trainer Updates" tile.
+ *
+ * `horseWhere` (S9-05) restricts which horses' updates are eligible — pass
+ * the caller's `getAccessibleHorseWhere(...)` result so an invite-only
+ * horse's trainer updates never surface to a member who doesn't follow it.
  */
-export async function listLatestTrainerUpdates(params: { organizationId: string; limit: number }) {
+export async function listLatestTrainerUpdates(params: {
+	organizationId: string;
+	limit: number;
+	horseWhere?: Prisma.HorseWhereInput;
+}) {
 	return await db.memberPost.findMany({
 		where: {
 			organizationId: params.organizationId,
 			audienceType: "horse",
 			updateType: "trainer",
 			status: "published",
-			horse: { publishedAt: { not: null } },
+			horse: { publishedAt: { not: null }, ...(params.horseWhere ?? {}) },
 		},
 		select: {
 			id: true,

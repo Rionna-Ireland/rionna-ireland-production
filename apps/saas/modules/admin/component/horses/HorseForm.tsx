@@ -35,7 +35,6 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
-import { HorseVisibilityToggle } from "./HorseVisibilityToggle";
 import { PhotoGallery } from "./PhotoGallery";
 import { ProviderHorseSearch } from "./ProviderHorseSearch";
 import { ResultsReplayLinks } from "./ResultsReplayLinks";
@@ -58,6 +57,7 @@ const horseFormSchema = z.object({
 	damsire: z.string().optional(),
 	published: z.boolean().default(false),
 	publicProfile: z.boolean().default(false),
+	inviteOnly: z.boolean().default(false),
 });
 
 type HorseFormValues = z.infer<typeof horseFormSchema>;
@@ -136,6 +136,7 @@ export function HorseForm({ horseId }: HorseFormProps) {
 			damsire: "",
 			published: false,
 			publicProfile: false,
+			inviteOnly: false,
 		},
 	});
 
@@ -171,6 +172,7 @@ export function HorseForm({ horseId }: HorseFormProps) {
 				damsire: pedigree?.damsire ?? "",
 				published: !!horse.publishedAt,
 				publicProfile: !!horse.publicProfileAt,
+				inviteOnly: !!horse.inviteOnly,
 			});
 			setPhotos(
 				Array.isArray(horse.photos)
@@ -207,6 +209,7 @@ export function HorseForm({ horseId }: HorseFormProps) {
 					publicProfileAt: values.publicProfile
 						? (horse?.publicProfileAt ?? new Date())
 						: null,
+					inviteOnly: values.inviteOnly,
 				});
 
 				await queryClient.invalidateQueries({
@@ -231,6 +234,7 @@ export function HorseForm({ horseId }: HorseFormProps) {
 					pedigree: pedigreeData,
 					publishedAt: values.published ? new Date() : null,
 					publicProfileAt: values.publicProfile ? new Date() : null,
+					inviteOnly: values.inviteOnly,
 				});
 
 				toastSuccess(t("admin.horses.form.notifications.created"));
@@ -294,6 +298,23 @@ export function HorseForm({ horseId }: HorseFormProps) {
 			});
 		} else {
 			form.setValue("published", checked);
+		}
+	};
+
+	const handleInviteOnlyToggle = (checked: boolean) => {
+		if (checked && !form.getValues("inviteOnly")) {
+			confirm({
+				title: t("admin.horses.form.inviteOnlyConfirmTitle", {
+					name: form.getValues("name") || "this horse",
+				}),
+				message: t("admin.horses.form.inviteOnlyConfirmMessage"),
+				confirmLabel: t("admin.horses.form.inviteOnlyConfirmButton"),
+				onConfirm: () => {
+					form.setValue("inviteOnly", true);
+				},
+			});
+		} else {
+			form.setValue("inviteOnly", checked);
 		}
 	};
 
@@ -747,19 +768,29 @@ export function HorseForm({ horseId }: HorseFormProps) {
 								)}
 							/>
 
-							{/* Circle Space Visibility (immediate action, not a form field) */}
-							{isEdit && horse?.circleSpaceId && (
-								<div className="space-y-1.5">
-									<FormLabel>{t("admin.community.visibility")}</FormLabel>
-									<HorseVisibilityToggle
-										horseId={horse.id}
-										visibility={horse.circleSpaceVisibility}
-									/>
-									<p className="text-sm text-muted-foreground">
-										{t("admin.community.visibilityHelp")}
-									</p>
-								</div>
-							)}
+							{/* Invite Only Toggle */}
+							<FormField
+								control={form.control}
+								name="inviteOnly"
+								render={({ field }) => (
+									<FormItem className="gap-1.5">
+										<div className="gap-3 flex items-center">
+											<FormControl>
+												<Switch
+													checked={field.value}
+													onCheckedChange={handleInviteOnlyToggle}
+												/>
+											</FormControl>
+											<FormLabel className="!mt-0">
+												{t("admin.horses.form.inviteOnlyToggle")}
+											</FormLabel>
+										</div>
+										<FormDescription>
+											{t("admin.horses.form.inviteOnlyHelp")}
+										</FormDescription>
+									</FormItem>
+								)}
+							/>
 
 							{/* Actions */}
 							<div className="flex justify-between">

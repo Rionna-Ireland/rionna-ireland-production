@@ -1,5 +1,6 @@
 /**
  * S6-07: admin community overview + horse-space visibility toggle.
+ * S9-05: invite-only horse space membership (addSpaceMember / removeSpaceMember).
  *
  * Tests the MOCK CircleService — the contract that real.ts and
  * mock-server.ts must also satisfy:
@@ -7,6 +8,10 @@
  *   listSpaces          — returns all seeded spaces; filters by spaceGroupId.
  *   setSpaceVisibility  — flips a seeded space's isPrivate; not_found for
  *                         an unknown space id.
+ *   addSpaceMember      — records membership (admin-token add; members can't
+ *                         self-join private spaces).
+ *   removeSpaceMember   — removes membership; not_found when removing a
+ *                         non-member (mirrors Circle's 404).
  */
 import { describe, expect, it } from "vitest";
 
@@ -93,6 +98,50 @@ describe("MockCircleService — space admin (S6-07)", () => {
 			const service = new MockCircleService();
 
 			const outcome = await service.setSpaceVisibility({ spaceId: "does-not-exist", isPrivate: true });
+
+			expect(outcome).toEqual({ ok: false, reason: "not_found", retriable: false });
+		});
+	});
+
+	describe("addSpaceMember", () => {
+		it("records membership", async () => {
+			const service = new MockCircleService();
+
+			const outcome = await service.addSpaceMember({
+				spaceId: "space-1",
+				email: "rider@example.com",
+			});
+
+			expect(outcome).toEqual({
+				ok: true,
+				data: { spaceId: "space-1", email: "rider@example.com" },
+			});
+		});
+	});
+
+	describe("removeSpaceMember", () => {
+		it("removes a member added via addSpaceMember", async () => {
+			const service = new MockCircleService();
+			await service.addSpaceMember({ spaceId: "space-1", email: "rider@example.com" });
+
+			const outcome = await service.removeSpaceMember({
+				spaceId: "space-1",
+				email: "rider@example.com",
+			});
+
+			expect(outcome).toEqual({
+				ok: true,
+				data: { spaceId: "space-1", email: "rider@example.com" },
+			});
+		});
+
+		it("returns not_found when removing a non-member", async () => {
+			const service = new MockCircleService();
+
+			const outcome = await service.removeSpaceMember({
+				spaceId: "space-1",
+				email: "nobody@example.com",
+			});
 
 			expect(outcome).toEqual({ ok: false, reason: "not_found", retriable: false });
 		});

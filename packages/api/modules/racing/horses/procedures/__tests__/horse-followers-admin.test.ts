@@ -140,6 +140,13 @@ describe("followAllMembersProcedure feed-cache clearing", () => {
 		expect(mockClearFeedCache).not.toHaveBeenCalled();
 		expect(res).toEqual({ added: 0, disabled: true });
 	});
+
+	it("S9-05: skips the cache clear when the target horse is invite-only (nothing changed)", async () => {
+		mockFollowAllMembers.mockResolvedValue({ added: 0, skippedInviteOnly: 1 });
+		const res = await call(followAllMembersProcedure, { horseId: "h-1" }, ctx);
+		expect(mockClearFeedCache).not.toHaveBeenCalled();
+		expect(res).toEqual({ added: 0, skippedInviteOnly: 1 });
+	});
 });
 
 describe("followAllMembersProcedure", () => {
@@ -153,5 +160,41 @@ describe("followAllMembersProcedure", () => {
 			horseId: "h-1",
 		});
 		expect(res).toEqual({ added: 7 });
+	});
+});
+
+describe("invite-only horse admin bypass (S9-05 regression)", () => {
+	it("addFollowerProcedure still creates the follow on an invite-only horse — admin add is the invite mechanism", async () => {
+		mockFollowHorse.mockResolvedValue({ ok: true });
+
+		const res = await call(
+			addFollowerProcedure,
+			{ horseId: "h-invite-only", userId: "u-1" },
+			ctx,
+		);
+
+		expect(mockFollowHorse).toHaveBeenCalledWith({
+			organizationId: "org-1",
+			userId: "u-1",
+			horseId: "h-invite-only",
+		});
+		expect(res).toEqual({ ok: true });
+	});
+
+	it("removeFollowerProcedure still removes the follow on an invite-only horse", async () => {
+		mockUnfollowHorse.mockResolvedValue({ ok: true });
+
+		const res = await call(
+			removeFollowerProcedure,
+			{ horseId: "h-invite-only", userId: "u-1" },
+			ctx,
+		);
+
+		expect(mockUnfollowHorse).toHaveBeenCalledWith({
+			organizationId: "org-1",
+			userId: "u-1",
+			horseId: "h-invite-only",
+		});
+		expect(res).toEqual({ ok: true });
 	});
 });

@@ -24,7 +24,7 @@ const input = z.object({
 async function resolveFollowRef(
 	i: z.infer<typeof input>,
 	context: { session: { activeOrganizationId?: string | null }; user: { id: string } },
-): Promise<{ organizationId: string; userId: string; horseId: string }> {
+): Promise<{ organizationId: string; userId: string; horseId: string; inviteOnly: boolean }> {
 	const organizationId = i.organizationId ?? context.session.activeOrganizationId;
 	if (!organizationId) {
 		throw new ORPCError("BAD_REQUEST", { message: "No active organization" });
@@ -40,13 +40,18 @@ async function resolveFollowRef(
 
 	const horse = await db.horse.findFirst({
 		where: { id: i.horseId, organizationId },
-		select: { id: true },
+		select: { id: true, inviteOnly: true },
 	});
 	if (!horse) {
 		throw new ORPCError("NOT_FOUND", { message: "Horse not found" });
 	}
 
-	return { organizationId, userId: context.user.id, horseId: i.horseId };
+	return {
+		organizationId,
+		userId: context.user.id,
+		horseId: i.horseId,
+		inviteOnly: horse.inviteOnly,
+	};
 }
 
 export const followHorseProcedure = protectedProcedure
@@ -59,6 +64,10 @@ export const followHorseProcedure = protectedProcedure
 	.input(input)
 	.handler(async ({ input: i, context }) => {
 		const ref = await resolveFollowRef(i, context);
+		if (ref.inviteOnly) {
+			// S9-05: invite-only — members can't self-follow; admin add is the invite.
+			return { ok: false as const, inviteOnly: true as const };
+		}
 		const result = await followHorse(ref);
 		if (!result.ok) {
 			// S8-04 §5: features.horseFollows disabled — no DB write, no Circle

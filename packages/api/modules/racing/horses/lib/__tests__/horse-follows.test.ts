@@ -7,6 +7,7 @@ const {
 	mockCreateMany,
 	mockFindMany,
 	mockOrgFindUnique,
+	mockHorseFindUnique,
 	mockSyncCircleSpaceMembership,
 	mockLoggerInfo,
 } = vi.hoisted(() => ({
@@ -16,6 +17,7 @@ const {
 	mockCreateMany: vi.fn(),
 	mockFindMany: vi.fn(),
 	mockOrgFindUnique: vi.fn(),
+	mockHorseFindUnique: vi.fn(),
 	mockSyncCircleSpaceMembership: vi.fn(),
 	mockLoggerInfo: vi.fn(),
 }));
@@ -29,6 +31,7 @@ vi.mock("@repo/database", () => ({
 		},
 		member: { findMany: mockMemberFindMany },
 		organization: { findUnique: mockOrgFindUnique },
+		horse: { findUnique: mockHorseFindUnique },
 	},
 	parseOrgMetadata: (raw: string | null) => (raw ? JSON.parse(raw) : {}),
 }));
@@ -51,6 +54,7 @@ import {
 beforeEach(() => {
 	vi.clearAllMocks();
 	mockOrgFindUnique.mockResolvedValue({ metadata: null });
+	mockHorseFindUnique.mockResolvedValue({ inviteOnly: false });
 	mockSyncCircleSpaceMembership.mockResolvedValue({ ok: true });
 });
 
@@ -214,6 +218,30 @@ describe("followAllMembers", () => {
 		await expect(
 			followAllMembers({ organizationId: "org-1", horseId: "h-1" }),
 		).resolves.toEqual({ added: 1 });
+	});
+});
+
+describe("followAllMembers invite-only gating (S9-05)", () => {
+	it("skips an invite-only horse target: {added:0, skippedInviteOnly:1}, no writes", async () => {
+		mockHorseFindUnique.mockResolvedValue({ inviteOnly: true });
+
+		const res = await followAllMembers({ organizationId: "org-1", horseId: "h-1" });
+
+		expect(res).toEqual({ added: 0, skippedInviteOnly: 1 });
+		expect(mockMemberFindMany).not.toHaveBeenCalled();
+		expect(mockCreateMany).not.toHaveBeenCalled();
+		expect(mockSyncCircleSpaceMembership).not.toHaveBeenCalled();
+	});
+
+	it("proceeds normally when the horse is not invite-only", async () => {
+		mockHorseFindUnique.mockResolvedValue({ inviteOnly: false });
+		mockMemberFindMany.mockResolvedValue([{ userId: "u-1" }]);
+		mockCreateMany.mockResolvedValue({ count: 1 });
+
+		const res = await followAllMembers({ organizationId: "org-1", horseId: "h-1" });
+
+		expect(res).toEqual({ added: 1 });
+		expect(mockCreateMany).toHaveBeenCalled();
 	});
 });
 

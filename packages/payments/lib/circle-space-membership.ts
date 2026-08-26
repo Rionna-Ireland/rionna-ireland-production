@@ -45,7 +45,7 @@ export async function syncCircleSpaceMembership(
 	try {
 		const member = await db.member.findFirst({
 			where: { organizationId, userId },
-			select: { circleMemberId: true },
+			select: { circleMemberId: true, user: { select: { email: true } } },
 		});
 		if (!member?.circleMemberId) {
 			logger.debug("[Circle] Space membership sync skipped: no circleMemberId", logCtx);
@@ -54,7 +54,7 @@ export async function syncCircleSpaceMembership(
 
 		const horse = await db.horse.findFirst({
 			where: { id: horseId, organizationId },
-			select: { circleSpaceId: true, circleSpaceStatus: true },
+			select: { circleSpaceId: true, circleSpaceStatus: true, inviteOnly: true },
 		});
 		if (!horse?.circleSpaceId || horse.circleSpaceStatus !== "active") {
 			logger.debug("[Circle] Space membership sync skipped: no active Circle space", {
@@ -72,6 +72,24 @@ export async function syncCircleSpaceMembership(
 		if (!org?.slug) {
 			logger.warn("[Circle] Space membership sync: organization has no slug", logCtx);
 			return FAIL;
+		}
+
+		if (horse.inviteOnly) {
+			const email = member.user?.email;
+			if (!email) {
+				logger.warn("[Circle] Space membership sync skipped: no user email for admin add", logCtx);
+				return FAIL;
+			}
+			const service = createCircleService(org.slug);
+			const outcome =
+				action === "join"
+					? await service.addSpaceMember({ spaceId: horse.circleSpaceId, email })
+					: await service.removeSpaceMember({ spaceId: horse.circleSpaceId, email });
+			if (!outcome.ok) {
+				logger.warn("[Circle] Space membership sync (admin API) failed", { ...logCtx, reason: outcome.reason });
+				return FAIL;
+			}
+			return OK;
 		}
 
 		const service = createCircleService(org.slug);

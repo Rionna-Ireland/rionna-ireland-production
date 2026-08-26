@@ -8,10 +8,16 @@
 import { call } from "@orpc/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockGetSession, mockMemberFindFirst, mockListLatestTrainerUpdates } = vi.hoisted(() => ({
+const {
+	mockGetSession,
+	mockMemberFindFirst,
+	mockListLatestTrainerUpdates,
+	mockGetAccessibleHorseWhere,
+} = vi.hoisted(() => ({
 	mockGetSession: vi.fn(),
 	mockMemberFindFirst: vi.fn(),
 	mockListLatestTrainerUpdates: vi.fn(),
+	mockGetAccessibleHorseWhere: vi.fn(),
 }));
 
 vi.mock("@repo/auth", () => ({ auth: { api: { getSession: mockGetSession } } }));
@@ -21,15 +27,22 @@ vi.mock("@repo/database", () => ({
 	listLatestTrainerUpdates: mockListLatestTrainerUpdates,
 }));
 
+vi.mock("../../racing/horses/lib/horse-access", () => ({
+	getAccessibleHorseWhere: mockGetAccessibleHorseWhere,
+}));
+
 import { getLatestTrainerUpdatesProcedure } from "../procedures/get-latest-trainer-updates";
 
 const MEMBER_USER = { id: "user-1", role: "member" };
 const SESSION = { id: "s1", activeOrganizationId: "org-1" };
 const ctx = { context: { headers: new Headers() } };
 
+const ACCESSIBLE_WHERE = { OR: [{ inviteOnly: false }, { id: { in: ["h-1"] } }] };
+
 beforeEach(() => {
 	vi.clearAllMocks();
 	mockGetSession.mockResolvedValue({ user: MEMBER_USER, session: SESSION });
+	mockGetAccessibleHorseWhere.mockResolvedValue(ACCESSIBLE_WHERE);
 });
 
 describe("getLatestTrainerUpdatesProcedure", () => {
@@ -60,9 +73,14 @@ describe("getLatestTrainerUpdatesProcedure", () => {
 			where: { organizationId: "org-1", userId: "user-1" },
 			select: { id: true },
 		});
+		expect(mockGetAccessibleHorseWhere).toHaveBeenCalledWith({
+			organizationId: "org-1",
+			userId: "user-1",
+		});
 		expect(mockListLatestTrainerUpdates).toHaveBeenCalledWith({
 			organizationId: "org-1",
 			limit: 3,
+			horseWhere: ACCESSIBLE_WHERE,
 		});
 		expect(res).toEqual([
 			{
@@ -85,6 +103,7 @@ describe("getLatestTrainerUpdatesProcedure", () => {
 		expect(mockListLatestTrainerUpdates).toHaveBeenCalledWith({
 			organizationId: "org-1",
 			limit: 3,
+			horseWhere: ACCESSIBLE_WHERE,
 		});
 	});
 

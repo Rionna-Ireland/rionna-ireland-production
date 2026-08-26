@@ -352,6 +352,21 @@ export interface CircleService {
 		spaceId: string;
 		isPrivate: boolean;
 	}): Promise<CircleCallOutcome<{ circleSpaceId: string; isPrivate: boolean }>>;
+
+	// --- Invite-only horse spaces (S9-05) -----------------------------------
+	// Member tokens can't self-join private spaces (verified: Circle 401s), so
+	// membership is managed with the admin token via Admin API v2.
+
+	/** Add a member to a space via Admin API v2 (invite-only horse spaces — S9-05). */
+	addSpaceMember(params: {
+		spaceId: string;
+		email: string;
+	}): Promise<CircleCallOutcome<{ spaceId: string; email: string }>>;
+	/** Remove a member from a space via Admin API v2. */
+	removeSpaceMember(params: {
+		spaceId: string;
+		email: string;
+	}): Promise<CircleCallOutcome<{ spaceId: string; email: string }>>;
 }
 
 export class CircleApiError extends Error {

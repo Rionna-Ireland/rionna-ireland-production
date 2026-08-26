@@ -27,8 +27,11 @@ vi.mock("@repo/database", () => ({
 	parseOrgMetadata: (raw: string | null) => (raw ? JSON.parse(raw) : {}),
 }));
 
+const { mockSyncCircleSpaceMembership } = vi.hoisted(() => ({
+	mockSyncCircleSpaceMembership: vi.fn(),
+}));
 vi.mock("@repo/payments/lib/circle-space-membership", () => ({
-	syncCircleSpaceMembership: vi.fn().mockResolvedValue({ ok: true }),
+	syncCircleSpaceMembership: mockSyncCircleSpaceMembership,
 }));
 
 const { mockInvalidateFeedCache } = vi.hoisted(() => ({
@@ -50,8 +53,9 @@ beforeEach(() => {
 	mockUpsert.mockResolvedValue({ id: "hf-1" });
 	mockDeleteMany.mockResolvedValue({ count: 1 });
 	mockMemberFindFirst.mockResolvedValue({ id: "m-1" });
-	mockHorseFindFirst.mockResolvedValue({ id: "h-1" });
+	mockHorseFindFirst.mockResolvedValue({ id: "h-1", inviteOnly: false });
 	mockOrgFindUnique.mockResolvedValue({ metadata: null });
+	mockSyncCircleSpaceMembership.mockResolvedValue({ ok: true });
 });
 
 describe("followHorseProcedure", () => {
@@ -161,5 +165,26 @@ describe("S8-04 §5 kill-switch", () => {
 		expect(res).toEqual({ ok: false, disabled: true });
 		expect(mockDeleteMany).not.toHaveBeenCalled();
 		expect(mockInvalidateFeedCache).not.toHaveBeenCalled();
+	});
+});
+
+describe("invite-only horse gating (S9-05)", () => {
+	beforeEach(() => {
+		mockHorseFindFirst.mockResolvedValue({ id: "h-1", inviteOnly: true });
+	});
+
+	it("followHorseProcedure returns ok:false, inviteOnly:true — no DB write, no Circle sync, no cache invalidation", async () => {
+		const res = await call(followHorseProcedure, { horseId: "h-1" }, ctx);
+		expect(res).toEqual({ ok: false, inviteOnly: true });
+		expect(mockUpsert).not.toHaveBeenCalled();
+		expect(mockSyncCircleSpaceMembership).not.toHaveBeenCalled();
+		expect(mockInvalidateFeedCache).not.toHaveBeenCalled();
+	});
+
+	it("unfollowHorseProcedure is NOT gated — still unfollows on an invite-only horse", async () => {
+		const res = await call(unfollowHorseProcedure, { horseId: "h-1" }, ctx);
+		expect(res).toEqual({ ok: true, isFollowing: false });
+		expect(mockDeleteMany).toHaveBeenCalled();
+		expect(mockInvalidateFeedCache).toHaveBeenCalledWith("u-1", "org-1");
 	});
 });

@@ -98,11 +98,28 @@ export async function unfollowHorse(ref: FollowRef): Promise<FollowMutationResul
  *
  * S8-04 §5: no-op (`{ added: 0, disabled: true }`) when `features.horseFollows`
  * is disabled for the org.
+ *
+ * S9-05: no-op (`{ added: 0, skippedInviteOnly: 1 }`) when the target horse is
+ * invite-only — bulk-follow must not hand out access that's meant to be
+ * admin-invited.
  */
 export async function followAllMembers(params: {
 	organizationId: string;
 	horseId: string;
-}): Promise<{ added: number; disabled?: boolean }> {
+}): Promise<{ added: number; disabled?: boolean; skippedInviteOnly?: number }> {
+	const horse = await db.horse.findUnique({
+		where: { id: params.horseId },
+		select: { inviteOnly: true },
+	});
+	if (horse?.inviteOnly) {
+		logger.info("[Circle] followAllMembers: horse is invite-only, skipping", {
+			surface: "circle.horse_follows",
+			organizationId: params.organizationId,
+			horseId: params.horseId,
+		});
+		return { added: 0, skippedInviteOnly: 1 };
+	}
+
 	if (!(await horseFollowsEnabled(params.organizationId))) {
 		logger.info("[Circle] followAllMembers: horseFollows disabled, skipping", {
 			surface: "circle.horse_follows",
