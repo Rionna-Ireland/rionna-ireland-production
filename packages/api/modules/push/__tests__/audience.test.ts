@@ -82,6 +82,10 @@ describe("getPrefKey", () => {
 	it("maps HORSE_UPDATE to horseUpdates", () => {
 		expect(getPrefKey("HORSE_UPDATE")).toBe("horseUpdates");
 	});
+
+	it("maps INSIDE_TRACK to the insideTrack preference", () => {
+		expect(getPrefKey("INSIDE_TRACK")).toBe("insideTrack");
+	});
 });
 
 describe("getAudienceTokens", () => {

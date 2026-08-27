@@ -31,6 +31,12 @@ export interface OrganizationMetadata {
 		spaceGroupId?: string;
 		/** Event-type space new events are created in (S2-09 surface E). */
 		eventsSpaceId?: string;
+		/** S11-01: single Inside Track (educational content) space id. */
+		insideTrack?: {
+			spaceId?: string;
+			/** Ordered CIRCLE post ids forming the "Start Here" block (order = display order). */
+			pinnedPostIds?: string[];
+		};
 		webhookSecretRef?: string;
 		poll?: {
 			enabled: boolean;

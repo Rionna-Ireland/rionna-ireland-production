@@ -52,6 +52,8 @@ export function getPrefKey(triggerType: PushTriggerType): string | null {
 			// HORSE_WELLBEING is a legacy trigger value (Postgres can't drop enum
 			// values) — both map to the single "horse updates" preference.
 			return "horseUpdates";
+		case "INSIDE_TRACK":
+			return "insideTrack";
 		case "SYSTEM":
 			return null;
 	}

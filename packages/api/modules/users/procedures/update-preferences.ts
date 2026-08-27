@@ -15,6 +15,7 @@ const pushPreferencesSchema = z
 		circleDm: z.boolean().optional(),
 		circleHorseDiscussion: z.boolean().optional(),
 		horseUpdates: z.boolean().optional(),
+		insideTrack: z.boolean().optional(),
 	})
 	.optional();
 
