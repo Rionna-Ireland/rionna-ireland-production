@@ -626,6 +626,99 @@ describe("getMemberFeed (S9-05 invite-only gating — spaceId branch)", () => {
 	});
 });
 
+describe("getMemberFeed (S11-01 insideTrack exclusion — merged path)", () => {
+	// space_it is the configured Inside Track space (its own surface, getInsideTrack);
+	// space_other is an ordinary discussion space. Neither is a horse space.
+	const IT_SPACES = [
+		{ id: "space_it", name: "Inside Track", slug: "inside-track", space_type: "basic" },
+		{ id: "space_other", name: "Other", slug: "other", space_type: "basic" },
+	];
+	const IT_POSTS: Record<string, { records: Array<Record<string, unknown>> }> = {
+		space_it: {
+			records: [
+				{
+					id: 100,
+					name: "Lesson",
+					body: { html: "<p>lesson</p>" },
+					body_plain_text: "lesson",
+					created_at: "2026-07-01T10:00:00Z",
+				},
+			],
+		},
+		space_other: {
+			records: [
+				{
+					id: 101,
+					name: "Chat post",
+					body: { html: "<p>chat</p>" },
+					body_plain_text: "chat",
+					created_at: "2026-07-01T09:00:00Z",
+				},
+			],
+		},
+	};
+
+	function routeInsideTrackFetch() {
+		return vi.fn(async (url) => {
+			const u = String(url);
+			if (u.includes("/spaces?")) {
+				return { ok: true, status: 200, json: async () => ({ records: IT_SPACES }) };
+			}
+			const m = u.match(/\/spaces\/([^/]+)\/posts/);
+			if (m) {
+				return {
+					ok: true,
+					status: 200,
+					json: async () => IT_POSTS[decodeURIComponent(m[1])] ?? { records: [] },
+				};
+			}
+			return { ok: false, status: 404, json: async () => ({}) };
+		});
+	}
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		clearMemberFeedCache();
+		mockHorseFindFirst.mockResolvedValue(null);
+		mockGetSession.mockResolvedValue({ user: USER, session: SESSION });
+		mockOrgFindUnique.mockResolvedValue({ id: ORG_ID, slug: "rionna", metadata: null });
+		mockMemberFindFirst.mockResolvedValue({ circleMemberId: "82236270" });
+		mockGetMemberToken.mockResolvedValue({ ok: true, data: { accessToken: "jwt" } });
+		mockHorseFindMany.mockResolvedValue([]);
+		mockGetFollowedHorseIds.mockResolvedValue(new Set());
+		mockParseOrgMetadata.mockReturnValue({
+			circle: {
+				communityDomain: "community.rionna.com",
+				insideTrack: { spaceId: "space_it" },
+			},
+		});
+	});
+
+	it("excludes the configured insideTrack space from the merged feed", async () => {
+		const fetchSpy = routeInsideTrackFetch();
+		vi.stubGlobal("fetch", fetchSpy);
+
+		const res = await call(getMemberFeed, { organizationId: ORG_ID, page: 1, perPage: 15 }, ctx);
+
+		expect(res.ok).toBe(true);
+		expect(res.items.map((i) => i.id)).toEqual(["101"]); // space_it's post never appears
+		const fetchedUrls = fetchSpy.mock.calls.map((c) => String(c[0]));
+		expect(fetchedUrls.some((u) => u.includes("/spaces/space_it/posts"))).toBe(false);
+	});
+
+	it("does not affect the merged feed when no insideTrack space is configured", async () => {
+		mockParseOrgMetadata.mockReturnValue({
+			circle: { communityDomain: "community.rionna.com" },
+		});
+		vi.stubGlobal("fetch", routeInsideTrackFetch());
+
+		const res = await call(getMemberFeed, { organizationId: ORG_ID, page: 1, perPage: 15 }, ctx);
+
+		expect(res.ok).toBe(true);
+		expect(res.items.map((i) => i.id).sort()).toEqual(["100", "101"]);
+	});
+});
+
 describe("getMemberFeed (total per-space failure — Kimi M1)", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();

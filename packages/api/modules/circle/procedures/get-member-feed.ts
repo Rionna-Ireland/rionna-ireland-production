@@ -226,6 +226,13 @@ export const getMemberFeed = protectedProcedure
 			return type ? POST_SPACE_TYPES.has(type) : true;
 		});
 
+		// S11-01: the Inside Track space has its own surface (getInsideTrack) —
+		// keep lessons out of the discussion feed.
+		const insideTrackSpaceId = orgMetadata.circle?.insideTrack?.spaceId;
+		const feedSpaces = insideTrackSpaceId
+			? typeFilteredSpaces.filter((space) => String(space.id) !== String(insideTrackSpaceId))
+			: typeFilteredSpaces;
+
 		// 1.5 Filter out unfollowed horse spaces (non-horse spaces always pass).
 		//
 		// Two independent gates here:
@@ -271,7 +278,7 @@ export const getMemberFeed = protectedProcedure
 			}
 		}
 
-		let horseFilteredSpaces = typeFilteredSpaces;
+		let horseFilteredSpaces = feedSpaces;
 		try {
 			const needsFollowedSet =
 				horseFollowsEnabled || [...horseBySpaceId.values()].some((h) => h.inviteOnly);
@@ -281,7 +288,7 @@ export const getMemberFeed = protectedProcedure
 						userId: user.id,
 					})
 				: null;
-			horseFilteredSpaces = typeFilteredSpaces.filter((space) => {
+			horseFilteredSpaces = feedSpaces.filter((space) => {
 				const horse = horseBySpaceId.get(String(space.id));
 				if (!horse) return true; // not a horse space — always pass
 				// S9-05: invite-only access gating — unconditional.
@@ -300,7 +307,7 @@ export const getMemberFeed = protectedProcedure
 			// Privacy fails closed — an error must never widen access: hide every
 			// horse space we know about (open or invite-only alike), leaving
 			// non-horse spaces untouched.
-			horseFilteredSpaces = typeFilteredSpaces.filter(
+			horseFilteredSpaces = feedSpaces.filter(
 				(space) => !horseBySpaceId.has(String(space.id)),
 			);
 		}
