@@ -1,6 +1,7 @@
 import { addPostComment } from "./procedures/add-post-comment";
 import { deletePostComment } from "./procedures/delete-post-comment";
 import { getFeed } from "./procedures/get-feed";
+import { getInsideTrack } from "./procedures/get-inside-track";
 import { getMemberFeed } from "./procedures/get-member-feed";
 import { getMemberPost } from "./procedures/get-member-post";
 import { getNotificationBadgeCount } from "./procedures/get-notification-badge-count";
@@ -13,6 +14,7 @@ export const circleRouter = {
 	addPostComment,
 	deletePostComment,
 	getFeed,
+	getInsideTrack,
 	getMemberFeed,
 	getMemberPost,
 	getPostComments,

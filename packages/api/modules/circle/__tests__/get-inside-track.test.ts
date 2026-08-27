@@ -1,0 +1,228 @@
+import { call } from "@orpc/server";
+import type { OrganizationMetadata } from "@repo/database/types";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const {
+	mockGetSession,
+	mockOrgFindUnique,
+	mockOrgUpdate,
+	mockMemberFindFirst,
+	mockGetMemberToken,
+	mockParseOrgMetadata,
+} = vi.hoisted(() => ({
+	mockGetSession: vi.fn(),
+	mockOrgFindUnique: vi.fn(),
+	mockOrgUpdate: vi.fn(),
+	mockMemberFindFirst: vi.fn(),
+	mockGetMemberToken: vi.fn(),
+	mockParseOrgMetadata: vi.fn(
+		(): OrganizationMetadata => ({ circle: { communityDomain: "community.rionna.com" } }),
+	),
+}));
+
+vi.mock("@repo/auth", () => ({
+	auth: { api: { getSession: mockGetSession } },
+}));
+
+vi.mock("@repo/database", () => ({
+	db: {
+		organization: { findUnique: mockOrgFindUnique, update: mockOrgUpdate },
+		member: { findFirst: mockMemberFindFirst },
+	},
+	parseOrgMetadata: mockParseOrgMetadata,
+}));
+
+vi.mock("@repo/logs", () => ({
+	logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), log: vi.fn() },
+}));
+
+vi.mock("@repo/payments/lib/circle", () => ({
+	createCircleService: vi.fn(() => ({ getMemberToken: mockGetMemberToken })),
+	getCircleHeadlessApiBaseUrl: vi.fn(() => "https://app.circle.so/api/headless/v1"),
+	buildCircleCommunityTargetUrl: vi.fn(() => "https://community.rionna.com/c/x/y"),
+}));
+
+import { getInsideTrack } from "../procedures/get-inside-track";
+
+const ORG_ID = "org1";
+const SPACE_ID = "space_it";
+const USER = { id: "u1", email: "u1@test.com", name: "User One", role: "user" };
+const SESSION = { id: "s1", activeOrganizationId: ORG_ID };
+const ctx = { context: { headers: new Headers() } };
+
+// posts p1..p4, p4 newest
+const SPACE_POSTS = {
+	records: [
+		{
+			id: "p4",
+			name: "Fourth",
+			body: { html: "<p>d</p>" },
+			body_plain_text: "d",
+			created_at: "2026-07-04T08:00:00Z",
+		},
+		{
+			id: "p3",
+			name: "Third",
+			body: { html: "<p>c</p>" },
+			body_plain_text: "c",
+			created_at: "2026-07-03T08:00:00Z",
+		},
+		{
+			id: "p2",
+			name: "Second",
+			body: { html: "<p>b</p>" },
+			body_plain_text: "b",
+			created_at: "2026-07-02T08:00:00Z",
+		},
+		{
+			id: "p1",
+			name: "First",
+			body: { html: "<p>a</p>" },
+			body_plain_text: "a",
+			created_at: "2026-07-01T08:00:00Z",
+		},
+	],
+};
+
+function routeFetch(
+	postsResp: { ok: boolean; status: number; records?: unknown[] } = {
+		ok: true,
+		status: 200,
+		records: SPACE_POSTS.records,
+	},
+) {
+	return vi.fn(async (url) => {
+		const u = String(url);
+		if (u.includes(`/spaces/${encodeURIComponent(SPACE_ID)}/posts`)) {
+			return {
+				ok: postsResp.ok,
+				status: postsResp.status,
+				json: async () => ({ records: postsResp.records ?? [] }),
+			};
+		}
+		return { ok: false, status: 404, json: async () => ({}) };
+	});
+}
+
+describe("getInsideTrack", () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		mockGetSession.mockResolvedValue({ user: USER, session: SESSION });
+		mockOrgFindUnique.mockResolvedValue({ id: ORG_ID, slug: "rionna", metadata: null });
+		mockMemberFindFirst.mockResolvedValue({ circleMemberId: "82236270" });
+		mockGetMemberToken.mockResolvedValue({ ok: true, data: { accessToken: "jwt" } });
+		mockOrgUpdate.mockResolvedValue({});
+		mockParseOrgMetadata.mockReturnValue({
+			circle: { communityDomain: "community.rionna.com" },
+		});
+	});
+
+	it("returns configured:false when no insideTrack space id is set", async () => {
+		mockParseOrgMetadata.mockReturnValue({ circle: {} });
+		const fetchSpy = routeFetch();
+		vi.stubGlobal("fetch", fetchSpy);
+
+		const res = await call(getInsideTrack, { organizationId: ORG_ID }, ctx);
+
+		expect(res).toEqual({ ok: true, configured: false, pinned: [], latest: [] });
+		expect(fetchSpy).not.toHaveBeenCalled();
+	});
+
+	it("partitions pinned (metadata order) from latest (newest first)", async () => {
+		mockParseOrgMetadata.mockReturnValue({
+			circle: {
+				communityDomain: "community.rionna.com",
+				insideTrack: { spaceId: SPACE_ID, pinnedPostIds: ["p2", "p1"] },
+			},
+		});
+		vi.stubGlobal("fetch", routeFetch());
+
+		const res = await call(getInsideTrack, { organizationId: ORG_ID }, ctx);
+
+		expect(res.ok).toBe(true);
+		expect(res.configured).toBe(true);
+		expect(res.pinned.map((i) => i.id)).toEqual(["p2", "p1"]);
+		expect(res.latest.map((i) => i.id)).toEqual(["p4", "p3"]);
+		expect(mockOrgUpdate).not.toHaveBeenCalled();
+	});
+
+	it("drops deleted pinned ids and prunes them from metadata", async () => {
+		const orgMetadata: OrganizationMetadata = {
+			circle: {
+				communityDomain: "community.rionna.com",
+				insideTrack: { spaceId: SPACE_ID, pinnedPostIds: ["gone", "p1"] },
+			},
+			brand: { primaryColor: "#123456" },
+		};
+		mockParseOrgMetadata.mockReturnValue(orgMetadata);
+		vi.stubGlobal(
+			"fetch",
+			routeFetch({
+				ok: true,
+				status: 200,
+				records: [
+					SPACE_POSTS.records.find((p) => p.id === "p1"),
+					SPACE_POSTS.records.find((p) => p.id === "p2"),
+				],
+			}),
+		);
+
+		const res = await call(getInsideTrack, { organizationId: ORG_ID }, ctx);
+
+		expect(res.pinned.map((i) => i.id)).toEqual(["p1"]);
+		expect(res.latest.map((i) => i.id)).toEqual(["p2"]);
+
+		// Fire-and-forget prune: flush microtasks so the `.catch` chain settles.
+		await new Promise((resolve) => setTimeout(resolve, 0));
+
+		expect(mockOrgUpdate).toHaveBeenCalledTimes(1);
+		const updateArgs = mockOrgUpdate.mock.calls[0][0];
+		expect(updateArgs.where).toEqual({ id: ORG_ID });
+		const savedMetadata = JSON.parse(updateArgs.data.metadata);
+		expect(savedMetadata.circle.insideTrack.pinnedPostIds).toEqual(["p1"]);
+		expect(savedMetadata.circle.insideTrack.spaceId).toBe(SPACE_ID);
+		// Other metadata must be preserved untouched.
+		expect(savedMetadata.brand).toEqual({ primaryColor: "#123456" });
+		expect(savedMetadata.circle.communityDomain).toBe("community.rionna.com");
+	});
+
+	it("fails soft on Circle errors", async () => {
+		mockParseOrgMetadata.mockReturnValue({
+			circle: {
+				communityDomain: "community.rionna.com",
+				insideTrack: { spaceId: SPACE_ID, pinnedPostIds: ["gone", "p1"] },
+			},
+		});
+		vi.stubGlobal("fetch", routeFetch({ ok: false, status: 500 }));
+
+		const res = await call(getInsideTrack, { organizationId: ORG_ID }, ctx);
+
+		expect(res).toEqual({ ok: false, configured: true, pinned: [], latest: [] });
+
+		// Flush microtasks — the prune must NOT run on the failure path.
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(mockOrgUpdate).not.toHaveBeenCalled();
+	});
+
+	it("returns NOT_FOUND when the organization does not exist", async () => {
+		mockOrgFindUnique.mockResolvedValue(null);
+		await expect(call(getInsideTrack, { organizationId: ORG_ID }, ctx)).rejects.toThrow();
+	});
+
+	it("returns configured:true with empty lists when the member has no circleMemberId", async () => {
+		mockParseOrgMetadata.mockReturnValue({
+			circle: {
+				communityDomain: "community.rionna.com",
+				insideTrack: { spaceId: SPACE_ID, pinnedPostIds: ["p1"] },
+			},
+		});
+		mockMemberFindFirst.mockResolvedValue(null);
+		const fetchSpy = routeFetch();
+		vi.stubGlobal("fetch", fetchSpy);
+
+		const res = await call(getInsideTrack, { organizationId: ORG_ID }, ctx);
+
+		expect(res).toEqual({ ok: true, configured: true, pinned: [], latest: [] });
+		expect(fetchSpy).not.toHaveBeenCalled();
+	});
+});
