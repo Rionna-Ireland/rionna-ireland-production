@@ -5,6 +5,7 @@ import { getLatestTrainerUpdatesProcedure } from "./procedures/get-latest-traine
 import { getMemberPost } from "./procedures/get-member-post";
 import { listMemberPosts } from "./procedures/list-member-posts";
 import { publishMemberPost } from "./procedures/publish-member-post";
+import { setInsideTrackPins } from "./procedures/set-inside-track-pins";
 import { updateMemberPostDraft } from "./procedures/update-member-post-draft";
 
 export const memberPostsRouter = {
@@ -14,6 +15,7 @@ export const memberPostsRouter = {
 		create: createMemberPostDraft,
 		update: updateMemberPostDraft,
 		publish: publishMemberPost,
+		setInsideTrackPins,
 		createImageUploadUrl: createMemberPostImageUploadUrl,
 		createVideoUpload: createCircleVideoUpload,
 	},
