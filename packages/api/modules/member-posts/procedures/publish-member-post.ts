@@ -9,6 +9,7 @@ import { adminProcedure } from "../../../orpc/procedures";
 import { fetchImageBytes } from "../lib/fetch-image-bytes";
 import { notifyCommunityMembers } from "../lib/notify-community-members";
 import { notifyHorseFollowers } from "../lib/notify-horse-followers";
+import { notifyInsideTrackMembers } from "../lib/notify-inside-track-members";
 
 /**
  * Publish a member-post draft to its Circle space (publish-immediately) and
@@ -68,12 +69,7 @@ export const publishMemberPost = adminProcedure
 
 		const spaceId = resolveCircleSpaceId(post, org.metadata);
 		if (!spaceId) {
-			return fail(
-				"no_circle_space",
-				post.audienceType === "horse"
-					? "This horse has no Circle space yet. Provision it, then publish — or post directly in Circle."
-					: "No community Circle space is configured. Post directly in Circle.",
-			);
+			return fail("no_circle_space", noCircleSpaceMessage(post.audienceType));
 		}
 
 		const circle = createCircleService(org.slug);
@@ -142,6 +138,14 @@ export const publishMemberPost = adminProcedure
 			});
 		}
 
+		if (input.notifyMembers && post.audienceType === "insideTrack") {
+			await notifyInsideTrackMembers({
+				organizationId: post.organizationId,
+				memberPostId: post.id,
+				title: post.title,
+			});
+		}
+
 		return {
 			ok: true as const,
 			circlePostId: created.data.circlePostId,
@@ -156,8 +160,21 @@ function resolveCircleSpaceId(
 	if (post.audienceType === "horse") {
 		return post.horse?.circleSpaceId ?? null;
 	}
+	if (post.audienceType === "insideTrack") {
+		return parseOrgMetadata(orgMetadata).circle?.insideTrack?.spaceId ?? null;
+	}
 	// community → org-level community space id (slice 5 wires the composer).
 	return parseOrgMetadata(orgMetadata).circle?.communitySpaceId ?? null;
+}
+
+function noCircleSpaceMessage(audienceType: string): string {
+	if (audienceType === "horse") {
+		return "This horse has no Circle space yet. Provision it, then publish — or post directly in Circle.";
+	}
+	if (audienceType === "insideTrack") {
+		return "No Inside Track Circle space is configured. Post directly in Circle.";
+	}
+	return "No community Circle space is configured. Post directly in Circle.";
 }
 
 function circlePostUrl(

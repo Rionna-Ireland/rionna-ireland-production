@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { adminProcedure } from "../../../orpc/procedures";
 
-const audienceType = z.enum(["horse", "community"]);
+const audienceType = z.enum(["horse", "community", "insideTrack"]);
 const updateType = z.enum(["trainer", "wellbeing", "general", "race"]);
 
 /**
@@ -32,6 +32,10 @@ export const createMemberPostDraft = adminProcedure
 			})
 			.refine((v) => v.audienceType !== "horse" || Boolean(v.horseId), {
 				message: "A horse update needs a horse.",
+				path: ["horseId"],
+			})
+			.refine((v) => v.audienceType !== "insideTrack" || (!v.horseId && !v.updateType), {
+				message: "An Inside Track piece has no horse or update type.",
 				path: ["horseId"],
 			}),
 	)
