@@ -387,7 +387,7 @@ describe("getInsideTrack", () => {
 	});
 
 	describe("60s per-org cache (Finding B3)", () => {
-		it("serves the second call from cache without refetching from Circle", async () => {
+		it("serves the second call from cache, but still runs the org lookup and member gate", async () => {
 			mockParseOrgMetadata.mockReturnValue({
 				circle: {
 					communityDomain: "community.rionna.com",
@@ -400,13 +400,45 @@ describe("getInsideTrack", () => {
 			const first = await call(getInsideTrack, { organizationId: ORG_ID }, ctx);
 			expect(fetchSpy).toHaveBeenCalledTimes(1);
 			mockOrgFindUnique.mockClear();
+			mockMemberFindFirst.mockClear();
 
 			const second = await call(getInsideTrack, { organizationId: ORG_ID }, ctx);
 
 			expect(second).toEqual(first);
 			expect(fetchSpy).toHaveBeenCalledTimes(1);
-			// The cache hit is served before the org/member lookups even run.
-			expect(mockOrgFindUnique).not.toHaveBeenCalled();
+			// The cache is per-org, so a hit must NOT skip the org lookup or the
+			// membership gate — only the Circle network calls (token mint + posts
+			// fetch) are saved. Skipping these on a cache hit would let an unpaid
+			// user ride a warm cache straight to members-only content (D36).
+			expect(mockOrgFindUnique).toHaveBeenCalledTimes(1);
+			expect(mockMemberFindFirst).toHaveBeenCalledTimes(1);
+		});
+
+		it("does not leak cached org content to a user with no member row (paywall bypass regression)", async () => {
+			mockParseOrgMetadata.mockReturnValue({
+				circle: {
+					communityDomain: "community.rionna.com",
+					insideTrack: { spaceId: SPACE_ID, pinnedPostIds: ["p2", "p1"] },
+				},
+			});
+			const fetchSpy = routeFetch();
+			vi.stubGlobal("fetch", fetchSpy);
+
+			// Warm the org-level cache as a paying member.
+			const first = await call(getInsideTrack, { organizationId: ORG_ID }, ctx);
+			expect(first.pinned.length).toBeGreaterThan(0);
+			expect(fetchSpy).toHaveBeenCalledTimes(1);
+
+			// A second, unpaid user (no Member row / no circleMemberId) hits the
+			// same warm cache and must still get the memberless empty shape — never
+			// the cached members-only pinned/latest content.
+			mockMemberFindFirst.mockResolvedValue(null);
+			const second = await call(getInsideTrack, { organizationId: ORG_ID }, ctx);
+
+			expect(second).toEqual({ ok: true, configured: true, pinned: [], latest: [] });
+			// No extra Circle calls were needed to reach that verdict — the
+			// membership gate short-circuits before the cache is even read.
+			expect(fetchSpy).toHaveBeenCalledTimes(1);
 		});
 
 		it("does not cache a fail-soft (ok:false) response", async () => {

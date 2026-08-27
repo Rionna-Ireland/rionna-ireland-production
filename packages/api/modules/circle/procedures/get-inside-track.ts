@@ -134,11 +134,6 @@ export const getInsideTrack = protectedProcedure
 			latest: [],
 		});
 
-		const cached = readInsideTrackCache(input.organizationId);
-		if (cached) {
-			return { ok: true, ...cached };
-		}
-
 		const org = await db.organization.findUnique({ where: { id: input.organizationId } });
 		if (!org?.slug) {
 			throw new ORPCError("NOT_FOUND", { message: "Organization not found" });
@@ -156,6 +151,15 @@ export const getInsideTrack = protectedProcedure
 		});
 		if (!member?.circleMemberId) {
 			return { ok: true, configured: true, pinned: [], latest: [] };
+		}
+
+		// The cache is per-org, not per-member — it must only be consulted AFTER
+		// the membership gate above. Reading it earlier would let any
+		// authenticated-but-unpaid user (no Member row / no circleMemberId) ride
+		// a warm cache straight to members-only content (paywall bypass, D36).
+		const cached = readInsideTrackCache(input.organizationId);
+		if (cached) {
+			return { ok: true, ...cached };
 		}
 
 		const service = createCircleService(org.slug);
