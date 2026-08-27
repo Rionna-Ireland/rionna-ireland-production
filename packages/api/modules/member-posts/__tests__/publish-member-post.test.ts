@@ -26,6 +26,7 @@ const {
 	mockNotifyHorseFollowers,
 	mockNotifyCommunityMembers,
 	mockNotifyInsideTrackMembers,
+	mockInvalidateInsideTrackCache,
 } = vi.hoisted(() => ({
 	mockGetSession: vi.fn(),
 	mockGetMemberPostById: vi.fn(),
@@ -38,6 +39,7 @@ const {
 	mockNotifyHorseFollowers: vi.fn(),
 	mockNotifyCommunityMembers: vi.fn(),
 	mockNotifyInsideTrackMembers: vi.fn(),
+	mockInvalidateInsideTrackCache: vi.fn(),
 }));
 
 vi.mock("@repo/auth", () => ({
@@ -70,6 +72,10 @@ vi.mock("../lib/notify-community-members", () => ({
 
 vi.mock("../lib/notify-inside-track-members", () => ({
 	notifyInsideTrackMembers: mockNotifyInsideTrackMembers,
+}));
+
+vi.mock("../../circle/lib/inside-track-cache", () => ({
+	invalidateInsideTrackCache: mockInvalidateInsideTrackCache,
 }));
 
 import { publishMemberPost } from "../procedures/publish-member-post";
@@ -349,6 +355,55 @@ describe("publishMemberPost (S2-09)", () => {
 			expect(mockCreatePost).toHaveBeenCalledWith(
 				expect.objectContaining({ spaceId: "space_it" }),
 			);
+		});
+
+		it("invalidates the Inside Track cache after a successful insideTrack publish", async () => {
+			mockParseOrgMetadata.mockReturnValue({
+				circle: { insideTrack: { spaceId: "space_it" } },
+			});
+			mockGetMemberPostById.mockResolvedValue(
+				draftPost({
+					audienceType: "insideTrack",
+					title: "How to read a racecard",
+					horseId: null,
+					updateType: null,
+					horse: null,
+				}),
+			);
+
+			await call(publishMemberPost, { memberPostId: "mp1" }, ctx);
+
+			expect(mockInvalidateInsideTrackCache).toHaveBeenCalledWith("org1");
+			expect(mockInvalidateInsideTrackCache).toHaveBeenCalledTimes(1);
+		});
+
+		it("does not invalidate the Inside Track cache for a horse or community publish", async () => {
+			mockGetMemberPostById.mockResolvedValue(draftPost());
+
+			await call(publishMemberPost, { memberPostId: "mp1" }, ctx);
+
+			expect(mockInvalidateInsideTrackCache).not.toHaveBeenCalled();
+		});
+
+		it("does not invalidate the Inside Track cache when the insideTrack publish fails safe", async () => {
+			mockParseOrgMetadata.mockReturnValue({
+				circle: { insideTrack: { spaceId: "space_it" } },
+			});
+			mockCreatePost.mockResolvedValue({ ok: false, reason: "rate_limited", retriable: true });
+			mockGetMemberPostById.mockResolvedValue(
+				draftPost({
+					audienceType: "insideTrack",
+					title: "How to read a racecard",
+					horseId: null,
+					updateType: null,
+					horse: null,
+				}),
+			);
+
+			const result = await call(publishMemberPost, { memberPostId: "mp1" }, ctx);
+
+			expect(result).toMatchObject({ ok: false });
+			expect(mockInvalidateInsideTrackCache).not.toHaveBeenCalled();
 		});
 
 		it("fails safe when no insideTrack space is configured", async () => {

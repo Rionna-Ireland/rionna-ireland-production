@@ -16,7 +16,9 @@ const {
 	mockMemberFindFirst: vi.fn(),
 	mockGetMemberToken: vi.fn(),
 	mockParseOrgMetadata: vi.fn(
-		(): OrganizationMetadata => ({ circle: { communityDomain: "community.rionna.com" } }),
+		(_raw: string | null): OrganizationMetadata => ({
+			circle: { communityDomain: "community.rionna.com" },
+		}),
 	),
 }));
 
@@ -42,6 +44,7 @@ vi.mock("@repo/payments/lib/circle", () => ({
 	buildCircleCommunityTargetUrl: vi.fn(() => "https://community.rionna.com/c/x/y"),
 }));
 
+import { clearInsideTrackCache } from "../lib/inside-track-cache";
 import { getInsideTrack } from "../procedures/get-inside-track";
 
 const ORG_ID = "org1";
@@ -84,22 +87,42 @@ const SPACE_POSTS = {
 	],
 };
 
+interface IndividualPostSpec {
+	ok: boolean;
+	status: number;
+	body?: Record<string, unknown>;
+}
+
 function routeFetch(
-	postsResp: { ok: boolean; status: number; records?: unknown[] } = {
-		ok: true,
-		status: 200,
-		records: SPACE_POSTS.records,
-	},
+	opts: {
+		postsResp?: { ok: boolean; status: number; records?: unknown[] };
+		individualPosts?: Record<string, IndividualPostSpec | "throw">;
+	} = {},
 ) {
+	const postsResp = opts.postsResp ?? { ok: true, status: 200, records: SPACE_POSTS.records };
+	const individualPosts = opts.individualPosts ?? {};
+
 	return vi.fn(async (url) => {
 		const u = String(url);
-		if (u.includes(`/spaces/${encodeURIComponent(SPACE_ID)}/posts`)) {
+		const listPrefix = `/spaces/${encodeURIComponent(SPACE_ID)}/posts?`;
+		if (u.includes(listPrefix)) {
 			return {
 				ok: postsResp.ok,
 				status: postsResp.status,
 				json: async () => ({ records: postsResp.records ?? [] }),
 			};
 		}
+		const matchedId = Object.keys(individualPosts).find((id) =>
+			u.endsWith(`/spaces/${encodeURIComponent(SPACE_ID)}/posts/${encodeURIComponent(id)}`),
+		);
+		if (matchedId) {
+			const spec = individualPosts[matchedId];
+			if (spec === "throw") {
+				throw new Error("network down");
+			}
+			return { ok: spec.ok, status: spec.status, json: async () => spec.body ?? {} };
+		}
+		// Default: any unmapped individual post fetch reads as a confirmed 404.
 		return { ok: false, status: 404, json: async () => ({}) };
 	});
 }
@@ -107,6 +130,7 @@ function routeFetch(
 describe("getInsideTrack", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		clearInsideTrackCache();
 		mockGetSession.mockResolvedValue({ user: USER, session: SESSION });
 		mockOrgFindUnique.mockResolvedValue({ id: ORG_ID, slug: "rionna", metadata: null });
 		mockMemberFindFirst.mockResolvedValue({ circleMemberId: "82236270" });
@@ -146,7 +170,7 @@ describe("getInsideTrack", () => {
 		expect(mockOrgUpdate).not.toHaveBeenCalled();
 	});
 
-	it("drops deleted pinned ids and prunes them from metadata", async () => {
+	it("drops confirmed-deleted pinned ids and prunes them from metadata", async () => {
 		const orgMetadata: OrganizationMetadata = {
 			circle: {
 				communityDomain: "community.rionna.com",
@@ -158,12 +182,15 @@ describe("getInsideTrack", () => {
 		vi.stubGlobal(
 			"fetch",
 			routeFetch({
-				ok: true,
-				status: 200,
-				records: [
-					SPACE_POSTS.records.find((p) => p.id === "p1"),
-					SPACE_POSTS.records.find((p) => p.id === "p2"),
-				],
+				postsResp: {
+					ok: true,
+					status: 200,
+					records: [
+						SPACE_POSTS.records.find((p) => p.id === "p1"),
+						SPACE_POSTS.records.find((p) => p.id === "p2"),
+					],
+				},
+				individualPosts: { gone: { ok: false, status: 404 } },
 			}),
 		);
 
@@ -175,6 +202,9 @@ describe("getInsideTrack", () => {
 		// Fire-and-forget prune: flush microtasks so the `.catch` chain settles.
 		await new Promise((resolve) => setTimeout(resolve, 0));
 
+		// The prune re-reads fresh metadata (Finding B2): findUnique is called
+		// once for the request itself, and again inside the prune.
+		expect(mockOrgFindUnique).toHaveBeenCalledTimes(2);
 		expect(mockOrgUpdate).toHaveBeenCalledTimes(1);
 		const updateArgs = mockOrgUpdate.mock.calls[0][0];
 		expect(updateArgs.where).toEqual({ id: ORG_ID });
@@ -186,6 +216,136 @@ describe("getInsideTrack", () => {
 		expect(savedMetadata.circle.communityDomain).toBe("community.rionna.com");
 	});
 
+	it("resolves an old pin beyond page 1 via an individual fetch, at its list position", async () => {
+		// "old1" is the oldest post in the space — by nature of Start Here pins —
+		// and long since fell off the 30-post page.
+		mockParseOrgMetadata.mockReturnValue({
+			circle: {
+				communityDomain: "community.rionna.com",
+				insideTrack: { spaceId: SPACE_ID, pinnedPostIds: ["old1", "p2"] },
+			},
+		});
+		vi.stubGlobal(
+			"fetch",
+			routeFetch({
+				individualPosts: {
+					old1: {
+						ok: true,
+						status: 200,
+						body: {
+							id: "old1",
+							name: "How this club works",
+							body: { html: "<p>welcome</p>" },
+							body_plain_text: "welcome",
+							created_at: "2025-01-01T08:00:00Z",
+						},
+					},
+				},
+			}),
+		);
+
+		const res = await call(getInsideTrack, { organizationId: ORG_ID }, ctx);
+
+		expect(res.ok).toBe(true);
+		expect(res.pinned.map((i) => i.id)).toEqual(["old1", "p2"]);
+		expect(res.pinned[0].title).toBe("How this club works");
+		// p2 was resolved from the page directly; old1 from spaces/posts/{id}.
+		expect(res.latest.map((i) => i.id)).toEqual(["p4", "p3", "p1"]);
+
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(mockOrgUpdate).not.toHaveBeenCalled();
+	});
+
+	it("keeps (does not prune) a pin whose individual fetch fails transiently", async () => {
+		mockParseOrgMetadata.mockReturnValue({
+			circle: {
+				communityDomain: "community.rionna.com",
+				insideTrack: { spaceId: SPACE_ID, pinnedPostIds: ["flaky", "p2"] },
+			},
+		});
+		vi.stubGlobal(
+			"fetch",
+			routeFetch({
+				individualPosts: { flaky: "throw" },
+			}),
+		);
+
+		const res = await call(getInsideTrack, { organizationId: ORG_ID }, ctx);
+
+		// Excluded from this response (we have nothing to show for it)...
+		expect(res.pinned.map((i) => i.id)).toEqual(["p2"]);
+
+		// ...but never pruned — a transient failure must never destroy the pin.
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(mockOrgUpdate).not.toHaveBeenCalled();
+	});
+
+	it("also treats a non-404 error on the individual fetch as transient (not pruned)", async () => {
+		mockParseOrgMetadata.mockReturnValue({
+			circle: {
+				communityDomain: "community.rionna.com",
+				insideTrack: { spaceId: SPACE_ID, pinnedPostIds: ["rate_limited", "p2"] },
+			},
+		});
+		vi.stubGlobal(
+			"fetch",
+			routeFetch({
+				individualPosts: { rate_limited: { ok: false, status: 429 } },
+			}),
+		);
+
+		const res = await call(getInsideTrack, { organizationId: ORG_ID }, ctx);
+
+		expect(res.pinned.map((i) => i.id)).toEqual(["p2"]);
+
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(mockOrgUpdate).not.toHaveBeenCalled();
+	});
+
+	it("prune preserves a metadata change an admin made after the request snapshot", async () => {
+		const requestTimeMetadata: OrganizationMetadata = {
+			circle: {
+				communityDomain: "community.rionna.com",
+				insideTrack: { spaceId: SPACE_ID, pinnedPostIds: ["gone", "p1"] },
+			},
+		};
+		// The admin pins a new post ("p9") via setInsideTrackPins WHILE this
+		// request is in flight — the fresh re-read at prune time must see it.
+		const concurrentlyEditedMetadata: OrganizationMetadata = {
+			circle: {
+				communityDomain: "community.rionna.com",
+				insideTrack: { spaceId: SPACE_ID, pinnedPostIds: ["gone", "p1", "p9"] },
+			},
+		};
+
+		mockOrgFindUnique
+			.mockResolvedValueOnce({ id: ORG_ID, slug: "rionna", metadata: "request-time" })
+			.mockResolvedValueOnce({ id: ORG_ID, slug: "rionna", metadata: "fresh" });
+		mockParseOrgMetadata.mockImplementation((raw: string | null) =>
+			raw === "fresh" ? concurrentlyEditedMetadata : requestTimeMetadata,
+		);
+		vi.stubGlobal(
+			"fetch",
+			routeFetch({
+				postsResp: {
+					ok: true,
+					status: 200,
+					records: [SPACE_POSTS.records.find((p) => p.id === "p1")],
+				},
+				individualPosts: { gone: { ok: false, status: 404 } },
+			}),
+		);
+
+		await call(getInsideTrack, { organizationId: ORG_ID }, ctx);
+
+		await new Promise((resolve) => setTimeout(resolve, 0));
+
+		expect(mockOrgUpdate).toHaveBeenCalledTimes(1);
+		const savedMetadata = JSON.parse(mockOrgUpdate.mock.calls[0][0].data.metadata);
+		// "gone" removed, but "p9" (added after the request snapshot) survives.
+		expect(savedMetadata.circle.insideTrack.pinnedPostIds).toEqual(["p1", "p9"]);
+	});
+
 	it("fails soft on Circle errors", async () => {
 		mockParseOrgMetadata.mockReturnValue({
 			circle: {
@@ -193,7 +353,7 @@ describe("getInsideTrack", () => {
 				insideTrack: { spaceId: SPACE_ID, pinnedPostIds: ["gone", "p1"] },
 			},
 		});
-		vi.stubGlobal("fetch", routeFetch({ ok: false, status: 500 }));
+		vi.stubGlobal("fetch", routeFetch({ postsResp: { ok: false, status: 500 } }));
 
 		const res = await call(getInsideTrack, { organizationId: ORG_ID }, ctx);
 
@@ -224,5 +384,49 @@ describe("getInsideTrack", () => {
 
 		expect(res).toEqual({ ok: true, configured: true, pinned: [], latest: [] });
 		expect(fetchSpy).not.toHaveBeenCalled();
+	});
+
+	describe("60s per-org cache (Finding B3)", () => {
+		it("serves the second call from cache without refetching from Circle", async () => {
+			mockParseOrgMetadata.mockReturnValue({
+				circle: {
+					communityDomain: "community.rionna.com",
+					insideTrack: { spaceId: SPACE_ID, pinnedPostIds: ["p2", "p1"] },
+				},
+			});
+			const fetchSpy = routeFetch();
+			vi.stubGlobal("fetch", fetchSpy);
+
+			const first = await call(getInsideTrack, { organizationId: ORG_ID }, ctx);
+			expect(fetchSpy).toHaveBeenCalledTimes(1);
+			mockOrgFindUnique.mockClear();
+
+			const second = await call(getInsideTrack, { organizationId: ORG_ID }, ctx);
+
+			expect(second).toEqual(first);
+			expect(fetchSpy).toHaveBeenCalledTimes(1);
+			// The cache hit is served before the org/member lookups even run.
+			expect(mockOrgFindUnique).not.toHaveBeenCalled();
+		});
+
+		it("does not cache a fail-soft (ok:false) response", async () => {
+			mockParseOrgMetadata.mockReturnValue({
+				circle: {
+					communityDomain: "community.rionna.com",
+					insideTrack: { spaceId: SPACE_ID, pinnedPostIds: [] },
+				},
+			});
+			vi.stubGlobal("fetch", routeFetch({ postsResp: { ok: false, status: 500 } }));
+
+			const first = await call(getInsideTrack, { organizationId: ORG_ID }, ctx);
+			expect(first.ok).toBe(false);
+
+			const fetchSpy = routeFetch();
+			vi.stubGlobal("fetch", fetchSpy);
+			const second = await call(getInsideTrack, { organizationId: ORG_ID }, ctx);
+
+			expect(second.ok).toBe(true);
+			expect(fetchSpy).toHaveBeenCalledTimes(1);
+		});
 	});
 });

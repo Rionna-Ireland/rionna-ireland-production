@@ -9,14 +9,21 @@
 import { call } from "@orpc/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockGetSession, mockOrgFindUnique, mockOrgUpdate, mockParseOrgMetadata, mockLoggerInfo } =
-	vi.hoisted(() => ({
-		mockGetSession: vi.fn(),
-		mockOrgFindUnique: vi.fn(),
-		mockOrgUpdate: vi.fn(),
-		mockParseOrgMetadata: vi.fn(),
-		mockLoggerInfo: vi.fn(),
-	}));
+const {
+	mockGetSession,
+	mockOrgFindUnique,
+	mockOrgUpdate,
+	mockParseOrgMetadata,
+	mockLoggerInfo,
+	mockInvalidateInsideTrackCache,
+} = vi.hoisted(() => ({
+	mockGetSession: vi.fn(),
+	mockOrgFindUnique: vi.fn(),
+	mockOrgUpdate: vi.fn(),
+	mockParseOrgMetadata: vi.fn(),
+	mockLoggerInfo: vi.fn(),
+	mockInvalidateInsideTrackCache: vi.fn(),
+}));
 
 vi.mock("@repo/auth", () => ({
 	auth: { api: { getSession: mockGetSession } },
@@ -29,6 +36,10 @@ vi.mock("@repo/database", () => ({
 
 vi.mock("@repo/logs", () => ({
 	logger: { info: mockLoggerInfo, warn: vi.fn(), error: vi.fn(), log: vi.fn() },
+}));
+
+vi.mock("../../circle/lib/inside-track-cache", () => ({
+	invalidateInsideTrackCache: mockInvalidateInsideTrackCache,
 }));
 
 import { setInsideTrackPins } from "../procedures/set-inside-track-pins";
@@ -78,11 +89,27 @@ describe("setInsideTrackPins (S11-01 task 5)", () => {
 		});
 	});
 
+	it("invalidates the Inside Track cache after writing the new pin list", async () => {
+		await call(
+			setInsideTrackPins,
+			{ organizationId: ORG_ID, pinnedPostIds: ["p1", "p2"] },
+			ctx,
+		);
+
+		expect(mockInvalidateInsideTrackCache).toHaveBeenCalledWith(ORG_ID);
+		expect(mockInvalidateInsideTrackCache).toHaveBeenCalledTimes(1);
+		// Must fire after the metadata write, not before.
+		expect(mockOrgUpdate.mock.invocationCallOrder[0]).toBeLessThan(
+			mockInvalidateInsideTrackCache.mock.invocationCallOrder[0],
+		);
+	});
+
 	it("rejects duplicate pinned post ids", async () => {
 		await expect(
 			call(setInsideTrackPins, { organizationId: ORG_ID, pinnedPostIds: ["p1", "p1"] }, ctx),
 		).rejects.toThrow();
 		expect(mockOrgUpdate).not.toHaveBeenCalled();
+		expect(mockInvalidateInsideTrackCache).not.toHaveBeenCalled();
 	});
 
 	it("rejects more than 20 pinned post ids", async () => {
@@ -92,6 +119,7 @@ describe("setInsideTrackPins (S11-01 task 5)", () => {
 			call(setInsideTrackPins, { organizationId: ORG_ID, pinnedPostIds: tooMany }, ctx),
 		).rejects.toThrow();
 		expect(mockOrgUpdate).not.toHaveBeenCalled();
+		expect(mockInvalidateInsideTrackCache).not.toHaveBeenCalled();
 	});
 
 	it("throws NOT_FOUND when the organization does not exist", async () => {
@@ -101,6 +129,7 @@ describe("setInsideTrackPins (S11-01 task 5)", () => {
 			call(setInsideTrackPins, { organizationId: ORG_ID, pinnedPostIds: ["p1"] }, ctx),
 		).rejects.toThrow();
 		expect(mockOrgUpdate).not.toHaveBeenCalled();
+		expect(mockInvalidateInsideTrackCache).not.toHaveBeenCalled();
 	});
 
 	it("emits a structured audit log", async () => {

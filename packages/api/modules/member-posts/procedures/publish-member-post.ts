@@ -6,6 +6,7 @@ import type { NovelDoc } from "@repo/payments/lib/circle";
 import { z } from "zod";
 
 import { adminProcedure } from "../../../orpc/procedures";
+import { invalidateInsideTrackCache } from "../../circle/lib/inside-track-cache";
 import { fetchImageBytes } from "../lib/fetch-image-bytes";
 import { notifyCommunityMembers } from "../lib/notify-community-members";
 import { notifyHorseFollowers } from "../lib/notify-horse-followers";
@@ -110,6 +111,12 @@ export const publishMemberPost = adminProcedure
 			circlePostId: created.data.circlePostId,
 			audienceType: post.audienceType,
 		});
+
+		if (post.audienceType === "insideTrack") {
+			// A new post changes what "latest" should show — the cached buffer
+			// would otherwise hide it from every member for up to 60s.
+			invalidateInsideTrackCache(post.organizationId);
+		}
 
 		// Best-effort, after the publish result is recorded: notify a horse's
 		// followers on ANY update type, if the composer asked for it (S8-01a3 —

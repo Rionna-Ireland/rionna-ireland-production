@@ -4,6 +4,7 @@ import { logger } from "@repo/logs";
 import { z } from "zod";
 
 import { adminProcedure } from "../../../orpc/procedures";
+import { invalidateInsideTrackCache } from "../../circle/lib/inside-track-cache";
 
 /**
  * Overwrite the Inside Track "Start Here" pin list (ordered Circle post ids).
@@ -49,6 +50,7 @@ export const setInsideTrackPins = adminProcedure
 				}),
 			},
 		});
+		invalidateInsideTrackCache(input.organizationId);
 		logger.info("Inside Track pins updated", {
 			event: "inside_track.pins_updated",
 			organizationId: input.organizationId,
