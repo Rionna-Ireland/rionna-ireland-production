@@ -10,7 +10,8 @@
 			"organizations": "Organizations",
 			"settings": "Settings",
 			"announcements": "Announcements",
-			"community": "Community"
+			"community": "Community",
+			"insideTrack": "Inside Track"
 		},
 		"dashboard": {
 			"health": {
@@ -195,6 +196,29 @@
 					"publishFailed": "Couldn't publish to Circle — see the fallback below.",
 					"error": "Something went wrong. Please try again."
 				}
+			}
+		},
+		"insideTrack": {
+			"createTitle": "Post an Inside Track piece",
+			"editTitle": "Edit Inside Track piece",
+			"audience": "Educational content — all members",
+			"audienceLabel": "Inside Track",
+			"notifyMembers": "Notify members",
+			"notifyMembersHint": "Send a push notification to all members.",
+			"publish": "Publish piece",
+			"published": "Inside Track piece published.",
+			"startHere": "Start Here",
+			"startHereEmpty": "No pinned pieces yet. Pin a published piece below to feature it here.",
+			"pin": "Pin",
+			"unpin": "Unpin",
+			"moveUp": "Move up",
+			"moveDown": "Move down",
+			"notConfigured": "No Inside Track Circle space is configured yet — set metadata.circle.insideTrack.spaceId.",
+			"list": {
+				"title": "Inside Track pieces",
+				"new": "New piece",
+				"loading": "Loading…",
+				"empty": "No Inside Track pieces yet."
 			}
 		},
 		"settings": {

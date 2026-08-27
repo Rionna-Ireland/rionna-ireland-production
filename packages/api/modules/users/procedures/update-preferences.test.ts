@@ -87,6 +87,35 @@ describe("updatePreferences — pushPreferences.horseUpdates (S8-01a3)", () => {
 		});
 	});
 
+	it("accepts insideTrack and merges it into existing preferences (S11-01)", async () => {
+		mockFindUniqueOrThrow.mockResolvedValue({
+			pushPreferences: { raceResult: false },
+			emailPreferences: {},
+		});
+		mockUpdate.mockResolvedValue({
+			pushEnabled: true,
+			pushPreferences: { raceResult: false, insideTrack: false },
+			emailPreferences: {},
+		});
+
+		const result = await call(
+			updatePreferences,
+			{ pushPreferences: { insideTrack: false } },
+			ctx,
+		);
+
+		expect(mockUpdate).toHaveBeenCalledWith({
+			where: { id: "u1" },
+			data: { pushPreferences: { raceResult: false, insideTrack: false } },
+			select: {
+				pushEnabled: true,
+				pushPreferences: true,
+				emailPreferences: true,
+			},
+		});
+		expect(result.pushPreferences).toEqual({ raceResult: false, insideTrack: false });
+	});
+
 	it("no longer accepts the legacy horseWellbeing key (unknown keys are stripped)", async () => {
 		mockUpdate.mockResolvedValue({
 			pushEnabled: true,

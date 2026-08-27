@@ -85,6 +85,49 @@ describe("member-post draft CRUD (S2-09)", () => {
 		expect(mockCreate).not.toHaveBeenCalled();
 	});
 
+	it("accepts an insideTrack draft with no horse", async () => {
+		mockCreate.mockImplementation(async (d: Record<string, unknown>) => ({ id: "mp2", ...d }));
+
+		const result = await call(
+			createMemberPostDraft,
+			{
+				organizationId: "org1",
+				audienceType: "insideTrack",
+				title: "How to read a racecard",
+				bodyJson: { type: "doc", content: [] },
+			},
+			ctx,
+		);
+
+		expect(result).toMatchObject({ id: "mp2" });
+		expect(mockCreate).toHaveBeenCalledWith(
+			expect.objectContaining({
+				organizationId: "org1",
+				authorUserId: "u1",
+				audienceType: "insideTrack",
+				horseId: null,
+				updateType: null,
+				title: "How to read a racecard",
+			}),
+		);
+	});
+
+	it("rejects an insideTrack draft carrying a horseId", async () => {
+		await expect(
+			call(
+				createMemberPostDraft,
+				{
+					organizationId: "org1",
+					audienceType: "insideTrack",
+					horseId: "h1",
+					title: "x",
+				},
+				ctx,
+			),
+		).rejects.toThrow();
+		expect(mockCreate).not.toHaveBeenCalled();
+	});
+
 	it("updates only the provided draft fields", async () => {
 		mockGetById.mockResolvedValue({ id: "mp1", status: "draft" });
 		mockUpdate.mockImplementation(async (id: string, d: Record<string, unknown>) => ({

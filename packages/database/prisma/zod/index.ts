@@ -235,7 +235,7 @@ export type DevicePlatform = z.infer<typeof DevicePlatformSchema>;
 
 // File: PushTriggerType.schema.ts
 
-export const PushTriggerTypeSchema = z.enum(['HORSE_DECLARED', 'HORSE_NON_RUNNER', 'RACE_RESULT', 'TRAINER_POST', 'NEWS_POST', 'SYSTEM', 'CIRCLE_MENTION', 'CIRCLE_REPLY', 'CIRCLE_REACTION', 'CIRCLE_DM', 'CIRCLE_HORSE_DISCUSSION', 'HORSE_WELLBEING', 'HORSE_UPDATE'])
+export const PushTriggerTypeSchema = z.enum(['HORSE_DECLARED', 'HORSE_NON_RUNNER', 'RACE_RESULT', 'TRAINER_POST', 'NEWS_POST', 'SYSTEM', 'CIRCLE_MENTION', 'CIRCLE_REPLY', 'CIRCLE_REACTION', 'CIRCLE_DM', 'CIRCLE_HORSE_DISCUSSION', 'HORSE_WELLBEING', 'HORSE_UPDATE', 'INSIDE_TRACK'])
 
 export type PushTriggerType = z.infer<typeof PushTriggerTypeSchema>;
 

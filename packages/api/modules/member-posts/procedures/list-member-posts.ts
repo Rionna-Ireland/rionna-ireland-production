@@ -15,7 +15,7 @@ export const listMemberPosts = adminProcedure
 			organizationId: z.string(),
 			status: z.enum(["draft", "published", "publish_failed"]).optional(),
 			horseId: z.string().optional(),
-			audienceType: z.enum(["horse", "community"]).optional(),
+			audienceType: z.enum(["horse", "community", "insideTrack"]).optional(),
 			limit: z.number().int().min(1).max(100).default(20),
 			offset: z.number().int().min(0).default(0),
 		}),

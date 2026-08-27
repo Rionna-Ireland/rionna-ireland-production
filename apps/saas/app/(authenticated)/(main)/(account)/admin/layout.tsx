@@ -5,6 +5,7 @@ import { PageHeader } from "@shared/components/PageHeader";
 import {
 	BellIcon,
 	CalendarIcon,
+	GraduationCapIcon,
 	LayoutDashboardIcon,
 	ListIcon,
 	MegaphoneIcon,
@@ -70,6 +71,11 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
 								title: t("menu.announcements"),
 								href: "/admin/announcements",
 								icon: <BellIcon className="size-4 opacity-50" />,
+							},
+							{
+								title: t("menu.insideTrack"),
+								href: "/admin/inside-track",
+								icon: <GraduationCapIcon className="size-4 opacity-50" />,
 							},
 							{
 								title: t("menu.news"),

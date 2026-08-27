@@ -631,6 +631,7 @@ enum PushTriggerType {
   CIRCLE_HORSE_DISCUSSION
   HORSE_WELLBEING
   HORSE_UPDATE
+  INSIDE_TRACK
 }
 
 enum PushStatus {
