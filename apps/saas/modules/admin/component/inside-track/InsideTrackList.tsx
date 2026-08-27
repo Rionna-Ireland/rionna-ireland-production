@@ -2,6 +2,7 @@
 
 import { useAdminOrganization } from "@admin/hooks/use-admin-organization";
 import { getAdminPath } from "@admin/lib/links";
+import { parseOrgMetadata } from "@repo/database/types";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@repo/ui/components/card";
@@ -28,11 +29,14 @@ export function InsideTrackList() {
 	const { organizationId: orgId, organization } = useAdminOrganization();
 	const organizationId = orgId ?? "";
 
+	// organization.metadata can reach the client as a raw JSON string (see
+	// InstallAppCard) — a plain object cast silently yields undefined then.
+	const rawMetadata = organization?.metadata as unknown;
 	const insideTrackMeta = (
-		organization?.metadata as
-			| { circle?: { insideTrack?: { spaceId?: string; pinnedPostIds?: string[] } } }
-			| undefined
-	)?.circle?.insideTrack;
+		typeof rawMetadata === "string"
+			? parseOrgMetadata(rawMetadata)
+			: ((rawMetadata ?? {}) as ReturnType<typeof parseOrgMetadata>)
+	).circle?.insideTrack;
 	const spaceId = insideTrackMeta?.spaceId ?? null;
 	const pinnedPostIds = insideTrackMeta?.pinnedPostIds ?? [];
 
