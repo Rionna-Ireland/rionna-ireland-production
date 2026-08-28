@@ -52,6 +52,22 @@ describe("toClubEvent", () => {
 		};
 		expect(toClubEvent(alt)?.startsAt).toBe("2026-09-01T10:00:00Z");
 	});
+	it("falls back to the member API's cover_image / cardview_image keys", () => {
+		const memberShaped = {
+			...record,
+			cover_image_url: undefined,
+			cover_image: "https://assets.example/member-cover",
+			cardview_image: "https://assets.example/cardview",
+		};
+		expect(toClubEvent(memberShaped)?.coverImageUrl).toBe(
+			"https://assets.example/member-cover",
+		);
+		const cardviewOnly = { ...memberShaped, cover_image: undefined };
+		expect(toClubEvent(cardviewOnly)?.coverImageUrl).toBe("https://assets.example/cardview");
+		// Admin-side key still wins when present.
+		expect(toClubEvent(record)?.coverImageUrl).toBe("https://cdn.example/naas.jpg");
+	});
+
 	it("returns null without id or title", () => {
 		expect(toClubEvent({ name: "x" })).toBeNull();
 		expect(toClubEvent({ id: 1 })).toBeNull();

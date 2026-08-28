@@ -18,6 +18,7 @@ import {
 	compareIds,
 	normaliseCircleNotification,
 } from "./http-utils";
+import { tiptapDocToTrixBody } from "./event-body";
 import { decodeCircleInPersonLocation } from "./location";
 import {
 	clearCachedMemberToken,
@@ -1086,6 +1087,13 @@ export class RealCircleService implements CircleService {
 					space_id: Number(params.spaceId),
 					name: params.name,
 					tiptap_body: params.tiptapBody,
+					// Probed against staging (2026-08-28): Circle IGNORES tiptap_body on
+					// events (stores editor:trix, empty body) — `body` HTML carries the
+					// description for real; tiptap_body stays for the local mock.
+					...(() => {
+						const trixBody = tiptapDocToTrixBody(params.tiptapBody);
+						return trixBody ? { body: trixBody } : {};
+					})(),
 					...(params.coverImageSignedId
 						? { cover_image: params.coverImageSignedId }
 						: {}),
@@ -1291,7 +1299,12 @@ export class RealCircleService implements CircleService {
 		// parameter: space_id" unless the body includes it — always send it.
 		const body: Record<string, unknown> = { space_id: Number(params.spaceId) };
 		if (params.name !== undefined) body.name = params.name;
-		if (params.tiptapBody !== undefined) body.tiptap_body = params.tiptapBody;
+		if (params.tiptapBody !== undefined) {
+			body.tiptap_body = params.tiptapBody;
+			// Same 2026-08-28 probe as createEvent: only `body` HTML persists.
+			const trixBody = tiptapDocToTrixBody(params.tiptapBody);
+			if (trixBody) body.body = trixBody;
+		}
 		if (params.coverImageSignedId !== undefined) body.cover_image = params.coverImageSignedId;
 		if (Object.keys(settings).length > 0) body.event_setting_attributes = settings;
 		let response: Response;

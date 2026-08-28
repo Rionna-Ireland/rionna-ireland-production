@@ -143,6 +143,7 @@ export type {
 } from "./types";
 export { CircleApiError } from "./types";
 export { decodeCircleInPersonLocation } from "./location";
+export { tiptapDocToTrixBody } from "./event-body";
 export { MockCircleService } from "./mock";
 export { MockServerCircleService } from "./mock-server";
 export { parseRetryAfterMs, RealCircleService } from "./real";

@@ -81,7 +81,10 @@ export function toClubEvent(record: Record<string, unknown>): ClubEvent | null {
 		locationType: str(settings.location_type),
 		inPersonLocation: locationHidden ? null : decodedInPersonLocation,
 		virtualLocationUrl: locationHidden ? null : str(settings.virtual_location_url),
-		coverImageUrl: str(record.cover_image_url),
+		// Probed against staging (2026-08-28): the member API carries the cover as
+		// top-level `cover_image` (plain URL) — `cover_image_url` is admin-side.
+		coverImageUrl:
+			str(record.cover_image_url) ?? str(record.cover_image) ?? str(record.cardview_image),
 		bodyText: str(record.body_plain_text),
 		tiptapDoc: objectValue(tiptap?.body) ?? null,
 		embeds: objectValue(tiptap?.sgids_to_object_map) ?? {},

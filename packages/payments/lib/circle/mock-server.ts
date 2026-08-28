@@ -8,6 +8,7 @@ import {
 	compareIds,
 	normaliseCircleNotification,
 } from "./http-utils";
+import { tiptapDocToTrixBody } from "./event-body";
 import { decodeCircleInPersonLocation } from "./location";
 import type {
 	CircleCallOutcome,
@@ -807,6 +808,11 @@ export class MockServerCircleService implements CircleService {
 					space_id: Number(params.spaceId),
 					name: params.name,
 					tiptap_body: params.tiptapBody,
+					// Mirrors RealCircleService: only `body` HTML persists on real Circle.
+					...(() => {
+						const trixBody = tiptapDocToTrixBody(params.tiptapBody);
+						return trixBody ? { body: trixBody } : {};
+					})(),
 					...(params.coverImageSignedId
 						? { cover_image: params.coverImageSignedId }
 						: {}),
@@ -994,7 +1000,12 @@ export class MockServerCircleService implements CircleService {
 		// space_id" unless the body includes it — always send it.
 		const body: Record<string, unknown> = { space_id: Number(params.spaceId) };
 		if (params.name !== undefined) body.name = params.name;
-		if (params.tiptapBody !== undefined) body.tiptap_body = params.tiptapBody;
+		if (params.tiptapBody !== undefined) {
+			body.tiptap_body = params.tiptapBody;
+			// Mirrors RealCircleService: only `body` HTML persists on real Circle.
+			const trixBody = tiptapDocToTrixBody(params.tiptapBody);
+			if (trixBody) body.body = trixBody;
+		}
 		if (params.coverImageSignedId !== undefined) body.cover_image = params.coverImageSignedId;
 		if (Object.keys(settings).length > 0) body.event_setting_attributes = settings;
 		let response: Response;

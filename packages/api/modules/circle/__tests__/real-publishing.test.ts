@@ -262,6 +262,9 @@ describe("RealCircleService — publishing surface (S2-09)", () => {
 				space_id: 2682536,
 				name: "Yard visit",
 				tiptap_body: DOC,
+				// Derived trix body — Circle ignores tiptap_body on events (2026-08-28
+				// probe), so the description ships as `body` HTML too.
+				body: "<div>Pink Diamond Lass worked well.</div>",
 				event_setting_attributes: {
 					starts_at: "2026-07-01T10:00:00.000Z",
 					duration_in_seconds: 3600,
