@@ -122,6 +122,7 @@ export function createCircleService(
 export type { CircleService } from "./types";
 export type {
 	CircleTiptapBody,
+	ClubEventSummary,
 	CreateEmbedParams,
 	CreateEmbedResult,
 	CreateEventParams,
@@ -132,8 +133,11 @@ export type {
 	CreatePostResult,
 	CreateSpaceParams,
 	CreateSpaceResult,
+	ListEventsParams,
+	ListEventsResult,
 	MemberTokenResult,
 	ReactivateMemberParams,
+	UpdateEventParams,
 	UploadImageParams,
 	UploadImageResult,
 } from "./types";

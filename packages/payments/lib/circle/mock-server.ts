@@ -15,6 +15,7 @@ import type {
 	CircleService,
 	CircleSpaceGroupSummary,
 	CircleSpaceSummary,
+	ClubEventSummary,
 	CreateEventParams,
 	CreateEventResult,
 	CreateMemberParams,
@@ -27,8 +28,11 @@ import type {
 	CreateSpaceResult,
 	CreateEmbedParams,
 	CreateEmbedResult,
+	ListEventsParams,
+	ListEventsResult,
 	MemberTokenResult,
 	ReactivateMemberParams,
+	UpdateEventParams,
 	UploadImageParams,
 	UploadImageResult,
 } from "./types";
@@ -572,7 +576,11 @@ export class MockServerCircleService implements CircleService {
 
 		return {
 			ok: true,
-			data: { signedId: reg.data.signedId, attachableSgid: reg.data.attachableSgid, url: reg.data.cdnUrl },
+			data: {
+				signedId: reg.data.signedId,
+				attachableSgid: reg.data.attachableSgid,
+				url: reg.data.cdnUrl,
+			},
 		};
 	}
 
@@ -798,10 +806,19 @@ export class MockServerCircleService implements CircleService {
 					space_id: Number(params.spaceId),
 					name: params.name,
 					tiptap_body: params.tiptapBody,
+					...(params.coverImageSignedId
+						? { cover_image: params.coverImageSignedId }
+						: {}),
 					event_setting_attributes: {
 						starts_at: params.startsAt,
 						duration_in_seconds: params.durationInSeconds,
 						location_type: params.locationType ?? "tbd",
+						...(params.inPersonLocation
+							? { in_person_location: params.inPersonLocation }
+							: {}),
+						...(params.virtualLocationUrl
+							? { virtual_location_url: params.virtualLocationUrl }
+							: {}),
 					},
 				}),
 			});
@@ -825,5 +842,123 @@ export class MockServerCircleService implements CircleService {
 			return { ok: false, reason: "server_error", retriable: false, raw: "missing event id" };
 		}
 		return { ok: true, data: { circleEventId: String(id) } };
+	}
+
+	private toClubEventSummary(record: Record<string, unknown>): ClubEventSummary | null {
+		const id = record.id === undefined || record.id === null ? null : String(record.id);
+		const name = typeof record.name === "string" ? record.name : null;
+		if (!id || !name) {
+			return null;
+		}
+		const rawSettings =
+			(record.event_setting_attributes as Record<string, unknown> | undefined) ??
+			(record.event_settings_attributes as Record<string, unknown> | undefined) ??
+			{};
+		const str = (v: unknown) => (typeof v === "string" && v.length > 0 ? v : null);
+		const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : null);
+		return {
+			circleEventId: id,
+			name,
+			startsAt: str(rawSettings.starts_at),
+			endsAt: str(rawSettings.ends_at),
+			locationType: str(rawSettings.location_type),
+			inPersonLocation: str(rawSettings.in_person_location),
+			virtualLocationUrl: str(rawSettings.virtual_location_url),
+			rsvpCount: num(rawSettings.rsvp_count) ?? 0,
+			rsvpLimit: num(rawSettings.rsvp_limit),
+			coverImageUrl: str(record.cover_image_url),
+			url: str(record.url),
+		};
+	}
+
+	async listEvents(params: ListEventsParams): Promise<CircleCallOutcome<ListEventsResult>> {
+		const qs = new URLSearchParams({
+			space_id: String(Number(params.spaceId)),
+			sort: params.sort ?? "start_date_desc",
+			per_page: String(params.perPage ?? 60),
+			page: String(params.page ?? 1),
+		});
+		let response: Response;
+		try {
+			response = await fetch(`${this.baseUrl}/api/admin/v2/events?${qs}`, {
+				headers: this.adminHeaders(),
+			});
+		} catch (err) {
+			return { ok: false, reason: "network", retriable: true, raw: err };
+		}
+		if (!response.ok) {
+			const raw = await this.readError(response, "Mock server list events failed");
+			const { reason, retriable } = classifyStatus(response.status);
+			return { ok: false, reason, retriable, raw };
+		}
+		let data: { records?: unknown[]; has_next_page?: boolean };
+		try {
+			data = await this.parseJson<typeof data>(response);
+		} catch (err) {
+			return { ok: false, reason: "server_error", retriable: true, raw: err };
+		}
+		const events = (Array.isArray(data.records) ? data.records : [])
+			.map((r) => this.toClubEventSummary(r as Record<string, unknown>))
+			.filter((e): e is ClubEventSummary => e !== null);
+		return { ok: true, data: { events, hasNextPage: data.has_next_page === true } };
+	}
+
+	async updateEvent(
+		params: UpdateEventParams,
+	): Promise<CircleCallOutcome<{ circleEventId: string }>> {
+		const settings: Record<string, unknown> = {};
+		if (params.startsAt !== undefined) settings.starts_at = params.startsAt;
+		if (params.durationInSeconds !== undefined)
+			settings.duration_in_seconds = params.durationInSeconds;
+		if (params.locationType !== undefined) settings.location_type = params.locationType;
+		if (params.inPersonLocation !== undefined)
+			settings.in_person_location = params.inPersonLocation;
+		if (params.virtualLocationUrl !== undefined)
+			settings.virtual_location_url = params.virtualLocationUrl;
+		const body: Record<string, unknown> = {};
+		if (params.name !== undefined) body.name = params.name;
+		if (params.tiptapBody !== undefined) body.tiptap_body = params.tiptapBody;
+		if (params.coverImageSignedId !== undefined) body.cover_image = params.coverImageSignedId;
+		if (Object.keys(settings).length > 0) body.event_setting_attributes = settings;
+		let response: Response;
+		try {
+			response = await fetch(
+				`${this.baseUrl}/api/admin/v2/events/${encodeURIComponent(params.eventId)}`,
+				{
+					method: "PUT",
+					headers: this.adminHeaders(),
+					body: JSON.stringify(body),
+				},
+			);
+		} catch (err) {
+			return { ok: false, reason: "network", retriable: true, raw: err };
+		}
+		if (!response.ok) {
+			const raw = await this.readError(response, "Mock server update event failed");
+			const { reason, retriable } = classifyStatus(response.status);
+			return { ok: false, reason, retriable, raw };
+		}
+		return { ok: true, data: { circleEventId: params.eventId } };
+	}
+
+	async deleteEvent(params: { eventId: string }): Promise<CircleCallOutcome<void>> {
+		let response: Response;
+		try {
+			response = await fetch(
+				`${this.baseUrl}/api/admin/v2/events/${encodeURIComponent(params.eventId)}`,
+				{
+					method: "DELETE",
+					headers: this.adminHeaders(),
+				},
+			);
+		} catch (err) {
+			return { ok: false, reason: "network", retriable: true, raw: err };
+		}
+		if (!response.ok) {
+			const raw = await this.readError(response, "Mock server delete event failed");
+			const { reason, retriable } = classifyStatus(response.status);
+			return { ok: false, reason, retriable, raw };
+		}
+		return { ok: true, data: undefined };
 	}
 }

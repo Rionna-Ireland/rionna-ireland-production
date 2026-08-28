@@ -245,11 +245,53 @@ export interface CreateEventParams {
 	durationInSeconds: number;
 	/** Defaults to "tbd" (simplest; virtual/in_person need more fields). */
 	locationType?: "tbd" | "virtual" | "in_person";
+	inPersonLocation?: string;
+	virtualLocationUrl?: string;
+	coverImageSignedId?: string;
 	idempotencyKey?: string;
 }
 
 export interface CreateEventResult {
 	circleEventId: string;
+}
+
+/** S11-02: a Circle event summarised for the club events admin surface. */
+export interface ClubEventSummary {
+	circleEventId: string;
+	name: string;
+	startsAt: string | null;
+	endsAt: string | null;
+	locationType: string | null;
+	inPersonLocation: string | null;
+	virtualLocationUrl: string | null;
+	rsvpCount: number;
+	rsvpLimit: number | null;
+	coverImageUrl: string | null;
+	url: string | null;
+}
+
+export interface ListEventsParams {
+	spaceId: string;
+	page?: number;
+	perPage?: number;
+	sort?: "oldest" | "start_date" | "start_date_desc";
+}
+
+export interface ListEventsResult {
+	events: ClubEventSummary[];
+	hasNextPage: boolean;
+}
+
+export interface UpdateEventParams {
+	eventId: string;
+	name?: string;
+	tiptapBody?: CircleTiptapBody;
+	startsAt?: string;
+	durationInSeconds?: number;
+	locationType?: "tbd" | "virtual" | "in_person";
+	inPersonLocation?: string;
+	virtualLocationUrl?: string;
+	coverImageSignedId?: string;
 }
 
 export interface CircleService {
@@ -335,6 +377,12 @@ export interface CircleService {
 	createSpace(params: CreateSpaceParams): Promise<CircleCallOutcome<CreateSpaceResult>>;
 	/** Create an event (RSVP + reminders built into Circle events). */
 	createEvent(params: CreateEventParams): Promise<CircleCallOutcome<CreateEventResult>>;
+	/** List events in a space (Admin API v2). */
+	listEvents(params: ListEventsParams): Promise<CircleCallOutcome<ListEventsResult>>;
+	/** Update an event (Admin API v2 PUT). Only provided fields are sent. */
+	updateEvent(params: UpdateEventParams): Promise<CircleCallOutcome<{ circleEventId: string }>>;
+	/** Delete an event (Admin API v2). */
+	deleteEvent(params: { eventId: string }): Promise<CircleCallOutcome<void>>;
 
 	// --- Admin community overview (S6-07) -----------------------------------
 	// Read-only listings + a visibility toggle for the admin community overview

@@ -18,6 +18,7 @@ import type {
 	CircleService,
 	CircleSpaceGroupSummary,
 	CircleSpaceSummary,
+	ClubEventSummary,
 	CreateEventParams,
 	CreateEventResult,
 	CreateMemberParams,
@@ -30,8 +31,11 @@ import type {
 	CreateDirectUploadResult,
 	CreateEmbedParams,
 	CreateEmbedResult,
+	ListEventsParams,
+	ListEventsResult,
 	MemberTokenResult,
 	ReactivateMemberParams,
+	UpdateEventParams,
 	UploadImageParams,
 	UploadImageResult,
 } from "./types";
@@ -59,6 +63,13 @@ interface MockEvent {
 	spaceId: string;
 	name: string;
 	startsAt: string;
+	endsAt: string | null;
+	locationType: string | null;
+	inPersonLocation: string | null;
+	virtualLocationUrl: string | null;
+	coverImageSignedId: string | null;
+	rsvpCount: number;
+	rsvpLimit: number | null;
 }
 
 export class MockCircleService implements CircleService {
@@ -344,7 +355,10 @@ export class MockCircleService implements CircleService {
 				signedId,
 				attachableSgid: `mock-sgid-${n}`,
 				uploadUrl: `https://mock.circle.local/direct-upload/${n}`,
-				uploadHeaders: { "Content-Type": params.contentType, "Content-MD5": params.checksum },
+				uploadHeaders: {
+					"Content-Type": params.contentType,
+					"Content-MD5": params.checksum,
+				},
 				cdnUrl: `https://mock.circle.local/uploads/${n}`,
 			},
 		};
@@ -391,10 +405,20 @@ export class MockCircleService implements CircleService {
 		}
 
 		const circleEventId = `mock-event-${this.nextEventId++}`;
+		const endsAt = new Date(
+			new Date(params.startsAt).getTime() + params.durationInSeconds * 1000,
+		).toISOString();
 		this.events.set(circleEventId, {
 			spaceId: params.spaceId,
 			name: params.name,
 			startsAt: params.startsAt,
+			endsAt,
+			locationType: params.locationType ?? "tbd",
+			inPersonLocation: params.inPersonLocation ?? null,
+			virtualLocationUrl: params.virtualLocationUrl ?? null,
+			coverImageSignedId: params.coverImageSignedId ?? null,
+			rsvpCount: 0,
+			rsvpLimit: null,
 		});
 		if (params.idempotencyKey) {
 			this.eventIdempotencyKeys.set(params.idempotencyKey, circleEventId);
@@ -407,6 +431,86 @@ export class MockCircleService implements CircleService {
 			startsAt: params.startsAt,
 		});
 		return { ok: true, data: { circleEventId } };
+	}
+
+	private toClubEventSummary(circleEventId: string, event: MockEvent): ClubEventSummary {
+		return {
+			circleEventId,
+			name: event.name,
+			startsAt: event.startsAt,
+			endsAt: event.endsAt,
+			locationType: event.locationType,
+			inPersonLocation: event.inPersonLocation,
+			virtualLocationUrl: event.virtualLocationUrl,
+			rsvpCount: event.rsvpCount,
+			rsvpLimit: event.rsvpLimit,
+			coverImageUrl: null,
+			url: null,
+		};
+	}
+
+	async listEvents(params: ListEventsParams): Promise<CircleCallOutcome<ListEventsResult>> {
+		const entries = [...this.events.entries()].filter(
+			([, event]) => event.spaceId === params.spaceId,
+		);
+		if (params.sort === "oldest") {
+			entries.sort((a, b) => a[1].startsAt.localeCompare(b[1].startsAt));
+		} else if (params.sort === "start_date") {
+			entries.sort((a, b) => a[1].startsAt.localeCompare(b[1].startsAt));
+		} else {
+			// Default: start_date_desc
+			entries.sort((a, b) => b[1].startsAt.localeCompare(a[1].startsAt));
+		}
+		const events = entries.map(([id, event]) => this.toClubEventSummary(id, event));
+		logger.info("[MockCircle] Listed events", {
+			spaceId: params.spaceId,
+			count: events.length,
+		});
+		return { ok: true, data: { events, hasNextPage: false } };
+	}
+
+	async updateEvent(
+		params: UpdateEventParams,
+	): Promise<CircleCallOutcome<{ circleEventId: string }>> {
+		const event = this.events.get(params.eventId);
+		if (!event) {
+			return {
+				ok: false,
+				reason: "not_found",
+				retriable: false,
+				raw: `Event ${params.eventId} not found`,
+			};
+		}
+		if (params.name !== undefined) event.name = params.name;
+		if (params.startsAt !== undefined) event.startsAt = params.startsAt;
+		if (params.durationInSeconds !== undefined) {
+			event.endsAt = new Date(
+				new Date(event.startsAt).getTime() + params.durationInSeconds * 1000,
+			).toISOString();
+		}
+		if (params.locationType !== undefined) event.locationType = params.locationType;
+		if (params.inPersonLocation !== undefined) event.inPersonLocation = params.inPersonLocation;
+		if (params.virtualLocationUrl !== undefined)
+			event.virtualLocationUrl = params.virtualLocationUrl;
+		if (params.coverImageSignedId !== undefined)
+			event.coverImageSignedId = params.coverImageSignedId;
+
+		logger.info("[MockCircle] Updated event", { circleEventId: params.eventId });
+		return { ok: true, data: { circleEventId: params.eventId } };
+	}
+
+	async deleteEvent(params: { eventId: string }): Promise<CircleCallOutcome<void>> {
+		if (!this.events.has(params.eventId)) {
+			return {
+				ok: false,
+				reason: "not_found",
+				retriable: false,
+				raw: `Event ${params.eventId} not found`,
+			};
+		}
+		this.events.delete(params.eventId);
+		logger.info("[MockCircle] Deleted event", { circleEventId: params.eventId });
+		return { ok: true, data: undefined };
 	}
 
 	// --- Admin community overview (S6-07) -----------------------------------

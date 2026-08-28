@@ -269,5 +269,104 @@ describe("RealCircleService — publishing surface (S2-09)", () => {
 				},
 			});
 		});
+
+		it("passes cover_image and location detail through", async () => {
+			const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, { event: { id: 9 } }));
+			vi.stubGlobal("fetch", fetchMock);
+
+			await svc.createEvent({
+				spaceId: "42",
+				name: "Brunch",
+				tiptapBody: DOC,
+				startsAt: "2026-09-02T11:00:00Z",
+				durationInSeconds: 3600,
+				locationType: "in_person",
+				inPersonLocation: "Clubhouse",
+				coverImageSignedId: "signed-123",
+			});
+
+			const [, opts] = fetchMock.mock.calls[0];
+			const body = JSON.parse(opts.body);
+			expect(body.cover_image).toBe("signed-123");
+			expect(body.event_setting_attributes.in_person_location).toBe("Clubhouse");
+		});
+	});
+
+	describe("listEvents", () => {
+		it("maps records and space-filters via query", async () => {
+			const fetchMock = vi.fn().mockResolvedValue(
+				jsonResponse(200, {
+					page: 1,
+					has_next_page: false,
+					records: [
+						{
+							id: 7,
+							name: "Stable visit",
+							url: "https://c.example/events/stable-visit",
+							cover_image_url: "https://cdn.example/cover.jpg",
+							event_setting_attributes: {
+								starts_at: "2026-09-01T10:00:00Z",
+								ends_at: "2026-09-01T12:00:00Z",
+								location_type: "in_person",
+								in_person_location: "The Yard, Kildare",
+								rsvp_count: 3,
+								rsvp_limit: 20,
+							},
+						},
+					],
+				}),
+			);
+			vi.stubGlobal("fetch", fetchMock);
+
+			const outcome = await svc.listEvents({ spaceId: "42" });
+
+			if (!outcome.ok) throw new Error("expected ok");
+			expect(outcome.data.events[0]).toMatchObject({
+				circleEventId: "7",
+				name: "Stable visit",
+				rsvpCount: 3,
+				rsvpLimit: 20,
+				inPersonLocation: "The Yard, Kildare",
+			});
+			expect(outcome.data.hasNextPage).toBe(false);
+
+			const [url] = fetchMock.mock.calls[0];
+			expect(String(url)).toContain("space_id=42");
+		});
+
+		it("fails closed on non-2xx", async () => {
+			vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(500, {})));
+			const outcome = await svc.listEvents({ spaceId: "42" });
+			expect(outcome.ok).toBe(false);
+		});
+	});
+
+	describe("updateEvent", () => {
+		it("sends only provided fields", async () => {
+			const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, { id: 7 }));
+			vi.stubGlobal("fetch", fetchMock);
+
+			const outcome = await svc.updateEvent({ eventId: "7", name: "New name" });
+
+			expect(outcome.ok).toBe(true);
+			const [url, opts] = fetchMock.mock.calls[0];
+			expect(url).toBe(`${ADMIN_BASE}/events/7`);
+			expect(opts.method).toBe("PUT");
+			expect(JSON.parse(opts.body)).toEqual({ name: "New name" });
+		});
+	});
+
+	describe("deleteEvent", () => {
+		it("succeeds on 2xx", async () => {
+			vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(204, undefined)));
+			const outcome = await svc.deleteEvent({ eventId: "7" });
+			expect(outcome.ok).toBe(true);
+		});
+
+		it("fails closed on non-2xx", async () => {
+			vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(500, {})));
+			const outcome = await svc.deleteEvent({ eventId: "7" });
+			expect(outcome.ok).toBe(false);
+		});
 	});
 });
