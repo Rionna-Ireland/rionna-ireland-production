@@ -70,6 +70,10 @@ export function NavBar() {
 					href: "/news",
 				},
 				{
+					label: t("common.menu.events"),
+					href: "/events",
+				},
+				{
 					label: t("common.menu.contact"),
 					href: "/contact",
 				},
