@@ -1,26 +1,10 @@
 import { db, parseOrgMetadata } from "@repo/database";
 import { logger } from "@repo/logs";
 import { createCircleService } from "@repo/payments/lib/circle";
-import type { CircleTiptapBody } from "@repo/payments/lib/circle";
 import { z } from "zod";
 
 import { adminProcedure } from "../../../orpc/procedures";
-
-/** A plain description → a minimal Circle `tiptap_body` (one paragraph per line). */
-function descriptionToTiptap(text: string): CircleTiptapBody {
-	const paragraphs = text
-		.split(/\n+/)
-		.map((line) => line.trim())
-		.filter(Boolean);
-	const content =
-		paragraphs.length > 0
-			? paragraphs.map((line) => ({
-					type: "paragraph",
-					content: [{ type: "text", text: line }],
-				}))
-			: [{ type: "paragraph" }];
-	return { body: { type: "doc", content } };
-}
+import { descriptionToTiptap } from "../lib/description-to-tiptap";
 
 /**
  * Create a Circle event (S2-09 surface E) via `POST /events` — RSVP + reminders
