@@ -9,6 +9,7 @@ import { getNotificationBadgeCount } from "./procedures/get-notification-badge-c
 import { getPostComments } from "./procedures/get-post-comments";
 import { getSessionToken } from "./procedures/get-session-token";
 import { revokeSession } from "./procedures/revoke-session";
+import { rsvpEvent } from "./procedures/rsvp-event";
 import { setPostLike } from "./procedures/set-post-like";
 
 export const circleRouter = {
@@ -23,5 +24,6 @@ export const circleRouter = {
 	getNotificationBadgeCount,
 	getSessionToken,
 	revokeSession,
+	rsvpEvent,
 	setPostLike,
 };
