@@ -1,3 +1,5 @@
+import { decodeCircleInPersonLocation } from "@repo/payments/lib/circle";
+
 import { objectValue } from "./parse-post";
 
 export interface ClubEventRsvp {
@@ -66,6 +68,10 @@ export function toClubEvent(record: Record<string, unknown>): ClubEvent | null {
 	const hideLocation = settings.hide_location_from_non_attendees === true;
 	const isAttendee = record.rsvped_event === true;
 	const locationHidden = hideLocation && !isAttendee;
+	// Decode first (Circle stores/returns a JSON-encoded string), then apply
+	// the hide-from-non-attendees rule — a member must never see the raw
+	// JSON blob, and a hidden location must never leak through undecoded.
+	const decodedInPersonLocation = decodeCircleInPersonLocation(str(settings.in_person_location));
 	return {
 		id,
 		spaceId: space?.id === undefined || space.id === null ? null : String(space.id),
@@ -73,7 +79,7 @@ export function toClubEvent(record: Record<string, unknown>): ClubEvent | null {
 		startsAt: str(settings.starts_at),
 		endsAt: str(settings.ends_at),
 		locationType: str(settings.location_type),
-		inPersonLocation: locationHidden ? null : str(settings.in_person_location),
+		inPersonLocation: locationHidden ? null : decodedInPersonLocation,
 		virtualLocationUrl: locationHidden ? null : str(settings.virtual_location_url),
 		coverImageUrl: str(record.cover_image_url),
 		bodyText: str(record.body_plain_text),

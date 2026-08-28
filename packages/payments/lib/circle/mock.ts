@@ -475,12 +475,12 @@ export class MockCircleService implements CircleService {
 		params: UpdateEventParams,
 	): Promise<CircleCallOutcome<{ circleEventId: string }>> {
 		const event = this.events.get(params.eventId);
-		if (!event) {
+		if (!event || event.spaceId !== params.spaceId) {
 			return {
 				ok: false,
 				reason: "not_found",
 				retriable: false,
-				raw: `Event ${params.eventId} not found`,
+				raw: `Event ${params.eventId} not found in space ${params.spaceId}`,
 			};
 		}
 		if (params.name !== undefined) event.name = params.name;
@@ -501,13 +501,17 @@ export class MockCircleService implements CircleService {
 		return { ok: true, data: { circleEventId: params.eventId } };
 	}
 
-	async deleteEvent(params: { eventId: string }): Promise<CircleCallOutcome<void>> {
-		if (!this.events.has(params.eventId)) {
+	async deleteEvent(params: {
+		eventId: string;
+		spaceId: string;
+	}): Promise<CircleCallOutcome<void>> {
+		const event = this.events.get(params.eventId);
+		if (!event || event.spaceId !== params.spaceId) {
 			return {
 				ok: false,
 				reason: "not_found",
 				retriable: false,
-				raw: `Event ${params.eventId} not found`,
+				raw: `Event ${params.eventId} not found in space ${params.spaceId}`,
 			};
 		}
 		this.events.delete(params.eventId);

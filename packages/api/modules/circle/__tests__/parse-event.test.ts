@@ -94,4 +94,30 @@ describe("toClubEvent", () => {
 		const event = toClubEvent(visible);
 		expect(event?.inPersonLocation).toBe("Naas Racecourse");
 	});
+
+	it("decodes a JSON-encoded in_person_location string (S11-02 live-QA fix)", () => {
+		const withJsonLocation = {
+			...record,
+			event_setting_attributes: {
+				...record.event_setting_attributes,
+				in_person_location: JSON.stringify({ address: "Naas Racecourse" }),
+			},
+		};
+		const event = toClubEvent(withJsonLocation);
+		expect(event?.inPersonLocation).toBe("Naas Racecourse");
+	});
+
+	it("still nulls a JSON-encoded location for a non-attendee when hidden (S11-02 live-QA fix)", () => {
+		const hiddenJson = {
+			...record,
+			event_setting_attributes: {
+				...record.event_setting_attributes,
+				in_person_location: JSON.stringify({ address: "Naas Racecourse" }),
+				hide_location_from_non_attendees: true,
+			},
+			rsvped_event: false,
+		};
+		const event = toClubEvent(hiddenJson);
+		expect(event?.inPersonLocation).toBeNull();
+	});
 });

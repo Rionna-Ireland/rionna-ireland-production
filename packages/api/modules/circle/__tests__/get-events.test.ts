@@ -39,6 +39,11 @@ vi.mock("@repo/logs", () => ({
 vi.mock("@repo/payments/lib/circle", () => ({
 	createCircleService: vi.fn(() => ({ getMemberToken: mockGetMemberToken })),
 	getCircleHeadlessApiBaseUrl: vi.fn(() => "https://app.circle.so/api/headless/v1"),
+	// This suite's fixtures use plain (pre-fix) location strings, so a
+	// passthrough is equivalent to the real decoder here — see
+	// packages/payments/lib/circle/__tests__/location.test.ts for the decoder's
+	// own coverage of the JSON-encoded shape.
+	decodeCircleInPersonLocation: (raw: string | null) => raw,
 }));
 
 import { clearEventsCache } from "../lib/events-cache";

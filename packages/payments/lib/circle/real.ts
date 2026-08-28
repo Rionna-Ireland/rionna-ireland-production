@@ -18,6 +18,7 @@ import {
 	compareIds,
 	normaliseCircleNotification,
 } from "./http-utils";
+import { decodeCircleInPersonLocation } from "./location";
 import {
 	clearCachedMemberToken,
 	persistCachedMemberToken,
@@ -1093,7 +1094,13 @@ export class RealCircleService implements CircleService {
 						duration_in_seconds: params.durationInSeconds,
 						location_type: params.locationType ?? "tbd",
 						...(params.inPersonLocation
-							? { in_person_location: params.inPersonLocation }
+							? {
+									// Probed against staging (2026-08-27): Circle requires this
+									// field as a JSON-encoded string — a plain string 400s.
+									in_person_location: JSON.stringify({
+										address: params.inPersonLocation,
+									}),
+								}
 							: {}),
 						...(params.virtualLocationUrl
 							? { virtual_location_url: params.virtualLocationUrl }
@@ -1153,7 +1160,7 @@ export class RealCircleService implements CircleService {
 			startsAt: str(rawSettings.starts_at),
 			endsAt: str(rawSettings.ends_at),
 			locationType: str(rawSettings.location_type),
-			inPersonLocation: str(rawSettings.in_person_location),
+			inPersonLocation: decodeCircleInPersonLocation(str(rawSettings.in_person_location)),
 			virtualLocationUrl: str(rawSettings.virtual_location_url),
 			rsvpCount: num(rawSettings.rsvp_count) ?? 0,
 			rsvpLimit: num(rawSettings.rsvp_limit),
@@ -1207,10 +1214,14 @@ export class RealCircleService implements CircleService {
 			settings.duration_in_seconds = params.durationInSeconds;
 		if (params.locationType !== undefined) settings.location_type = params.locationType;
 		if (params.inPersonLocation !== undefined)
-			settings.in_person_location = params.inPersonLocation;
+			// Probed against staging (2026-08-27): Circle requires this field as a
+			// JSON-encoded string — a plain string 400s (same as createEvent).
+			settings.in_person_location = JSON.stringify({ address: params.inPersonLocation });
 		if (params.virtualLocationUrl !== undefined)
 			settings.virtual_location_url = params.virtualLocationUrl;
-		const body: Record<string, unknown> = {};
+		// Probed against staging (2026-08-27): PUT /events/{id} 404s "Missing
+		// parameter: space_id" unless the body includes it — always send it.
+		const body: Record<string, unknown> = { space_id: Number(params.spaceId) };
 		if (params.name !== undefined) body.name = params.name;
 		if (params.tiptapBody !== undefined) body.tiptap_body = params.tiptapBody;
 		if (params.coverImageSignedId !== undefined) body.cover_image = params.coverImageSignedId;
@@ -1242,11 +1253,16 @@ export class RealCircleService implements CircleService {
 		return { ok: true, data: { circleEventId: params.eventId } };
 	}
 
-	async deleteEvent(params: { eventId: string }): Promise<CircleCallOutcome<void>> {
+	async deleteEvent(params: {
+		eventId: string;
+		spaceId: string;
+	}): Promise<CircleCallOutcome<void>> {
 		let response: Response;
 		try {
 			response = await fetch(
-				`${CIRCLE_ADMIN_BASE}/events/${encodeURIComponent(params.eventId)}`,
+				// Probed against staging (2026-08-27): DELETE /events/{id} 404s
+				// "Missing parameter: space_id" unless it's on the query string.
+				`${CIRCLE_ADMIN_BASE}/events/${encodeURIComponent(params.eventId)}?space_id=${Number(params.spaceId)}`,
 				{
 					method: "DELETE",
 					headers: this.adminHeaders(),

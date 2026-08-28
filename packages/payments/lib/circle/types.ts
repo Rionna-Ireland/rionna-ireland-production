@@ -290,6 +290,12 @@ export interface ListEventsResult {
 
 export interface UpdateEventParams {
 	eventId: string;
+	/**
+	 * Circle Admin API v2 PUT /events/{id} 404s with "Missing parameter:
+	 * space_id" unless the request body includes it (probed against staging,
+	 * 2026-08-27) — required here so implementations can't omit it.
+	 */
+	spaceId: string;
 	name?: string;
 	tiptapBody?: CircleTiptapBody;
 	startsAt?: string;
@@ -381,14 +387,27 @@ export interface CircleService {
 	createEmbed(params: CreateEmbedParams): Promise<CircleCallOutcome<CreateEmbedResult>>;
 	/** Provision a Circle space (the "a horse = a space" auto-provision). */
 	createSpace(params: CreateSpaceParams): Promise<CircleCallOutcome<CreateSpaceResult>>;
-	/** Create an event (RSVP + reminders built into Circle events). */
+	/**
+	 * Create an event (RSVP + reminders built into Circle events).
+	 *
+	 * `inPersonLocation`, when set, is sent Circle-side as a JSON-encoded
+	 * string (`{ address }`) — a plain string 400s ("in person location data
+	 * should be in json format", probed against staging 2026-08-27).
+	 */
 	createEvent(params: CreateEventParams): Promise<CircleCallOutcome<CreateEventResult>>;
 	/** List events in a space (Admin API v2). */
 	listEvents(params: ListEventsParams): Promise<CircleCallOutcome<ListEventsResult>>;
-	/** Update an event (Admin API v2 PUT). Only provided fields are sent. */
+	/**
+	 * Update an event (Admin API v2 PUT). Only provided fields are sent,
+	 * except `spaceId`, which is always sent — Circle 404s the PUT without it.
+	 */
 	updateEvent(params: UpdateEventParams): Promise<CircleCallOutcome<{ circleEventId: string }>>;
-	/** Delete an event (Admin API v2). */
-	deleteEvent(params: { eventId: string }): Promise<CircleCallOutcome<void>>;
+	/**
+	 * Delete an event (Admin API v2). `spaceId` is required — Circle 404s the
+	 * DELETE without a `space_id` query param (probed against staging
+	 * 2026-08-27).
+	 */
+	deleteEvent(params: { eventId: string; spaceId: string }): Promise<CircleCallOutcome<void>>;
 
 	// --- Admin community overview (S6-07) -----------------------------------
 	// Read-only listings + a visibility toggle for the admin community overview

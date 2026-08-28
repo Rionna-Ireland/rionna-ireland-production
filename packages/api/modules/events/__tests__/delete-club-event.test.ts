@@ -10,6 +10,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
 	mockGetSession,
 	mockOrgFindUnique,
+	mockParseOrgMetadata,
 	mockCreateCircleService,
 	mockDeleteEvent,
 	mockLoggerInfo,
@@ -17,6 +18,7 @@ const {
 } = vi.hoisted(() => ({
 	mockGetSession: vi.fn(),
 	mockOrgFindUnique: vi.fn(),
+	mockParseOrgMetadata: vi.fn(),
 	mockCreateCircleService: vi.fn(),
 	mockDeleteEvent: vi.fn(),
 	mockLoggerInfo: vi.fn(),
@@ -27,6 +29,7 @@ vi.mock("@repo/auth", () => ({ auth: { api: { getSession: mockGetSession } } }))
 
 vi.mock("@repo/database", () => ({
 	db: { organization: { findUnique: mockOrgFindUnique } },
+	parseOrgMetadata: mockParseOrgMetadata,
 }));
 
 vi.mock("@repo/logs", () => ({
@@ -58,6 +61,7 @@ beforeEach(() => {
 	vi.clearAllMocks();
 	mockGetSession.mockResolvedValue({ user: ADMIN, session: SESSION });
 	mockOrgFindUnique.mockResolvedValue({ id: "org1", slug: "rionna", metadata: "{}" });
+	mockParseOrgMetadata.mockReturnValue({ circle: { eventsSpaceId: "2682536" } });
 	mockCreateCircleService.mockReturnValue({ deleteEvent: mockDeleteEvent });
 	mockDeleteEvent.mockResolvedValue({ ok: true, data: undefined });
 });
@@ -67,7 +71,7 @@ describe("deleteClubEvent (S11-02)", () => {
 		const result = await call(deleteClubEvent, INPUT, ctx);
 
 		expect(mockCreateCircleService).toHaveBeenCalledWith("rionna");
-		expect(mockDeleteEvent).toHaveBeenCalledWith({ eventId: "555" });
+		expect(mockDeleteEvent).toHaveBeenCalledWith({ eventId: "555", spaceId: "2682536" });
 		expect(result).toEqual({ ok: true });
 	});
 
@@ -100,6 +104,15 @@ describe("deleteClubEvent (S11-02)", () => {
 		const result = await call(deleteClubEvent, INPUT, ctx);
 
 		expect(result).toEqual({ ok: false, reason: "no_org_slug" });
+		expect(mockDeleteEvent).not.toHaveBeenCalled();
+	});
+
+	it("fails safe when no eventsSpaceId is configured (S11-02 live-QA fix)", async () => {
+		mockParseOrgMetadata.mockReturnValue({ circle: {} });
+
+		const result = await call(deleteClubEvent, INPUT, ctx);
+
+		expect(result).toEqual({ ok: false, reason: "no_events_space" });
 		expect(mockDeleteEvent).not.toHaveBeenCalled();
 	});
 

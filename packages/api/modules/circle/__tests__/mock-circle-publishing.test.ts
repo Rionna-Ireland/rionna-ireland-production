@@ -200,6 +200,7 @@ describe("MockCircleService — publishing surface (S2-09)", () => {
 
 			const outcome = await service.updateEvent({
 				eventId: created.data.circleEventId,
+				spaceId: "1",
 				name: "Updated",
 			});
 			expect(outcome.ok).toBe(true);
@@ -210,7 +211,29 @@ describe("MockCircleService — publishing surface (S2-09)", () => {
 		});
 
 		it("returns not_found for an unknown id", async () => {
-			const outcome = await service.updateEvent({ eventId: "does-not-exist", name: "x" });
+			const outcome = await service.updateEvent({
+				eventId: "does-not-exist",
+				spaceId: "1",
+				name: "x",
+			});
+			expect(outcome).toMatchObject({ ok: false, reason: "not_found", retriable: false });
+		});
+
+		it("returns not_found when spaceId doesn't match the event's space (S11-02 live-QA fix)", async () => {
+			const created = await service.createEvent({
+				spaceId: "1",
+				name: "Original",
+				tiptapBody: DOC,
+				startsAt: "2026-01-01T00:00:00Z",
+				durationInSeconds: 3600,
+			});
+			if (!created.ok) throw new Error("expected ok");
+
+			const outcome = await service.updateEvent({
+				eventId: created.data.circleEventId,
+				spaceId: "2",
+				name: "Updated",
+			});
 			expect(outcome).toMatchObject({ ok: false, reason: "not_found", retriable: false });
 		});
 	});
@@ -226,14 +249,35 @@ describe("MockCircleService — publishing surface (S2-09)", () => {
 			});
 			if (!created.ok) throw new Error("expected ok");
 
-			const outcome = await service.deleteEvent({ eventId: created.data.circleEventId });
+			const outcome = await service.deleteEvent({
+				eventId: created.data.circleEventId,
+				spaceId: "1",
+			});
 			expect(outcome.ok).toBe(true);
 			expect(service.getEventCount()).toBe(0);
 		});
 
 		it("returns not_found for an unknown id", async () => {
-			const outcome = await service.deleteEvent({ eventId: "does-not-exist" });
+			const outcome = await service.deleteEvent({ eventId: "does-not-exist", spaceId: "1" });
 			expect(outcome).toMatchObject({ ok: false, reason: "not_found", retriable: false });
+		});
+
+		it("returns not_found when spaceId doesn't match the event's space (S11-02 live-QA fix)", async () => {
+			const created = await service.createEvent({
+				spaceId: "1",
+				name: "A",
+				tiptapBody: DOC,
+				startsAt: "2026-01-01T00:00:00Z",
+				durationInSeconds: 3600,
+			});
+			if (!created.ok) throw new Error("expected ok");
+
+			const outcome = await service.deleteEvent({
+				eventId: created.data.circleEventId,
+				spaceId: "2",
+			});
+			expect(outcome).toMatchObject({ ok: false, reason: "not_found", retriable: false });
+			expect(service.getEventCount()).toBe(1);
 		});
 	});
 });

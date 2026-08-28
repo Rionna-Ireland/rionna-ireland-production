@@ -288,7 +288,11 @@ describe("RealCircleService — publishing surface (S2-09)", () => {
 			const [, opts] = fetchMock.mock.calls[0];
 			const body = JSON.parse(opts.body);
 			expect(body.cover_image).toBe("signed-123");
-			expect(body.event_setting_attributes.in_person_location).toBe("Clubhouse");
+			// Probed against staging (2026-08-27): a plain string 400s — Circle
+			// requires in_person_location as a JSON-encoded string.
+			expect(body.event_setting_attributes.in_person_location).toBe(
+				JSON.stringify({ address: "Clubhouse" }),
+			);
 		});
 	});
 
@@ -372,30 +376,56 @@ describe("RealCircleService — publishing surface (S2-09)", () => {
 	});
 
 	describe("updateEvent", () => {
-		it("sends only provided fields", async () => {
+		it("always sends space_id (Circle 404s the PUT without it) plus only the provided fields", async () => {
 			const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, { id: 7 }));
 			vi.stubGlobal("fetch", fetchMock);
 
-			const outcome = await svc.updateEvent({ eventId: "7", name: "New name" });
+			const outcome = await svc.updateEvent({
+				eventId: "7",
+				spaceId: "42",
+				name: "New name",
+			});
 
 			expect(outcome.ok).toBe(true);
 			const [url, opts] = fetchMock.mock.calls[0];
 			expect(url).toBe(`${ADMIN_BASE}/events/7`);
 			expect(opts.method).toBe("PUT");
-			expect(JSON.parse(opts.body)).toEqual({ name: "New name" });
+			expect(JSON.parse(opts.body)).toEqual({ space_id: 42, name: "New name" });
+		});
+
+		it("encodes in_person_location as a JSON string", async () => {
+			const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, { id: 7 }));
+			vi.stubGlobal("fetch", fetchMock);
+
+			await svc.updateEvent({
+				eventId: "7",
+				spaceId: "42",
+				inPersonLocation: "Naas Racecourse",
+			});
+
+			const [, opts] = fetchMock.mock.calls[0];
+			const body = JSON.parse(opts.body);
+			expect(body.event_setting_attributes.in_person_location).toBe(
+				JSON.stringify({ address: "Naas Racecourse" }),
+			);
 		});
 	});
 
 	describe("deleteEvent", () => {
-		it("succeeds on 2xx", async () => {
-			vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(204, undefined)));
-			const outcome = await svc.deleteEvent({ eventId: "7" });
+		it("succeeds on 2xx and sends space_id as a query param (Circle 404s the DELETE without it)", async () => {
+			const fetchMock = vi.fn().mockResolvedValue(jsonResponse(204, undefined));
+			vi.stubGlobal("fetch", fetchMock);
+
+			const outcome = await svc.deleteEvent({ eventId: "7", spaceId: "42" });
+
 			expect(outcome.ok).toBe(true);
+			const [url] = fetchMock.mock.calls[0];
+			expect(url).toContain("?space_id=42");
 		});
 
 		it("fails closed on non-2xx", async () => {
 			vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(500, {})));
-			const outcome = await svc.deleteEvent({ eventId: "7" });
+			const outcome = await svc.deleteEvent({ eventId: "7", spaceId: "42" });
 			expect(outcome.ok).toBe(false);
 		});
 	});

@@ -1,4 +1,4 @@
-import { db } from "@repo/database";
+import { db, parseOrgMetadata } from "@repo/database";
 import { logger } from "@repo/logs";
 import { createCircleService } from "@repo/payments/lib/circle";
 import { z } from "zod";
@@ -24,8 +24,18 @@ export const deleteClubEvent = adminProcedure
 		if (!org?.slug) {
 			return { ok: false as const, reason: "no_org_slug" };
 		}
+		const eventsSpaceId = parseOrgMetadata(org.metadata).circle?.eventsSpaceId;
+		if (!eventsSpaceId) {
+			logger.warn("[Events] No eventsSpaceId configured", {
+				organizationId: input.organizationId,
+			});
+			return { ok: false as const, reason: "no_events_space" };
+		}
 		const circle = createCircleService(org.slug);
-		const outcome = await circle.deleteEvent({ eventId: input.eventId });
+		const outcome = await circle.deleteEvent({
+			eventId: input.eventId,
+			spaceId: eventsSpaceId,
+		});
 		if (!outcome.ok) {
 			logger.warn("[Events] Delete failed", {
 				eventId: input.eventId,

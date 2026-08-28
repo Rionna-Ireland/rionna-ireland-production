@@ -11,6 +11,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
 	mockGetSession,
 	mockOrgFindUnique,
+	mockParseOrgMetadata,
 	mockCreateCircleService,
 	mockUpdateEvent,
 	mockLoggerInfo,
@@ -18,6 +19,7 @@ const {
 } = vi.hoisted(() => ({
 	mockGetSession: vi.fn(),
 	mockOrgFindUnique: vi.fn(),
+	mockParseOrgMetadata: vi.fn(),
 	mockCreateCircleService: vi.fn(),
 	mockUpdateEvent: vi.fn(),
 	mockLoggerInfo: vi.fn(),
@@ -28,6 +30,7 @@ vi.mock("@repo/auth", () => ({ auth: { api: { getSession: mockGetSession } } }))
 
 vi.mock("@repo/database", () => ({
 	db: { organization: { findUnique: mockOrgFindUnique } },
+	parseOrgMetadata: mockParseOrgMetadata,
 }));
 
 vi.mock("@repo/logs", () => ({
@@ -57,6 +60,7 @@ beforeEach(() => {
 	vi.clearAllMocks();
 	mockGetSession.mockResolvedValue({ user: ADMIN, session: SESSION });
 	mockOrgFindUnique.mockResolvedValue({ id: "org1", slug: "rionna", metadata: "{}" });
+	mockParseOrgMetadata.mockReturnValue({ circle: { eventsSpaceId: "2682536" } });
 	mockCreateCircleService.mockReturnValue({ updateEvent: mockUpdateEvent });
 	mockUpdateEvent.mockResolvedValue({ ok: true, data: { circleEventId: "555" } });
 });
@@ -77,6 +81,7 @@ describe("updateClubEvent (S11-02)", () => {
 
 		expect(mockUpdateEvent).toHaveBeenCalledWith({
 			eventId: "555",
+			spaceId: "2682536",
 			name: "Yard visit (updated)",
 			tiptapBody: {
 				body: {
@@ -140,6 +145,19 @@ describe("updateClubEvent (S11-02)", () => {
 		);
 
 		expect(result).toEqual({ ok: false, reason: "no_org_slug" });
+		expect(mockUpdateEvent).not.toHaveBeenCalled();
+	});
+
+	it("fails safe when no eventsSpaceId is configured (S11-02 live-QA fix)", async () => {
+		mockParseOrgMetadata.mockReturnValue({ circle: {} });
+
+		const result = await call(
+			updateClubEvent,
+			{ organizationId: "org1", eventId: "555", name: "New name" },
+			ctx,
+		);
+
+		expect(result).toEqual({ ok: false, reason: "no_events_space" });
 		expect(mockUpdateEvent).not.toHaveBeenCalled();
 	});
 
