@@ -7,6 +7,7 @@ import {
 	type OrganizationMetadata,
 	parseOrgMetadata,
 } from "@repo/database";
+import { createCircleService } from "@repo/payments/lib/circle";
 import { cache } from "react";
 
 const DEFAULT_CLUB_SLUG = "rionna";
@@ -70,3 +71,55 @@ export const getClubNewsPostBySlug = cache(async (slug: string) => {
 	if (!org.id) return null;
 	return getPublishedNewsPostBySlug(org.id, slug);
 });
+
+export interface PublicClubEvent {
+	id: string;
+	name: string;
+	startsAt: string | null;
+	endsAt: string | null;
+	coverImageUrl: string | null;
+	excerpt: string | null;
+}
+
+/**
+ * Upcoming club events for the public marketing calendar (S11-02, D32).
+ * Server-side Admin API read — no member context. Deliberately excludes
+ * location: precise whereabouts are a member privilege ("join to see
+ * details"). Fail-open to [] — the marketing page must never break on
+ * Circle problems.
+ */
+export const getClubEvents = cache(
+	async ({ limit = 12 }: { limit?: number } = {}): Promise<{ items: PublicClubEvent[] }> => {
+		try {
+			const org = await getClubOrganization();
+			if (!org.id) return { items: [] };
+
+			const eventsSpaceId = org.metadata.circle?.eventsSpaceId;
+			if (!eventsSpaceId) return { items: [] };
+
+			const circle = createCircleService(org.slug);
+			const outcome = await circle.listEvents({ spaceId: eventsSpaceId, sort: "start_date" });
+			if (!outcome.ok) return { items: [] };
+
+			const now = Date.now();
+			const items = outcome.data.events
+				.filter((event) => {
+					const end = event.endsAt ?? event.startsAt;
+					return end !== null && new Date(end).getTime() >= now;
+				})
+				.slice(0, limit)
+				.map((event) => ({
+					id: event.circleEventId,
+					name: event.name,
+					startsAt: event.startsAt,
+					endsAt: event.endsAt,
+					coverImageUrl: event.coverImageUrl,
+					excerpt: null,
+				}));
+
+			return { items };
+		} catch {
+			return { items: [] };
+		}
+	},
+);

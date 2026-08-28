@@ -95,6 +95,14 @@
 		"byline": "By {name}",
 		"share": "Share"
 	},
+	"events": {
+		"eyebrow": "Club calendar",
+		"title": "Events",
+		"description": "Race days, stable visits and member gatherings — see what's coming up at Rionna.",
+		"empty": "No upcoming events right now — check back soon.",
+		"membersOnly": "Members' event — join to see the details.",
+		"joinCta": "Join to RSVP"
+	},
 	"home": {
 		"hero": {
 			"eyebrow": "Modern shared racehorse ownership",
