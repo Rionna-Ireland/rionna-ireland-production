@@ -182,7 +182,7 @@ export function EventForm({ eventId }: EventFormProps) {
 		setFallback(false);
 		try {
 			if (isEdit && eventId) {
-				await updateMutation.mutateAsync({
+				const outcome = await updateMutation.mutateAsync({
 					organizationId,
 					eventId,
 					name: values.name,
@@ -200,9 +200,13 @@ export function EventForm({ eventId }: EventFormProps) {
 						: {}),
 					...(coverSignedId ? { coverImageSignedId: coverSignedId } : {}),
 				});
-				toastSuccess(t("admin.events.updated"));
-				await queryClient.invalidateQueries({ queryKey: orpc.events.admin.list.key() });
-				router.push(getAdminPath("/events"));
+				if (outcome.ok) {
+					toastSuccess(t("admin.events.updated"));
+					await queryClient.invalidateQueries({ queryKey: orpc.events.admin.list.key() });
+					router.push(getAdminPath("/events"));
+				} else {
+					toastError(t("admin.events.notifications.error"));
+				}
 				return;
 			}
 

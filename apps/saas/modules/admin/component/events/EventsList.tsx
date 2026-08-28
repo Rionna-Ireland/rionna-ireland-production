@@ -47,12 +47,18 @@ function EventRow({ event }: { event: ClubEventSummary }) {
 			destructive: true,
 			onConfirm: async () => {
 				try {
-					await deleteMutation.mutateAsync({
+					const outcome = await deleteMutation.mutateAsync({
 						organizationId,
 						eventId: event.circleEventId,
 					});
-					toastSuccess(t("admin.events.deleted"));
-					await queryClient.invalidateQueries({ queryKey: orpc.events.admin.list.key() });
+					if (outcome.ok) {
+						toastSuccess(t("admin.events.deleted"));
+						await queryClient.invalidateQueries({
+							queryKey: orpc.events.admin.list.key(),
+						});
+					} else {
+						toastError(t("admin.events.notifications.error"));
+					}
 				} catch {
 					toastError(t("admin.events.notifications.error"));
 				}
