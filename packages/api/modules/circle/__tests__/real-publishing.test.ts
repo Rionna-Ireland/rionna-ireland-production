@@ -297,7 +297,57 @@ describe("RealCircleService — publishing surface (S2-09)", () => {
 	});
 
 	describe("listEvents", () => {
-		it("maps records and space-filters via query", async () => {
+		it("maps a FLAT record (real Admin v2 shape — probed 2026-08-27, no event_setting_attributes wrapper)", async () => {
+			const fetchMock = vi.fn().mockResolvedValue(
+				jsonResponse(200, {
+					page: 1,
+					has_next_page: false,
+					records: [
+						{
+							id: 7,
+							name: "Stable visit",
+							url: "https://c.example/events/stable-visit",
+							cover_image_url: "https://cdn.example/cover.jpg",
+							starts_at: "2026-09-01T10:00:00Z",
+							ends_at: "2026-09-01T12:00:00Z",
+							duration_in_seconds: 7200,
+							location_type: "in_person",
+							in_person_location: JSON.stringify({ address: "The Yard, Kildare" }),
+							virtual_location_url: null,
+							rsvp_disabled: false,
+							hide_location_from_non_attendees: false,
+						},
+					],
+				}),
+			);
+			vi.stubGlobal("fetch", fetchMock);
+
+			const outcome = await svc.listEvents({ spaceId: "42" });
+
+			if (!outcome.ok) throw new Error("expected ok");
+			expect(outcome.data.events[0]).toEqual({
+				circleEventId: "7",
+				name: "Stable visit",
+				startsAt: "2026-09-01T10:00:00Z",
+				endsAt: "2026-09-01T12:00:00Z",
+				locationType: "in_person",
+				inPersonLocation: "The Yard, Kildare",
+				virtualLocationUrl: null,
+				// Baseline — real records never carry rsvp_count; overlaid
+				// separately by includeRsvpCounts (see below).
+				rsvpCount: 0,
+				// Never exposed by the Admin API.
+				rsvpLimit: null,
+				coverImageUrl: "https://cdn.example/cover.jpg",
+				url: "https://c.example/events/stable-visit",
+			});
+			expect(outcome.data.hasNextPage).toBe(false);
+
+			const [url] = fetchMock.mock.calls[0];
+			expect(String(url)).toContain("space_id=42");
+		});
+
+		it("still maps a NESTED record (event_setting_attributes wrapper — the circle-mock server's shape) as a fallback", async () => {
 			const fetchMock = vi.fn().mockResolvedValue(
 				jsonResponse(200, {
 					page: 1,
@@ -312,9 +362,9 @@ describe("RealCircleService — publishing surface (S2-09)", () => {
 								starts_at: "2026-09-01T10:00:00Z",
 								ends_at: "2026-09-01T12:00:00Z",
 								location_type: "in_person",
-								in_person_location: "The Yard, Kildare",
-								rsvp_count: 3,
-								rsvp_limit: 20,
+								in_person_location: JSON.stringify({
+									address: "The Yard, Kildare",
+								}),
 							},
 						},
 					],
@@ -328,20 +378,107 @@ describe("RealCircleService — publishing surface (S2-09)", () => {
 			expect(outcome.data.events[0]).toMatchObject({
 				circleEventId: "7",
 				name: "Stable visit",
-				rsvpCount: 3,
-				rsvpLimit: 20,
+				startsAt: "2026-09-01T10:00:00Z",
+				endsAt: "2026-09-01T12:00:00Z",
+				locationType: "in_person",
 				inPersonLocation: "The Yard, Kildare",
+				rsvpCount: 0,
+				rsvpLimit: null,
 			});
 			expect(outcome.data.hasNextPage).toBe(false);
-
-			const [url] = fetchMock.mock.calls[0];
-			expect(String(url)).toContain("space_id=42");
 		});
 
 		it("fails closed on non-2xx", async () => {
 			vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(500, {})));
 			const outcome = await svc.listEvents({ spaceId: "42" });
 			expect(outcome.ok).toBe(false);
+		});
+
+		describe("includeRsvpCounts", () => {
+			function listEventsResponse() {
+				return jsonResponse(200, {
+					page: 1,
+					has_next_page: false,
+					records: [
+						{ id: 7, name: "Stable visit" },
+						{ id: 8, name: "Brunch" },
+					],
+				});
+			}
+
+			it("issues one event_attendees call per event, per_page=1, and maps the envelope's count", async () => {
+				const fetchMock = vi
+					.fn()
+					.mockResolvedValueOnce(listEventsResponse())
+					.mockResolvedValueOnce(jsonResponse(200, { count: 5 }))
+					.mockResolvedValueOnce(jsonResponse(200, { count: 0 }));
+				vi.stubGlobal("fetch", fetchMock);
+
+				const outcome = await svc.listEvents({ spaceId: "42", includeRsvpCounts: true });
+
+				if (!outcome.ok) throw new Error("expected ok");
+				expect(outcome.data.events).toHaveLength(2);
+				const byId = new Map(outcome.data.events.map((e) => [e.circleEventId, e]));
+				expect(byId.get("7")?.rsvpCount).toBe(5);
+				expect(byId.get("8")?.rsvpCount).toBe(0);
+
+				expect(fetchMock).toHaveBeenCalledTimes(3);
+				const attendeeUrls = fetchMock.mock.calls.slice(1).map(([url]) => String(url));
+				expect(attendeeUrls).toContain(
+					`${ADMIN_BASE}/event_attendees?event_id=7&per_page=1`,
+				);
+				expect(attendeeUrls).toContain(
+					`${ADMIN_BASE}/event_attendees?event_id=8&per_page=1`,
+				);
+			});
+
+			it("does not call event_attendees when the flag is omitted", async () => {
+				const fetchMock = vi.fn().mockResolvedValueOnce(listEventsResponse());
+				vi.stubGlobal("fetch", fetchMock);
+
+				const outcome = await svc.listEvents({ spaceId: "42" });
+
+				if (!outcome.ok) throw new Error("expected ok");
+				expect(outcome.data.events.every((e) => e.rsvpCount === 0)).toBe(true);
+				expect(fetchMock).toHaveBeenCalledTimes(1);
+			});
+
+			it("keeps rsvpCount at 0 and warns, without failing the list, when a per-event fetch fails", async () => {
+				const fetchMock = vi
+					.fn()
+					.mockResolvedValueOnce(listEventsResponse())
+					.mockResolvedValueOnce(jsonResponse(500, {}))
+					.mockResolvedValueOnce(jsonResponse(200, { count: 2 }));
+				vi.stubGlobal("fetch", fetchMock);
+
+				const outcome = await svc.listEvents({ spaceId: "42", includeRsvpCounts: true });
+
+				if (!outcome.ok) throw new Error("expected ok");
+				const byId = new Map(outcome.data.events.map((e) => [e.circleEventId, e]));
+				expect(byId.get("7")?.rsvpCount).toBe(0);
+				expect(byId.get("8")?.rsvpCount).toBe(2);
+				expect(mockLogger.warn).toHaveBeenCalledWith(
+					expect.stringContaining("event_attendees"),
+					expect.objectContaining({ circleEventId: "7" }),
+				);
+			});
+
+			it("keeps rsvpCount at 0 and warns on a network failure, without failing the list", async () => {
+				const fetchMock = vi
+					.fn()
+					.mockResolvedValueOnce(listEventsResponse())
+					.mockRejectedValueOnce(new Error("boom"))
+					.mockResolvedValueOnce(jsonResponse(200, { count: 1 }));
+				vi.stubGlobal("fetch", fetchMock);
+
+				const outcome = await svc.listEvents({ spaceId: "42", includeRsvpCounts: true });
+
+				if (!outcome.ok) throw new Error("expected ok");
+				const byId = new Map(outcome.data.events.map((e) => [e.circleEventId, e]));
+				expect(byId.get("7")?.rsvpCount).toBe(0);
+				expect(byId.get("8")?.rsvpCount).toBe(1);
+				expect(mockLogger.warn).toHaveBeenCalled();
+			});
 		});
 
 		it("sends filter_date[start_date] when startDateFrom is given (S11-02 fix — page 1 truncation)", async () => {

@@ -90,6 +90,7 @@ describe("listClubEvents (S11-02)", () => {
 			spaceId: "2682536",
 			sort: "start_date_desc",
 			page: 1,
+			includeRsvpCounts: true,
 		});
 		expect(mockListEvents).toHaveBeenCalledTimes(1);
 		expect(result).toEqual({ ok: true, configured: true, events: [EVENT_SUMMARY] });
@@ -114,11 +115,13 @@ describe("listClubEvents (S11-02)", () => {
 			spaceId: "2682536",
 			sort: "start_date_desc",
 			page: 1,
+			includeRsvpCounts: true,
 		});
 		expect(mockListEvents).toHaveBeenNthCalledWith(2, {
 			spaceId: "2682536",
 			sort: "start_date_desc",
 			page: 2,
+			includeRsvpCounts: true,
 		});
 		expect(result).toEqual({
 			ok: true,

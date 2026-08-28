@@ -281,6 +281,14 @@ export interface ListEventsParams {
 	 * genuinely upcoming instead of truncating on old events (S11-02 fix).
 	 */
 	startDateFrom?: string;
+	/**
+	 * Overlay each event's rsvpCount with the real attendee count from a
+	 * separate `GET /event_attendees?event_id=&per_page=1` call per event —
+	 * Admin v2 event records don't carry rsvp_count at all (probed
+	 * 2026-08-27). Costs one extra Circle call per event, so pass it only
+	 * where a count is actually shown (the admin events list).
+	 */
+	includeRsvpCounts?: boolean;
 }
 
 export interface ListEventsResult {

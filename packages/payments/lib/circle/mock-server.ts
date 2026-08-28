@@ -851,31 +851,91 @@ export class MockServerCircleService implements CircleService {
 		return { ok: true, data: { circleEventId: String(id) } };
 	}
 
+	// Mirrors RealCircleService: real Admin v2 records are flat (no
+	// event_setting_attributes wrapper, no rsvp_count/rsvp_limit at all —
+	// probed against staging 2026-08-27). The local circle-mock server still
+	// emits the nested shape, so every settings field is read flat-first
+	// with a fallback to nested.
 	private toClubEventSummary(record: Record<string, unknown>): ClubEventSummary | null {
 		const id = record.id === undefined || record.id === null ? null : String(record.id);
 		const name = typeof record.name === "string" ? record.name : null;
 		if (!id || !name) {
 			return null;
 		}
-		const rawSettings =
+		const nestedSettings =
 			(record.event_setting_attributes as Record<string, unknown> | undefined) ??
 			(record.event_settings_attributes as Record<string, unknown> | undefined) ??
 			{};
+		const field = (key: string): unknown =>
+			record[key] !== undefined ? record[key] : nestedSettings[key];
 		const str = (v: unknown) => (typeof v === "string" && v.length > 0 ? v : null);
-		const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : null);
 		return {
 			circleEventId: id,
 			name,
-			startsAt: str(rawSettings.starts_at),
-			endsAt: str(rawSettings.ends_at),
-			locationType: str(rawSettings.location_type),
-			inPersonLocation: decodeCircleInPersonLocation(str(rawSettings.in_person_location)),
-			virtualLocationUrl: str(rawSettings.virtual_location_url),
-			rsvpCount: num(rawSettings.rsvp_count) ?? 0,
-			rsvpLimit: num(rawSettings.rsvp_limit),
+			startsAt: str(field("starts_at")),
+			endsAt: str(field("ends_at")),
+			locationType: str(field("location_type")),
+			inPersonLocation: decodeCircleInPersonLocation(str(field("in_person_location"))),
+			virtualLocationUrl: str(field("virtual_location_url")),
+			// Baseline only — mirrors RealCircleService; listEvents overlays
+			// the real count via event_attendees when includeRsvpCounts is set.
+			rsvpCount: 0,
+			// Mirrors RealCircleService — the Admin API doesn't expose an RSVP
+			// limit anywhere; the admin UI already renders `limit ?? "∞"`.
+			rsvpLimit: null,
 			coverImageUrl: str(record.cover_image_url),
 			url: str(record.url),
 		};
+	}
+
+	/** Mirrors RealCircleService.attachRsvpCounts against the mock server. */
+	private async attachRsvpCounts(events: ClubEventSummary[]): Promise<void> {
+		await Promise.all(
+			events.map(async (event) => {
+				let response: Response;
+				try {
+					response = await fetch(
+						`${this.baseUrl}/api/admin/v2/event_attendees?event_id=${encodeURIComponent(event.circleEventId)}&per_page=1`,
+						{ headers: this.adminHeaders() },
+					);
+				} catch (err) {
+					logger.warn(
+						"[MockServerCircle] event_attendees fetch failed (network); rsvpCount stays 0",
+						{
+							circleEventId: event.circleEventId,
+							error: err instanceof Error ? err.message : String(err),
+						},
+					);
+					return;
+				}
+				if (!response.ok) {
+					logger.warn(
+						"[MockServerCircle] event_attendees fetch failed; rsvpCount stays 0",
+						{
+							circleEventId: event.circleEventId,
+							status: response.status,
+						},
+					);
+					return;
+				}
+				let body: { count?: unknown };
+				try {
+					body = await this.parseJson<typeof body>(response);
+				} catch (err) {
+					logger.warn(
+						"[MockServerCircle] event_attendees response not JSON; rsvpCount stays 0",
+						{
+							circleEventId: event.circleEventId,
+							error: err instanceof Error ? err.message : String(err),
+						},
+					);
+					return;
+				}
+				if (typeof body.count === "number" && Number.isFinite(body.count)) {
+					event.rsvpCount = body.count;
+				}
+			}),
+		);
 	}
 
 	async listEvents(params: ListEventsParams): Promise<CircleCallOutcome<ListEventsResult>> {
@@ -910,6 +970,9 @@ export class MockServerCircleService implements CircleService {
 		const events = (Array.isArray(data.records) ? data.records : [])
 			.map((r) => this.toClubEventSummary(r as Record<string, unknown>))
 			.filter((e): e is ClubEventSummary => e !== null);
+		if (params.includeRsvpCounts && events.length > 0) {
+			await this.attachRsvpCounts(events);
+		}
 		return { ok: true, data: { events, hasNextPage: data.has_next_page === true } };
 	}
 

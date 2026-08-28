@@ -39,6 +39,7 @@ export const listClubEvents = adminProcedure
 				spaceId: eventsSpaceId,
 				sort: "start_date_desc",
 				page,
+				includeRsvpCounts: true,
 			});
 			if (!outcome.ok) {
 				return { ok: false, reason: outcome.reason };
