@@ -59,6 +59,13 @@ export function toClubEvent(record: Record<string, unknown>): ClubEvent | null {
 	const limit = num(settings.rsvp_limit);
 	const count = num(settings.rsvp_count) ?? 0;
 	const inlineAttachmentsRaw = tiptap?.inline_attachments;
+	// Circle can hide the location from members who haven't RSVPed
+	// (`hide_location_from_non_attendees`). The member payload marks the
+	// viewer's own RSVP via `rsvped_event` — honor that here so a
+	// non-attendee never sees the location leak through this mapper.
+	const hideLocation = settings.hide_location_from_non_attendees === true;
+	const isAttendee = record.rsvped_event === true;
+	const locationHidden = hideLocation && !isAttendee;
 	return {
 		id,
 		spaceId: space?.id === undefined || space.id === null ? null : String(space.id),
@@ -66,8 +73,8 @@ export function toClubEvent(record: Record<string, unknown>): ClubEvent | null {
 		startsAt: str(settings.starts_at),
 		endsAt: str(settings.ends_at),
 		locationType: str(settings.location_type),
-		inPersonLocation: str(settings.in_person_location),
-		virtualLocationUrl: str(settings.virtual_location_url),
+		inPersonLocation: locationHidden ? null : str(settings.in_person_location),
+		virtualLocationUrl: locationHidden ? null : str(settings.virtual_location_url),
 		coverImageUrl: str(record.cover_image_url),
 		bodyText: str(record.body_plain_text),
 		tiptapDoc: objectValue(tiptap?.body) ?? null,

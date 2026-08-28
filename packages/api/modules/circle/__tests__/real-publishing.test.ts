@@ -339,6 +339,36 @@ describe("RealCircleService — publishing surface (S2-09)", () => {
 			const outcome = await svc.listEvents({ spaceId: "42" });
 			expect(outcome.ok).toBe(false);
 		});
+
+		it("sends filter_date[start_date] when startDateFrom is given (S11-02 fix — page 1 truncation)", async () => {
+			const fetchMock = vi
+				.fn()
+				.mockResolvedValue(
+					jsonResponse(200, { page: 1, has_next_page: false, records: [] }),
+				);
+			vi.stubGlobal("fetch", fetchMock);
+
+			await svc.listEvents({ spaceId: "42", startDateFrom: "2026-08-28" });
+
+			const [url] = fetchMock.mock.calls[0];
+			expect(String(url)).toContain(
+				`filter_date%5Bstart_date%5D=${encodeURIComponent("2026-08-28")}`,
+			);
+		});
+
+		it("omits filter_date[start_date] when startDateFrom is not given", async () => {
+			const fetchMock = vi
+				.fn()
+				.mockResolvedValue(
+					jsonResponse(200, { page: 1, has_next_page: false, records: [] }),
+				);
+			vi.stubGlobal("fetch", fetchMock);
+
+			await svc.listEvents({ spaceId: "42" });
+
+			const [url] = fetchMock.mock.calls[0];
+			expect(String(url)).not.toContain("filter_date");
+		});
 	});
 
 	describe("updateEvent", () => {

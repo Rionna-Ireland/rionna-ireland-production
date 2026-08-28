@@ -4,6 +4,7 @@ import { createCircleService } from "@repo/payments/lib/circle";
 import { z } from "zod";
 
 import { adminProcedure } from "../../../orpc/procedures";
+import { clearEventsCache } from "../../circle/lib/events-cache";
 import { descriptionToTiptap } from "../lib/description-to-tiptap";
 import { notifyEventPublished } from "../lib/notify-event-published";
 
@@ -72,9 +73,14 @@ export const createClubEvent = adminProcedure
 		}
 
 		logger.info("[Events] Created event", {
+			event: "admin_events_created",
 			organizationId: input.organizationId,
 			circleEventId: outcome.data.circleEventId,
 		});
+
+		// A member polling their feed within the 60s TTL, or tapping the
+		// EVENT_PUBLISHED push, must see the new event — never a stale cache.
+		clearEventsCache();
 
 		if (input.notifyMembers) {
 			// Belt-and-suspenders: notifyEventPublished already swallows its own

@@ -89,8 +89,58 @@ describe("listClubEvents (S11-02)", () => {
 		expect(mockListEvents).toHaveBeenCalledWith({
 			spaceId: "2682536",
 			sort: "start_date_desc",
+			page: 1,
 		});
+		expect(mockListEvents).toHaveBeenCalledTimes(1);
 		expect(result).toEqual({ ok: true, configured: true, events: [EVENT_SUMMARY] });
+	});
+
+	it("aggregates across pages while hasNextPage is true, capped at 5 pages", async () => {
+		const pageTwoEvent = { ...EVENT_SUMMARY, circleEventId: "556" };
+		mockListEvents
+			.mockResolvedValueOnce({
+				ok: true,
+				data: { events: [EVENT_SUMMARY], hasNextPage: true },
+			})
+			.mockResolvedValueOnce({
+				ok: true,
+				data: { events: [pageTwoEvent], hasNextPage: false },
+			});
+
+		const result = await call(listClubEvents, INPUT, ctx);
+
+		expect(mockListEvents).toHaveBeenCalledTimes(2);
+		expect(mockListEvents).toHaveBeenNthCalledWith(1, {
+			spaceId: "2682536",
+			sort: "start_date_desc",
+			page: 1,
+		});
+		expect(mockListEvents).toHaveBeenNthCalledWith(2, {
+			spaceId: "2682536",
+			sort: "start_date_desc",
+			page: 2,
+		});
+		expect(result).toEqual({
+			ok: true,
+			configured: true,
+			events: [EVENT_SUMMARY, pageTwoEvent],
+		});
+	});
+
+	it("stops at the page cap and warns when more pages remain", async () => {
+		mockListEvents.mockResolvedValue({
+			ok: true,
+			data: { events: [EVENT_SUMMARY], hasNextPage: true },
+		});
+
+		const result = await call(listClubEvents, INPUT, ctx);
+
+		expect(mockListEvents).toHaveBeenCalledTimes(5);
+		expect(result).toEqual({
+			ok: true,
+			configured: true,
+			events: new Array(5).fill(EVENT_SUMMARY),
+		});
 	});
 
 	it("surfaces a Circle failure as { ok: false, reason }", async () => {

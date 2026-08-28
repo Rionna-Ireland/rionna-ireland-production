@@ -98,7 +98,15 @@ export const getClubEvents = cache(
 			if (!eventsSpaceId) return { items: [] };
 
 			const circle = createCircleService(org.slug);
-			const outcome = await circle.listEvents({ spaceId: eventsSpaceId, sort: "start_date" });
+			// startDateFrom keeps page 1 genuinely upcoming instead of truncating
+			// on old events past the 60-event page cap (S11-02 fix); the
+			// endsAt/startsAt >= now filter below stays as belt-and-braces.
+			const startDateFrom = new Date().toISOString().slice(0, 10);
+			const outcome = await circle.listEvents({
+				spaceId: eventsSpaceId,
+				sort: "start_date",
+				startDateFrom,
+			});
 			if (!outcome.ok) return { items: [] };
 
 			const now = Date.now();

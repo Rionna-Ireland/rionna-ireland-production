@@ -17,6 +17,7 @@ const {
 	mockCreateCircleService,
 	mockCreateEvent,
 	mockNotifyEventPublished,
+	mockLoggerInfo,
 } = vi.hoisted(() => ({
 	mockGetSession: vi.fn(),
 	mockOrgFindUnique: vi.fn(),
@@ -24,6 +25,7 @@ const {
 	mockCreateCircleService: vi.fn(),
 	mockCreateEvent: vi.fn(),
 	mockNotifyEventPublished: vi.fn(),
+	mockLoggerInfo: vi.fn(),
 }));
 
 vi.mock("@repo/auth", () => ({ auth: { api: { getSession: mockGetSession } } }));
@@ -34,7 +36,7 @@ vi.mock("@repo/database", () => ({
 }));
 
 vi.mock("@repo/logs", () => ({
-	logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), log: vi.fn() },
+	logger: { info: mockLoggerInfo, warn: vi.fn(), error: vi.fn(), log: vi.fn() },
 }));
 
 vi.mock("@repo/payments/lib/circle", () => ({
@@ -45,7 +47,16 @@ vi.mock("../lib/notify-event-published", () => ({
 	notifyEventPublished: mockNotifyEventPublished,
 }));
 
+import { clearEventsCache, readEventsCache, writeEventsCache } from "../../circle/lib/events-cache";
 import { createClubEvent } from "../procedures/create-club-event";
+
+vi.mock("../../circle/lib/events-cache", async (importActual) => {
+	const actual = await importActual<typeof import("../../circle/lib/events-cache")>();
+	return {
+		...actual,
+		clearEventsCache: vi.fn(actual.clearEventsCache),
+	};
+});
 
 const ADMIN = { id: "u1", role: "admin", name: "Emma" };
 const SESSION = { id: "s1", activeOrganizationId: "org1" };
@@ -165,5 +176,40 @@ describe("createClubEvent (S2-09 surface E)", () => {
 		await call(createClubEvent, INPUT, ctx);
 
 		expect(mockNotifyEventPublished).not.toHaveBeenCalled();
+	});
+
+	it("audit-logs the create with a structured admin_events_created event", async () => {
+		await call(createClubEvent, INPUT, ctx);
+
+		expect(mockLoggerInfo).toHaveBeenCalledWith(
+			"[Events] Created event",
+			expect.objectContaining({
+				event: "admin_events_created",
+				organizationId: "org1",
+				circleEventId: "555",
+			}),
+		);
+	});
+
+	it("clears a warmed events cache on successful create (S11-02 push-race fix)", async () => {
+		writeEventsCache("org1", "member-1", "upcoming", {
+			ok: true,
+			configured: true,
+			events: [],
+		});
+		expect(readEventsCache("org1", "member-1", "upcoming")).not.toBeNull();
+
+		await call(createClubEvent, INPUT, ctx);
+
+		expect(clearEventsCache).toHaveBeenCalledTimes(1);
+		expect(readEventsCache("org1", "member-1", "upcoming")).toBeNull();
+	});
+
+	it("does not clear the cache when Circle event creation fails", async () => {
+		mockCreateEvent.mockResolvedValue({ ok: false, reason: "invalid_input", retriable: false });
+
+		await call(createClubEvent, INPUT, ctx);
+
+		expect(clearEventsCache).not.toHaveBeenCalled();
 	});
 });

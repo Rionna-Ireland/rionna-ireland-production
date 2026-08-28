@@ -37,7 +37,16 @@ vi.mock("@repo/payments/lib/circle", () => ({
 	createCircleService: mockCreateCircleService,
 }));
 
+import { clearEventsCache } from "../../circle/lib/events-cache";
 import { deleteClubEvent } from "../procedures/delete-club-event";
+
+vi.mock("../../circle/lib/events-cache", async (importActual) => {
+	const actual = await importActual<typeof import("../../circle/lib/events-cache")>();
+	return {
+		...actual,
+		clearEventsCache: vi.fn(actual.clearEventsCache),
+	};
+});
 
 const ADMIN = { id: "u1", role: "admin", name: "Emma" };
 const SESSION = { id: "s1", activeOrganizationId: "org1" };
@@ -68,7 +77,7 @@ describe("deleteClubEvent (S11-02)", () => {
 		expect(mockLoggerInfo).toHaveBeenCalledWith(
 			expect.any(String),
 			expect.objectContaining({
-				event: "admin.events.delete",
+				event: "admin_events_deleted",
 				organizationId: "org1",
 				eventId: "555",
 				userId: "u1",
@@ -92,5 +101,19 @@ describe("deleteClubEvent (S11-02)", () => {
 
 		expect(result).toEqual({ ok: false, reason: "no_org_slug" });
 		expect(mockDeleteEvent).not.toHaveBeenCalled();
+	});
+
+	it("clears the events cache on a successful delete (S11-02 push-race fix)", async () => {
+		await call(deleteClubEvent, INPUT, ctx);
+
+		expect(clearEventsCache).toHaveBeenCalledTimes(1);
+	});
+
+	it("does not clear the cache when the Circle delete fails", async () => {
+		mockDeleteEvent.mockResolvedValue({ ok: false, reason: "not_found", retriable: false });
+
+		await call(deleteClubEvent, INPUT, ctx);
+
+		expect(clearEventsCache).not.toHaveBeenCalled();
 	});
 });

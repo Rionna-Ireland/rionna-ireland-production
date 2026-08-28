@@ -450,9 +450,11 @@ export class MockCircleService implements CircleService {
 	}
 
 	async listEvents(params: ListEventsParams): Promise<CircleCallOutcome<ListEventsResult>> {
-		const entries = [...this.events.entries()].filter(
-			([, event]) => event.spaceId === params.spaceId,
-		);
+		const entries = [...this.events.entries()].filter(([, event]) => {
+			if (event.spaceId !== params.spaceId) return false;
+			if (params.startDateFrom && event.startsAt < params.startDateFrom) return false;
+			return true;
+		});
 		if (params.sort === "oldest") {
 			entries.sort((a, b) => a[1].startsAt.localeCompare(b[1].startsAt));
 		} else if (params.sort === "start_date") {

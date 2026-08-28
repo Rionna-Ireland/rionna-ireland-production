@@ -93,6 +93,18 @@ describe("getClubEvents (S11-02, D32)", () => {
 		expect(JSON.stringify(items)).not.toContain("Curragh");
 	});
 
+	it("passes today's UTC date as startDateFrom (S11-02 fix — page 1 truncation)", async () => {
+		const getClubEvents = await importGetClubEvents();
+		await getClubEvents();
+
+		const todayUtc = new Date().toISOString().slice(0, 10);
+		expect(mockListEvents).toHaveBeenCalledWith({
+			spaceId: "space-1",
+			sort: "start_date",
+			startDateFrom: todayUtc,
+		});
+	});
+
 	it("filters out events that have already ended", async () => {
 		mockListEvents.mockResolvedValue({
 			ok: true,

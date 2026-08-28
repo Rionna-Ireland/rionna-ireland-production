@@ -275,6 +275,12 @@ export interface ListEventsParams {
 	page?: number;
 	perPage?: number;
 	sort?: "oldest" | "start_date" | "start_date_desc";
+	/**
+	 * YYYY-MM-DD. When set, scopes the listing to events starting on or after
+	 * this date (Admin API v2 `filter_date[start_date]`) — keeps page 1
+	 * genuinely upcoming instead of truncating on old events (S11-02 fix).
+	 */
+	startDateFrom?: string;
 }
 
 export interface ListEventsResult {

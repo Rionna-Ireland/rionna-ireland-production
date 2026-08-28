@@ -4,6 +4,7 @@ import { createCircleService } from "@repo/payments/lib/circle";
 import { z } from "zod";
 
 import { adminProcedure } from "../../../orpc/procedures";
+import { clearEventsCache } from "../../circle/lib/events-cache";
 
 export const deleteClubEvent = adminProcedure
 	.route({
@@ -33,10 +34,13 @@ export const deleteClubEvent = adminProcedure
 			return { ok: false as const, reason: outcome.reason };
 		}
 		logger.info("[Events] Deleted event", {
-			event: "admin.events.delete",
+			event: "admin_events_deleted",
 			organizationId: input.organizationId,
 			eventId: input.eventId,
 			userId: context.user.id,
 		});
+		// A member polling their feed within the 60s TTL, or tapping the
+		// EVENT_PUBLISHED push, must not still see the deleted event.
+		clearEventsCache();
 		return { ok: true as const };
 	});

@@ -163,6 +163,28 @@ describe("MockCircleService — publishing surface (S2-09)", () => {
 			});
 			expect(outcome.data.hasNextPage).toBe(false);
 		});
+
+		it("filters by startDateFrom (S11-02 fix — page 1 truncation)", async () => {
+			await service.createEvent({
+				spaceId: "1",
+				name: "Old",
+				tiptapBody: DOC,
+				startsAt: "2026-01-01T00:00:00Z",
+				durationInSeconds: 3600,
+			});
+			await service.createEvent({
+				spaceId: "1",
+				name: "Upcoming",
+				tiptapBody: DOC,
+				startsAt: "2026-09-01T00:00:00Z",
+				durationInSeconds: 3600,
+			});
+
+			const outcome = await service.listEvents({ spaceId: "1", startDateFrom: "2026-08-28" });
+
+			if (!outcome.ok) throw new Error("expected ok");
+			expect(outcome.data.events.map((e) => e.name)).toEqual(["Upcoming"]);
+		});
 	});
 
 	describe("updateEvent", () => {

@@ -67,4 +67,31 @@ describe("toClubEvent", () => {
 		};
 		expect(toClubEvent(open)?.rsvp.full).toBe(false);
 	});
+
+	it("hides the location for a non-attendee when hide_location_from_non_attendees is set", () => {
+		const hidden = {
+			...record,
+			event_setting_attributes: {
+				...record.event_setting_attributes,
+				hide_location_from_non_attendees: true,
+			},
+			rsvped_event: false,
+		};
+		const event = toClubEvent(hidden);
+		expect(event?.inPersonLocation).toBeNull();
+		expect(event?.virtualLocationUrl).toBeNull();
+	});
+
+	it("still shows the location to an RSVPed attendee even when hide_location_from_non_attendees is set", () => {
+		const visible = {
+			...record,
+			event_setting_attributes: {
+				...record.event_setting_attributes,
+				hide_location_from_non_attendees: true,
+			},
+			rsvped_event: true,
+		};
+		const event = toClubEvent(visible);
+		expect(event?.inPersonLocation).toBe("Naas Racecourse");
+	});
 });

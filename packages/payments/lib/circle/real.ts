@@ -1169,6 +1169,9 @@ export class RealCircleService implements CircleService {
 			per_page: String(params.perPage ?? 60),
 			page: String(params.page ?? 1),
 		});
+		if (params.startDateFrom) {
+			qs.set("filter_date[start_date]", params.startDateFrom);
+		}
 		let response: Response;
 		try {
 			response = await fetch(`${CIRCLE_ADMIN_BASE}/events?${qs}`, {
