@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { adminProcedure } from "../../../orpc/procedures";
 import { descriptionToTiptap } from "../lib/description-to-tiptap";
+import { notifyEventPublished } from "../lib/notify-event-published";
 
 /**
  * Create a Circle event (S2-09 surface E) via `POST /events` — RSVP + reminders
@@ -27,6 +28,10 @@ export const createClubEvent = adminProcedure
 			startsAt: z.string(),
 			durationMinutes: z.number().int().min(1),
 			locationType: z.enum(["tbd", "virtual", "in_person"]).optional(),
+			inPersonLocation: z.string().optional(),
+			virtualLocationUrl: z.string().optional(),
+			coverImageSignedId: z.string().optional(),
+			notifyMembers: z.boolean().default(true),
 		}),
 	)
 	.handler(async ({ input }) => {
@@ -53,6 +58,9 @@ export const createClubEvent = adminProcedure
 			startsAt: input.startsAt,
 			durationInSeconds: input.durationMinutes * 60,
 			locationType: input.locationType ?? "tbd",
+			inPersonLocation: input.inPersonLocation,
+			virtualLocationUrl: input.virtualLocationUrl,
+			coverImageSignedId: input.coverImageSignedId,
 		});
 
 		if (!outcome.ok) {
@@ -67,5 +75,24 @@ export const createClubEvent = adminProcedure
 			organizationId: input.organizationId,
 			circleEventId: outcome.data.circleEventId,
 		});
+
+		if (input.notifyMembers) {
+			// Belt-and-suspenders: notifyEventPublished already swallows its own
+			// errors, but the event is already committed in Circle either way —
+			// a notify failure must never fail the create.
+			try {
+				await notifyEventPublished({
+					organizationId: input.organizationId,
+					circleEventId: outcome.data.circleEventId,
+					name: input.name,
+				});
+			} catch (error) {
+				logger.error("[Events] publish notify threw unexpectedly", {
+					circleEventId: outcome.data.circleEventId,
+					error,
+				});
+			}
+		}
+
 		return { ok: true as const, circleEventId: outcome.data.circleEventId };
 	});

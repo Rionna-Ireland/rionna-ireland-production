@@ -16,12 +16,14 @@ const {
 	mockParseOrgMetadata,
 	mockCreateCircleService,
 	mockCreateEvent,
+	mockNotifyEventPublished,
 } = vi.hoisted(() => ({
 	mockGetSession: vi.fn(),
 	mockOrgFindUnique: vi.fn(),
 	mockParseOrgMetadata: vi.fn(),
 	mockCreateCircleService: vi.fn(),
 	mockCreateEvent: vi.fn(),
+	mockNotifyEventPublished: vi.fn(),
 }));
 
 vi.mock("@repo/auth", () => ({ auth: { api: { getSession: mockGetSession } } }));
@@ -37,6 +39,10 @@ vi.mock("@repo/logs", () => ({
 
 vi.mock("@repo/payments/lib/circle", () => ({
 	createCircleService: mockCreateCircleService,
+}));
+
+vi.mock("../lib/notify-event-published", () => ({
+	notifyEventPublished: mockNotifyEventPublished,
 }));
 
 import { createClubEvent } from "../procedures/create-club-event";
@@ -60,6 +66,7 @@ beforeEach(() => {
 	mockParseOrgMetadata.mockReturnValue({ circle: { eventsSpaceId: "2682536" } });
 	mockCreateCircleService.mockReturnValue({ createEvent: mockCreateEvent });
 	mockCreateEvent.mockResolvedValue({ ok: true, data: { circleEventId: "555" } });
+	mockNotifyEventPublished.mockResolvedValue(undefined);
 });
 
 describe("createClubEvent (S2-09 surface E)", () => {
@@ -102,5 +109,61 @@ describe("createClubEvent (S2-09 surface E)", () => {
 		const result = await call(createClubEvent, INPUT, ctx);
 
 		expect(result).toMatchObject({ ok: false, reason: "invalid_input" });
+	});
+
+	it("passes inPersonLocation, virtualLocationUrl and coverImageSignedId through to Circle", async () => {
+		await call(
+			createClubEvent,
+			{
+				...INPUT,
+				inPersonLocation: "The Yard, Curragh",
+				virtualLocationUrl: "https://zoom.example/abc",
+				coverImageSignedId: "signed-1",
+			},
+			ctx,
+		);
+
+		expect(mockCreateEvent).toHaveBeenCalledWith(
+			expect.objectContaining({
+				inPersonLocation: "The Yard, Curragh",
+				virtualLocationUrl: "https://zoom.example/abc",
+				coverImageSignedId: "signed-1",
+			}),
+		);
+	});
+
+	it("notifies members exactly once by default (notifyMembers defaults true)", async () => {
+		const result = await call(createClubEvent, INPUT, ctx);
+
+		expect(result).toMatchObject({ ok: true, circleEventId: "555" });
+		expect(mockNotifyEventPublished).toHaveBeenCalledTimes(1);
+		expect(mockNotifyEventPublished).toHaveBeenCalledWith({
+			organizationId: "org1",
+			circleEventId: "555",
+			name: "Yard visit",
+		});
+	});
+
+	it("does not fail the create when the notify call throws", async () => {
+		mockNotifyEventPublished.mockRejectedValue(new Error("push service down"));
+
+		const result = await call(createClubEvent, INPUT, ctx);
+
+		expect(result).toMatchObject({ ok: true, circleEventId: "555" });
+	});
+
+	it("skips the notify call when notifyMembers is false", async () => {
+		const result = await call(createClubEvent, { ...INPUT, notifyMembers: false }, ctx);
+
+		expect(result).toMatchObject({ ok: true, circleEventId: "555" });
+		expect(mockNotifyEventPublished).not.toHaveBeenCalled();
+	});
+
+	it("skips the notify call when Circle event creation fails", async () => {
+		mockCreateEvent.mockResolvedValue({ ok: false, reason: "invalid_input", retriable: false });
+
+		await call(createClubEvent, INPUT, ctx);
+
+		expect(mockNotifyEventPublished).not.toHaveBeenCalled();
 	});
 });
