@@ -12,13 +12,13 @@ import { createHash } from "node:crypto";
 import { createClient } from "@circleco/headless-server-sdk";
 import { logger } from "@repo/logs";
 
+import { tiptapDocToTrixBody } from "./event-body";
 import {
 	applyNotificationsCursor,
 	classifyStatus,
 	compareIds,
 	normaliseCircleNotification,
 } from "./http-utils";
-import { tiptapDocToTrixBody } from "./event-body";
 import { decodeCircleInPersonLocation } from "./location";
 import {
 	clearCachedMemberToken,
@@ -45,6 +45,9 @@ import type {
 	CreateSpaceResult,
 	CreateEmbedParams,
 	CreateEmbedResult,
+	EventAttendee,
+	ListEventAttendeesParams,
+	ListEventAttendeesResult,
 	ListEventsParams,
 	ListEventsResult,
 	MemberTokenResult,
@@ -1279,6 +1282,75 @@ export class RealCircleService implements CircleService {
 			await this.attachRsvpCounts(events);
 		}
 		return { ok: true, data: { events, hasNextPage: data.has_next_page === true } };
+	}
+
+	// Probed against staging (2026-08-30): Admin v2 GET /event_attendees
+	// returns the standard pagination envelope; each record is FLAT —
+	// { id, event_id, community_member_id, contact_id, contact_type,
+	// rsvp_status, event_name, member_name, member_email,
+	// member_avatar_url, headline, rsvp_date }. A record with no
+	// community_member_id can't be contacted or deduped, so it's dropped.
+	private toEventAttendee(record: Record<string, unknown>): EventAttendee | null {
+		const circleMemberId =
+			record.community_member_id === undefined || record.community_member_id === null
+				? null
+				: String(record.community_member_id);
+		if (!circleMemberId) {
+			return null;
+		}
+		const str = (v: unknown) => (typeof v === "string" && v.length > 0 ? v : null);
+		return {
+			circleMemberId,
+			name: str(record.member_name),
+			email: str(record.member_email),
+			rsvpStatus: str(record.rsvp_status),
+			rsvpDate: str(record.rsvp_date),
+		};
+	}
+
+	async listEventAttendees(
+		params: ListEventAttendeesParams,
+	): Promise<CircleCallOutcome<ListEventAttendeesResult>> {
+		const qs = new URLSearchParams({
+			event_id: String(Number(params.eventId)),
+			per_page: String(params.perPage ?? 100),
+			page: String(params.page ?? 1),
+		});
+		let response: Response;
+		try {
+			response = await fetch(`${CIRCLE_ADMIN_BASE}/event_attendees?${qs}`, {
+				headers: this.adminHeaders(),
+			});
+		} catch (err) {
+			return { ok: false, reason: "network", retriable: true, raw: err };
+		}
+		if (!response.ok) {
+			const raw = await response.text().catch(() => undefined);
+			const { reason, retriable } = classifyStatus(response.status);
+			logger.error("[Circle] List event attendees failed", {
+				status: response.status,
+				eventId: params.eventId,
+				reason,
+			});
+			return { ok: false, reason, retriable, raw };
+		}
+		let data: { records?: unknown[]; has_next_page?: boolean; count?: unknown };
+		try {
+			data = (await response.json()) as typeof data;
+		} catch (err) {
+			return { ok: false, reason: "server_error", retriable: true, raw: err };
+		}
+		const attendees = (Array.isArray(data.records) ? data.records : [])
+			.map((r) => this.toEventAttendee(r as Record<string, unknown>))
+			.filter((a): a is EventAttendee => a !== null);
+		const count =
+			typeof data.count === "number" && Number.isFinite(data.count)
+				? data.count
+				: attendees.length;
+		return {
+			ok: true,
+			data: { attendees, count, hasNextPage: data.has_next_page === true },
+		};
 	}
 
 	async updateEvent(

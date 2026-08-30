@@ -31,6 +31,8 @@ import type {
 	CreateDirectUploadResult,
 	CreateEmbedParams,
 	CreateEmbedResult,
+	ListEventAttendeesParams,
+	ListEventAttendeesResult,
 	ListEventsParams,
 	ListEventsResult,
 	MemberTokenResult,
@@ -469,6 +471,20 @@ export class MockCircleService implements CircleService {
 			count: events.length,
 		});
 		return { ok: true, data: { events, hasNextPage: false } };
+	}
+
+	// The mock service's stored events don't track individual attendees —
+	// per-attendee data only lives in the sibling circle-mock server
+	// (MockServerCircleService). Fall back to the stored rsvpCount so the
+	// admin UI at least shows a consistent total with an empty list.
+	async listEventAttendees(
+		params: ListEventAttendeesParams,
+	): Promise<CircleCallOutcome<ListEventAttendeesResult>> {
+		const event = this.events.get(params.eventId);
+		return {
+			ok: true,
+			data: { attendees: [], count: event?.rsvpCount ?? 0, hasNextPage: false },
+		};
 	}
 
 	async updateEvent(

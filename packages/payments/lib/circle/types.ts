@@ -296,6 +296,27 @@ export interface ListEventsResult {
 	hasNextPage: boolean;
 }
 
+/** S11-02: a single Circle event RSVP, for the admin attendees view. */
+export interface EventAttendee {
+	circleMemberId: string;
+	name: string | null;
+	email: string | null;
+	rsvpStatus: string | null;
+	rsvpDate: string | null;
+}
+
+export interface ListEventAttendeesParams {
+	eventId: string;
+	page?: number;
+	perPage?: number;
+}
+
+export interface ListEventAttendeesResult {
+	attendees: EventAttendee[];
+	count: number;
+	hasNextPage: boolean;
+}
+
 export interface UpdateEventParams {
 	eventId: string;
 	/**
@@ -405,6 +426,13 @@ export interface CircleService {
 	createEvent(params: CreateEventParams): Promise<CircleCallOutcome<CreateEventResult>>;
 	/** List events in a space (Admin API v2). */
 	listEvents(params: ListEventsParams): Promise<CircleCallOutcome<ListEventsResult>>;
+	/**
+	 * List a single event's RSVPs (Admin API v2 `GET /event_attendees`), for
+	 * the admin "who's coming" contact list (S11-02).
+	 */
+	listEventAttendees(
+		params: ListEventAttendeesParams,
+	): Promise<CircleCallOutcome<ListEventAttendeesResult>>;
 	/**
 	 * Update an event (Admin API v2 PUT). Only provided fields are sent,
 	 * except `spaceId`, which is always sent — Circle 404s the PUT without it.

@@ -161,6 +161,15 @@
 			"list": {
 				"loading": "Loading events…",
 				"tbd": "Date to be decided"
+			},
+			"attendees": {
+				"title": "Attendees",
+				"copyEmails": "Copy emails",
+				"copied": "Emails copied to clipboard.",
+				"empty": "No RSVPs yet",
+				"error": "Couldn't load attendees. Please try again.",
+				"loading": "Loading attendees…",
+				"noEmail": "No email on file"
 			}
 		},
 		"updates": {

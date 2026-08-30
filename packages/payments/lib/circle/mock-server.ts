@@ -2,13 +2,13 @@ import { createHash } from "node:crypto";
 
 import { logger } from "@repo/logs";
 
+import { tiptapDocToTrixBody } from "./event-body";
 import {
 	applyNotificationsCursor,
 	classifyStatus,
 	compareIds,
 	normaliseCircleNotification,
 } from "./http-utils";
-import { tiptapDocToTrixBody } from "./event-body";
 import { decodeCircleInPersonLocation } from "./location";
 import type {
 	CircleCallOutcome,
@@ -30,6 +30,9 @@ import type {
 	CreateSpaceResult,
 	CreateEmbedParams,
 	CreateEmbedResult,
+	EventAttendee,
+	ListEventAttendeesParams,
+	ListEventAttendeesResult,
 	ListEventsParams,
 	ListEventsResult,
 	MemberTokenResult,
@@ -980,6 +983,66 @@ export class MockServerCircleService implements CircleService {
 			await this.attachRsvpCounts(events);
 		}
 		return { ok: true, data: { events, hasNextPage: data.has_next_page === true } };
+	}
+
+	// NOTE: unlike real Circle, the local circle-mock server's
+	// /event_attendees returns raw member entities ({ id, name, email, ... })
+	// rather than Circle's member_-prefixed keys — fall back to the
+	// unprefixed fields so the mock server still round-trips.
+	private toEventAttendee(record: Record<string, unknown>): EventAttendee | null {
+		const rawId = record.community_member_id ?? record.id;
+		const circleMemberId = rawId === undefined || rawId === null ? null : String(rawId);
+		if (!circleMemberId) {
+			return null;
+		}
+		const str = (v: unknown) => (typeof v === "string" && v.length > 0 ? v : null);
+		return {
+			circleMemberId,
+			name: str(record.member_name) ?? str(record.name),
+			email: str(record.member_email) ?? str(record.email),
+			rsvpStatus: str(record.rsvp_status),
+			rsvpDate: str(record.rsvp_date),
+		};
+	}
+
+	async listEventAttendees(
+		params: ListEventAttendeesParams,
+	): Promise<CircleCallOutcome<ListEventAttendeesResult>> {
+		const qs = new URLSearchParams({
+			event_id: String(Number(params.eventId)),
+			per_page: String(params.perPage ?? 100),
+			page: String(params.page ?? 1),
+		});
+		let response: Response;
+		try {
+			response = await fetch(`${this.baseUrl}/api/admin/v2/event_attendees?${qs}`, {
+				headers: this.adminHeaders(),
+			});
+		} catch (err) {
+			return { ok: false, reason: "network", retriable: true, raw: err };
+		}
+		if (!response.ok) {
+			const raw = await this.readError(response, "Mock server list event attendees failed");
+			const { reason, retriable } = classifyStatus(response.status);
+			return { ok: false, reason, retriable, raw };
+		}
+		let data: { records?: unknown[]; has_next_page?: boolean; count?: unknown };
+		try {
+			data = await this.parseJson<typeof data>(response);
+		} catch (err) {
+			return { ok: false, reason: "server_error", retriable: true, raw: err };
+		}
+		const attendees = (Array.isArray(data.records) ? data.records : [])
+			.map((r) => this.toEventAttendee(r as Record<string, unknown>))
+			.filter((a): a is EventAttendee => a !== null);
+		const count =
+			typeof data.count === "number" && Number.isFinite(data.count)
+				? data.count
+				: attendees.length;
+		return {
+			ok: true,
+			data: { attendees, count, hasNextPage: data.has_next_page === true },
+		};
 	}
 
 	async updateEvent(
