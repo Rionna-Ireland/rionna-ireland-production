@@ -86,6 +86,10 @@ describe("getPrefKey", () => {
 	it("maps INSIDE_TRACK to the insideTrack preference", () => {
 		expect(getPrefKey("INSIDE_TRACK")).toBe("insideTrack");
 	});
+
+	it("maps EVENT_PUBLISHED to the events preference", () => {
+		expect(getPrefKey("EVENT_PUBLISHED")).toBe("events");
+	});
 });
 
 describe("getAudienceTokens", () => {

@@ -632,6 +632,7 @@ enum PushTriggerType {
   HORSE_WELLBEING
   HORSE_UPDATE
   INSIDE_TRACK
+  EVENT_PUBLISHED
 }
 
 enum PushStatus {

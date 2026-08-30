@@ -65,6 +65,9 @@ export async function Footer() {
 					<LocaleLink href="/news" className="block">
 						{t("common.menu.news")}
 					</LocaleLink>
+					<LocaleLink href="/events" className="block">
+						{t("common.menu.events")}
+					</LocaleLink>
 					<LocaleLink href="/contact" className="block">
 						{t("common.menu.contact")}
 					</LocaleLink>

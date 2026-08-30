@@ -8,6 +8,8 @@ import {
 	compareIds,
 	normaliseCircleNotification,
 } from "./http-utils";
+import { tiptapDocToTrixBody } from "./event-body";
+import { decodeCircleInPersonLocation } from "./location";
 import type {
 	CircleCallOutcome,
 	CircleNotification,
@@ -15,6 +17,7 @@ import type {
 	CircleService,
 	CircleSpaceGroupSummary,
 	CircleSpaceSummary,
+	ClubEventSummary,
 	CreateEventParams,
 	CreateEventResult,
 	CreateMemberParams,
@@ -27,8 +30,11 @@ import type {
 	CreateSpaceResult,
 	CreateEmbedParams,
 	CreateEmbedResult,
+	ListEventsParams,
+	ListEventsResult,
 	MemberTokenResult,
 	ReactivateMemberParams,
+	UpdateEventParams,
 	UploadImageParams,
 	UploadImageResult,
 } from "./types";
@@ -572,7 +578,11 @@ export class MockServerCircleService implements CircleService {
 
 		return {
 			ok: true,
-			data: { signedId: reg.data.signedId, attachableSgid: reg.data.attachableSgid, url: reg.data.cdnUrl },
+			data: {
+				signedId: reg.data.signedId,
+				attachableSgid: reg.data.attachableSgid,
+				url: reg.data.cdnUrl,
+			},
 		};
 	}
 
@@ -798,10 +808,30 @@ export class MockServerCircleService implements CircleService {
 					space_id: Number(params.spaceId),
 					name: params.name,
 					tiptap_body: params.tiptapBody,
+					// Mirrors RealCircleService: only `body` HTML persists on real Circle.
+					...(() => {
+						const trixBody = tiptapDocToTrixBody(params.tiptapBody);
+						return trixBody ? { body: trixBody } : {};
+					})(),
+					...(params.coverImageSignedId
+						? { cover_image: params.coverImageSignedId }
+						: {}),
 					event_setting_attributes: {
 						starts_at: params.startsAt,
 						duration_in_seconds: params.durationInSeconds,
 						location_type: params.locationType ?? "tbd",
+						...(params.inPersonLocation
+							? {
+									// Mirrors RealCircleService: Circle requires this field as a
+									// JSON-encoded string — a plain string 400s.
+									in_person_location: JSON.stringify({
+										address: params.inPersonLocation,
+									}),
+								}
+							: {}),
+						...(params.virtualLocationUrl
+							? { virtual_location_url: params.virtualLocationUrl }
+							: {}),
 					},
 				}),
 			});
@@ -825,5 +855,203 @@ export class MockServerCircleService implements CircleService {
 			return { ok: false, reason: "server_error", retriable: false, raw: "missing event id" };
 		}
 		return { ok: true, data: { circleEventId: String(id) } };
+	}
+
+	// Mirrors RealCircleService: real Admin v2 records are flat (no
+	// event_setting_attributes wrapper, no rsvp_count/rsvp_limit at all —
+	// probed against staging 2026-08-27). The local circle-mock server still
+	// emits the nested shape, so every settings field is read flat-first
+	// with a fallback to nested.
+	private toClubEventSummary(record: Record<string, unknown>): ClubEventSummary | null {
+		const id = record.id === undefined || record.id === null ? null : String(record.id);
+		const name = typeof record.name === "string" ? record.name : null;
+		if (!id || !name) {
+			return null;
+		}
+		const nestedSettings =
+			(record.event_setting_attributes as Record<string, unknown> | undefined) ??
+			(record.event_settings_attributes as Record<string, unknown> | undefined) ??
+			{};
+		const field = (key: string): unknown =>
+			record[key] !== undefined ? record[key] : nestedSettings[key];
+		const str = (v: unknown) => (typeof v === "string" && v.length > 0 ? v : null);
+		return {
+			circleEventId: id,
+			name,
+			startsAt: str(field("starts_at")),
+			endsAt: str(field("ends_at")),
+			locationType: str(field("location_type")),
+			inPersonLocation: decodeCircleInPersonLocation(str(field("in_person_location"))),
+			virtualLocationUrl: str(field("virtual_location_url")),
+			// Baseline only — mirrors RealCircleService; listEvents overlays
+			// the real count via event_attendees when includeRsvpCounts is set.
+			rsvpCount: 0,
+			// Mirrors RealCircleService — the Admin API doesn't expose an RSVP
+			// limit anywhere; the admin UI already renders `limit ?? "∞"`.
+			rsvpLimit: null,
+			coverImageUrl: str(record.cover_image_url),
+			url: str(record.url),
+		};
+	}
+
+	/** Mirrors RealCircleService.attachRsvpCounts against the mock server. */
+	private async attachRsvpCounts(events: ClubEventSummary[]): Promise<void> {
+		await Promise.all(
+			events.map(async (event) => {
+				let response: Response;
+				try {
+					response = await fetch(
+						`${this.baseUrl}/api/admin/v2/event_attendees?event_id=${encodeURIComponent(event.circleEventId)}&per_page=1`,
+						{ headers: this.adminHeaders() },
+					);
+				} catch (err) {
+					logger.warn(
+						"[MockServerCircle] event_attendees fetch failed (network); rsvpCount stays 0",
+						{
+							circleEventId: event.circleEventId,
+							error: err instanceof Error ? err.message : String(err),
+						},
+					);
+					return;
+				}
+				if (!response.ok) {
+					logger.warn(
+						"[MockServerCircle] event_attendees fetch failed; rsvpCount stays 0",
+						{
+							circleEventId: event.circleEventId,
+							status: response.status,
+						},
+					);
+					return;
+				}
+				let body: { count?: unknown };
+				try {
+					body = await this.parseJson<typeof body>(response);
+				} catch (err) {
+					logger.warn(
+						"[MockServerCircle] event_attendees response not JSON; rsvpCount stays 0",
+						{
+							circleEventId: event.circleEventId,
+							error: err instanceof Error ? err.message : String(err),
+						},
+					);
+					return;
+				}
+				if (typeof body.count === "number" && Number.isFinite(body.count)) {
+					event.rsvpCount = body.count;
+				}
+			}),
+		);
+	}
+
+	async listEvents(params: ListEventsParams): Promise<CircleCallOutcome<ListEventsResult>> {
+		const qs = new URLSearchParams({
+			space_id: String(Number(params.spaceId)),
+			sort: params.sort ?? "start_date_desc",
+			per_page: String(params.perPage ?? 60),
+			page: String(params.page ?? 1),
+		});
+		if (params.startDateFrom) {
+			qs.set("filter_date[start_date]", params.startDateFrom);
+		}
+		let response: Response;
+		try {
+			response = await fetch(`${this.baseUrl}/api/admin/v2/events?${qs}`, {
+				headers: this.adminHeaders(),
+			});
+		} catch (err) {
+			return { ok: false, reason: "network", retriable: true, raw: err };
+		}
+		if (!response.ok) {
+			const raw = await this.readError(response, "Mock server list events failed");
+			const { reason, retriable } = classifyStatus(response.status);
+			return { ok: false, reason, retriable, raw };
+		}
+		let data: { records?: unknown[]; has_next_page?: boolean };
+		try {
+			data = await this.parseJson<typeof data>(response);
+		} catch (err) {
+			return { ok: false, reason: "server_error", retriable: true, raw: err };
+		}
+		const events = (Array.isArray(data.records) ? data.records : [])
+			.map((r) => this.toClubEventSummary(r as Record<string, unknown>))
+			.filter((e): e is ClubEventSummary => e !== null);
+		if (params.includeRsvpCounts && events.length > 0) {
+			await this.attachRsvpCounts(events);
+		}
+		return { ok: true, data: { events, hasNextPage: data.has_next_page === true } };
+	}
+
+	async updateEvent(
+		params: UpdateEventParams,
+	): Promise<CircleCallOutcome<{ circleEventId: string }>> {
+		const settings: Record<string, unknown> = {};
+		if (params.startsAt !== undefined) settings.starts_at = params.startsAt;
+		if (params.durationInSeconds !== undefined)
+			settings.duration_in_seconds = params.durationInSeconds;
+		if (params.locationType !== undefined) settings.location_type = params.locationType;
+		if (params.inPersonLocation !== undefined)
+			// Mirrors RealCircleService: Circle requires this field as a
+			// JSON-encoded string — a plain string 400s (same as createEvent).
+			settings.in_person_location = JSON.stringify({ address: params.inPersonLocation });
+		if (params.virtualLocationUrl !== undefined)
+			settings.virtual_location_url = params.virtualLocationUrl;
+		// Mirrors RealCircleService: PUT /events/{id} 404s "Missing parameter:
+		// space_id" unless the body includes it — always send it.
+		const body: Record<string, unknown> = { space_id: Number(params.spaceId) };
+		if (params.name !== undefined) body.name = params.name;
+		if (params.tiptapBody !== undefined) {
+			body.tiptap_body = params.tiptapBody;
+			// Mirrors RealCircleService: only `body` HTML persists on real Circle.
+			const trixBody = tiptapDocToTrixBody(params.tiptapBody);
+			if (trixBody) body.body = trixBody;
+		}
+		if (params.coverImageSignedId !== undefined) body.cover_image = params.coverImageSignedId;
+		if (Object.keys(settings).length > 0) body.event_setting_attributes = settings;
+		let response: Response;
+		try {
+			response = await fetch(
+				`${this.baseUrl}/api/admin/v2/events/${encodeURIComponent(params.eventId)}`,
+				{
+					method: "PUT",
+					headers: this.adminHeaders(),
+					body: JSON.stringify(body),
+				},
+			);
+		} catch (err) {
+			return { ok: false, reason: "network", retriable: true, raw: err };
+		}
+		if (!response.ok) {
+			const raw = await this.readError(response, "Mock server update event failed");
+			const { reason, retriable } = classifyStatus(response.status);
+			return { ok: false, reason, retriable, raw };
+		}
+		return { ok: true, data: { circleEventId: params.eventId } };
+	}
+
+	async deleteEvent(params: {
+		eventId: string;
+		spaceId: string;
+	}): Promise<CircleCallOutcome<void>> {
+		let response: Response;
+		try {
+			response = await fetch(
+				// Mirrors RealCircleService: DELETE /events/{id} 404s "Missing
+				// parameter: space_id" unless it's on the query string.
+				`${this.baseUrl}/api/admin/v2/events/${encodeURIComponent(params.eventId)}?space_id=${Number(params.spaceId)}`,
+				{
+					method: "DELETE",
+					headers: this.adminHeaders(),
+				},
+			);
+		} catch (err) {
+			return { ok: false, reason: "network", retriable: true, raw: err };
+		}
+		if (!response.ok) {
+			const raw = await this.readError(response, "Mock server delete event failed");
+			const { reason, retriable } = classifyStatus(response.status);
+			return { ok: false, reason, retriable, raw };
+		}
+		return { ok: true, data: undefined };
 	}
 }

@@ -1,26 +1,12 @@
 import { db, parseOrgMetadata } from "@repo/database";
 import { logger } from "@repo/logs";
 import { createCircleService } from "@repo/payments/lib/circle";
-import type { CircleTiptapBody } from "@repo/payments/lib/circle";
 import { z } from "zod";
 
 import { adminProcedure } from "../../../orpc/procedures";
-
-/** A plain description → a minimal Circle `tiptap_body` (one paragraph per line). */
-function descriptionToTiptap(text: string): CircleTiptapBody {
-	const paragraphs = text
-		.split(/\n+/)
-		.map((line) => line.trim())
-		.filter(Boolean);
-	const content =
-		paragraphs.length > 0
-			? paragraphs.map((line) => ({
-					type: "paragraph",
-					content: [{ type: "text", text: line }],
-				}))
-			: [{ type: "paragraph" }];
-	return { body: { type: "doc", content } };
-}
+import { clearEventsCache } from "../../circle/lib/events-cache";
+import { descriptionToTiptap } from "../lib/description-to-tiptap";
+import { notifyEventPublished } from "../lib/notify-event-published";
 
 /**
  * Create a Circle event (S2-09 surface E) via `POST /events` — RSVP + reminders
@@ -43,6 +29,10 @@ export const createClubEvent = adminProcedure
 			startsAt: z.string(),
 			durationMinutes: z.number().int().min(1),
 			locationType: z.enum(["tbd", "virtual", "in_person"]).optional(),
+			inPersonLocation: z.string().optional(),
+			virtualLocationUrl: z.string().optional(),
+			coverImageSignedId: z.string().optional(),
+			notifyMembers: z.boolean().default(true),
 		}),
 	)
 	.handler(async ({ input }) => {
@@ -69,6 +59,9 @@ export const createClubEvent = adminProcedure
 			startsAt: input.startsAt,
 			durationInSeconds: input.durationMinutes * 60,
 			locationType: input.locationType ?? "tbd",
+			inPersonLocation: input.inPersonLocation,
+			virtualLocationUrl: input.virtualLocationUrl,
+			coverImageSignedId: input.coverImageSignedId,
 		});
 
 		if (!outcome.ok) {
@@ -80,8 +73,32 @@ export const createClubEvent = adminProcedure
 		}
 
 		logger.info("[Events] Created event", {
+			event: "admin_events_created",
 			organizationId: input.organizationId,
 			circleEventId: outcome.data.circleEventId,
 		});
+
+		// A member polling their feed within the 60s TTL, or tapping the
+		// EVENT_PUBLISHED push, must see the new event — never a stale cache.
+		clearEventsCache();
+
+		if (input.notifyMembers) {
+			// Belt-and-suspenders: notifyEventPublished already swallows its own
+			// errors, but the event is already committed in Circle either way —
+			// a notify failure must never fail the create.
+			try {
+				await notifyEventPublished({
+					organizationId: input.organizationId,
+					circleEventId: outcome.data.circleEventId,
+					name: input.name,
+				});
+			} catch (error) {
+				logger.error("[Events] publish notify threw unexpectedly", {
+					circleEventId: outcome.data.circleEventId,
+					error,
+				});
+			}
+		}
+
 		return { ok: true as const, circleEventId: outcome.data.circleEventId };
 	});

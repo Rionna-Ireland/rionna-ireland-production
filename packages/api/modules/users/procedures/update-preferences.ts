@@ -16,6 +16,7 @@ const pushPreferencesSchema = z
 		circleHorseDiscussion: z.boolean().optional(),
 		horseUpdates: z.boolean().optional(),
 		insideTrack: z.boolean().optional(),
+		events: z.boolean().optional(),
 	})
 	.optional();
 
@@ -79,9 +80,7 @@ export const updatePreferences = protectedProcedure
 
 		return {
 			pushEnabled: updated.pushEnabled,
-			pushPreferences:
-				(updated.pushPreferences as Record<string, boolean>) ?? {},
-			emailPreferences:
-				(updated.emailPreferences as Record<string, boolean>) ?? {},
+			pushPreferences: (updated.pushPreferences as Record<string, boolean>) ?? {},
+			emailPreferences: (updated.emailPreferences as Record<string, boolean>) ?? {},
 		};
 	});

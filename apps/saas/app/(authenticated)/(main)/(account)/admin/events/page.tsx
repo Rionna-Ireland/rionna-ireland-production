@@ -1,5 +1,5 @@
-import { EventComposer } from "@admin/component/events/EventComposer";
+import { EventsList } from "@admin/component/events/EventsList";
 
 export default function AdminEventsPage() {
-	return <EventComposer />;
+	return <EventsList />;
 }

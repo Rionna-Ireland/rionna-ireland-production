@@ -8,7 +8,7 @@ import SparkMD5 from "spark-md5";
 import { resolveVideoUploadMeta, typedVideoBlob } from "./circle-video-upload-meta";
 
 /** Base64-encoded MD5 of the file bytes — the `checksum` Circle's direct_uploads wants. */
-async function computeMd5Base64(file: File): Promise<string> {
+export async function computeMd5Base64(file: File): Promise<string> {
 	const CHUNK = 2 * 1024 * 1024;
 	const spark = new SparkMD5.ArrayBuffer();
 	for (let start = 0; start < file.size; start += CHUNK) {
@@ -19,7 +19,7 @@ async function computeMd5Base64(file: File): Promise<string> {
 }
 
 /** PUT the bytes straight to Circle's presigned S3 URL, reporting 0–100 progress. */
-function putWithProgress(
+export function putWithProgress(
 	url: string,
 	headers: Record<string, string>,
 	body: Blob,
@@ -45,9 +45,7 @@ function putWithProgress(
 		// links are fine); this only guards against a response that never arrives.
 		xhr.upload.onload = () => {
 			responseTimer = setTimeout(() => {
-				settle(() =>
-					reject(new Error("Upload timed out waiting for server response")),
-				);
+				settle(() => reject(new Error("Upload timed out waiting for server response")));
 				xhr.abort();
 			}, 30000);
 		};

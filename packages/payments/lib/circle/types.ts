@@ -245,11 +245,73 @@ export interface CreateEventParams {
 	durationInSeconds: number;
 	/** Defaults to "tbd" (simplest; virtual/in_person need more fields). */
 	locationType?: "tbd" | "virtual" | "in_person";
+	inPersonLocation?: string;
+	virtualLocationUrl?: string;
+	coverImageSignedId?: string;
 	idempotencyKey?: string;
 }
 
 export interface CreateEventResult {
 	circleEventId: string;
+}
+
+/** S11-02: a Circle event summarised for the club events admin surface. */
+export interface ClubEventSummary {
+	circleEventId: string;
+	name: string;
+	startsAt: string | null;
+	endsAt: string | null;
+	locationType: string | null;
+	inPersonLocation: string | null;
+	virtualLocationUrl: string | null;
+	rsvpCount: number;
+	rsvpLimit: number | null;
+	coverImageUrl: string | null;
+	url: string | null;
+}
+
+export interface ListEventsParams {
+	spaceId: string;
+	page?: number;
+	perPage?: number;
+	sort?: "oldest" | "start_date" | "start_date_desc";
+	/**
+	 * YYYY-MM-DD. When set, scopes the listing to events starting on or after
+	 * this date (Admin API v2 `filter_date[start_date]`) — keeps page 1
+	 * genuinely upcoming instead of truncating on old events (S11-02 fix).
+	 */
+	startDateFrom?: string;
+	/**
+	 * Overlay each event's rsvpCount with the real attendee count from a
+	 * separate `GET /event_attendees?event_id=&per_page=1` call per event —
+	 * Admin v2 event records don't carry rsvp_count at all (probed
+	 * 2026-08-27). Costs one extra Circle call per event, so pass it only
+	 * where a count is actually shown (the admin events list).
+	 */
+	includeRsvpCounts?: boolean;
+}
+
+export interface ListEventsResult {
+	events: ClubEventSummary[];
+	hasNextPage: boolean;
+}
+
+export interface UpdateEventParams {
+	eventId: string;
+	/**
+	 * Circle Admin API v2 PUT /events/{id} 404s with "Missing parameter:
+	 * space_id" unless the request body includes it (probed against staging,
+	 * 2026-08-27) — required here so implementations can't omit it.
+	 */
+	spaceId: string;
+	name?: string;
+	tiptapBody?: CircleTiptapBody;
+	startsAt?: string;
+	durationInSeconds?: number;
+	locationType?: "tbd" | "virtual" | "in_person";
+	inPersonLocation?: string;
+	virtualLocationUrl?: string;
+	coverImageSignedId?: string;
 }
 
 export interface CircleService {
@@ -333,8 +395,27 @@ export interface CircleService {
 	createEmbed(params: CreateEmbedParams): Promise<CircleCallOutcome<CreateEmbedResult>>;
 	/** Provision a Circle space (the "a horse = a space" auto-provision). */
 	createSpace(params: CreateSpaceParams): Promise<CircleCallOutcome<CreateSpaceResult>>;
-	/** Create an event (RSVP + reminders built into Circle events). */
+	/**
+	 * Create an event (RSVP + reminders built into Circle events).
+	 *
+	 * `inPersonLocation`, when set, is sent Circle-side as a JSON-encoded
+	 * string (`{ address }`) — a plain string 400s ("in person location data
+	 * should be in json format", probed against staging 2026-08-27).
+	 */
 	createEvent(params: CreateEventParams): Promise<CircleCallOutcome<CreateEventResult>>;
+	/** List events in a space (Admin API v2). */
+	listEvents(params: ListEventsParams): Promise<CircleCallOutcome<ListEventsResult>>;
+	/**
+	 * Update an event (Admin API v2 PUT). Only provided fields are sent,
+	 * except `spaceId`, which is always sent — Circle 404s the PUT without it.
+	 */
+	updateEvent(params: UpdateEventParams): Promise<CircleCallOutcome<{ circleEventId: string }>>;
+	/**
+	 * Delete an event (Admin API v2). `spaceId` is required — Circle 404s the
+	 * DELETE without a `space_id` query param (probed against staging
+	 * 2026-08-27).
+	 */
+	deleteEvent(params: { eventId: string; spaceId: string }): Promise<CircleCallOutcome<void>>;
 
 	// --- Admin community overview (S6-07) -----------------------------------
 	// Read-only listings + a visibility toggle for the admin community overview
