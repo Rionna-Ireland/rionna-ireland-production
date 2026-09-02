@@ -56,6 +56,8 @@ export function getPrefKey(triggerType: PushTriggerType): string | null {
 			return "insideTrack";
 		case "EVENT_PUBLISHED":
 			return "events";
+		case "POLL":
+			return "polls";
 		case "SYSTEM":
 			return null;
 	}

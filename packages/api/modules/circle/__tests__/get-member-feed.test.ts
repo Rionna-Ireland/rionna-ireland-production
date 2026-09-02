@@ -1,5 +1,6 @@
 import { call } from "@orpc/server";
 import type { OrganizationMetadata } from "@repo/database/types";
+import { logger } from "@repo/logs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
@@ -11,6 +12,8 @@ const {
 	mockHorseFindFirst,
 	mockGetFollowedHorseIds,
 	mockParseOrgMetadata,
+	mockGetVisiblePolls,
+	mockBuildPollCards,
 } = vi.hoisted(() => ({
 	mockGetSession: vi.fn(),
 	mockOrgFindUnique: vi.fn(),
@@ -22,6 +25,8 @@ const {
 	mockParseOrgMetadata: vi.fn(
 		(): OrganizationMetadata => ({ circle: { communityDomain: "community.rionna.com" } }),
 	),
+	mockGetVisiblePolls: vi.fn(async (): Promise<unknown[]> => []),
+	mockBuildPollCards: vi.fn(async (): Promise<unknown[]> => []),
 }));
 
 vi.mock("@repo/auth", () => ({
@@ -35,6 +40,11 @@ vi.mock("@repo/database", () => ({
 		horse: { findMany: mockHorseFindMany, findFirst: mockHorseFindFirst },
 	},
 	parseOrgMetadata: mockParseOrgMetadata,
+	getVisiblePolls: mockGetVisiblePolls,
+}));
+
+vi.mock("../../polls/lib/build-poll-cards", () => ({
+	buildPollCards: mockBuildPollCards,
 }));
 
 vi.mock("../../racing/horses/lib/horse-follows", () => ({
@@ -118,6 +128,8 @@ function routeFetch(
 describe("getMemberFeed (spaces aggregation)", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mockGetVisiblePolls.mockResolvedValue([]);
+		mockBuildPollCards.mockResolvedValue([]);
 		clearMemberFeedCache();
 		mockHorseFindFirst.mockResolvedValue(null);
 		mockGetSession.mockResolvedValue({ user: USER, session: SESSION });
@@ -139,6 +151,51 @@ describe("getMemberFeed (spaces aggregation)", () => {
 		expect(res.items.map((i) => i.id)).toEqual(["2", "1"]); // 09:00 before 08:00
 		expect(res.items[0]).toMatchObject({ id: "2", spaceId: "10", title: "Newer" });
 		expect(res.hasNextPage).toBe(false);
+	});
+
+	it("merges open polls into the feed as kind:poll items, newest first", async () => {
+		mockGetVisiblePolls.mockResolvedValue([{ id: "p1" }]);
+		mockBuildPollCards.mockResolvedValue([
+			{
+				id: "p1",
+				question: "Which charity next?",
+				scope: "club",
+				circleSpaceId: null,
+				status: "open",
+				publishedAt: "2099-01-01T00:00:00.000Z",
+				closesAt: null,
+				options: [],
+				myVoteOptionId: null,
+				results: null,
+			},
+		]);
+		vi.stubGlobal("fetch", routeFetch());
+		const result = await call(getMemberFeed, { organizationId: ORG_ID }, ctx);
+		expect(result.items[0]).toMatchObject({ id: "poll:p1", kind: "poll" });
+		expect(mockGetVisiblePolls).toHaveBeenCalledWith(
+			expect.objectContaining({ organizationId: ORG_ID, spaceIds: ["9", "10"] }),
+		);
+	});
+
+	it("fails open when the poll merge throws — serves the Circle feed without polls", async () => {
+		mockGetVisiblePolls.mockRejectedValue(new Error("db down"));
+		vi.stubGlobal("fetch", routeFetch());
+		const res = await call(
+			getMemberFeed,
+			{ organizationId: ORG_ID, page: 1, perPage: 15 },
+			ctx,
+		);
+		expect(res.ok).toBe(true);
+		expect(res.items.map((i) => i.id)).toEqual(["2", "1"]);
+		expect(res.items.some((i) => i.kind === "poll")).toBe(false);
+		expect(logger.warn).toHaveBeenCalledWith(
+			"[MemberFeed] poll merge failed; serving feed without polls",
+			expect.objectContaining({
+				organizationId: ORG_ID,
+				userId: USER.id,
+				error: "Error: db down",
+			}),
+		);
 	});
 
 	it("injects space context when a post omits it", async () => {
@@ -190,6 +247,8 @@ describe("getMemberFeed (horse follow filter)", () => {
 	// Space 9 ("Laska") is a horse space (horse "horse-1"); space 10 ("Announcements") is not a horse space.
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mockGetVisiblePolls.mockResolvedValue([]);
+		mockBuildPollCards.mockResolvedValue([]);
 		clearMemberFeedCache();
 		mockHorseFindFirst.mockResolvedValue(null);
 		mockGetSession.mockResolvedValue({ user: USER, session: SESSION });
@@ -282,6 +341,8 @@ describe("getMemberFeed (S9-05 invite-only gating — merged path)", () => {
 	// Space 9 ("Laska") is horse-1's space, marked invite-only; space 10 is not a horse space.
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mockGetVisiblePolls.mockResolvedValue([]);
+		mockBuildPollCards.mockResolvedValue([]);
 		clearMemberFeedCache();
 		mockHorseFindFirst.mockResolvedValue(null);
 		mockGetSession.mockResolvedValue({ user: USER, session: SESSION });
@@ -296,7 +357,11 @@ describe("getMemberFeed (S9-05 invite-only gating — merged path)", () => {
 	it("excludes an invite-only horse space the caller does not follow", async () => {
 		mockGetFollowedHorseIds.mockResolvedValue(new Set());
 		vi.stubGlobal("fetch", routeFetch());
-		const res = await call(getMemberFeed, { organizationId: ORG_ID, page: 1, perPage: 15 }, ctx);
+		const res = await call(
+			getMemberFeed,
+			{ organizationId: ORG_ID, page: 1, perPage: 15 },
+			ctx,
+		);
 		expect(res.ok).toBe(true);
 		expect(res.items.map((i) => i.id)).toEqual(["2"]); // space 9 (invite-only, unfollowed) dropped
 	});
@@ -304,7 +369,11 @@ describe("getMemberFeed (S9-05 invite-only gating — merged path)", () => {
 	it("includes an invite-only horse space the caller follows", async () => {
 		mockGetFollowedHorseIds.mockResolvedValue(new Set(["horse-1"]));
 		vi.stubGlobal("fetch", routeFetch());
-		const res = await call(getMemberFeed, { organizationId: ORG_ID, page: 1, perPage: 15 }, ctx);
+		const res = await call(
+			getMemberFeed,
+			{ organizationId: ORG_ID, page: 1, perPage: 15 },
+			ctx,
+		);
 		expect(res.ok).toBe(true);
 		expect(res.items.map((i) => i.id).sort()).toEqual(["1", "2"]);
 	});
@@ -316,7 +385,11 @@ describe("getMemberFeed (S9-05 invite-only gating — merged path)", () => {
 		});
 		mockGetFollowedHorseIds.mockResolvedValue(new Set()); // not followed
 		vi.stubGlobal("fetch", routeFetch());
-		const res = await call(getMemberFeed, { organizationId: ORG_ID, page: 1, perPage: 15 }, ctx);
+		const res = await call(
+			getMemberFeed,
+			{ organizationId: ORG_ID, page: 1, perPage: 15 },
+			ctx,
+		);
 		expect(res.ok).toBe(true);
 		expect(res.items.map((i) => i.id)).toEqual(["2"]); // invite-only space still dropped
 	});
@@ -328,7 +401,11 @@ describe("getMemberFeed (S9-05 invite-only gating — merged path)", () => {
 		});
 		mockGetFollowedHorseIds.mockResolvedValue(new Set(["horse-1"]));
 		vi.stubGlobal("fetch", routeFetch());
-		const res = await call(getMemberFeed, { organizationId: ORG_ID, page: 1, perPage: 15 }, ctx);
+		const res = await call(
+			getMemberFeed,
+			{ organizationId: ORG_ID, page: 1, perPage: 15 },
+			ctx,
+		);
 		expect(res.ok).toBe(true);
 		expect(res.items.map((i) => i.id).sort()).toEqual(["1", "2"]);
 	});
@@ -339,6 +416,8 @@ describe("getMemberFeed (S8-04 §5 kill-switch)", () => {
 	// space, space 10 is not a horse space.
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mockGetVisiblePolls.mockResolvedValue([]);
+		mockBuildPollCards.mockResolvedValue([]);
 		clearMemberFeedCache();
 		mockHorseFindFirst.mockResolvedValue(null);
 		mockGetSession.mockResolvedValue({ user: USER, session: SESSION });
@@ -369,6 +448,8 @@ describe("getMemberFeed (S8-04 §5 kill-switch)", () => {
 describe("getMemberFeed (buffer cache — FABLE_AUDIT P4/C8)", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mockGetVisiblePolls.mockResolvedValue([]);
+		mockBuildPollCards.mockResolvedValue([]);
 		clearMemberFeedCache();
 		mockHorseFindFirst.mockResolvedValue(null);
 		mockGetSession.mockResolvedValue({ user: USER, session: SESSION });
@@ -460,6 +541,8 @@ describe("getMemberFeed (buffer cache — FABLE_AUDIT P4/C8)", () => {
 describe("getMemberFeed (single-space feed — horse discussion)", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mockGetVisiblePolls.mockResolvedValue([]);
+		mockBuildPollCards.mockResolvedValue([]);
 		clearMemberFeedCache();
 		mockHorseFindFirst.mockResolvedValue({ id: "horse-1", inviteOnly: false });
 		mockGetSession.mockResolvedValue({ user: USER, session: SESSION });
@@ -536,11 +619,106 @@ describe("getMemberFeed (single-space feed — horse discussion)", () => {
 		);
 		expect(res).toMatchObject({ ok: false, items: [] });
 	});
+
+	it("prepends a space-scope poll card on page 1", async () => {
+		mockGetVisiblePolls.mockResolvedValue([{ id: "p1", scope: "space", circleSpaceId: "9" }]);
+		mockBuildPollCards.mockResolvedValue([
+			{
+				id: "p1",
+				question: "Which race next?",
+				scope: "space",
+				circleSpaceId: "9",
+				status: "open",
+				publishedAt: "2099-01-01T00:00:00.000Z",
+				closesAt: null,
+				options: [],
+				myVoteOptionId: null,
+				results: null,
+			},
+		]);
+		vi.stubGlobal("fetch", routeFetch());
+		const res = await call(
+			getMemberFeed,
+			{ organizationId: ORG_ID, page: 1, perPage: 15, spaceId: "9" },
+			ctx,
+		);
+		expect(res.ok).toBe(true);
+		expect(res.items[0]).toMatchObject({ id: "poll:p1", kind: "poll" });
+		expect(res.items.map((i) => i.id)).toEqual(["poll:p1", "1"]);
+		expect(mockGetVisiblePolls).toHaveBeenCalledWith(
+			expect.objectContaining({ spaceIds: ["9"] }),
+		);
+	});
+
+	it("does not include a club-scope poll in the space view", async () => {
+		mockGetVisiblePolls.mockResolvedValue([{ id: "p-club", scope: "club", circleSpaceId: null }]);
+		vi.stubGlobal("fetch", routeFetch());
+		const res = await call(
+			getMemberFeed,
+			{ organizationId: ORG_ID, page: 1, perPage: 15, spaceId: "9" },
+			ctx,
+		);
+		expect(res.ok).toBe(true);
+		expect(res.items.some((i) => i.kind === "poll")).toBe(false);
+		expect(res.items.map((i) => i.id)).toEqual(["1"]);
+	});
+
+	it("does not merge polls on page 2 of a space", async () => {
+		vi.stubGlobal("fetch", routeFetch());
+		const res = await call(
+			getMemberFeed,
+			{ organizationId: ORG_ID, page: 2, perPage: 15, spaceId: "9" },
+			ctx,
+		);
+		expect(res.ok).toBe(true);
+		expect(res.items.some((i) => i.kind === "poll")).toBe(false);
+		expect(mockGetVisiblePolls).not.toHaveBeenCalled();
+	});
+
+	it("fails open when the space poll merge throws — serves the space posts without polls", async () => {
+		mockGetVisiblePolls.mockRejectedValue(new Error("db down"));
+		vi.stubGlobal("fetch", routeFetch());
+		const res = await call(
+			getMemberFeed,
+			{ organizationId: ORG_ID, page: 1, perPage: 15, spaceId: "9" },
+			ctx,
+		);
+		expect(res.ok).toBe(true);
+		expect(res.items.map((i) => i.id)).toEqual(["1"]);
+		expect(res.items.some((i) => i.kind === "poll")).toBe(false);
+		expect(logger.warn).toHaveBeenCalledWith(
+			"[MemberFeed] space poll merge failed; serving space without polls",
+			expect.objectContaining({
+				organizationId: ORG_ID,
+				userId: USER.id,
+				spaceId: "9",
+				error: "Error: db down",
+			}),
+		);
+	});
+
+	it("skips the poll lookup when the polls kill-switch is off", async () => {
+		mockParseOrgMetadata.mockReturnValue({
+			circle: { communityDomain: "community.rionna.com" },
+			features: { polls: false },
+		});
+		vi.stubGlobal("fetch", routeFetch());
+		const res = await call(
+			getMemberFeed,
+			{ organizationId: ORG_ID, page: 1, perPage: 15, spaceId: "9" },
+			ctx,
+		);
+		expect(res.ok).toBe(true);
+		expect(res.items.some((i) => i.kind === "poll")).toBe(false);
+		expect(mockGetVisiblePolls).not.toHaveBeenCalled();
+	});
 });
 
 describe("getMemberFeed (S9-05 invite-only gating — spaceId branch)", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mockGetVisiblePolls.mockResolvedValue([]);
+		mockBuildPollCards.mockResolvedValue([]);
 		clearMemberFeedCache();
 		mockGetSession.mockResolvedValue({ user: USER, session: SESSION });
 		mockOrgFindUnique.mockResolvedValue({ id: ORG_ID, slug: "rionna", metadata: null });
@@ -678,6 +856,8 @@ describe("getMemberFeed (S11-01 insideTrack exclusion — merged path)", () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mockGetVisiblePolls.mockResolvedValue([]);
+		mockBuildPollCards.mockResolvedValue([]);
 		clearMemberFeedCache();
 		mockHorseFindFirst.mockResolvedValue(null);
 		mockGetSession.mockResolvedValue({ user: USER, session: SESSION });
@@ -698,7 +878,11 @@ describe("getMemberFeed (S11-01 insideTrack exclusion — merged path)", () => {
 		const fetchSpy = routeInsideTrackFetch();
 		vi.stubGlobal("fetch", fetchSpy);
 
-		const res = await call(getMemberFeed, { organizationId: ORG_ID, page: 1, perPage: 15 }, ctx);
+		const res = await call(
+			getMemberFeed,
+			{ organizationId: ORG_ID, page: 1, perPage: 15 },
+			ctx,
+		);
 
 		expect(res.ok).toBe(true);
 		expect(res.items.map((i) => i.id)).toEqual(["101"]); // space_it's post never appears
@@ -712,7 +896,11 @@ describe("getMemberFeed (S11-01 insideTrack exclusion — merged path)", () => {
 		});
 		vi.stubGlobal("fetch", routeInsideTrackFetch());
 
-		const res = await call(getMemberFeed, { organizationId: ORG_ID, page: 1, perPage: 15 }, ctx);
+		const res = await call(
+			getMemberFeed,
+			{ organizationId: ORG_ID, page: 1, perPage: 15 },
+			ctx,
+		);
 
 		expect(res.ok).toBe(true);
 		expect(res.items.map((i) => i.id).sort()).toEqual(["100", "101"]);
@@ -722,6 +910,8 @@ describe("getMemberFeed (S11-01 insideTrack exclusion — merged path)", () => {
 describe("getMemberFeed (total per-space failure — Kimi M1)", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mockGetVisiblePolls.mockResolvedValue([]);
+		mockBuildPollCards.mockResolvedValue([]);
 		clearMemberFeedCache();
 		mockHorseFindFirst.mockResolvedValue(null);
 		mockGetSession.mockResolvedValue({ user: USER, session: SESSION });

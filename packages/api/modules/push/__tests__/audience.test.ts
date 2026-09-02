@@ -90,6 +90,10 @@ describe("getPrefKey", () => {
 	it("maps EVENT_PUBLISHED to the events preference", () => {
 		expect(getPrefKey("EVENT_PUBLISHED")).toBe("events");
 	});
+
+	it("maps POLL to the polls preference", () => {
+		expect(getPrefKey("POLL")).toBe("polls");
+	});
 });
 
 describe("getAudienceTokens", () => {

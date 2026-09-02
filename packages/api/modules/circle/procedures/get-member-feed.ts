@@ -1,10 +1,14 @@
 import { ORPCError } from "@orpc/server";
-import { db, parseOrgMetadata } from "@repo/database";
+import { db, getVisiblePolls, parseOrgMetadata } from "@repo/database";
 import { logger } from "@repo/logs";
 import { createCircleService, getCircleHeadlessApiBaseUrl } from "@repo/payments/lib/circle";
 import { z } from "zod";
 
 import { protectedProcedure } from "../../../orpc/procedures";
+import { buildPollCards } from "../../polls/lib/build-poll-cards";
+import { getSpacePollFeedItems } from "../../polls/lib/merge-space-polls";
+import { CLOSED_POLL_VISIBLE_MS } from "../../polls/lib/poll-view";
+import { toPollFeedItem } from "../../polls/lib/to-feed-item";
 import { getFollowedHorseIds } from "../../racing/horses/lib/horse-follows";
 import { readMemberFeedBuffer, writeMemberFeedBuffer } from "../lib/member-feed-cache";
 import {
@@ -152,13 +156,16 @@ export const getMemberFeed = protectedProcedure
 					}
 				}
 			} catch (error) {
-				logger.warn("[Circle] Member feed: space access-gate lookup threw, failing closed", {
-					surface: "circle.member_feed",
-					userId: user.id,
-					organizationId: input.organizationId,
-					spaceId: input.spaceId,
-					error: String(error),
-				});
+				logger.warn(
+					"[Circle] Member feed: space access-gate lookup threw, failing closed",
+					{
+						surface: "circle.member_feed",
+						userId: user.id,
+						organizationId: input.organizationId,
+						spaceId: input.spaceId,
+						error: String(error),
+					},
+				);
 				return fail();
 			}
 			try {
@@ -187,11 +194,42 @@ export const getMemberFeed = protectedProcedure
 						items.push(item);
 					}
 				}
+				// Paging is driven by Circle's own per-page post count — computed
+				// before the poll prepend below so the (unpaginated) poll cards
+				// never skew hasNextPage.
+				const hasNextPage = items.length === input.perPage;
+
+				// 3b. Space-scope polls (S12-01a follow-up): only on page 1, prepended
+				// above the Circle posts so an open vote sits at the top of the space
+				// view. Fail-open — an error here must not hide the space's posts,
+				// which have already cleared the access/visibility gates above.
+				if (input.page === 1 && orgMetadata.features?.polls !== false) {
+					try {
+						const pollItems = await getSpacePollFeedItems({
+							organizationId: input.organizationId,
+							spaceId: input.spaceId,
+							userId: user.id,
+							now: new Date(),
+						});
+						items.unshift(...pollItems);
+					} catch (error) {
+						logger.warn(
+							"[MemberFeed] space poll merge failed; serving space without polls",
+							{
+								organizationId: input.organizationId,
+								userId: user.id,
+								spaceId: input.spaceId,
+								error: String(error),
+							},
+						);
+					}
+				}
+
 				return {
 					ok: true,
 					items,
 					page: input.page,
-					hasNextPage: items.length === input.perPage,
+					hasNextPage,
 				};
 			} catch (error) {
 				logger.warn("[Circle] Member feed: space posts fetch threw", {
@@ -257,12 +295,15 @@ export const getMemberFeed = protectedProcedure
 				select: { id: true, circleSpaceId: true, inviteOnly: true },
 			})
 			.catch((error) => {
-				logger.warn("[Circle] Member feed: horse map lookup failed, cannot classify spaces", {
-					surface: "circle.member_feed",
-					userId: user.id,
-					organizationId: input.organizationId,
-					error: String(error),
-				});
+				logger.warn(
+					"[Circle] Member feed: horse map lookup failed, cannot classify spaces",
+					{
+						surface: "circle.member_feed",
+						userId: user.id,
+						organizationId: input.organizationId,
+						error: String(error),
+					},
+				);
 				return null;
 			});
 		if (orgHorses === null) {
@@ -371,6 +412,28 @@ export const getMemberFeed = protectedProcedure
 				merged.push(item);
 			}
 		}
+		// 3b. Polls (S12-01a): club-scope + space-scope for the spaces this member
+		// already sees (follow-filtered above). Our rows, not Circle posts.
+		if (orgMetadata.features?.polls !== false) {
+			try {
+				const now = new Date();
+				const pollRows = await getVisiblePolls({
+					organizationId: input.organizationId,
+					spaceIds: spaces.map((s) => String(s.id)),
+					now,
+					closedWithinMs: CLOSED_POLL_VISIBLE_MS,
+				});
+				const cards = await buildPollCards({ polls: pollRows, userId: user.id, now });
+				for (const card of cards) merged.push(toPollFeedItem(card));
+			} catch (error) {
+				logger.warn("[MemberFeed] poll merge failed; serving feed without polls", {
+					organizationId: input.organizationId,
+					userId: user.id,
+					error: String(error),
+				});
+			}
+		}
+
 		merged.sort((a, b) => {
 			const ta = a.createdAt ? Date.parse(a.createdAt) : 0;
 			const tb = b.createdAt ? Date.parse(b.createdAt) : 0;

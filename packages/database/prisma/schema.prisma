@@ -51,6 +51,8 @@ model User {
   authoredNewsPosts   NewsPost[]
   authoredMemberPosts MemberPost[]
   follows             HorseFollow[]
+  polls               Poll[]
+  pollVotes           PollVote[]
 
   @@unique([email])
   @@unique([username])
@@ -168,6 +170,7 @@ model Organization {
   pushLogs         PushLog[]
   memberPosts      MemberPost[]
   horseFollows     HorseFollow[]
+  polls            Poll[]
 
   @@unique([slug])
   @@map("organization")
@@ -377,6 +380,66 @@ model HorseFollow {
   @@index([horseId])
   @@index([organizationId, userId])
   @@map("horse_follow")
+}
+
+// Poll (S12-01a / S9-04) — native club polls ("community motions"). Ours, not
+// Circle's: the headless API has no poll endpoints. scope "club" = every member;
+// scope "space" = shown with that Circle space's posts (follow-filtered like them).
+model Poll {
+  id              String       @id @default(cuid())
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdByUserId String?
+  createdBy       User?        @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  question      String
+  scope         String  @default("club") // "club" | "space"
+  circleSpaceId String? // required when scope = "space"
+
+  // Lifecycle: draft → open → closed. closesAt is lazy (checked at read/vote time).
+  status      String    @default("draft") // "draft" | "open" | "closed"
+  publishedAt DateTime?
+  closesAt    DateTime?
+  closedAt    DateTime?
+  notifiedAt  DateTime? // push-on-publish claim (atomic, news pattern)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  options PollOption[]
+  votes   PollVote[]
+
+  @@index([organizationId, status])
+  @@index([organizationId, publishedAt])
+  @@map("poll")
+}
+
+model PollOption {
+  id        String     @id @default(cuid())
+  pollId    String
+  poll      Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  label     String
+  sortOrder Int        @default(0)
+  votes     PollVote[]
+
+  @@index([pollId])
+  @@map("poll_option")
+}
+
+model PollVote {
+  id        String     @id @default(cuid())
+  pollId    String
+  poll      Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  optionId  String
+  option    PollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@unique([pollId, userId]) // one vote per member; revote = update
+  @@index([optionId])
+  @@map("poll_vote")
 }
 
 model Trainer {
@@ -633,6 +696,7 @@ enum PushTriggerType {
   HORSE_UPDATE
   INSIDE_TRACK
   EVENT_PUBLISHED
+  POLL
 }
 
 enum PushStatus {

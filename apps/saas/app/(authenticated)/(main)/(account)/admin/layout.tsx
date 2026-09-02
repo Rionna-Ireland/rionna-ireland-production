@@ -13,6 +13,7 @@ import {
 	NewspaperIcon,
 	SettingsIcon,
 	UsersIcon,
+	VoteIcon,
 } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
@@ -86,6 +87,11 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
 								title: t("menu.events"),
 								href: "/admin/events",
 								icon: <CalendarIcon className="size-4 opacity-50" />,
+							},
+							{
+								title: t("menu.polls"),
+								href: "/admin/polls",
+								icon: <VoteIcon className="size-4 opacity-50" />,
 							},
 							{
 								title: t("menu.settings"),
