@@ -2,6 +2,7 @@ import { listPolls as listPollRows } from "@repo/database";
 import { z } from "zod";
 
 import { adminProcedure } from "../../../../orpc/procedures";
+import { resolvePollStatus } from "../../lib/poll-view";
 
 export const listPolls = adminProcedure
 	.route({ method: "GET", path: "/admin/polls", tags: ["Polls"], summary: "List polls" })
@@ -13,4 +14,11 @@ export const listPolls = adminProcedure
 			offset: z.number().min(0).default(0),
 		}),
 	)
-	.handler(async ({ input }) => listPollRows(input));
+	.handler(async ({ input }) => {
+		const { polls, total } = await listPollRows(input);
+		const now = new Date();
+		return {
+			polls: polls.map((poll) => ({ ...poll, status: resolvePollStatus(poll, now) })),
+			total,
+		};
+	});

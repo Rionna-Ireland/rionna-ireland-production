@@ -1,6 +1,9 @@
 export type PollScope = "club" | "space";
 export type PollStatus = "draft" | "open" | "closed";
 
+/** How long a closed poll stays visible in feeds after closing. */
+export const CLOSED_POLL_VISIBLE_MS = 7 * 24 * 60 * 60 * 1000;
+
 export interface PollOptionView {
 	id: string;
 	label: string;

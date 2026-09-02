@@ -6,8 +6,8 @@ import { z } from "zod";
 
 import { protectedProcedure } from "../../../orpc/procedures";
 import { buildPollCards } from "../../polls/lib/build-poll-cards";
+import { CLOSED_POLL_VISIBLE_MS } from "../../polls/lib/poll-view";
 import { toPollFeedItem } from "../../polls/lib/to-feed-item";
-import { CLOSED_POLL_VISIBLE_MS } from "../../polls/procedures/list-active-polls";
 import { getFollowedHorseIds } from "../../racing/horses/lib/horse-follows";
 import { readMemberFeedBuffer, writeMemberFeedBuffer } from "../lib/member-feed-cache";
 import {

@@ -3,9 +3,7 @@ import { z } from "zod";
 
 import { protectedProcedure } from "../../../orpc/procedures";
 import { buildPollCards } from "../lib/build-poll-cards";
-import type { PollCardData } from "../lib/poll-view";
-
-export const CLOSED_POLL_VISIBLE_MS = 7 * 24 * 60 * 60 * 1000;
+import { CLOSED_POLL_VISIBLE_MS, type PollCardData } from "../lib/poll-view";
 
 export interface ActivePollsResult {
 	ok: boolean;
