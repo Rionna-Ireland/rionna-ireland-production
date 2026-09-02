@@ -619,6 +619,99 @@ describe("getMemberFeed (single-space feed — horse discussion)", () => {
 		);
 		expect(res).toMatchObject({ ok: false, items: [] });
 	});
+
+	it("prepends a space-scope poll card on page 1", async () => {
+		mockGetVisiblePolls.mockResolvedValue([{ id: "p1", scope: "space", circleSpaceId: "9" }]);
+		mockBuildPollCards.mockResolvedValue([
+			{
+				id: "p1",
+				question: "Which race next?",
+				scope: "space",
+				circleSpaceId: "9",
+				status: "open",
+				publishedAt: "2099-01-01T00:00:00.000Z",
+				closesAt: null,
+				options: [],
+				myVoteOptionId: null,
+				results: null,
+			},
+		]);
+		vi.stubGlobal("fetch", routeFetch());
+		const res = await call(
+			getMemberFeed,
+			{ organizationId: ORG_ID, page: 1, perPage: 15, spaceId: "9" },
+			ctx,
+		);
+		expect(res.ok).toBe(true);
+		expect(res.items[0]).toMatchObject({ id: "poll:p1", kind: "poll" });
+		expect(res.items.map((i) => i.id)).toEqual(["poll:p1", "1"]);
+		expect(mockGetVisiblePolls).toHaveBeenCalledWith(
+			expect.objectContaining({ spaceIds: ["9"] }),
+		);
+	});
+
+	it("does not include a club-scope poll in the space view", async () => {
+		mockGetVisiblePolls.mockResolvedValue([{ id: "p-club", scope: "club", circleSpaceId: null }]);
+		vi.stubGlobal("fetch", routeFetch());
+		const res = await call(
+			getMemberFeed,
+			{ organizationId: ORG_ID, page: 1, perPage: 15, spaceId: "9" },
+			ctx,
+		);
+		expect(res.ok).toBe(true);
+		expect(res.items.some((i) => i.kind === "poll")).toBe(false);
+		expect(res.items.map((i) => i.id)).toEqual(["1"]);
+	});
+
+	it("does not merge polls on page 2 of a space", async () => {
+		vi.stubGlobal("fetch", routeFetch());
+		const res = await call(
+			getMemberFeed,
+			{ organizationId: ORG_ID, page: 2, perPage: 15, spaceId: "9" },
+			ctx,
+		);
+		expect(res.ok).toBe(true);
+		expect(res.items.some((i) => i.kind === "poll")).toBe(false);
+		expect(mockGetVisiblePolls).not.toHaveBeenCalled();
+	});
+
+	it("fails open when the space poll merge throws — serves the space posts without polls", async () => {
+		mockGetVisiblePolls.mockRejectedValue(new Error("db down"));
+		vi.stubGlobal("fetch", routeFetch());
+		const res = await call(
+			getMemberFeed,
+			{ organizationId: ORG_ID, page: 1, perPage: 15, spaceId: "9" },
+			ctx,
+		);
+		expect(res.ok).toBe(true);
+		expect(res.items.map((i) => i.id)).toEqual(["1"]);
+		expect(res.items.some((i) => i.kind === "poll")).toBe(false);
+		expect(logger.warn).toHaveBeenCalledWith(
+			"[MemberFeed] space poll merge failed; serving space without polls",
+			expect.objectContaining({
+				organizationId: ORG_ID,
+				userId: USER.id,
+				spaceId: "9",
+				error: "Error: db down",
+			}),
+		);
+	});
+
+	it("skips the poll lookup when the polls kill-switch is off", async () => {
+		mockParseOrgMetadata.mockReturnValue({
+			circle: { communityDomain: "community.rionna.com" },
+			features: { polls: false },
+		});
+		vi.stubGlobal("fetch", routeFetch());
+		const res = await call(
+			getMemberFeed,
+			{ organizationId: ORG_ID, page: 1, perPage: 15, spaceId: "9" },
+			ctx,
+		);
+		expect(res.ok).toBe(true);
+		expect(res.items.some((i) => i.kind === "poll")).toBe(false);
+		expect(mockGetVisiblePolls).not.toHaveBeenCalled();
+	});
 });
 
 describe("getMemberFeed (S9-05 invite-only gating — spaceId branch)", () => {

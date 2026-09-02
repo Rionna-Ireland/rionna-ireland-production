@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { protectedProcedure } from "../../../orpc/procedures";
 import { buildPollCards } from "../../polls/lib/build-poll-cards";
+import { getSpacePollFeedItems } from "../../polls/lib/merge-space-polls";
 import { CLOSED_POLL_VISIBLE_MS } from "../../polls/lib/poll-view";
 import { toPollFeedItem } from "../../polls/lib/to-feed-item";
 import { getFollowedHorseIds } from "../../racing/horses/lib/horse-follows";
@@ -193,11 +194,42 @@ export const getMemberFeed = protectedProcedure
 						items.push(item);
 					}
 				}
+				// Paging is driven by Circle's own per-page post count — computed
+				// before the poll prepend below so the (unpaginated) poll cards
+				// never skew hasNextPage.
+				const hasNextPage = items.length === input.perPage;
+
+				// 3b. Space-scope polls (S12-01a follow-up): only on page 1, prepended
+				// above the Circle posts so an open vote sits at the top of the space
+				// view. Fail-open — an error here must not hide the space's posts,
+				// which have already cleared the access/visibility gates above.
+				if (input.page === 1 && orgMetadata.features?.polls !== false) {
+					try {
+						const pollItems = await getSpacePollFeedItems({
+							organizationId: input.organizationId,
+							spaceId: input.spaceId,
+							userId: user.id,
+							now: new Date(),
+						});
+						items.unshift(...pollItems);
+					} catch (error) {
+						logger.warn(
+							"[MemberFeed] space poll merge failed; serving space without polls",
+							{
+								organizationId: input.organizationId,
+								userId: user.id,
+								spaceId: input.spaceId,
+								error: String(error),
+							},
+						);
+					}
+				}
+
 				return {
 					ok: true,
 					items,
 					page: input.page,
-					hasNextPage: items.length === input.perPage,
+					hasNextPage,
 				};
 			} catch (error) {
 				logger.warn("[Circle] Member feed: space posts fetch threw", {
