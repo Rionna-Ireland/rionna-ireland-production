@@ -7,6 +7,7 @@
 			"horseUpdates": "Horse updates",
 			"news": "Public news",
 			"events": "Events",
+			"polls": "Polls",
 			"organizations": "Organizations",
 			"settings": "Settings",
 			"announcements": "Announcements",
@@ -170,6 +171,62 @@
 				"error": "Couldn't load attendees. Please try again.",
 				"loading": "Loading attendees…",
 				"noEmail": "No email on file"
+			}
+		},
+		"polls": {
+			"title": "Polls",
+			"subtitle": "Club votes and community motions. Members vote in the app; results show them only after they vote.",
+			"new": "New poll",
+			"empty": "No polls yet.",
+			"loadError": "Couldn't load polls.",
+			"created": "Draft saved.",
+			"updated": "Draft updated.",
+			"published": "Poll published.",
+			"closed": "Poll closed.",
+			"error": "Something went wrong — try again.",
+			"createTitle": "New poll",
+			"editTitle": "Edit draft",
+			"backToList": "Back to polls",
+			"notFound": "Poll not found.",
+			"columns": {
+				"question": "Question",
+				"scope": "Scope",
+				"status": "Status",
+				"votes": "Votes",
+				"published": "Published"
+			},
+			"status": {
+				"draft": "Draft",
+				"open": "Open",
+				"closed": "Closed"
+			},
+			"scope": {
+				"club": "Whole club",
+				"space": "Horse space"
+			},
+			"actions": {
+				"publish": "Publish",
+				"close": "Close poll",
+				"results": "Results",
+				"edit": "Edit"
+			},
+			"form": {
+				"question": "Question",
+				"scope": "Who sees it",
+				"space": "Horse space",
+				"closesAt": "Closes at (optional)",
+				"options": "Options (2–6)",
+				"addOption": "Add option",
+				"removeOption": "Remove",
+				"notifyMembers": "Notify members when published",
+				"saveDraft": "Save draft",
+				"saveAndPublish": "Save & publish"
+			},
+			"results": {
+				"title": "Results",
+				"total": "{count} votes",
+				"voters": "Who voted",
+				"noVotes": "No votes yet."
 			}
 		},
 		"updates": {
