@@ -95,6 +95,24 @@ export const HorseFollowScalarFieldEnumSchema = z.enum(['id', 'organizationId', 
 
 export type HorseFollowScalarFieldEnum = z.infer<typeof HorseFollowScalarFieldEnumSchema>;
 
+// File: PollScalarFieldEnum.schema.ts
+
+export const PollScalarFieldEnumSchema = z.enum(['id', 'organizationId', 'createdByUserId', 'question', 'scope', 'circleSpaceId', 'status', 'publishedAt', 'closesAt', 'closedAt', 'notifiedAt', 'createdAt', 'updatedAt'])
+
+export type PollScalarFieldEnum = z.infer<typeof PollScalarFieldEnumSchema>;
+
+// File: PollOptionScalarFieldEnum.schema.ts
+
+export const PollOptionScalarFieldEnumSchema = z.enum(['id', 'pollId', 'label', 'sortOrder'])
+
+export type PollOptionScalarFieldEnum = z.infer<typeof PollOptionScalarFieldEnumSchema>;
+
+// File: PollVoteScalarFieldEnum.schema.ts
+
+export const PollVoteScalarFieldEnumSchema = z.enum(['id', 'pollId', 'optionId', 'userId', 'createdAt', 'updatedAt'])
+
+export type PollVoteScalarFieldEnum = z.infer<typeof PollVoteScalarFieldEnumSchema>;
+
 // File: TrainerScalarFieldEnum.schema.ts
 
 export const TrainerScalarFieldEnumSchema = z.enum(['id', 'organizationId', 'providerEntityId', 'name', 'meta', 'createdAt', 'updatedAt'])
@@ -502,6 +520,53 @@ export const HorseFollowSchema = z.object({
 });
 
 export type HorseFollowType = z.infer<typeof HorseFollowSchema>;
+
+
+// File: Poll.schema.ts
+
+export const PollSchema = z.object({
+  id: z.string(),
+  organizationId: z.string(),
+  createdByUserId: z.string().nullish(),
+  question: z.string(),
+  scope: z.string().default("club"),
+  circleSpaceId: z.string().nullish(),
+  status: z.string().default("draft"),
+  publishedAt: z.date().nullish(),
+  closesAt: z.date().nullish(),
+  closedAt: z.date().nullish(),
+  notifiedAt: z.date().nullish(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
+export type PollType = z.infer<typeof PollSchema>;
+
+
+// File: PollOption.schema.ts
+
+export const PollOptionSchema = z.object({
+  id: z.string(),
+  pollId: z.string(),
+  label: z.string(),
+  sortOrder: z.number().int(),
+});
+
+export type PollOptionType = z.infer<typeof PollOptionSchema>;
+
+
+// File: PollVote.schema.ts
+
+export const PollVoteSchema = z.object({
+  id: z.string(),
+  pollId: z.string(),
+  optionId: z.string(),
+  userId: z.string(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
+export type PollVoteType = z.infer<typeof PollVoteSchema>;
 
 
 // File: Trainer.schema.ts
