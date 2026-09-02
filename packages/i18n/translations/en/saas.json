@@ -1,6 +1,9 @@
 {
 	"admin": {
 		"menu": {
+			"overview": "Overview",
+			"operations": "Operations",
+			"content": "Content",
 			"dashboard": "Overview",
 			"members": "Members",
 			"horses": "Horses",
@@ -31,7 +34,7 @@
 				"news": "Publish website news",
 				"announcement": "Post a community announcement",
 				"event": "Create an event",
-				"poll": "Create a poll in Circle",
+				"poll": "Create a poll",
 				"soon": "Coming soon"
 			},
 			"recent": {

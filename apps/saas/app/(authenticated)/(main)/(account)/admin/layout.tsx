@@ -1,5 +1,4 @@
 import { getSession } from "@auth/lib/server";
-import { Logo } from "@repo/ui";
 import { SettingsMenu } from "@settings/components/SettingsMenu";
 import { PageHeader } from "@shared/components/PageHeader";
 import {
@@ -40,14 +39,18 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
 				className="mb-6"
 				menuItems={[
 					{
-						avatar: <Logo className="h-[1.6rem] w-auto" withLabel={false} />,
-						title: t("title"),
+						title: t("menu.overview"),
 						items: [
 							{
 								title: t("menu.dashboard"),
 								href: "/admin",
 								icon: <LayoutDashboardIcon className="size-4 opacity-50" />,
 							},
+						],
+					},
+					{
+						title: t("menu.operations"),
+						items: [
 							{
 								title: t("menu.members"),
 								href: "/admin/members",
@@ -63,6 +66,11 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
 								href: "/admin/community",
 								icon: <MessagesSquareIcon className="size-4 opacity-50" />,
 							},
+						],
+					},
+					{
+						title: t("menu.content"),
+						items: [
 							{
 								title: t("menu.horseUpdates"),
 								href: "/admin/updates",
@@ -93,6 +101,11 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
 								href: "/admin/polls",
 								icon: <VoteIcon className="size-4 opacity-50" />,
 							},
+						],
+					},
+					{
+						title: t("menu.settings"),
+						items: [
 							{
 								title: t("menu.settings"),
 								href: "/admin/settings/general",
