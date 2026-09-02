@@ -20,17 +20,15 @@ const {
 }));
 
 vi.mock("@repo/auth", () => ({ auth: { api: { getSession: mockGetSession } } }));
-vi.mock("@repo/database", async (importActual) => {
-	const actual = await importActual<typeof import("@repo/database")>();
-	return {
-		...actual,
-		db: { member: { findFirst: mockMemberFindFirst } },
-		getPollForOrg: mockGetPollForOrg,
-		upsertPollVote: mockUpsertPollVote,
-		getVoteCountRows: mockGetVoteCountRows,
-		getMemberVotes: mockGetMemberVotes,
-	};
-});
+// Mock @repo/database wholesale (no importActual) — the real module instantiates the
+// Prisma client at import time and throws when DATABASE_URL is unset.
+vi.mock("@repo/database", () => ({
+	db: { member: { findFirst: mockMemberFindFirst } },
+	getPollForOrg: mockGetPollForOrg,
+	upsertPollVote: mockUpsertPollVote,
+	getVoteCountRows: mockGetVoteCountRows,
+	getMemberVotes: mockGetMemberVotes,
+}));
 vi.mock("../../circle/lib/member-feed-cache", () => ({
 	invalidateMemberFeedCache: mockInvalidateFeed,
 }));

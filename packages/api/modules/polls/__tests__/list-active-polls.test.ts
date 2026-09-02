@@ -18,14 +18,18 @@ const {
 }));
 
 vi.mock("@repo/auth", () => ({ auth: { api: { getSession: mockGetSession } } }));
-vi.mock("@repo/database", async (importActual) => {
-	const actual = await importActual<typeof import("@repo/database")>();
+// Mock @repo/database wholesale (no importActual) — the real module instantiates the
+// Prisma client at import time and throws when DATABASE_URL is unset. parseOrgMetadata
+// is pulled from the Prisma-free "@repo/database/types" subpath so the kill-switch test
+// still exercises real JSON parsing.
+vi.mock("@repo/database", async () => {
+	const { parseOrgMetadata } = await import("@repo/database/types");
 	return {
-		...actual,
 		db: {
 			organization: { findUnique: mockOrgFindUnique },
 			member: { findFirst: mockMemberFindFirst },
 		},
+		parseOrgMetadata,
 		getVisiblePolls: mockGetVisiblePolls,
 		getVoteCountRows: mockGetVoteCountRows,
 		getMemberVotes: mockGetMemberVotes,
