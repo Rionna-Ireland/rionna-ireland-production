@@ -8,7 +8,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@repo/ui/components/ca
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useQuery } from "@tanstack/react-query";
 import {
-	BarChart3Icon,
 	CalendarPlusIcon,
 	CreditCardIcon,
 	ExternalLinkIcon,
@@ -16,6 +15,7 @@ import {
 	NewspaperIcon,
 	TriangleAlertIcon,
 	UsersIcon,
+	VoteIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
@@ -98,8 +98,8 @@ export function MissionControl() {
 		{
 			key: "poll",
 			audience: "members" as const,
-			external: communityUrl,
-			icon: BarChart3Icon,
+			href: getAdminPath("/polls/new"),
+			icon: VoteIcon,
 		},
 	];
 
@@ -147,28 +147,9 @@ export function MissionControl() {
 								<action.icon className="size-4 shrink-0" />
 								<span className="flex-1 text-left text-foreground">{label}</span>
 								<AudienceTag audience={action.audience} />
-								{action.external ? <ExternalLinkIcon className="size-3.5" /> : null}
 							</span>
 						);
 
-						if (action.external) {
-							return (
-								<Button
-									key={action.key}
-									asChild
-									variant="outline"
-									className="py-3 h-auto"
-								>
-									<a
-										href={action.external}
-										target="_blank"
-										rel="noopener noreferrer"
-									>
-										{inner}
-									</a>
-								</Button>
-							);
-						}
 						return (
 							<Button
 								key={action.key}
@@ -176,7 +157,7 @@ export function MissionControl() {
 								variant="outline"
 								className="py-3 h-auto"
 							>
-								<Link href={action.href ?? "#"}>{inner}</Link>
+								<Link href={action.href}>{inner}</Link>
 							</Button>
 						);
 					})}
