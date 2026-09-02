@@ -30,7 +30,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeftIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -41,7 +41,10 @@ const formSchema = z.object({
 	scope: z.enum(["club", "space"]),
 	circleSpaceId: z.string().optional(),
 	closesAt: z.string().optional(),
-	options: z.array(z.object({ label: z.string().trim().min(1).max(80) })).min(2).max(6),
+	options: z
+		.array(z.object({ label: z.string().trim().min(1).max(80) }))
+		.min(2)
+		.max(6),
 });
 type FormValues = z.infer<typeof formSchema>;
 
@@ -93,15 +96,20 @@ export function PollForm({ pollId }: PollFormProps) {
 	});
 	const options = useFieldArray({ control: form.control, name: "options" });
 	const scope = form.watch("scope");
+	const hydratedForId = useRef<string | null>(null);
 
 	useEffect(() => {
 		const poll = existing.data?.poll;
 		if (!poll || poll.status !== "draft") return;
+		if (hydratedForId.current === poll.id || form.formState.isDirty) return;
+		hydratedForId.current = poll.id;
 		form.reset({
 			question: poll.question,
 			scope: poll.scope === "space" ? "space" : "club",
 			circleSpaceId: poll.circleSpaceId ?? undefined,
-			closesAt: poll.closesAt ? toDatetimeLocalValue(new Date(poll.closesAt).toISOString()) : "",
+			closesAt: poll.closesAt
+				? toDatetimeLocalValue(new Date(poll.closesAt).toISOString())
+				: "",
 			options: poll.options.map((o) => ({ label: o.label })),
 		});
 	}, [existing.data, form]);
@@ -150,7 +158,7 @@ export function PollForm({ pollId }: PollFormProps) {
 
 	if (isEdit && !organizationId) {
 		return (
-			<div className="flex items-center justify-center p-8">
+			<div className="p-8 flex items-center justify-center">
 				<Spinner className="size-5" />
 			</div>
 		);
@@ -158,7 +166,7 @@ export function PollForm({ pollId }: PollFormProps) {
 
 	if (isEdit && existing.isLoading) {
 		return (
-			<div className="flex items-center justify-center p-8">
+			<div className="p-8 flex items-center justify-center">
 				<Spinner className="size-5" />
 			</div>
 		);
@@ -182,11 +190,16 @@ export function PollForm({ pollId }: PollFormProps) {
 			</Button>
 			<Card>
 				<CardHeader>
-					<CardTitle>{t(isEdit ? "admin.polls.editTitle" : "admin.polls.createTitle")}</CardTitle>
+					<CardTitle>
+						{t(isEdit ? "admin.polls.editTitle" : "admin.polls.createTitle")}
+					</CardTitle>
 				</CardHeader>
 				<CardContent>
 					<Form {...form}>
-						<form className="space-y-6" onSubmit={form.handleSubmit((v) => save(v, false))}>
+						<form
+							className="space-y-6"
+							onSubmit={form.handleSubmit((v) => save(v, false))}
+						>
 							<FormField
 								control={form.control}
 								name="question"
@@ -213,8 +226,12 @@ export function PollForm({ pollId }: PollFormProps) {
 												</SelectTrigger>
 											</FormControl>
 											<SelectContent>
-												<SelectItem value="club">{t("admin.polls.scope.club")}</SelectItem>
-												<SelectItem value="space">{t("admin.polls.scope.space")}</SelectItem>
+												<SelectItem value="club">
+													{t("admin.polls.scope.club")}
+												</SelectItem>
+												<SelectItem value="space">
+													{t("admin.polls.scope.space")}
+												</SelectItem>
 											</SelectContent>
 										</Select>
 										<FormMessage />
@@ -228,7 +245,10 @@ export function PollForm({ pollId }: PollFormProps) {
 									render={({ field }) => (
 										<FormItem>
 											<FormLabel>{t("admin.polls.form.space")}</FormLabel>
-											<Select value={field.value} onValueChange={field.onChange}>
+											<Select
+												value={field.value}
+												onValueChange={field.onChange}
+											>
 												<FormControl>
 													<SelectTrigger>
 														<SelectValue />
@@ -236,7 +256,10 @@ export function PollForm({ pollId }: PollFormProps) {
 												</FormControl>
 												<SelectContent>
 													{(spaces.data?.spaces ?? []).map((s) => (
-														<SelectItem key={s.circleSpaceId} value={s.circleSpaceId}>
+														<SelectItem
+															key={s.circleSpaceId}
+															value={s.circleSpaceId}
+														>
 															{s.name}
 														</SelectItem>
 													))}
@@ -299,7 +322,10 @@ export function PollForm({ pollId }: PollFormProps) {
 								)}
 							</div>
 							<label className="gap-2 text-sm flex items-center">
-								<Switch checked={notifyMembers} onCheckedChange={setNotifyMembers} />
+								<Switch
+									checked={notifyMembers}
+									onCheckedChange={setNotifyMembers}
+								/>
 								{t("admin.polls.form.notifyMembers")}
 							</label>
 							<div className="gap-2 flex justify-end">
