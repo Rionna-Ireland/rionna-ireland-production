@@ -1,6 +1,9 @@
 {
 	"admin": {
 		"menu": {
+			"overview": "Overview",
+			"operations": "Operations",
+			"content": "Content",
 			"dashboard": "Overview",
 			"members": "Members",
 			"horses": "Horses",
