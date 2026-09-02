@@ -190,7 +190,11 @@ describe("getMemberFeed (spaces aggregation)", () => {
 		expect(res.items.some((i) => i.kind === "poll")).toBe(false);
 		expect(logger.warn).toHaveBeenCalledWith(
 			"[MemberFeed] poll merge failed; serving feed without polls",
-			expect.objectContaining({ organizationId: ORG_ID, userId: USER.id }),
+			expect.objectContaining({
+				organizationId: ORG_ID,
+				userId: USER.id,
+				error: "Error: db down",
+			}),
 		);
 	});
 

@@ -397,7 +397,7 @@ export const getMemberFeed = protectedProcedure
 				logger.warn("[MemberFeed] poll merge failed; serving feed without polls", {
 					organizationId: input.organizationId,
 					userId: user.id,
-					error,
+					error: String(error),
 				});
 			}
 		}
