@@ -1,9 +1,11 @@
 import { buildCircleCommunityTargetUrl } from "@repo/payments/lib/circle";
 
+import type { PollCardData } from "../../polls/lib/poll-view";
+
 export interface MemberFeedItem {
 	id: string;
 	spaceId: string | null;
-	kind: "news" | "post";
+	kind: "news" | "post" | "poll";
 	title: string;
 	excerpt: string | null;
 	createdAt: string | null;
@@ -15,6 +17,8 @@ export interface MemberFeedItem {
 	isLiked: boolean;
 	imageUrl: string | null;
 	url: string | null;
+	/** Present only when kind === "poll" (S12-01a). */
+	poll?: PollCardData;
 }
 
 export interface CirclePostDetail {
