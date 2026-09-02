@@ -18,13 +18,12 @@ export interface NotifyPollPublishedInput {
  * polls push only to the horse's followers with a `community` deep link
  * instead — the mobile poll screen would otherwise 404 the poll — and are
  * skipped entirely (with a warn, never an org-wide fallback) when no horse
- * resolves. Atomic claim on Poll.notifiedAt (news pattern) so concurrent
- * publishes can't double-send; the claim is released on total delivery
- * failure or a throw so a re-publish can retry. Never throws.
+ * resolves. The atomic claim on Poll.notifiedAt is taken only once a push
+ * will actually be attempted, so concurrent publishes can't double-send;
+ * it is released on total delivery failure or a throw so a re-publish can
+ * retry. Never throws.
  */
 export async function notifyPollPublished(input: NotifyPollPublishedInput): Promise<void> {
-	const claimed = await claimPollNotification(input.pollId);
-	if (!claimed) return;
 	if (input.scope === "space" && !input.followersOfHorseId) {
 		logger.warn("[Polls] space poll published with no horse resolved; skipping push", {
 			organizationId: input.organizationId,
@@ -32,6 +31,8 @@ export async function notifyPollPublished(input: NotifyPollPublishedInput): Prom
 		});
 		return;
 	}
+	const claimed = await claimPollNotification(input.pollId);
+	if (!claimed) return;
 	try {
 		const delivery = await sendPush({
 			organizationId: input.organizationId,

@@ -33,7 +33,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeftIcon, CalendarPlusIcon, ExternalLinkIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -125,9 +125,15 @@ export function EventForm({ eventId }: EventFormProps) {
 			virtualLocationUrl: "",
 		},
 	});
+	const hydratedForId = useRef<string | null>(null);
 
 	useEffect(() => {
-		if (existingEvent) {
+		if (
+			existingEvent &&
+			hydratedForId.current !== existingEvent.circleEventId &&
+			!form.formState.isDirty
+		) {
+			hydratedForId.current = existingEvent.circleEventId;
 			form.reset({
 				name: existingEvent.name,
 				// The API can't read back the description — leave blank, only

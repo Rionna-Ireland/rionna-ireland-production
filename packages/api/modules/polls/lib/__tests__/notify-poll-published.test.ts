@@ -96,7 +96,7 @@ describe("notifyPollPublished", () => {
 			question: "Best warm-up routine?",
 			scope: "space",
 		});
-		expect(mockClaim).toHaveBeenCalledWith("p2");
+		expect(mockClaim).not.toHaveBeenCalled();
 		expect(mockSendPush).not.toHaveBeenCalled();
 		expect(logger.warn).toHaveBeenCalledWith(
 			"[Polls] space poll published with no horse resolved; skipping push",
