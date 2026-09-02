@@ -31,7 +31,16 @@ export async function notifyPollPublished(input: NotifyPollPublishedInput): Prom
 		});
 		return;
 	}
-	const claimed = await claimPollNotification(input.pollId);
+	let claimed: boolean;
+	try {
+		claimed = await claimPollNotification(input.pollId);
+	} catch (error) {
+		logger.error("[Polls] publish notify claim threw", {
+			pollId: input.pollId,
+			error: String(error),
+		});
+		return;
+	}
 	if (!claimed) return;
 	try {
 		const delivery = await sendPush({

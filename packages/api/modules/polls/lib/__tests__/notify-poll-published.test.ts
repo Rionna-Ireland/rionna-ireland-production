@@ -59,6 +59,16 @@ describe("notifyPollPublished", () => {
 		await notifyPollPublished(CLUB_INPUT);
 		expect(mockSendPush).not.toHaveBeenCalled();
 	});
+	it("logs and never throws when the notification claim fails", async () => {
+		mockClaim.mockRejectedValue(new Error("database unavailable"));
+		await expect(notifyPollPublished(CLUB_INPUT)).resolves.toBeUndefined();
+		expect(mockSendPush).not.toHaveBeenCalled();
+		expect(mockRelease).not.toHaveBeenCalled();
+		expect(logger.error).toHaveBeenCalledWith(
+			"[Polls] publish notify claim threw",
+			expect.objectContaining({ pollId: "p1", error: "Error: database unavailable" }),
+		);
+	});
 	it("releases the claim on total delivery failure", async () => {
 		mockSendPush.mockResolvedValue({ attempted: 3, sent: 0, failed: 3 });
 		await notifyPollPublished(CLUB_INPUT);
