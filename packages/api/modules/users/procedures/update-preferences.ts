@@ -17,6 +17,7 @@ const pushPreferencesSchema = z
 		horseUpdates: z.boolean().optional(),
 		insideTrack: z.boolean().optional(),
 		events: z.boolean().optional(),
+		polls: z.boolean().optional(),
 	})
 	.optional();
 
