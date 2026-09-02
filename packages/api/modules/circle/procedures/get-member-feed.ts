@@ -383,15 +383,23 @@ export const getMemberFeed = protectedProcedure
 		// 3b. Polls (S12-01a): club-scope + space-scope for the spaces this member
 		// already sees (follow-filtered above). Our rows, not Circle posts.
 		if (orgMetadata.features?.polls !== false) {
-			const now = new Date();
-			const pollRows = await getVisiblePolls({
-				organizationId: input.organizationId,
-				spaceIds: spaces.map((s) => String(s.id)),
-				now,
-				closedWithinMs: CLOSED_POLL_VISIBLE_MS,
-			});
-			const cards = await buildPollCards({ polls: pollRows, userId: user.id, now });
-			for (const card of cards) merged.push(toPollFeedItem(card));
+			try {
+				const now = new Date();
+				const pollRows = await getVisiblePolls({
+					organizationId: input.organizationId,
+					spaceIds: spaces.map((s) => String(s.id)),
+					now,
+					closedWithinMs: CLOSED_POLL_VISIBLE_MS,
+				});
+				const cards = await buildPollCards({ polls: pollRows, userId: user.id, now });
+				for (const card of cards) merged.push(toPollFeedItem(card));
+			} catch (error) {
+				logger.warn("[MemberFeed] poll merge failed; serving feed without polls", {
+					organizationId: input.organizationId,
+					userId: user.id,
+					error,
+				});
+			}
 		}
 
 		merged.sort((a, b) => {

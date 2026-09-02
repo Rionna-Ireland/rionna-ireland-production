@@ -1,5 +1,6 @@
 import { call } from "@orpc/server";
 import type { OrganizationMetadata } from "@repo/database/types";
+import { logger } from "@repo/logs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
@@ -172,7 +173,24 @@ describe("getMemberFeed (spaces aggregation)", () => {
 		const result = await call(getMemberFeed, { organizationId: ORG_ID }, ctx);
 		expect(result.items[0]).toMatchObject({ id: "poll:p1", kind: "poll" });
 		expect(mockGetVisiblePolls).toHaveBeenCalledWith(
-			expect.objectContaining({ organizationId: ORG_ID, spaceIds: expect.any(Array) }),
+			expect.objectContaining({ organizationId: ORG_ID, spaceIds: ["9", "10"] }),
+		);
+	});
+
+	it("fails open when the poll merge throws — serves the Circle feed without polls", async () => {
+		mockGetVisiblePolls.mockRejectedValue(new Error("db down"));
+		vi.stubGlobal("fetch", routeFetch());
+		const res = await call(
+			getMemberFeed,
+			{ organizationId: ORG_ID, page: 1, perPage: 15 },
+			ctx,
+		);
+		expect(res.ok).toBe(true);
+		expect(res.items.map((i) => i.id)).toEqual(["2", "1"]);
+		expect(res.items.some((i) => i.kind === "poll")).toBe(false);
+		expect(logger.warn).toHaveBeenCalledWith(
+			"[MemberFeed] poll merge failed; serving feed without polls",
+			expect.objectContaining({ organizationId: ORG_ID, userId: USER.id }),
 		);
 	});
 
