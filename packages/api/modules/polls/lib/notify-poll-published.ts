@@ -12,6 +12,17 @@ export interface NotifyPollPublishedInput {
 	followersOfHorseId?: string;
 }
 
+async function releaseClaim(pollId: string): Promise<void> {
+	try {
+		await releasePollNotification(pollId);
+	} catch (error) {
+		logger.error("[Polls] publish notify release threw", {
+			pollId,
+			error: String(error),
+		});
+	}
+}
+
 /**
  * POLL push on admin publish. Club-scope polls push org-wide with a `poll`
  * deep link (the mobile poll screen only knows club-scope polls). Space-scope
@@ -55,13 +66,13 @@ export async function notifyPollPublished(input: NotifyPollPublishedInput): Prom
 		});
 		logger.info("[Polls] publish notify summary", { pollId: input.pollId, ...delivery });
 		if (delivery.attempted > 0 && delivery.sent === 0) {
-			await releasePollNotification(input.pollId);
+			await releaseClaim(input.pollId);
 		}
 	} catch (error) {
 		logger.error("[Polls] publish notify threw", {
 			pollId: input.pollId,
 			error: String(error),
 		});
-		await releasePollNotification(input.pollId);
+		await releaseClaim(input.pollId);
 	}
 }

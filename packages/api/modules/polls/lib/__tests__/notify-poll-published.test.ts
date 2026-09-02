@@ -74,6 +74,15 @@ describe("notifyPollPublished", () => {
 		await notifyPollPublished(CLUB_INPUT);
 		expect(mockRelease).toHaveBeenCalledWith("p1");
 	});
+	it("logs and never throws when release fails after total delivery failure", async () => {
+		mockSendPush.mockResolvedValue({ attempted: 3, sent: 0, failed: 3 });
+		mockRelease.mockRejectedValue(new Error("database unavailable"));
+		await expect(notifyPollPublished(CLUB_INPUT)).resolves.toBeUndefined();
+		expect(logger.error).toHaveBeenCalledWith(
+			"[Polls] publish notify release threw",
+			expect.objectContaining({ pollId: "p1", error: "Error: database unavailable" }),
+		);
+	});
 	it("releases the claim and never throws when sendPush throws", async () => {
 		mockSendPush.mockRejectedValue(new Error("expo down"));
 		await expect(notifyPollPublished(CLUB_INPUT)).resolves.toBeUndefined();
@@ -81,6 +90,15 @@ describe("notifyPollPublished", () => {
 		expect(logger.error).toHaveBeenCalledWith(
 			"[Polls] publish notify threw",
 			expect.objectContaining({ pollId: "p1", error: "Error: expo down" }),
+		);
+	});
+	it("logs and never throws when release fails after sendPush throws", async () => {
+		mockSendPush.mockRejectedValue(new Error("expo down"));
+		mockRelease.mockRejectedValue(new Error("database unavailable"));
+		await expect(notifyPollPublished(CLUB_INPUT)).resolves.toBeUndefined();
+		expect(logger.error).toHaveBeenCalledWith(
+			"[Polls] publish notify release threw",
+			expect.objectContaining({ pollId: "p1", error: "Error: database unavailable" }),
 		);
 	});
 
