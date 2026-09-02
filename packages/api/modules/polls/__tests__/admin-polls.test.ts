@@ -10,6 +10,8 @@ const {
 	mockNotify,
 	mockLoggerInfo,
 	mockHorseFindMany,
+	mockHorseFindFirst,
+	mockListPolls,
 } = vi.hoisted(() => ({
 	mockGetSession: vi.fn(),
 	mockCreatePoll: vi.fn(),
@@ -19,17 +21,20 @@ const {
 	mockNotify: vi.fn(),
 	mockLoggerInfo: vi.fn(),
 	mockHorseFindMany: vi.fn(),
+	mockHorseFindFirst: vi.fn(),
+	mockListPolls: vi.fn(),
 }));
 
 vi.mock("@repo/auth", () => ({ auth: { api: { getSession: mockGetSession } } }));
 // Mock @repo/database wholesale (no importActual) — the real module instantiates the
 // Prisma client at import time and throws when DATABASE_URL is unset.
 vi.mock("@repo/database", () => ({
-	db: { horse: { findMany: mockHorseFindMany } },
+	db: { horse: { findMany: mockHorseFindMany, findFirst: mockHorseFindFirst } },
 	createPoll: mockCreatePoll,
 	updatePollDraft: mockUpdatePollDraft,
 	getPollForOrg: mockGetPollForOrg,
 	setPollStatus: mockSetPollStatus,
+	listPolls: mockListPolls,
 }));
 vi.mock("@repo/logs", () => ({
 	logger: { info: mockLoggerInfo, warn: vi.fn(), error: vi.fn(), log: vi.fn() },
@@ -39,6 +44,7 @@ vi.mock("../lib/notify-poll-published", () => ({ notifyPollPublished: mockNotify
 import { closePoll } from "../procedures/admin/close-poll";
 import { createPoll } from "../procedures/admin/create-poll";
 import { listPollSpaces } from "../procedures/admin/list-poll-spaces";
+import { listPolls } from "../procedures/admin/list-polls";
 import { publishPoll } from "../procedures/admin/publish-poll";
 
 const ADMIN = { id: "a1", role: "admin", name: "Emma" };
@@ -132,7 +138,7 @@ describe("polls.admin.create", () => {
 });
 
 describe("polls.admin.publish", () => {
-	it("flips draft → open and pushes when notifyMembers is true", async () => {
+	it("flips draft → open and pushes club-scope org-wide when notifyMembers is true", async () => {
 		const result = await call(
 			publishPoll,
 			{ organizationId: "org1", pollId: "p1", notifyMembers: true },
@@ -151,6 +157,50 @@ describe("polls.admin.publish", () => {
 			organizationId: "org1",
 			pollId: "p1",
 			question: "Which charity next?",
+			scope: "club",
+		});
+		expect(mockHorseFindFirst).not.toHaveBeenCalled();
+	});
+	it("resolves the horse and pushes space-scoped for a space-scope poll", async () => {
+		mockGetPollForOrg.mockResolvedValue({
+			...DRAFT,
+			scope: "space",
+			circleSpaceId: "sp1",
+		});
+		mockHorseFindFirst.mockResolvedValue({ id: "h1" });
+		const result = await call(
+			publishPoll,
+			{ organizationId: "org1", pollId: "p1", notifyMembers: true },
+			ctx,
+		);
+		expect(result).toEqual({ ok: true });
+		expect(mockHorseFindFirst).toHaveBeenCalledWith(
+			expect.objectContaining({
+				where: { organizationId: "org1", circleSpaceId: "sp1" },
+			}),
+		);
+		expect(mockNotify).toHaveBeenCalledWith({
+			organizationId: "org1",
+			pollId: "p1",
+			question: "Which charity next?",
+			scope: "space",
+			followersOfHorseId: "h1",
+		});
+	});
+	it("passes followersOfHorseId: undefined when no horse resolves for a space-scope poll", async () => {
+		mockGetPollForOrg.mockResolvedValue({
+			...DRAFT,
+			scope: "space",
+			circleSpaceId: "sp1",
+		});
+		mockHorseFindFirst.mockResolvedValue(null);
+		await call(publishPoll, { organizationId: "org1", pollId: "p1", notifyMembers: true }, ctx);
+		expect(mockNotify).toHaveBeenCalledWith({
+			organizationId: "org1",
+			pollId: "p1",
+			question: "Which charity next?",
+			scope: "space",
+			followersOfHorseId: undefined,
 		});
 	});
 	it("does not push when notifyMembers is false", async () => {
@@ -181,6 +231,24 @@ describe("polls.admin.close", () => {
 		expect(mockSetPollStatus).toHaveBeenCalledWith(
 			expect.objectContaining({ from: "open", to: "closed" }),
 		);
+	});
+});
+
+describe("polls.admin.list", () => {
+	it("reports the effective (auto-closed) status, not the raw open row", async () => {
+		mockListPolls.mockResolvedValue({
+			polls: [
+				{
+					...DRAFT,
+					status: "open",
+					publishedAt: new Date("2026-08-01T00:00:00Z"),
+					closesAt: new Date("2026-08-02T00:00:00Z"),
+				},
+			],
+			total: 1,
+		});
+		const result = await call(listPolls, { organizationId: "org1" }, ctx);
+		expect(result.polls[0]).toMatchObject({ id: "p1", status: "closed" });
 	});
 });
 

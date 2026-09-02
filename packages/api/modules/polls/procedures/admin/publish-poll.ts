@@ -1,4 +1,4 @@
-import { getPollForOrg, setPollStatus } from "@repo/database";
+import { db, getPollForOrg, setPollStatus } from "@repo/database";
 import { logger } from "@repo/logs";
 import { z } from "zod";
 
@@ -37,11 +37,29 @@ export const publishPoll = adminProcedure
 			notifyMembers: input.notifyMembers,
 		});
 		if (input.notifyMembers) {
-			await notifyPollPublished({
-				organizationId: input.organizationId,
-				pollId: input.pollId,
-				question: poll.question,
-			});
+			if (poll.scope === "space") {
+				const horse = await db.horse.findFirst({
+					where: {
+						organizationId: input.organizationId,
+						circleSpaceId: poll.circleSpaceId,
+					},
+					select: { id: true },
+				});
+				await notifyPollPublished({
+					organizationId: input.organizationId,
+					pollId: input.pollId,
+					question: poll.question,
+					scope: "space",
+					followersOfHorseId: horse?.id,
+				});
+			} else {
+				await notifyPollPublished({
+					organizationId: input.organizationId,
+					pollId: input.pollId,
+					question: poll.question,
+					scope: "club",
+				});
+			}
 		}
 		return { ok: true as const };
 	});
