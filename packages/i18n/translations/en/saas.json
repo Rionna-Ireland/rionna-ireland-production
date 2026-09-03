@@ -269,6 +269,54 @@
 				"notifications": { "saved": "Offer saved", "deleted": "Offer deleted", "error": "Something went wrong" }
 			}
 		},
+		"charity": {
+			"title": "Charity impact",
+			"loading": "Loading…",
+			"empty": "No charity configured yet. Members see nothing on the Charity screen until you save one.",
+			"current": {
+				"title": "Current charity",
+				"changeTitle": "Change charity",
+				"changeHelp": "Ends the current charity today and starts a new one. Past totals stay in the history below.",
+				"change": "Change charity…",
+				"cancelChange": "Cancel"
+			},
+			"form": {
+				"charityName": "Charity name",
+				"description": "What your membership supports",
+				"logo": "Logo",
+				"websiteUrl": "Website",
+				"percentage": "Percentage of membership revenue",
+				"percentageHelp": "Shown to members as \"X% of every membership goes to …\".",
+				"startDate": "Counting from",
+				"startDateHelp": "Revenue collected on or after this date counts towards the total.",
+				"goal": "Fundraising goal (€)",
+				"goalHelp": "Optional. Shows a progress line to members.",
+				"override": "Verified total donated (€)",
+				"overrideHelp": "Optional. When set, this exact figure is shown instead of the calculation. Use it once a donation is actually made.",
+				"poll": "Member vote",
+				"pollNone": "No vote linked",
+				"pollHelp": "Pick an open club poll to show as the \"Member vote\" on the Charity screen.",
+				"save": "Save charity",
+				"startNew": "Start new charity",
+				"notifications": { "saved": "Charity saved", "changed": "New charity started", "error": "Something went wrong" }
+			},
+			"computed": {
+				"title": "Computed from Stripe",
+				"revenue": "Membership revenue collected",
+				"total": "Calculated donation",
+				"shown": "Figure shown to members",
+				"syncedAt": "Last synced",
+				"never": "Never",
+				"recalculate": "Recalculate now",
+				"recalculated": "Revenue recalculated",
+				"recalculateError": "Could not reach Stripe. The previous figure is still shown."
+			},
+			"history": {
+				"title": "Previous charities",
+				"empty": "None yet.",
+				"columns": { "name": "Charity", "period": "Period", "percentage": "%", "total": "Total shown" }
+			}
+		},
 		"updates": {
 			"list": {
 				"title": "Horse updates",
@@ -622,6 +670,7 @@
 				"saveDraft": "Save as Draft",
 				"publish": "Publish",
 				"notifyMembers": "Notify members on publish",
+				"charityStory": "Charity story (shows on the Paddock Charity screen)",
 				"confirmPublishNotify": "This will send a push notification to all members. Publish and notify?",
 				"confirmPublishNotifyTitle": "Publish and notify",
 				"notifications": {

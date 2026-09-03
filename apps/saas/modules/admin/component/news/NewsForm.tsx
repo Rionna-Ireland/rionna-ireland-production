@@ -38,6 +38,7 @@ const newsFormSchema = z.object({
 	slug: z.string().optional(),
 	featuredImageUrl: z.string().optional(),
 	notifyMembersOnPublish: z.boolean().default(false),
+	isCharityStory: z.boolean().default(false),
 });
 
 type NewsFormValues = z.infer<typeof newsFormSchema>;
@@ -78,6 +79,7 @@ export function NewsForm({ newsPostId }: NewsFormProps) {
 			slug: "",
 			featuredImageUrl: "",
 			notifyMembersOnPublish: false,
+			isCharityStory: false,
 		},
 	});
 
@@ -89,6 +91,7 @@ export function NewsForm({ newsPostId }: NewsFormProps) {
 				slug: existingPost.slug,
 				featuredImageUrl: existingPost.featuredImageUrl ?? "",
 				notifyMembersOnPublish: existingPost.notifyMembersOnPublish,
+				isCharityStory: existingPost.category === "charity",
 			});
 			contentJsonRef.current = existingPost.contentJson as JSONContent | undefined;
 			contentHtmlRef.current = existingPost.contentHtml ?? "";
@@ -148,6 +151,7 @@ export function NewsForm({ newsPostId }: NewsFormProps) {
 					contentHtml: contentHtmlRef.current || undefined,
 					publish,
 					notifyMembersOnPublish: values.notifyMembersOnPublish,
+					category: values.isCharityStory ? "charity" : null,
 				});
 
 				await queryClient.invalidateQueries({
@@ -168,6 +172,7 @@ export function NewsForm({ newsPostId }: NewsFormProps) {
 					contentHtml: contentHtmlRef.current || undefined,
 					publish,
 					notifyMembersOnPublish: values.notifyMembersOnPublish,
+					category: values.isCharityStory ? "charity" : null,
 				});
 
 				await queryClient.invalidateQueries({
@@ -349,6 +354,24 @@ export function NewsForm({ newsPostId }: NewsFormProps) {
 												</FormControl>
 												<FormLabel className="!mt-0">
 													{t("admin.news.form.notifyMembers")}
+												</FormLabel>
+												<FormMessage />
+											</FormItem>
+										)}
+									/>
+									<FormField
+										control={form.control}
+										name="isCharityStory"
+										render={({ field }) => (
+											<FormItem className="gap-3 flex items-center">
+												<FormControl>
+													<Switch
+														checked={field.value}
+														onCheckedChange={field.onChange}
+													/>
+												</FormControl>
+												<FormLabel className="!mt-0">
+													{t("admin.news.form.charityStory")}
 												</FormLabel>
 												<FormMessage />
 											</FormItem>
