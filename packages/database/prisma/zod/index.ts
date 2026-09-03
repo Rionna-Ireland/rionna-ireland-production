@@ -113,6 +113,18 @@ export const PollVoteScalarFieldEnumSchema = z.enum(['id', 'pollId', 'optionId',
 
 export type PollVoteScalarFieldEnum = z.infer<typeof PollVoteScalarFieldEnumSchema>;
 
+// File: PartnerOfferScalarFieldEnum.schema.ts
+
+export const PartnerOfferScalarFieldEnumSchema = z.enum(['id', 'organizationId', 'title', 'partnerName', 'category', 'description', 'imageUrl', 'discountCode', 'redeemUrl', 'howToRedeem', 'validUntil', 'active', 'sortOrder', 'createdAt', 'updatedAt'])
+
+export type PartnerOfferScalarFieldEnum = z.infer<typeof PartnerOfferScalarFieldEnumSchema>;
+
+// File: CharityConfigScalarFieldEnum.schema.ts
+
+export const CharityConfigScalarFieldEnumSchema = z.enum(['id', 'organizationId', 'charityName', 'description', 'logoUrl', 'websiteUrl', 'percentage', 'startDate', 'endedAt', 'goalCents', 'manualOverrideCents', 'pollId', 'stripeRevenueCents', 'revenueSyncedAt', 'currency', 'createdAt', 'updatedAt'])
+
+export type CharityConfigScalarFieldEnum = z.infer<typeof CharityConfigScalarFieldEnumSchema>;
+
 // File: TrainerScalarFieldEnum.schema.ts
 
 export const TrainerScalarFieldEnumSchema = z.enum(['id', 'organizationId', 'providerEntityId', 'name', 'meta', 'createdAt', 'updatedAt'])
@@ -151,7 +163,7 @@ export type RaceEntryScalarFieldEnum = z.infer<typeof RaceEntryScalarFieldEnumSc
 
 // File: NewsPostScalarFieldEnum.schema.ts
 
-export const NewsPostScalarFieldEnumSchema = z.enum(['id', 'organizationId', 'slug', 'title', 'subtitle', 'featuredImageUrl', 'contentJson', 'contentHtml', 'publishedAt', 'notifyMembersOnPublish', 'notificationSentAt', 'authorUserId', 'createdAt', 'updatedAt'])
+export const NewsPostScalarFieldEnumSchema = z.enum(['id', 'organizationId', 'slug', 'title', 'subtitle', 'featuredImageUrl', 'category', 'contentJson', 'contentHtml', 'publishedAt', 'notifyMembersOnPublish', 'notificationSentAt', 'authorUserId', 'createdAt', 'updatedAt'])
 
 export type NewsPostScalarFieldEnum = z.infer<typeof NewsPostScalarFieldEnumSchema>;
 
@@ -569,6 +581,56 @@ export const PollVoteSchema = z.object({
 export type PollVoteType = z.infer<typeof PollVoteSchema>;
 
 
+// File: PartnerOffer.schema.ts
+
+export const PartnerOfferSchema = z.object({
+  id: z.string(),
+  organizationId: z.string(),
+  title: z.string(),
+  partnerName: z.string(),
+  category: z.string(),
+  description: z.string(),
+  imageUrl: z.string().nullish(),
+  discountCode: z.string().nullish(),
+  redeemUrl: z.string().nullish(),
+  howToRedeem: z.string().nullish(),
+  validUntil: z.date().nullish(),
+  active: z.boolean().default(true),
+  sortOrder: z.number().int(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
+export type PartnerOfferType = z.infer<typeof PartnerOfferSchema>;
+
+
+// File: CharityConfig.schema.ts
+
+export const CharityConfigSchema = z.object({
+  id: z.string(),
+  organizationId: z.string(),
+  charityName: z.string(),
+  description: z.string(),
+  logoUrl: z.string().nullish(),
+  websiteUrl: z.string().nullish(),
+  percentage: z.instanceof(Prisma.Decimal, {
+  message: "Field 'percentage' must be a Decimal. Location: ['Models', 'CharityConfig']",
+}),
+  startDate: z.date(),
+  endedAt: z.date().nullish(),
+  goalCents: z.number().int().nullish(),
+  manualOverrideCents: z.number().int().nullish(),
+  pollId: z.string().nullish(),
+  stripeRevenueCents: z.number().int(),
+  revenueSyncedAt: z.date().nullish(),
+  currency: z.string().default("EUR"),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
+export type CharityConfigType = z.infer<typeof CharityConfigSchema>;
+
+
 // File: Trainer.schema.ts
 
 export const TrainerSchema = z.object({
@@ -689,6 +751,7 @@ export const NewsPostSchema = z.object({
   title: z.string(),
   subtitle: z.string().nullish(),
   featuredImageUrl: z.string().nullish(),
+  category: z.string().nullish(),
   contentJson: z.unknown().refine((val) => { const getDepth = (obj: unknown, depth: number = 0): number => { if (depth > 10) return depth; if (obj === null || typeof obj !== 'object') return depth; const values = Object.values(obj as Record<string, unknown>); if (values.length === 0) return depth; return Math.max(...values.map(v => getDepth(v, depth + 1))); }; return getDepth(val) <= 10; }, "JSON nesting depth exceeds maximum of 10"),
   contentHtml: z.string(),
   publishedAt: z.date().nullish(),

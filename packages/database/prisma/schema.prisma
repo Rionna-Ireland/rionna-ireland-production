@@ -159,18 +159,20 @@ model Organization {
   purchases          Purchase[]
 
   // Racing domain (S1-02)
-  horses           Horse[]
-  trainers         Trainer[]
-  jockeys          Jockey[]
-  courses          Course[]
-  meetings         Meeting[]
-  races            Race[]
-  raceEntries      RaceEntry[]
-  newsPosts        NewsPost[]
-  pushLogs         PushLog[]
-  memberPosts      MemberPost[]
-  horseFollows     HorseFollow[]
-  polls            Poll[]
+  horses         Horse[]
+  trainers       Trainer[]
+  jockeys        Jockey[]
+  courses        Course[]
+  meetings       Meeting[]
+  races          Race[]
+  raceEntries    RaceEntry[]
+  newsPosts      NewsPost[]
+  pushLogs       PushLog[]
+  memberPosts    MemberPost[]
+  horseFollows   HorseFollow[]
+  polls          Poll[]
+  partnerOffers  PartnerOffer[]
+  charityConfigs CharityConfig[]
 
   @@unique([slug])
   @@map("organization")
@@ -351,9 +353,9 @@ model Horse {
   latestEntryId String? @unique
   nextEntryId   String? @unique
 
-  entries          RaceEntry[]
-  memberPosts      MemberPost[]
-  followers        HorseFollow[]
+  entries     RaceEntry[]
+  memberPosts MemberPost[]
+  followers   HorseFollow[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -440,6 +442,57 @@ model PollVote {
   @@unique([pollId, userId]) // one vote per member; revote = update
   @@index([optionId])
   @@map("poll_vote")
+}
+
+model PartnerOffer {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  title        String
+  partnerName  String
+  category     String // "restaurant" | "hotel" | "lifestyle" | "racing" | "other" (zod-validated)
+  description  String
+  imageUrl     String?
+  discountCode String?
+  redeemUrl    String?
+  howToRedeem  String? // in-store instructions, e.g. "Show this screen at the till"
+  validUntil   DateTime?
+  active       Boolean   @default(true)
+  sortOrder    Int       @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId, active, sortOrder])
+  @@map("partner_offer")
+}
+
+/// One active charity per org (endedAt = null); older rows are history. S12-01 §1.
+model CharityConfig {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  charityName         String
+  description         String
+  logoUrl             String?
+  websiteUrl          String?
+  percentage          Decimal   @db.Decimal(5, 2) // 5.00 = 5% of collected revenue
+  startDate           DateTime
+  endedAt             DateTime? // null = current charity
+  goalCents           Int?
+  manualOverrideCents Int? // verified total; wins over the computed figure
+  pollId              String? // linked "member vote" poll (club scope)
+  stripeRevenueCents  Int       @default(0) // cached gross paid subscription revenue since startDate
+  revenueSyncedAt     DateTime?
+  currency            String    @default("EUR")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId, endedAt])
+  @@map("charity_config")
 }
 
 model Trainer {
@@ -599,6 +652,7 @@ model NewsPost {
   title            String
   subtitle         String?
   featuredImageUrl String?
+  category         String?
 
   contentJson Json
   contentHtml String @db.Text
@@ -615,6 +669,7 @@ model NewsPost {
 
   @@unique([organizationId, slug])
   @@index([organizationId, publishedAt])
+  @@index([organizationId, category, publishedAt])
   @@map("news_post")
 }
 
