@@ -15,7 +15,10 @@
 			"settings": "Settings",
 			"announcements": "Announcements",
 			"community": "Community",
-			"insideTrack": "Inside Track"
+			"insideTrack": "Inside Track",
+			"paddock": "Paddock",
+			"offers": "Partner offers",
+			"charity": "Charity"
 		},
 		"dashboard": {
 			"health": {
@@ -230,6 +233,40 @@
 				"total": "{count} votes",
 				"voters": "Who voted",
 				"noVotes": "No votes yet."
+			}
+		},
+		"offers": {
+			"list": {
+				"title": "Partner offers",
+				"new": "New offer",
+				"empty": "No offers yet. Add the first partner offer.",
+				"columns": { "title": "Offer", "partner": "Partner", "category": "Category", "validUntil": "Valid until", "status": "Status" },
+				"status": { "active": "Active", "inactive": "Hidden", "expired": "Expired" },
+				"actions": { "edit": "Edit", "delete": "Delete" },
+				"confirmDeleteTitle": "Delete this offer?",
+				"confirmDelete": "Members will no longer see it. This cannot be undone."
+			},
+			"form": {
+				"backToList": "Back to offers",
+				"createTitle": "New partner offer",
+				"editTitle": "Edit partner offer",
+				"title": "Offer title",
+				"partnerName": "Partner",
+				"category": "Category",
+				"categories": { "restaurant": "Restaurant", "hotel": "Hotel", "lifestyle": "Lifestyle", "racing": "Racing", "other": "Other" },
+				"description": "Description",
+				"image": "Image",
+				"discountCode": "Discount code",
+				"discountCodeHelp": "Shown to members with a copy button. Leave blank for in-store offers.",
+				"redeemUrl": "Link",
+				"redeemUrlHelp": "Optional. Opens in the member's browser.",
+				"howToRedeem": "How to redeem",
+				"howToRedeemHelp": "Optional. E.g. \"Show this screen at the till\".",
+				"validUntil": "Valid until",
+				"active": "Visible to members",
+				"sortOrder": "Sort order",
+				"save": "Save offer",
+				"notifications": { "saved": "Offer saved", "deleted": "Offer deleted", "error": "Something went wrong" }
 			}
 		},
 		"updates": {

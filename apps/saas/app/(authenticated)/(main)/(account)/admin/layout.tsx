@@ -4,7 +4,9 @@ import { PageHeader } from "@shared/components/PageHeader";
 import {
 	BellIcon,
 	CalendarIcon,
+	GiftIcon,
 	GraduationCapIcon,
+	HeartHandshakeIcon,
 	LayoutDashboardIcon,
 	ListIcon,
 	MegaphoneIcon,
@@ -100,6 +102,21 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
 								title: t("menu.polls"),
 								href: "/admin/polls",
 								icon: <VoteIcon className="size-4 opacity-50" />,
+							},
+						],
+					},
+					{
+						title: t("menu.paddock"),
+						items: [
+							{
+								title: t("menu.offers"),
+								href: "/admin/offers",
+								icon: <GiftIcon className="size-4 opacity-50" />,
+							},
+							{
+								title: t("menu.charity"),
+								href: "/admin/charity",
+								icon: <HeartHandshakeIcon className="size-4 opacity-50" />,
 							},
 						],
 					},
