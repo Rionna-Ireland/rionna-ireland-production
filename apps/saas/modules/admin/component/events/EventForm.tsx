@@ -3,6 +3,7 @@
 import { useAdminOrganization } from "@admin/hooks/use-admin-organization";
 import { useEventCoverUpload } from "@admin/lib/event-cover-upload";
 import { getAdminPath } from "@admin/lib/links";
+import { useHydrateOnce } from "@admin/lib/use-hydrate-once";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { parseOrgMetadata } from "@repo/database/types";
 import { Button } from "@repo/ui/components/button";
@@ -33,7 +34,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeftIcon, CalendarPlusIcon, ExternalLinkIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -125,15 +126,8 @@ export function EventForm({ eventId }: EventFormProps) {
 			virtualLocationUrl: "",
 		},
 	});
-	const hydratedForId = useRef<string | null>(null);
-
-	useEffect(() => {
-		if (
-			existingEvent &&
-			hydratedForId.current !== existingEvent.circleEventId &&
-			!form.formState.isDirty
-		) {
-			hydratedForId.current = existingEvent.circleEventId;
+	useHydrateOnce(existingEvent?.circleEventId, form.formState.isDirty, () => {
+		if (existingEvent) {
 			form.reset({
 				name: existingEvent.name,
 				// The API can't read back the description — leave blank, only
@@ -155,7 +149,7 @@ export function EventForm({ eventId }: EventFormProps) {
 				setCoverPreviewUrl(existingEvent.coverImageUrl);
 			}
 		}
-	}, [existingEvent, form]);
+	});
 
 	// Revoke the object URL created for a locally-picked cover file on unmount / replace.
 	useEffect(() => {
