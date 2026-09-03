@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { formatEuro, toCharityFormValues, toCharityPayload } from "./charity-form-values";
+import { charityFormSchema, formatEuro, toCharityFormValues, toCharityPayload } from "./charity-form-values";
 
 const CONFIG = {
 	id: "c1", charityName: "IIJ", description: "d", logoUrl: null, websiteUrl: "https://iij.ie",
@@ -26,6 +26,26 @@ describe("toCharityPayload", () => {
 	});
 	it("treats an override of 0 as a real override", () => {
 		expect(toCharityPayload({ charityName: "x", description: "d", logoUrl: "", websiteUrl: "", percentage: 5, startDate: "2026-03-01", goalEuro: "", overrideEuro: "0", pollId: "" }).manualOverrideCents).toBe(0);
+	});
+});
+
+describe("charityFormSchema", () => {
+	const base = { charityName: "IIJ", description: "d", logoUrl: "", startDate: "2026-03-01", percentage: 5, goalEuro: "", overrideEuro: "", pollId: "" };
+
+	it("rejects a websiteUrl missing its scheme", () => {
+		expect(charityFormSchema.safeParse({ ...base, websiteUrl: "iij.ie" }).success).toBe(false);
+	});
+	it("accepts an empty websiteUrl", () => {
+		expect(charityFormSchema.safeParse({ ...base, websiteUrl: "" }).success).toBe(true);
+	});
+	it("accepts a full websiteUrl", () => {
+		expect(charityFormSchema.safeParse({ ...base, websiteUrl: "https://iij.ie" }).success).toBe(true);
+	});
+	it("rejects a percentage with more than 2 decimal places", () => {
+		expect(charityFormSchema.safeParse({ ...base, websiteUrl: "", percentage: 5.001 }).success).toBe(false);
+	});
+	it("rejects a percentage outside 0-100", () => {
+		expect(charityFormSchema.safeParse({ ...base, websiteUrl: "", percentage: 100.01 }).success).toBe(false);
 	});
 });
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { toOfferFormValues, toOfferPayload } from "./offer-form-values";
+import { offerFormSchema, toOfferFormValues, toOfferPayload } from "./offer-form-values";
 
 const OFFER = {
 	id: "o1",
@@ -86,5 +86,22 @@ describe("toOfferPayload", () => {
 				sortOrder: 0,
 			}).validUntil,
 		).toBeNull();
+	});
+});
+
+describe("offerFormSchema", () => {
+	const base = {
+		title: "x", partnerName: "y", category: "other" as const, description: "d",
+		imageUrl: "", discountCode: "", howToRedeem: "", validUntil: "", active: true, sortOrder: 0,
+	};
+
+	it("rejects a redeemUrl missing its scheme", () => {
+		expect(offerFormSchema.safeParse({ ...base, redeemUrl: "iij.ie" }).success).toBe(false);
+	});
+	it("accepts an empty redeemUrl", () => {
+		expect(offerFormSchema.safeParse({ ...base, redeemUrl: "" }).success).toBe(true);
+	});
+	it("accepts a full redeemUrl", () => {
+		expect(offerFormSchema.safeParse({ ...base, redeemUrl: "https://iij.ie/offer" }).success).toBe(true);
 	});
 });

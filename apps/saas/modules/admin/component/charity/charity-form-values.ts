@@ -7,8 +7,8 @@ export const charityFormSchema = z.object({
 	charityName: z.string().trim().min(1).max(120),
 	description: z.string().trim().min(1).max(1000),
 	logoUrl: z.string(),
-	websiteUrl: z.string(),
-	percentage: z.number().min(0).max(100),
+	websiteUrl: z.string().url().or(z.literal("")),
+	percentage: z.number().min(0).max(100).multipleOf(0.01),
 	startDate: z.string().min(1), // yyyy-mm-dd
 	goalEuro: euroString,
 	overrideEuro: euroString,

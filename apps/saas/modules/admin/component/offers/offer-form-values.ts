@@ -17,7 +17,7 @@ export const offerFormSchema = z.object({
 	description: z.string().trim().min(1).max(2000),
 	imageUrl: z.string(),
 	discountCode: z.string().max(64),
-	redeemUrl: z.string(),
+	redeemUrl: z.string().url().or(z.literal("")),
 	howToRedeem: z.string().max(500),
 	validUntil: z.string(), // "" or yyyy-mm-dd from <input type="date">
 	active: z.boolean(),
