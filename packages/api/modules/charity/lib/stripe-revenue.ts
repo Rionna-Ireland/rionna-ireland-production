@@ -1,10 +1,21 @@
 import { getStripeClient } from "@repo/payments";
 
-/** The three invoice fields the sum depends on (keeps tests free of the Stripe type). */
+/**
+ * The invoice fields the sum depends on (keeps tests free of the full Stripe type).
+ * Stripe v22 (apiVersion "2026-03-25.dahlia") moved the subscription link off the
+ * invoice's top level: it now lives at `parent.subscription_details.subscription`
+ * when `parent.type === "subscription_details"`. A one-off charge has `parent: null`
+ * (or a parent whose type isn't `subscription_details`).
+ */
 export interface InvoiceLike {
 	amount_paid: number;
-	subscription: unknown | null;
 	status: string | null;
+	parent?: {
+		type?: string;
+		subscription_details?: {
+			subscription?: string | { id: string } | null;
+		} | null;
+	} | null;
 }
 
 /**
@@ -15,7 +26,7 @@ export interface InvoiceLike {
 export function sumPaidSubscriptionInvoices(invoices: InvoiceLike[]): number {
 	let total = 0;
 	for (const invoice of invoices) {
-		if (invoice.status !== "paid" || !invoice.subscription) continue;
+		if (invoice.status !== "paid" || !invoice.parent?.subscription_details?.subscription) continue;
 		total += invoice.amount_paid;
 	}
 	return total;
@@ -36,7 +47,7 @@ export async function sumPaidSubscriptionRevenueCents(args: { since: Date }): Pr
 			limit: PAGE_SIZE,
 			...(startingAfter ? { starting_after: startingAfter } : {}),
 		});
-		total += sumPaidSubscriptionInvoices(page.data as unknown as InvoiceLike[]);
+		total += sumPaidSubscriptionInvoices(page.data);
 		if (!page.has_more || page.data.length === 0) break;
 		startingAfter = page.data[page.data.length - 1].id;
 	}
