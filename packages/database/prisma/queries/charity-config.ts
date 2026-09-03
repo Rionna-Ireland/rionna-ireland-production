@@ -1,4 +1,8 @@
 import { db } from "../client";
+import type { Prisma } from "../generated/client";
+
+/** Anything that can run a `charityConfig` write: the global client, or a `db.$transaction` callback's `tx`. */
+type CharityConfigClient = typeof db | Prisma.TransactionClient;
 
 export interface CharityWriteData {
 	charityName: string;
@@ -36,8 +40,8 @@ export async function listOrgIdsWithCurrentCharity(): Promise<string[]> {
 	return rows.map((r) => r.organizationId);
 }
 
-export async function createCharityConfig(data: CharityWriteData & { organizationId: string }) {
-	return db.charityConfig.create({ data });
+export async function createCharityConfig(data: CharityWriteData & { organizationId: string }, client: CharityConfigClient = db) {
+	return client.charityConfig.create({ data });
 }
 
 export async function updateCharityConfig(args: {
@@ -53,8 +57,11 @@ export async function updateCharityConfig(args: {
 	return db.charityConfig.findFirst({ where: { id: args.configId, organizationId: args.organizationId } });
 }
 
-export async function endCharityConfig(args: { organizationId: string; configId: string; endedAt: Date }): Promise<boolean> {
-	const result = await db.charityConfig.updateMany({
+export async function endCharityConfig(
+	args: { organizationId: string; configId: string; endedAt: Date },
+	client: CharityConfigClient = db,
+): Promise<boolean> {
+	const result = await client.charityConfig.updateMany({
 		where: { id: args.configId, organizationId: args.organizationId, endedAt: null },
 		data: { endedAt: args.endedAt },
 	});

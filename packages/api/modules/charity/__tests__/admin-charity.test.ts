@@ -2,16 +2,17 @@ import { call } from "@orpc/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
-	mockGetSession, mockGetCurrent, mockListHistory, mockCreate, mockUpdate, mockEnd, mockSync, mockLoggerInfo,
+	mockGetSession, mockGetCurrent, mockListHistory, mockCreate, mockUpdate, mockEnd, mockSync, mockLoggerInfo, mockTransaction,
 } = vi.hoisted(() => ({
 	mockGetSession: vi.fn(), mockGetCurrent: vi.fn(), mockListHistory: vi.fn(), mockCreate: vi.fn(),
-	mockUpdate: vi.fn(), mockEnd: vi.fn(), mockSync: vi.fn(), mockLoggerInfo: vi.fn(),
+	mockUpdate: vi.fn(), mockEnd: vi.fn(), mockSync: vi.fn(), mockLoggerInfo: vi.fn(), mockTransaction: vi.fn(),
 }));
 
 vi.mock("@repo/auth", () => ({ auth: { api: { getSession: mockGetSession } } }));
 vi.mock("@repo/database", () => ({
 	getCurrentCharityConfig: mockGetCurrent, listCharityHistory: mockListHistory,
 	createCharityConfig: mockCreate, updateCharityConfig: mockUpdate, endCharityConfig: mockEnd,
+	db: { $transaction: mockTransaction },
 }));
 vi.mock("@repo/logs", () => ({ logger: { info: mockLoggerInfo, warn: vi.fn(), error: vi.fn(), log: vi.fn() } }));
 vi.mock("../lib/sync-charity-revenue", () => ({ syncCharityRevenue: mockSync }));
@@ -41,6 +42,7 @@ beforeEach(() => {
 	mockUpdate.mockResolvedValue(CURRENT);
 	mockEnd.mockResolvedValue(true);
 	mockSync.mockResolvedValue({ ok: true, configId: "c1", stripeRevenueCents: 50_000_000, syncedAt: SYNCED_AT });
+	mockTransaction.mockImplementation(async (fn: (tx: unknown) => unknown) => fn({}));
 });
 
 describe("charity.admin.get", () => {
@@ -82,8 +84,8 @@ describe("charity.admin.save", () => {
 describe("charity.admin.changeCharity", () => {
 	it("ends the current row, creates the new one, and syncs", async () => {
 		const result = await call(changeCharity, { ...WRITE, charityName: "Treo Eile" }, ctx);
-		expect(mockEnd).toHaveBeenCalledWith(expect.objectContaining({ organizationId: "org1", configId: "c1" }));
-		expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({ charityName: "Treo Eile" }));
+		expect(mockEnd).toHaveBeenCalledWith(expect.objectContaining({ organizationId: "org1", configId: "c1" }), expect.anything());
+		expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({ charityName: "Treo Eile" }), expect.anything());
 		expect(mockSync).toHaveBeenCalledWith({ organizationId: "org1" });
 		expect(result).toEqual({ ok: true, config: CURRENT });
 		expect(mockLoggerInfo).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ event: "admin_charity_changed" }));
@@ -92,6 +94,18 @@ describe("charity.admin.changeCharity", () => {
 		mockGetCurrent.mockResolvedValue(null);
 		await call(changeCharity, WRITE, ctx);
 		expect(mockEnd).not.toHaveBeenCalled();
+	});
+	it("runs the end + create inside a transaction", async () => {
+		await call(changeCharity, { ...WRITE, charityName: "Treo Eile" }, ctx);
+		expect(mockTransaction).toHaveBeenCalledTimes(1);
+	});
+	it("returns a conflict when another change won the race to end the current row", async () => {
+		mockEnd.mockResolvedValue(false);
+		const result = await call(changeCharity, { ...WRITE, charityName: "Treo Eile" }, ctx);
+		expect(result).toEqual({ ok: false, reason: "conflict" });
+		expect(mockCreate).not.toHaveBeenCalled();
+		expect(mockSync).not.toHaveBeenCalled();
+		expect(mockLoggerInfo).not.toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ event: "admin_charity_changed" }));
 	});
 });
 

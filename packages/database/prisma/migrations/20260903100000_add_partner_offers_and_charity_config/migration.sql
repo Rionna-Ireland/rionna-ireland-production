@@ -51,6 +51,11 @@ CREATE INDEX "partner_offer_organizationId_active_sortOrder_idx" ON "partner_off
 -- CreateIndex
 CREATE INDEX "charity_config_organizationId_endedAt_idx" ON "charity_config"("organizationId", "endedAt");
 
+-- CreateIndex
+-- Enforce one current (endedAt IS NULL) charity per org (S12-01 decision 3). Prisma's
+-- schema.prisma can't express a partial unique index, so this exists only here.
+CREATE UNIQUE INDEX "charity_config_organizationId_current_key" ON "charity_config"("organizationId") WHERE "endedAt" IS NULL;
+
 -- AddForeignKey
 ALTER TABLE "partner_offer" ADD CONSTRAINT "partner_offer_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
