@@ -21,6 +21,7 @@ export const updateNewsPost = adminProcedure
 			subtitle: z.string().nullable().optional(),
 			slug: z.string().optional(),
 			featuredImageUrl: z.string().nullable().optional(),
+			category: z.enum(["charity"]).nullable().optional(),
 			contentJson: z.unknown().optional(),
 			contentHtml: z.string().optional(),
 			publish: z.boolean().optional(),
@@ -47,6 +48,9 @@ export const updateNewsPost = adminProcedure
 		}
 		if (input.featuredImageUrl !== undefined) {
 			updateData.featuredImageUrl = input.featuredImageUrl;
+		}
+		if (input.category !== undefined) {
+			updateData.category = input.category;
 		}
 		if (input.contentJson !== undefined) {
 			updateData.contentJson = input.contentJson as object;

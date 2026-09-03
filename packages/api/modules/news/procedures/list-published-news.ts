@@ -35,6 +35,7 @@ export const listPublishedNews = publicProcedure
 				title: post.title,
 				subtitle: post.subtitle,
 				featuredImageUrl: post.featuredImageUrl,
+				category: post.category,
 				publishedAt: post.publishedAt,
 				author: post.author,
 			})),
