@@ -2,6 +2,7 @@
 
 import { useAdminOrganization } from "@admin/hooks/use-admin-organization";
 import { getAdminPath } from "@admin/lib/links";
+import { useHydrateOnce } from "@admin/lib/use-hydrate-once";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@repo/ui/components/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@repo/ui/components/card";
@@ -30,7 +31,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeftIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -96,23 +97,19 @@ export function PollForm({ pollId }: PollFormProps) {
 	});
 	const options = useFieldArray({ control: form.control, name: "options" });
 	const scope = form.watch("scope");
-	const hydratedForId = useRef<string | null>(null);
-
-	useEffect(() => {
-		const poll = existing.data?.poll;
-		if (!poll || poll.status !== "draft") return;
-		if (hydratedForId.current === poll.id || form.formState.isDirty) return;
-		hydratedForId.current = poll.id;
+	const draftPoll = existing.data?.poll?.status === "draft" ? existing.data.poll : null;
+	useHydrateOnce(draftPoll?.id, form.formState.isDirty, () => {
+		if (!draftPoll) return;
 		form.reset({
-			question: poll.question,
-			scope: poll.scope === "space" ? "space" : "club",
-			circleSpaceId: poll.circleSpaceId ?? undefined,
-			closesAt: poll.closesAt
-				? toDatetimeLocalValue(new Date(poll.closesAt).toISOString())
+			question: draftPoll.question,
+			scope: draftPoll.scope === "space" ? "space" : "club",
+			circleSpaceId: draftPoll.circleSpaceId ?? undefined,
+			closesAt: draftPoll.closesAt
+				? toDatetimeLocalValue(new Date(draftPoll.closesAt).toISOString())
 				: "",
-			options: poll.options.map((o) => ({ label: o.label })),
+			options: draftPoll.options.map((o) => ({ label: o.label })),
 		});
-	}, [existing.data, form]);
+	});
 
 	const isPending = create.isPending || update.isPending || publish.isPending;
 
