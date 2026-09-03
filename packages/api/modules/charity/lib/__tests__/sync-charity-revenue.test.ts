@@ -46,8 +46,26 @@ describe("syncCharityRevenue", () => {
 describe("syncAllCharityRevenue", () => {
 	it("walks every org with a current charity and counts outcomes", async () => {
 		mockListOrgIds.mockResolvedValue(["org1", "org2"]);
-		mockGetCurrent.mockResolvedValueOnce(CONFIG).mockResolvedValueOnce({ ...CONFIG, id: "c2", organizationId: "org2" });
+		mockGetCurrent
+			.mockResolvedValueOnce(CONFIG)
+			.mockResolvedValueOnce({ ...CONFIG, id: "c2", organizationId: "org2", startDate: new Date("2026-04-01T00:00:00Z") });
 		mockSum.mockResolvedValueOnce(1).mockRejectedValueOnce(new Error("boom"));
 		expect(await syncAllCharityRevenue()).toEqual({ orgs: 2, synced: 1, failed: 1 });
+	});
+
+	// D37 single-club assumption: sumPaidSubscriptionRevenueCents walks the whole Stripe
+	// account (it isn't scoped per org), so two orgs whose current charity started on the
+	// same date would otherwise redo the exact same Stripe pagination twice per cron run.
+	it("memoises the Stripe walk per since date: two orgs with the same startDate share one walk", async () => {
+		mockListOrgIds.mockResolvedValue(["org1", "org2"]);
+		mockGetCurrent
+			.mockResolvedValueOnce(CONFIG)
+			.mockResolvedValueOnce({ ...CONFIG, id: "c2", organizationId: "org2" }); // same startDate as CONFIG
+		mockSum.mockResolvedValue(490_000);
+		expect(await syncAllCharityRevenue()).toEqual({ orgs: 2, synced: 2, failed: 0 });
+		expect(mockSum).toHaveBeenCalledTimes(1);
+		expect(mockSum).toHaveBeenCalledWith({ since: CONFIG.startDate });
+		expect(mockSetRevenue).toHaveBeenCalledWith(expect.objectContaining({ configId: "c1", stripeRevenueCents: 490_000 }));
+		expect(mockSetRevenue).toHaveBeenCalledWith(expect.objectContaining({ configId: "c2", stripeRevenueCents: 490_000 }));
 	});
 });
