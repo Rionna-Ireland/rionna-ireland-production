@@ -143,6 +143,7 @@ export async function createNewsPost(data: {
 	title: string;
 	subtitle?: string | null;
 	featuredImageUrl?: string | null;
+	category?: string | null;
 	contentJson: Prisma.InputJsonValue;
 	contentHtml: string;
 	publishedAt?: Date | null;
@@ -170,6 +171,7 @@ export async function updateNewsPost(
 		subtitle?: string | null;
 		slug?: string;
 		featuredImageUrl?: string | null;
+		category?: string | null;
 		contentJson?: Prisma.InputJsonValue;
 		contentHtml?: string;
 		publishedAt?: Date | null;
@@ -216,5 +218,15 @@ export async function releaseNewsPostNotification(id: string): Promise<void> {
 	await db.newsPost.updateMany({
 		where: { id },
 		data: { notificationSentAt: null },
+	});
+}
+
+/** S12-01: impact stories = published news posts tagged `category = "charity"`. */
+export async function getPublishedCharityStories(args: { organizationId: string; limit: number }) {
+	return db.newsPost.findMany({
+		where: { organizationId: args.organizationId, category: "charity", publishedAt: { not: null } },
+		orderBy: { publishedAt: "desc" },
+		take: args.limit,
+		select: { id: true, slug: true, title: true, subtitle: true, featuredImageUrl: true, publishedAt: true },
 	});
 }
