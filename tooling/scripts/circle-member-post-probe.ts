@@ -476,86 +476,106 @@ async function probeAdminComment() {
 
 	const spaceId = Number(process.env.SPACE_ID ?? 2825328); // Inside Track
 
-	// 1. Create a post authored as member A via Admin v2 user_email override.
-	const created = await adminCreatePostAttempt(spaceId, "[probe admin-comment] member A post", "admin-comment:author-a", {
-		user_email: fullA.email,
-		is_liking_enabled: true,
-		is_comments_enabled: true,
-	});
-	const postId = created.id;
-	if (!postId) throw new Error(`could not create post authored as member A: ${s(created.data)}`);
-	console.log("\n[admin-comment] created post id:", postId, "author user_id:", created.author?.user_id);
-
-	// 2. Mint member B's token, POST a comment on it (mandatory {comment:{...}} wrapper).
-	await sleep(800);
-	const tokenB = await mintMemberToken(memberB.id);
-	await sleep(800);
-	const comment = await commentOnPostAsMember(tokenB, postId, "member-B-comment");
-	const commentId: number | undefined = comment.data?.comment?.id ?? comment.data?.id;
-	console.log("[admin-comment] member B comment id:", commentId, "status:", comment.status);
-
-	// 3a. Diagnostic: check member A's notifications BEFORE the admin delete, with a
-	// generous wait, so a slow/async notification job isn't mistaken for "never sent"
-	// (the admin-delete in step 3 below could otherwise suppress it before it lands).
-	let preDeleteMatching: any[] = [];
-	if (commentId) {
-		await sleep(4000);
-		const tokenAPre = await mintMemberToken(memberA.id);
-		const preDeleteNotifications = await getNotificationsAsMember(tokenAPre, "member A, pre-delete");
-		preDeleteMatching = preDeleteNotifications.filter((n: any) => {
-			const blob = JSON.stringify(n);
-			return blob.includes(String(commentId)) || blob.includes(String(postId));
-		});
-		console.log("\n[admin-comment] PRE-DELETE notifications referencing post/comment:", preDeleteMatching.length);
-		if (preDeleteMatching.length) console.log("  matched:", s(preDeleteMatching, 1500));
-	}
-
+	// Tracked so `finally` can clean up whatever got created even if a later step throws.
+	let postId: number | undefined;
+	let commentId: number | undefined;
+	let comment: { status: number; data: any } | undefined;
 	let deleteResult: { status: number; data: any; route: string } | undefined;
-	if (commentId) {
-		// 3. Admin v2 delete of member B's comment.
+	let preDeleteMatching: any[] = [];
+	let matching: any[] = [];
+	let notifications: any[] = [];
+
+	try {
+		// 1. Create a post authored as member A via Admin v2 user_email override.
+		const created = await adminCreatePostAttempt(spaceId, "[probe admin-comment] member A post", "admin-comment:author-a", {
+			user_email: fullA.email,
+			is_liking_enabled: true,
+			is_comments_enabled: true,
+		});
+		postId = created.id;
+		if (!postId) throw new Error(`could not create post authored as member A: ${s(created.data)}`);
+		console.log("\n[admin-comment] created post id:", postId, "author user_id:", created.author?.user_id);
+
+		// 2. Mint member B's token, POST a comment on it (mandatory {comment:{...}} wrapper).
 		await sleep(800);
-		deleteResult = await adminDeleteComment(commentId, postId);
-	} else {
-		console.log("\n[admin-comment] no comment id captured — skipping admin delete + notification check");
+		const tokenB = await mintMemberToken(memberB.id);
+		await sleep(800);
+		comment = await commentOnPostAsMember(tokenB, postId, "member-B-comment");
+		commentId = comment.data?.comment?.id ?? comment.data?.id;
+		console.log("[admin-comment] member B comment id:", commentId, "status:", comment.status);
+
+		// 3a. Diagnostic: check member A's notifications BEFORE the admin delete, with a
+		// generous wait, so a slow/async notification job isn't mistaken for "never sent"
+		// (the admin-delete in step 3 below could otherwise suppress it before it lands).
+		if (commentId) {
+			await sleep(4000);
+			const tokenAPre = await mintMemberToken(memberA.id);
+			const preDeleteNotifications = await getNotificationsAsMember(tokenAPre, "member A, pre-delete");
+			preDeleteMatching = preDeleteNotifications.filter((n: any) => {
+				const blob = JSON.stringify(n);
+				return blob.includes(String(commentId)) || blob.includes(String(postId));
+			});
+			console.log("\n[admin-comment] PRE-DELETE notifications referencing post/comment:", preDeleteMatching.length);
+			if (preDeleteMatching.length) console.log("  matched:", s(preDeleteMatching, 1500));
+		}
+
+		if (commentId) {
+			// 3. Admin v2 delete of member B's comment.
+			await sleep(800);
+			deleteResult = await adminDeleteComment(commentId, postId);
+			if (deleteResult.status >= 200 && deleteResult.status < 300) commentId = undefined; // already gone, don't double-delete in finally
+		} else {
+			console.log("\n[admin-comment] no comment id captured — skipping admin delete + notification check");
+		}
+
+		// 4. As member A, check for a reply notification referencing this comment/post
+		// (post-delete — matches the brief's specified order).
+		await sleep(1500);
+		const tokenA = await mintMemberToken(memberA.id);
+		notifications = await getNotificationsAsMember(tokenA, "member A, post-delete");
+		const commentIdForMatch = comment?.data?.comment?.id ?? comment?.data?.id;
+		matching = notifications.filter((n: any) => {
+			const blob = JSON.stringify(n);
+			return (commentIdForMatch && blob.includes(String(commentIdForMatch))) || blob.includes(String(postId));
+		});
+		console.log("\n[admin-comment] POST-DELETE notifications referencing post/comment:", matching.length);
+		if (matching.length) console.log("  matched:", s(matching, 1500));
+
+		console.log("\n=== ADMIN-COMMENT SUMMARY ===");
+		console.log(
+			JSON.stringify(
+				{
+					postId,
+					commentId: commentIdForMatch ?? null,
+					commentCreateStatus: comment?.status ?? null,
+					adminDeleteRoute: deleteResult?.route ?? null,
+					adminDeleteStatus: deleteResult?.status ?? null,
+					preDeleteNotificationFound: preDeleteMatching.length > 0,
+					postDeleteNotificationFound: matching.length > 0,
+					postDeleteNotificationCount: notifications.length,
+				},
+				null,
+				2,
+			),
+		);
+	} finally {
+		// 5. Cleanup: guaranteed even if a step above threw (token mint failure, comment
+		// call throwing, network blip) — delete the comment (if it's still outstanding)
+		// via Admin v2, ignoring 404, then the post via Admin v2. Skipped when KEEP=1.
+		if (process.env.KEEP === "1") {
+			console.log("\nKEEP=1 — leaving created content:", { postId, commentId });
+		} else {
+			console.log("\ncleaning up...");
+			if (commentId && postId) {
+				const cleanupDelete = await adminDeleteComment(commentId, postId);
+				console.log(`[admin-comment finally] comment ${commentId} cleanup status:`, cleanupDelete.status);
+			}
+			if (postId) {
+				const postCleanupStatus = await adminDeletePost(postId);
+				console.log(`[admin-comment finally] post ${postId} cleanup status:`, postCleanupStatus);
+			}
+		}
 	}
-
-	// 4. As member A, check for a reply notification referencing this comment/post
-	// (post-delete — matches the brief's specified order).
-	await sleep(1500);
-	const tokenA = await mintMemberToken(memberA.id);
-	const notifications = await getNotificationsAsMember(tokenA, "member A, post-delete");
-	const matching = notifications.filter((n: any) => {
-		const blob = JSON.stringify(n);
-		return (commentId && blob.includes(String(commentId))) || blob.includes(String(postId));
-	});
-	console.log("\n[admin-comment] POST-DELETE notifications referencing post/comment:", matching.length);
-	if (matching.length) console.log("  matched:", s(matching, 1500));
-
-	// 5. Cleanup: Admin v2 DELETE /posts/{postId}.
-	if (process.env.KEEP === "1") {
-		console.log("\nKEEP=1 — leaving created content:", { postId, commentId });
-	} else {
-		console.log("\ncleaning up...");
-		await adminDeletePost(postId);
-	}
-
-	console.log("\n=== ADMIN-COMMENT SUMMARY ===");
-	console.log(
-		JSON.stringify(
-			{
-				postId,
-				commentId: commentId ?? null,
-				commentCreateStatus: comment.status,
-				adminDeleteRoute: deleteResult?.route ?? null,
-				adminDeleteStatus: deleteResult?.status ?? null,
-				preDeleteNotificationFound: preDeleteMatching.length > 0,
-				postDeleteNotificationFound: matching.length > 0,
-				postDeleteNotificationCount: notifications.length,
-			},
-			null,
-			2,
-		),
-	);
 }
 
 async function main() {
