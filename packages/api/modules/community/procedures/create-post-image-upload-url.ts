@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { ORPCError } from "@orpc/server";
-import { db } from "@repo/database";
+import { db, parseOrgMetadata } from "@repo/database";
 import { getSignedUploadUrl } from "@repo/storage";
 import { z } from "zod";
 
@@ -35,6 +35,12 @@ export const createPostImageUploadUrl = protectedProcedure
 			input: { organizationId, filename },
 			context: { user },
 		}): Promise<CreatePostImageUploadUrlResult> => {
+			const org = await db.organization.findUnique({ where: { id: organizationId } });
+			const metadata = parseOrgMetadata(org?.metadata ?? null);
+			if (!org || metadata.features?.communityPosting === false) {
+				throw new ORPCError("FORBIDDEN");
+			}
+
 			const member = await db.member.findFirst({
 				where: { userId: user.id, organizationId },
 				select: { id: true },

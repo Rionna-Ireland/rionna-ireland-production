@@ -1,19 +1,28 @@
 import { call } from "@orpc/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockGetSession, mockMemberFindFirst, mockGetSignedUploadUrl, mockRandomUUID } =
-	vi.hoisted(() => ({
-		mockGetSession: vi.fn(),
-		mockMemberFindFirst: vi.fn(),
-		mockGetSignedUploadUrl: vi.fn(),
-		mockRandomUUID: vi.fn(),
-	}));
+const {
+	mockGetSession,
+	mockOrgFindUnique,
+	mockMemberFindFirst,
+	mockGetSignedUploadUrl,
+	mockRandomUUID,
+} = vi.hoisted(() => ({
+	mockGetSession: vi.fn(),
+	mockOrgFindUnique: vi.fn(),
+	mockMemberFindFirst: vi.fn(),
+	mockGetSignedUploadUrl: vi.fn(),
+	mockRandomUUID: vi.fn(),
+}));
 
 vi.mock("@repo/auth", () => ({ auth: { api: { getSession: mockGetSession } } }));
+// Mock @repo/database wholesale (no importActual) — the real module needs DATABASE_URL.
 vi.mock("@repo/database", () => ({
 	db: {
+		organization: { findUnique: mockOrgFindUnique },
 		member: { findFirst: mockMemberFindFirst },
 	},
+	parseOrgMetadata: (raw: string | null) => (raw ? JSON.parse(raw) : {}),
 }));
 vi.mock("@repo/storage", () => ({
 	getSignedUploadUrl: mockGetSignedUploadUrl,
@@ -37,6 +46,7 @@ const okInput = {
 beforeEach(() => {
 	vi.clearAllMocks();
 	mockGetSession.mockResolvedValue({ session: { id: "s1" }, user: USER });
+	mockOrgFindUnique.mockResolvedValue({ id: "org1", slug: "org-slug", metadata: null });
 	mockMemberFindFirst.mockResolvedValue({ id: "m1" });
 	mockGetSignedUploadUrl.mockResolvedValue("https://signed.example/upload");
 	mockRandomUUID.mockReturnValue("uuid-1");
@@ -52,6 +62,18 @@ describe("community.createPostImageUploadUrl", () => {
 			signedUploadUrl: "https://signed.example/upload",
 			path: "community/org1/m1/uuid-1-photo.png",
 		});
+	});
+
+	it("rejects with FORBIDDEN when communityPosting is killed for the org", async () => {
+		mockOrgFindUnique.mockResolvedValue({
+			id: "org1",
+			slug: "org-slug",
+			metadata: JSON.stringify({ features: { communityPosting: false } }),
+		});
+		await expect(call(createPostImageUploadUrl, okInput, ctx)).rejects.toMatchObject({
+			code: "FORBIDDEN",
+		});
+		expect(mockGetSignedUploadUrl).not.toHaveBeenCalled();
 	});
 
 	it("rejects a non-member with FORBIDDEN", async () => {

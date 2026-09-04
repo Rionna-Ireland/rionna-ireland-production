@@ -16,7 +16,7 @@ const {
 	mockGetHorseById,
 	mockProvisionHorseSpace,
 	mockOrgFindUnique,
-	mockOrgUpdate,
+	mockOrgUpdateMany,
 } = vi.hoisted(() => ({
 	mockGetSession: vi.fn(),
 	mockCreateHorse: vi.fn(),
@@ -24,7 +24,7 @@ const {
 	mockGetHorseById: vi.fn(),
 	mockProvisionHorseSpace: vi.fn(),
 	mockOrgFindUnique: vi.fn(),
-	mockOrgUpdate: vi.fn(),
+	mockOrgUpdateMany: vi.fn(),
 }));
 
 vi.mock("@repo/auth", () => ({ auth: { api: { getSession: mockGetSession } } }));
@@ -34,7 +34,7 @@ vi.mock("@repo/database", () => ({
 	getHorseByOrgAndSlug: mockGetHorseByOrgAndSlug,
 	getHorseById: mockGetHorseById,
 	db: {
-		organization: { findUnique: mockOrgFindUnique, update: mockOrgUpdate },
+		organization: { findUnique: mockOrgFindUnique, updateMany: mockOrgUpdateMany },
 	},
 	parseOrgMetadata: (raw: string | null) => (raw ? JSON.parse(raw) : {}),
 }));
@@ -71,7 +71,7 @@ beforeEach(() => {
 	});
 	mockProvisionHorseSpace.mockResolvedValue(undefined);
 	mockOrgFindUnique.mockResolvedValue({ id: "org1", metadata: JSON.stringify({}) });
-	mockOrgUpdate.mockResolvedValue({});
+	mockOrgUpdateMany.mockResolvedValue({ count: 1 });
 });
 
 describe("createHorse — Circle space provisioning (S2-09)", () => {
@@ -138,8 +138,8 @@ describe("createHorse — Circle space provisioning (S2-09)", () => {
 	it("defaults the new Circle space to member-posting on (S12-02a)", async () => {
 		await call(createHorse, { organizationId: "org1", name: "Pink Diamond Lass" }, ctx);
 
-		expect(mockOrgUpdate).toHaveBeenCalledWith({
-			where: { id: "org1" },
+		expect(mockOrgUpdateMany).toHaveBeenCalledWith({
+			where: { id: "org1", metadata: JSON.stringify({}) },
 			data: {
 				metadata: JSON.stringify({
 					circle: { spaces: { "777": { memberPosting: true, hideChip: false } } },
@@ -159,13 +159,17 @@ describe("createHorse — Circle space provisioning (S2-09)", () => {
 
 		await call(createHorse, { organizationId: "org1", name: "Pink Diamond Lass" }, ctx);
 
-		expect(mockOrgUpdate).not.toHaveBeenCalled();
+		expect(mockOrgUpdateMany).not.toHaveBeenCalled();
 	});
 
 	it("never fails horse creation when the member-posting default write throws", async () => {
 		mockOrgFindUnique.mockRejectedValue(new Error("db down"));
 
-		const result = await call(createHorse, { organizationId: "org1", name: "Pink Diamond Lass" }, ctx);
+		const result = await call(
+			createHorse,
+			{ organizationId: "org1", name: "Pink Diamond Lass" },
+			ctx,
+		);
 
 		expect(result).toMatchObject({ circleSpaceId: "777", circleSpaceStatus: "active" });
 	});
@@ -177,6 +181,6 @@ describe("createHorse — Circle space provisioning (S2-09)", () => {
 			ctx,
 		);
 
-		expect(mockOrgUpdate).not.toHaveBeenCalled();
+		expect(mockOrgUpdateMany).not.toHaveBeenCalled();
 	});
 });

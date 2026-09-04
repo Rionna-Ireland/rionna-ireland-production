@@ -9,21 +9,26 @@
 import { call } from "@orpc/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockGetSession, mockGetHorseById, mockProvisionHorseSpace, mockOrgFindUnique, mockOrgUpdate } =
-	vi.hoisted(() => ({
-		mockGetSession: vi.fn(),
-		mockGetHorseById: vi.fn(),
-		mockProvisionHorseSpace: vi.fn(),
-		mockOrgFindUnique: vi.fn(),
-		mockOrgUpdate: vi.fn(),
-	}));
+const {
+	mockGetSession,
+	mockGetHorseById,
+	mockProvisionHorseSpace,
+	mockOrgFindUnique,
+	mockOrgUpdateMany,
+} = vi.hoisted(() => ({
+	mockGetSession: vi.fn(),
+	mockGetHorseById: vi.fn(),
+	mockProvisionHorseSpace: vi.fn(),
+	mockOrgFindUnique: vi.fn(),
+	mockOrgUpdateMany: vi.fn(),
+}));
 
 vi.mock("@repo/auth", () => ({ auth: { api: { getSession: mockGetSession } } }));
 
 vi.mock("@repo/database", () => ({
 	getHorseById: mockGetHorseById,
 	db: {
-		organization: { findUnique: mockOrgFindUnique, update: mockOrgUpdate },
+		organization: { findUnique: mockOrgFindUnique, updateMany: mockOrgUpdateMany },
 	},
 	parseOrgMetadata: (raw: string | null) => (raw ? JSON.parse(raw) : {}),
 }));
@@ -47,7 +52,7 @@ beforeEach(() => {
 	mockGetSession.mockResolvedValue({ user: ADMIN, session: SESSION });
 	mockProvisionHorseSpace.mockResolvedValue({ ok: true });
 	mockOrgFindUnique.mockResolvedValue({ id: "org1", metadata: JSON.stringify({}) });
-	mockOrgUpdate.mockResolvedValue({});
+	mockOrgUpdateMany.mockResolvedValue({ count: 1 });
 });
 
 describe("retryHorseSpaceProvisioning (S2-09)", () => {
@@ -117,8 +122,8 @@ describe("retryHorseSpaceProvisioning (S2-09)", () => {
 
 		await call(retryHorseSpaceProvisioning, { horseId: "h1" }, ctx);
 
-		expect(mockOrgUpdate).toHaveBeenCalledWith({
-			where: { id: "org1" },
+		expect(mockOrgUpdateMany).toHaveBeenCalledWith({
+			where: { id: "org1", metadata: JSON.stringify({}) },
 			data: {
 				metadata: JSON.stringify({
 					circle: { spaces: { "777": { memberPosting: true, hideChip: false } } },

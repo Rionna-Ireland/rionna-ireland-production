@@ -1,17 +1,17 @@
 import { call } from "@orpc/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockGetSession, mockOrgFindUnique, mockOrgUpdate } = vi.hoisted(() => ({
+const { mockGetSession, mockOrgFindUnique, mockOrgUpdateMany } = vi.hoisted(() => ({
 	mockGetSession: vi.fn(),
 	mockOrgFindUnique: vi.fn(),
-	mockOrgUpdate: vi.fn(),
+	mockOrgUpdateMany: vi.fn(),
 }));
 
 vi.mock("@repo/auth", () => ({ auth: { api: { getSession: mockGetSession } } }));
 // Mock @repo/database wholesale (no importActual) — the real module needs DATABASE_URL.
 vi.mock("@repo/database", () => ({
 	db: {
-		organization: { findUnique: mockOrgFindUnique, update: mockOrgUpdate },
+		organization: { findUnique: mockOrgFindUnique, updateMany: mockOrgUpdateMany },
 	},
 	parseOrgMetadata: (raw: string | null) => (raw ? JSON.parse(raw) : {}),
 }));
@@ -31,23 +31,21 @@ const SPACE_ID = "42";
 beforeEach(() => {
 	vi.clearAllMocks();
 	mockGetSession.mockResolvedValue({ user: ADMIN, session: SESSION });
-	mockOrgUpdate.mockResolvedValue({});
+	mockOrgUpdateMany.mockResolvedValue({ count: 1 });
 });
 
 describe("admin.community.setSpaceSettings (S12-02a)", () => {
 	it("merges memberPosting into circle.spaces[spaceId], preserving other spaces and keys", async () => {
-		mockOrgFindUnique.mockResolvedValue({
-			id: ORG_ID,
-			metadata: JSON.stringify({
-				circle: {
-					communitySpaceId: "1",
-					spaces: {
-						"1": { memberPosting: false },
-						[SPACE_ID]: { memberPosting: false, hideChip: true },
-					},
+		const rawMetadata = JSON.stringify({
+			circle: {
+				communitySpaceId: "1",
+				spaces: {
+					"1": { memberPosting: false },
+					[SPACE_ID]: { memberPosting: false, hideChip: true },
 				},
-			}),
+			},
 		});
+		mockOrgFindUnique.mockResolvedValue({ id: ORG_ID, metadata: rawMetadata });
 
 		const result = await call(
 			setSpaceSettings,
@@ -56,8 +54,8 @@ describe("admin.community.setSpaceSettings (S12-02a)", () => {
 		);
 
 		expect(result).toEqual({ ok: true, settings: { memberPosting: true, hideChip: true } });
-		expect(mockOrgUpdate).toHaveBeenCalledWith({
-			where: { id: ORG_ID },
+		expect(mockOrgUpdateMany).toHaveBeenCalledWith({
+			where: { id: ORG_ID, metadata: rawMetadata },
 			data: {
 				metadata: JSON.stringify({
 					circle: {
@@ -70,6 +68,52 @@ describe("admin.community.setSpaceSettings (S12-02a)", () => {
 				}),
 			},
 		});
+	});
+
+	it("retries once when the first compare-and-set misses, then succeeds with the re-read value", async () => {
+		const staleMetadata = JSON.stringify({
+			circle: { spaces: { [SPACE_ID]: { memberPosting: false } } },
+		});
+		const freshMetadata = JSON.stringify({
+			circle: { spaces: { [SPACE_ID]: { memberPosting: false, hideChip: true } } },
+		});
+		mockOrgFindUnique
+			.mockResolvedValueOnce({ id: ORG_ID, metadata: staleMetadata })
+			.mockResolvedValueOnce({ id: ORG_ID, metadata: freshMetadata });
+		mockOrgUpdateMany.mockResolvedValueOnce({ count: 0 }).mockResolvedValueOnce({ count: 1 });
+
+		const result = await call(
+			setSpaceSettings,
+			{ organizationId: ORG_ID, spaceId: SPACE_ID, memberPosting: true },
+			ctx,
+		);
+
+		expect(result).toEqual({ ok: true, settings: { memberPosting: true, hideChip: true } });
+		expect(mockOrgFindUnique).toHaveBeenCalledTimes(2);
+		expect(mockOrgUpdateMany).toHaveBeenCalledTimes(2);
+		expect(mockOrgUpdateMany).toHaveBeenNthCalledWith(2, {
+			where: { id: ORG_ID, metadata: freshMetadata },
+			data: {
+				metadata: JSON.stringify({
+					circle: { spaces: { [SPACE_ID]: { memberPosting: true, hideChip: true } } },
+				}),
+			},
+		});
+	});
+
+	it("throws after three straight compare-and-set misses", async () => {
+		mockOrgFindUnique.mockResolvedValue({ id: ORG_ID, metadata: JSON.stringify({}) });
+		mockOrgUpdateMany.mockResolvedValue({ count: 0 });
+
+		await expect(
+			call(
+				setSpaceSettings,
+				{ organizationId: ORG_ID, spaceId: SPACE_ID, memberPosting: true },
+				ctx,
+			),
+		).rejects.toThrow();
+		expect(mockOrgFindUnique).toHaveBeenCalledTimes(3);
+		expect(mockOrgUpdateMany).toHaveBeenCalledTimes(3);
 	});
 
 	it("defaults hideChip to false for a space with no prior entry", async () => {
@@ -88,7 +132,11 @@ describe("admin.community.setSpaceSettings (S12-02a)", () => {
 		mockOrgFindUnique.mockResolvedValue({ id: ORG_ID, metadata: JSON.stringify({}) });
 		const { logger } = await import("@repo/logs");
 
-		await call(setSpaceSettings, { organizationId: ORG_ID, spaceId: SPACE_ID, hideChip: true }, ctx);
+		await call(
+			setSpaceSettings,
+			{ organizationId: ORG_ID, spaceId: SPACE_ID, hideChip: true },
+			ctx,
+		);
 
 		expect(logger.info).toHaveBeenCalledWith(
 			expect.any(String),
@@ -110,7 +158,11 @@ describe("admin.community.setSpaceSettings (S12-02a)", () => {
 
 	it("throws FORBIDDEN when organizationId does not match the caller's active org", async () => {
 		await expect(
-			call(setSpaceSettings, { organizationId: "other-org", spaceId: SPACE_ID, hideChip: true }, ctx),
+			call(
+				setSpaceSettings,
+				{ organizationId: "other-org", spaceId: SPACE_ID, hideChip: true },
+				ctx,
+			),
 		).rejects.toThrow();
 		expect(mockOrgFindUnique).not.toHaveBeenCalled();
 	});
