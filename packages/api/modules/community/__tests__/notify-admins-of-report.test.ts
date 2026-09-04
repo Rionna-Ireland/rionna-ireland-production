@@ -88,6 +88,21 @@ describe("notifyAdminsOfReport", () => {
 		);
 	});
 
+	it("catches a rejected db.member.findMany and never throws", async () => {
+		mockMemberFindMany.mockRejectedValueOnce(new Error("db down"));
+
+		await expect(
+			notifyAdminsOfReport({ organizationId: ORG_ID, reason: "spam", excerpt: "x" }),
+		).resolves.toBeUndefined();
+
+		expect(mockSendEmail).not.toHaveBeenCalled();
+		expect(mockLoggerWarn).toHaveBeenCalledTimes(1);
+		expect(mockLoggerWarn).toHaveBeenCalledWith(
+			"moderation.report_notify_failed",
+			expect.objectContaining({ organizationId: ORG_ID }),
+		);
+	});
+
 	it("skips admins without an email and sends nothing when there are none", async () => {
 		mockMemberFindMany.mockResolvedValue([{ user: { email: null } }]);
 		await notifyAdminsOfReport({ organizationId: ORG_ID, reason: "spam", excerpt: "x" });

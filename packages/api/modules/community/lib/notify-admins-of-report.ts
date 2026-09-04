@@ -22,28 +22,36 @@ export async function notifyAdminsOfReport(p: {
 	reason: ReportReason;
 	excerpt: string;
 }): Promise<void> {
-	const admins = await db.member.findMany({
-		where: { organizationId: p.organizationId, role: { in: PRIVILEGED_ROLES } },
-		select: { user: { select: { email: true } } },
-	});
+	try {
+		const admins = await db.member.findMany({
+			where: { organizationId: p.organizationId, role: { in: PRIVILEGED_ROLES } },
+			select: { user: { select: { email: true } } },
+		});
 
-	const link = `${getBaseUrl(process.env.NEXT_PUBLIC_SAAS_URL, 3000)}/admin/moderation`;
-	const message = `${REPORT_REASON_LABELS[p.reason]}: "${p.excerpt}"`;
+		const link = `${getBaseUrl(process.env.NEXT_PUBLIC_SAAS_URL, 3000)}/admin/moderation`;
+		const message = `${REPORT_REASON_LABELS[p.reason]}: "${p.excerpt}"`;
 
-	for (const admin of admins) {
-		const email = admin.user.email;
-		if (!email) continue;
-		try {
-			await sendEmail({
-				to: email,
-				templateId: "notification",
-				context: { title: "New content report", message, link },
-			});
-		} catch (error) {
-			logger.warn("moderation.report_email_failed", {
-				organizationId: p.organizationId,
-				error: String(error),
-			});
+		for (const admin of admins) {
+			const email = admin.user.email;
+			if (!email) continue;
+			try {
+				await sendEmail({
+					to: email,
+					templateId: "notification",
+					context: { title: "New content report", message, link },
+				});
+			} catch (error) {
+				logger.warn("moderation.report_email_failed", {
+					organizationId: p.organizationId,
+					error: String(error),
+				});
+			}
 		}
+	} catch (error) {
+		logger.warn("moderation.report_notify_failed", {
+			organizationId: p.organizationId,
+			error: String(error),
+		});
+		return;
 	}
 }
