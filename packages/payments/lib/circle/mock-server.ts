@@ -441,6 +441,9 @@ export class MockServerCircleService implements CircleService {
 		if (params.attachments && params.attachments.length > 0) {
 			body.attachments = params.attachments;
 		}
+		if (params.authorEmail) {
+			body.user_email = params.authorEmail;
+		}
 
 		let response: Response;
 		try {
@@ -487,6 +490,26 @@ export class MockServerCircleService implements CircleService {
 
 		if (!response.ok && response.status !== 404) {
 			const raw = await this.readError(response, "Mock server delete post failed");
+			const { reason, retriable } = classifyStatus(response.status);
+			return { ok: false, reason, retriable, raw };
+		}
+
+		return { ok: true, data: undefined };
+	}
+
+	async deleteComment(circleCommentId: string): Promise<CircleCallOutcome<void>> {
+		let response: Response;
+		try {
+			response = await fetch(`${this.baseUrl}/api/admin/v2/comments/${circleCommentId}`, {
+				method: "DELETE",
+				headers: this.adminHeaders(),
+			});
+		} catch (err) {
+			return { ok: false, reason: "network", retriable: true, raw: err };
+		}
+
+		if (!response.ok) {
+			const raw = await this.readError(response, "Mock server delete comment failed");
 			const { reason, retriable } = classifyStatus(response.status);
 			return { ok: false, reason, retriable, raw };
 		}

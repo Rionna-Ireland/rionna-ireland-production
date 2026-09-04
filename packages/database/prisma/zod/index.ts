@@ -191,6 +191,18 @@ export const StripeEventLogScalarFieldEnumSchema = z.enum(['id', 'type', 'proces
 
 export type StripeEventLogScalarFieldEnum = z.infer<typeof StripeEventLogScalarFieldEnumSchema>;
 
+// File: CommunityPostScalarFieldEnum.schema.ts
+
+export const CommunityPostScalarFieldEnumSchema = z.enum(['id', 'organizationId', 'memberId', 'circlePostId', 'circleSpaceId', 'title', 'excerpt', 'hasImage', 'createdAt', 'deletedAt', 'deletedBy'])
+
+export type CommunityPostScalarFieldEnum = z.infer<typeof CommunityPostScalarFieldEnumSchema>;
+
+// File: ModerationFlagScalarFieldEnum.schema.ts
+
+export const ModerationFlagScalarFieldEnumSchema = z.enum(['id', 'organizationId', 'source', 'surface', 'memberId', 'targetPostId', 'targetCommentId', 'targetSpaceId', 'targetAuthorName', 'contentExcerpt', 'matchedTerms', 'reason', 'note', 'status', 'resolvedAt', 'resolvedByUserId', 'createdAt'])
+
+export type ModerationFlagScalarFieldEnum = z.infer<typeof ModerationFlagScalarFieldEnumSchema>;
+
 // File: SortOrder.schema.ts
 
 export const SortOrderSchema = z.enum(['asc', 'desc'])
@@ -835,4 +847,48 @@ export const StripeEventLogSchema = z.object({
 });
 
 export type StripeEventLogType = z.infer<typeof StripeEventLogSchema>;
+
+
+// File: CommunityPost.schema.ts
+
+export const CommunityPostSchema = z.object({
+  id: z.string(),
+  organizationId: z.string(),
+  memberId: z.string(),
+  circlePostId: z.string(),
+  circleSpaceId: z.string(),
+  title: z.string().nullish(),
+  excerpt: z.string(),
+  hasImage: z.boolean(),
+  createdAt: z.date(),
+  deletedAt: z.date().nullish(),
+  deletedBy: z.string().nullish(),
+});
+
+export type CommunityPostType = z.infer<typeof CommunityPostSchema>;
+
+
+// File: ModerationFlag.schema.ts
+
+export const ModerationFlagSchema = z.object({
+  id: z.string(),
+  organizationId: z.string(),
+  source: z.string(),
+  surface: z.string(),
+  memberId: z.string(),
+  targetPostId: z.string().nullish(),
+  targetCommentId: z.string().nullish(),
+  targetSpaceId: z.string().nullish(),
+  targetAuthorName: z.string().nullish(),
+  contentExcerpt: z.string(),
+  matchedTerms: z.array(z.string()),
+  reason: z.string().nullish(),
+  note: z.string().nullish(),
+  status: z.string().default("open"),
+  resolvedAt: z.date().nullish(),
+  resolvedByUserId: z.string().nullish(),
+  createdAt: z.date(),
+});
+
+export type ModerationFlagType = z.infer<typeof ModerationFlagSchema>;
 

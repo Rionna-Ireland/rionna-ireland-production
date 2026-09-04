@@ -33,6 +33,7 @@ export const getMemberPost = protectedProcedure
 			select: { circleMemberId: true },
 		});
 		if (!member?.circleMemberId) return null;
+		const memberCircleId = member.circleMemberId;
 
 		const service = createCircleService(org.slug);
 		const tokenOutcome = await service.getMemberToken(member.circleMemberId);
@@ -62,5 +63,9 @@ export const getMemberPost = protectedProcedure
 		const envelope = objectValue(data);
 		const post = objectValue(envelope?.post) ?? objectValue(envelope?.record) ?? envelope;
 		if (!post) return null;
-		return toPostDetail(post, { communityDomain: metadata.circle?.communityDomain });
+		const detail = toPostDetail(post, { communityDomain: metadata.circle?.communityDomain });
+		return {
+			...detail,
+			isOwn: detail.authorCircleMemberId !== null && detail.authorCircleMemberId === memberCircleId,
+		};
 	});

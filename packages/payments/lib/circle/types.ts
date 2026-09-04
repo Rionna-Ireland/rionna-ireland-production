@@ -146,6 +146,14 @@ export interface CreatePostParams {
 	attachments?: string[];
 	/** Optional dedup key; a retry with the same key must not double-post. */
 	idempotencyKey?: string;
+	/**
+	 * When set, Admin API v2 authors the post as this member (`user_email` in
+	 * the request body) instead of the admin/app identity — Circle silently
+	 * ignores `community_member_id` in favour of this, so don't send both
+	 * expecting a choice. Probe-verified: likes/comments flags are honoured
+	 * for the resulting post as normal.
+	 */
+	authorEmail?: string;
 }
 
 export interface CreatePostResult {
@@ -400,6 +408,13 @@ export interface CircleService {
 	 * treated as success — the desired end-state is already met.
 	 */
 	deletePost(circlePostId: string): Promise<CircleCallOutcome<void>>;
+	/**
+	 * Delete a comment by its Circle comment id (Admin API v2 —
+	 * `DELETE /admin/v2/comments/{comment_id}`, the route Task 1's probe
+	 * confirmed works). Unlike `deletePost`, a 404 here is surfaced as a
+	 * `not_found` failure rather than treated as already-gone success.
+	 */
+	deleteComment(circleCommentId: string): Promise<CircleCallOutcome<void>>;
 	/** Register + upload image bytes, returning a signed_id for `attachments`. */
 	uploadImage(params: UploadImageParams): Promise<CircleCallOutcome<UploadImageResult>>;
 	/**

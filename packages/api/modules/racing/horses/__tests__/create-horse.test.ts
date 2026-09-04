@@ -15,12 +15,16 @@ const {
 	mockGetHorseByOrgAndSlug,
 	mockGetHorseById,
 	mockProvisionHorseSpace,
+	mockOrgFindUnique,
+	mockOrgUpdateMany,
 } = vi.hoisted(() => ({
 	mockGetSession: vi.fn(),
 	mockCreateHorse: vi.fn(),
 	mockGetHorseByOrgAndSlug: vi.fn(),
 	mockGetHorseById: vi.fn(),
 	mockProvisionHorseSpace: vi.fn(),
+	mockOrgFindUnique: vi.fn(),
+	mockOrgUpdateMany: vi.fn(),
 }));
 
 vi.mock("@repo/auth", () => ({ auth: { api: { getSession: mockGetSession } } }));
@@ -29,10 +33,18 @@ vi.mock("@repo/database", () => ({
 	createHorse: mockCreateHorse,
 	getHorseByOrgAndSlug: mockGetHorseByOrgAndSlug,
 	getHorseById: mockGetHorseById,
+	db: {
+		organization: { findUnique: mockOrgFindUnique, updateMany: mockOrgUpdateMany },
+	},
+	parseOrgMetadata: (raw: string | null) => (raw ? JSON.parse(raw) : {}),
 }));
 
 vi.mock("@repo/payments/lib/circle-horse-provisioning", () => ({
 	provisionHorseSpace: mockProvisionHorseSpace,
+}));
+
+vi.mock("@repo/logs", () => ({
+	logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), log: vi.fn() },
 }));
 
 import { createHorse } from "../procedures/create-horse";
@@ -58,6 +70,8 @@ beforeEach(() => {
 		circleSpaceStatus: "active",
 	});
 	mockProvisionHorseSpace.mockResolvedValue(undefined);
+	mockOrgFindUnique.mockResolvedValue({ id: "org1", metadata: JSON.stringify({}) });
+	mockOrgUpdateMany.mockResolvedValue({ count: 1 });
 });
 
 describe("createHorse — Circle space provisioning (S2-09)", () => {
@@ -119,5 +133,54 @@ describe("createHorse — Circle space provisioning (S2-09)", () => {
 		expect(mockCreateHorse).toHaveBeenCalledWith(
 			expect.objectContaining({ publicProfileAt: reveal }),
 		);
+	});
+
+	it("defaults the new Circle space to member-posting on (S12-02a)", async () => {
+		await call(createHorse, { organizationId: "org1", name: "Pink Diamond Lass" }, ctx);
+
+		expect(mockOrgUpdateMany).toHaveBeenCalledWith({
+			where: { id: "org1", metadata: JSON.stringify({}) },
+			data: {
+				metadata: JSON.stringify({
+					circle: { spaces: { "777": { memberPosting: true, hideChip: false } } },
+				}),
+			},
+		});
+	});
+
+	it("skips the member-posting default when provisioning did not leave the space active", async () => {
+		mockGetHorseById.mockResolvedValue({
+			id: "h1",
+			name: "Pink Diamond Lass",
+			organizationId: "org1",
+			circleSpaceId: null,
+			circleSpaceStatus: "provisioning_failed",
+		});
+
+		await call(createHorse, { organizationId: "org1", name: "Pink Diamond Lass" }, ctx);
+
+		expect(mockOrgUpdateMany).not.toHaveBeenCalled();
+	});
+
+	it("never fails horse creation when the member-posting default write throws", async () => {
+		mockOrgFindUnique.mockRejectedValue(new Error("db down"));
+
+		const result = await call(
+			createHorse,
+			{ organizationId: "org1", name: "Pink Diamond Lass" },
+			ctx,
+		);
+
+		expect(result).toMatchObject({ circleSpaceId: "777", circleSpaceStatus: "active" });
+	});
+
+	it("skips the member-posting default when an existing space is linked manually", async () => {
+		await call(
+			createHorse,
+			{ organizationId: "org1", name: "Pink Diamond Lass", circleSpaceId: "555" },
+			ctx,
+		);
+
+		expect(mockOrgUpdateMany).not.toHaveBeenCalled();
 	});
 });

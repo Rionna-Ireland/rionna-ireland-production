@@ -55,6 +55,7 @@ const clubSettingsSchema = z.object({
 		}),
 	}),
 	horseAutoFollow: z.boolean(),
+	extraBlockedWords: z.string(),
 });
 
 type ClubSettingsValues = z.infer<typeof clubSettingsSchema>;
@@ -107,6 +108,7 @@ export function ClubSettingsForm() {
 				},
 			},
 			horseAutoFollow: true,
+			extraBlockedWords: "",
 		},
 	});
 
@@ -131,12 +133,18 @@ export function ClubSettingsForm() {
 					},
 				},
 				horseAutoFollow: settings.horseAutoFollow ?? true,
+				extraBlockedWords: (settings.moderation?.extraBlockedWords ?? []).join("\n"),
 			});
 		}
 	}, [settings, form]);
 
 	const onSubmit = form.handleSubmit(async (values) => {
 		if (!organizationId) return;
+
+		const extraBlockedWords = values.extraBlockedWords
+			.split("\n")
+			.map((word) => word.trim())
+			.filter(Boolean);
 
 		try {
 			await updateMutation.mutateAsync({
@@ -147,6 +155,7 @@ export function ClubSettingsForm() {
 					socialLinks: values.contact.socialLinks,
 				},
 				horseAutoFollow: values.horseAutoFollow,
+				moderation: { extraBlockedWords },
 			});
 
 			toastSuccess(t("admin.settings.notifications.success"));
@@ -487,6 +496,39 @@ export function ClubSettingsForm() {
 												{t("admin.community.autoFollowHint")}
 											</p>
 										</div>
+									</FormItem>
+								)}
+							/>
+						</CardContent>
+					</Card>
+
+					{/* Moderation */}
+					<Card>
+						<CardHeader>
+							<CardTitle>{t("admin.settings.moderation.title")}</CardTitle>
+						</CardHeader>
+						<CardContent className="gap-4 grid grid-cols-1">
+							<FormField
+								control={form.control}
+								name="extraBlockedWords"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>
+											{t("admin.settings.moderation.extraBlockedWords")}
+										</FormLabel>
+										<FormControl>
+											<Textarea
+												{...field}
+												rows={4}
+												placeholder={t(
+													"admin.settings.moderation.extraBlockedWordsPlaceholder",
+												)}
+											/>
+										</FormControl>
+										<p className="text-muted-foreground text-sm">
+											{t("admin.settings.moderation.extraBlockedWordsHint")}
+										</p>
+										<FormMessage />
 									</FormItem>
 								)}
 							/>

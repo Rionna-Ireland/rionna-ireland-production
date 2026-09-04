@@ -36,6 +36,8 @@ export interface CirclePostDetail {
 	inlineAttachments: Array<Record<string, unknown>>;
 	authorName: string | null;
 	authorAvatarUrl: string | null;
+	/** `post.author.community_member_id` — used by the procedure to derive `isOwn`. */
+	authorCircleMemberId: string | null;
 	spaceName: string | null;
 	createdAt: string | null;
 	commentCount: number;
@@ -43,6 +45,8 @@ export interface CirclePostDetail {
 	/** Whether the authenticated member has liked this post (`is_liked`). */
 	isLiked: boolean;
 	url: string | null;
+	/** Whether the authenticated member authored this post (set by the procedure, not the parser). */
+	isOwn?: boolean;
 }
 
 export function textValue(value: unknown): string | null {
@@ -210,6 +214,13 @@ function extractAuthorAvatar(post: Record<string, unknown>): string | null {
 	return textValue(author?.avatar_url) ?? textValue(author?.avatar);
 }
 
+function extractAuthorCircleMemberId(post: Record<string, unknown>): string | null {
+	const author =
+		objectValue(post.author) ?? objectValue(post.user) ?? objectValue(post.community_member);
+	const raw = author?.community_member_id;
+	return raw === undefined || raw === null ? null : String(raw);
+}
+
 export function extractBodyHtml(post: Record<string, unknown>): string | null {
 	const body = objectValue(post.body);
 	const raw = textValue(body?.html);
@@ -342,6 +353,7 @@ export function toPostDetail(
 		inlineAttachments: arrayValue(tiptap?.inline_attachments),
 		authorName: extractAuthorName(post),
 		authorAvatarUrl: extractAuthorAvatar(post),
+		authorCircleMemberId: extractAuthorCircleMemberId(post),
 		spaceName: extractSpaceName(post),
 		createdAt: textValue(post.created_at) ?? textValue(post.createdAt),
 		commentCount: numberValue(post.comment_count ?? post.comments_count ?? post.commentsCount),

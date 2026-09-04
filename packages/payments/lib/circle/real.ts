@@ -621,6 +621,9 @@ export class RealCircleService implements CircleService {
 		if (params.attachments && params.attachments.length > 0) {
 			body.attachments = params.attachments;
 		}
+		if (params.authorEmail) {
+			body.user_email = params.authorEmail;
+		}
 
 		let response: Response;
 		try {
@@ -703,6 +706,39 @@ export class RealCircleService implements CircleService {
 		}
 
 		logger.info("[Circle] Deleted post", { circlePostId });
+		return { ok: true, data: undefined };
+	}
+
+	async deleteComment(circleCommentId: string): Promise<CircleCallOutcome<void>> {
+		let response: Response;
+		try {
+			response = await fetch(`${CIRCLE_ADMIN_BASE}/comments/${circleCommentId}`, {
+				method: "DELETE",
+				headers: {
+					Authorization: `Bearer ${this.adminToken}`,
+				},
+			});
+		} catch (err) {
+			logger.warn("[Circle] Delete comment fetch failed (network)", {
+				circleCommentId,
+				error: err instanceof Error ? err.message : String(err),
+			});
+			return { ok: false, reason: "network", retriable: true, raw: err };
+		}
+
+		if (!response.ok) {
+			const body = await response.text().catch(() => undefined);
+			const { reason, retriable } = classifyStatus(response.status);
+			logger.error("[Circle] Delete comment failed", {
+				status: response.status,
+				body,
+				circleCommentId,
+				reason,
+			});
+			return { ok: false, reason, retriable, raw: body };
+		}
+
+		logger.info("[Circle] Deleted comment", { circleCommentId });
 		return { ok: true, data: undefined };
 	}
 

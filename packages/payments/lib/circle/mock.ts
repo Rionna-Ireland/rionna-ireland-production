@@ -53,6 +53,7 @@ interface MockPost {
 	spaceId: string;
 	name: string;
 	attachments: string[];
+	authorEmail?: string;
 }
 
 interface MockSpace {
@@ -83,6 +84,7 @@ export class MockCircleService implements CircleService {
 	// Publishing surface (S2-09) — separate stores + per-entity counters so
 	// generated ids are deterministic and independent of member creation.
 	private posts = new Map<string, MockPost>();
+	private comments = new Set<string>();
 	private spaces = new Map<string, MockSpace>();
 	private events = new Map<string, MockEvent>();
 	private postIdempotencyKeys = new Map<string, string>();
@@ -293,6 +295,7 @@ export class MockCircleService implements CircleService {
 			spaceId: params.spaceId,
 			name: params.name,
 			attachments: params.attachments ?? [],
+			authorEmail: params.authorEmail,
 		});
 		if (params.idempotencyKey) {
 			this.postIdempotencyKeys.set(params.idempotencyKey, circlePostId);
@@ -303,6 +306,7 @@ export class MockCircleService implements CircleService {
 			spaceId: params.spaceId,
 			name: params.name,
 			attachments: params.attachments?.length ?? 0,
+			authorEmail: params.authorEmail,
 		});
 		return { ok: true, data: { circlePostId, status: "published" } };
 	}
@@ -318,6 +322,22 @@ export class MockCircleService implements CircleService {
 
 		this.posts.delete(circlePostId);
 		logger.info("[MockCircle] Deleted post", { circlePostId });
+		return { ok: true, data: undefined };
+	}
+
+	async deleteComment(circleCommentId: string): Promise<CircleCallOutcome<void>> {
+		if (this.comments.has(circleCommentId)) {
+			this.comments.delete(circleCommentId);
+			logger.info("[MockCircle] Deleted comment", { circleCommentId });
+			return { ok: true, data: undefined };
+		}
+
+		// Nothing tracked for this id — the mock never populates `comments`
+		// (no createComment surface exists), so this mirrors real.ts's
+		// success path for an untracked/already-gone comment.
+		logger.info("[MockCircle] Delete comment: not tracked, treating as success", {
+			circleCommentId,
+		});
 		return { ok: true, data: undefined };
 	}
 

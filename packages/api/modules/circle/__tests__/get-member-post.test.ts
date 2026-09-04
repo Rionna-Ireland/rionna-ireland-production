@@ -43,7 +43,7 @@ const POST = {
 		body: { type: "doc", content: [] },
 		inline_attachments: [{ signed_id: "image-1", url: "https://img/post.jpg" }],
 	},
-	author: { name: "Jane", avatar_url: "https://img/a.png" },
+	author: { name: "Jane", avatar_url: "https://img/a.png", community_member_id: "82236270" },
 	space: { id: 2713068, name: "Laska", slug: "laska" },
 	created_at: "2026-07-01T09:00:00Z",
 	url: "https://community.rionna.com/c/laska/test-laska",
@@ -77,7 +77,19 @@ describe("getMemberPost", () => {
 			inlineAttachments: [{ signed_id: "image-1", url: "https://img/post.jpg" }],
 			commentCount: 8,
 			likeCount: 13,
+			isOwn: true,
 		});
+	});
+
+	it("sets isOwn to false when the post author is a different Circle member", async () => {
+		mockMemberFindFirst.mockResolvedValue({ circleMemberId: "some-other-member" });
+		vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => POST }));
+		const res = await call(
+			getMemberPost,
+			{ organizationId: ORG_ID, spaceId: "2713068", postId: "34130292" },
+			ctx,
+		);
+		expect(res).toMatchObject({ isOwn: false });
 	});
 
 	it("returns null on a 404 (missing/unauthorized post)", async () => {

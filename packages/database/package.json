@@ -13,6 +13,8 @@
 		"seed": "dotenv -c -e ../../.env -- tsx prisma/seed.ts",
 		"seed:staging": "dotenv -e ../../.env.staging -- tsx prisma/seed.ts",
 		"seed:production": "dotenv -e ../../.env.production -- tsx prisma/seed.ts",
+		"seed:space-settings:staging": "dotenv -e ../../.env.staging -- tsx scripts/seed-space-settings.ts",
+		"seed:space-settings:production": "dotenv -e ../../.env.production -- tsx scripts/seed-space-settings.ts",
 		"studio": "dotenv -c -e ../../.env -- prisma studio",
 		"type-check": "tsc --noEmit"
 	},

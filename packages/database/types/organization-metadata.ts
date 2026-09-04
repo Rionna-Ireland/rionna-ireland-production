@@ -38,6 +38,8 @@ export interface OrganizationMetadata {
 			pinnedPostIds?: string[];
 		};
 		webhookSecretRef?: string;
+		/** S12-02: per-space community settings keyed by Circle space id. Missing entry ⇒ memberPosting false, hideChip false. */
+		spaces?: Record<string, { memberPosting?: boolean; hideChip?: boolean }>;
 		poll?: {
 			enabled: boolean;
 			cadenceMinutes: number;
@@ -77,6 +79,8 @@ export interface OrganizationMetadata {
 	 * every published horse in the org. Defaults to true when unset.
 	 */
 	horseAutoFollow?: boolean;
+	/** S9-03: club-specific blocked words, matched alongside the base list. */
+	moderation?: { extraBlockedWords?: string[] };
 }
 
 export function parseOrgMetadata(raw: string | null): OrganizationMetadata {
