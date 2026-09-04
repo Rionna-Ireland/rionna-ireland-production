@@ -33,7 +33,7 @@ function toPhraseRegex(term: string): RegExp {
 	const escaped = normalize(term)
 		.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 		.replace(/\s+/g, "\\s+");
-	return new RegExp(`(^|[^a-z])${escaped}(?=$|[^a-z])`, "i");
+	return new RegExp(`(^|[^a-z])${escaped}(?:s|es|ed|ing|er|ers|y|ty)?(?=$|[^a-z])`, "i");
 }
 
 export function screenText(text: string, extraBlockedWords: string[] = []): ScreenResult {

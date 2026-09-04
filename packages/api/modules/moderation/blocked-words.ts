@@ -17,4 +17,6 @@ export const BASE_BLOCKED_WORDS = [
 	"tranny",
 	"whore",
 	"slut",
+	"bullshit",
+	"motherfucker",
 ] as const;

@@ -8,6 +8,8 @@ describe("screenText", () => {
 		"a class act",
 		"please assist me",
 		"ridden by Cockburn",
+		"shift the schedule",
+		"scunt is not a word",
 		"",
 		"🐎🐎",
 	])("allows %j", (s) => expect(screenText(s).allowed).toBe(true));
@@ -18,6 +20,17 @@ describe("screenText", () => {
 	});
 	it("blocks leetspeak, dotted and stretched variants", () => {
 		for (const s of ["f.u.c.k off", "fuuuck", "f u c k", "sh1t"])
+			expect(screenText(s).allowed).toBe(false);
+	});
+	it("blocks common suffixed variants", () => {
+		for (const s of [
+			"fucking hell",
+			"what a bunch of cunts",
+			"that was shitty",
+			"total bullshit",
+			"retarded growth",
+			"slutty",
+		])
 			expect(screenText(s).allowed).toBe(false);
 	});
 	it("blocks club-specific extras", () => {
