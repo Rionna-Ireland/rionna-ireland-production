@@ -18,7 +18,8 @@
 			"insideTrack": "Inside Track",
 			"paddock": "Paddock",
 			"offers": "Partner offers",
-			"charity": "Charity"
+			"charity": "Charity",
+			"moderation": "Moderation"
 		},
 		"dashboard": {
 			"health": {
@@ -447,6 +448,12 @@
 				"title": "Billing",
 				"stripeProductId": "Stripe product ID",
 				"managed": "Billing configuration is managed via Stripe Dashboard."
+			},
+			"moderation": {
+				"title": "Moderation",
+				"extraBlockedWords": "Extra blocked words",
+				"extraBlockedWordsPlaceholder": "One word or phrase per line",
+				"extraBlockedWordsHint": "Matched alongside the platform's base blocked-word list when members post or comment."
 			}
 		},
 		"horses": {
@@ -602,7 +609,60 @@
 			"noFollowers": "No followers yet.",
 			"provisioningFailed": "Provisioning failed",
 			"autoFollowLabel": "Auto-follow all horses for new members",
-			"autoFollowHint": "When on, each new member automatically follows every published horse."
+			"autoFollowHint": "When on, each new member automatically follows every published horse.",
+			"spaces": {
+				"title": "Spaces",
+				"columns": {
+					"name": "Name",
+					"group": "Group",
+					"horse": "Horse",
+					"memberPosting": "Members can post"
+				},
+				"horseBadge": "Horse",
+				"toggleError": "Couldn't update posting settings. Try again."
+			}
+		},
+		"moderation": {
+			"title": "Moderation",
+			"tabs": {
+				"reported": "Reports",
+				"blocked": "Blocked"
+			},
+			"filter": {
+				"open": "Open",
+				"resolved": "Resolved"
+			},
+			"empty": "No moderation activity yet.",
+			"loadMore": "Load more",
+			"columns": {
+				"when": "When",
+				"reporter": "Reporter",
+				"member": "Member",
+				"surface": "Surface",
+				"author": "Author",
+				"excerpt": "Excerpt",
+				"reason": "Reason",
+				"matchedTerms": "Matched terms",
+				"actions": "Actions"
+			},
+			"surface": {
+				"post": "Post",
+				"comment": "Comment"
+			},
+			"status": {
+				"deleted": "Deleted",
+				"dismissed": "Dismissed"
+			},
+			"actions": {
+				"openPost": "Open post",
+				"dismiss": "Dismiss",
+				"delete": "Delete",
+				"dismissed": "Report dismissed.",
+				"deleted": "Content deleted.",
+				"error": "Couldn't complete that action. Try again.",
+				"confirmDeleteTitle": "Delete this content?",
+				"confirmDelete": "This removes the post or comment from Circle and marks the report resolved. This can't be undone."
+			}
 		},
 		"organizations": {
 			"backToList": "Back to organizations",

@@ -16,6 +16,7 @@ import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { HorseFollowersDrawer } from "./HorseFollowersDrawer";
+import { SpacesTable } from "./SpacesTable";
 
 export function CommunityOverview() {
 	const t = useTranslations();
@@ -130,6 +131,8 @@ export function CommunityOverview() {
 					</Table>
 				</div>
 			</Card>
+
+			<SpacesTable />
 
 			<Card className="p-6">
 				<h3 className="mb-4 font-semibold text-lg">{t("admin.community.horseSpaces")}</h3>

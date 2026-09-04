@@ -13,6 +13,7 @@ import {
 	MessagesSquareIcon,
 	NewspaperIcon,
 	SettingsIcon,
+	ShieldAlertIcon,
 	UsersIcon,
 	VoteIcon,
 } from "lucide-react";
@@ -67,6 +68,11 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
 								title: t("menu.community"),
 								href: "/admin/community",
 								icon: <MessagesSquareIcon className="size-4 opacity-50" />,
+							},
+							{
+								title: t("menu.moderation"),
+								href: "/admin/moderation",
+								icon: <ShieldAlertIcon className="size-4 opacity-50" />,
 							},
 						],
 					},
