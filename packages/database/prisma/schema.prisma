@@ -796,3 +796,50 @@ model StripeEventLog {
   @@index([type, processedAt])
   @@map("stripe_event_log")
 }
+
+// ──────────────────────────────────────────────
+// Member posting + moderation (S12-02a)
+// ──────────────────────────────────────────────
+
+/// S12-02a: our record of every member-created Circle post (rate limits, ownership, admin history).
+model CommunityPost {
+  id             String    @id @default(cuid())
+  organizationId String
+  memberId       String
+  circlePostId   String    @unique
+  circleSpaceId  String
+  title          String?
+  excerpt        String
+  hasImage       Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  deletedAt      DateTime?
+  deletedBy      String?
+
+  @@index([organizationId, memberId, createdAt])
+  @@index([organizationId, createdAt])
+  @@map("community_post")
+}
+
+/// S9-03 blocks + S12-02a reports, one table.
+model ModerationFlag {
+  id               String    @id @default(cuid())
+  organizationId   String
+  source           String
+  surface          String
+  memberId         String
+  targetPostId     String?
+  targetCommentId  String?
+  targetSpaceId    String?
+  targetAuthorName String?
+  contentExcerpt   String
+  matchedTerms     String[]  @default([])
+  reason           String?
+  note             String?
+  status           String    @default("open")
+  resolvedAt       DateTime?
+  resolvedByUserId String?
+  createdAt        DateTime  @default(now())
+
+  @@index([organizationId, source, status, createdAt])
+  @@map("moderation_flag")
+}
