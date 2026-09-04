@@ -68,7 +68,9 @@ async function main() {
 
 	for (const org of orgs) {
 		const metadata = parseOrgMetadata(org.metadata as string | null);
-		if (!metadata.circle?.communityId) {
+		// Staging/prod metadata identifies the community by domain (communityId is
+		// optional) — treat either as "Circle is configured for this org".
+		if (!metadata.circle?.communityId && !metadata.circle?.communityDomain) {
 			continue;
 		}
 
