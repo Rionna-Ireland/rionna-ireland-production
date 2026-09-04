@@ -1,10 +1,12 @@
 import { ORPCError } from "@orpc/server";
-import { db } from "@repo/database";
+import { db, parseOrgMetadata } from "@repo/database";
 import { logger } from "@repo/logs";
 import { createCircleService, getCircleHeadlessApiBaseUrl } from "@repo/payments/lib/circle";
 import { z } from "zod";
 
 import { protectedProcedure } from "../../../orpc/procedures";
+import { recordBlock } from "../../moderation/record-block";
+import { screenText } from "../../moderation/screen-text";
 import { invalidateMemberFeedCache } from "../lib/member-feed-cache";
 import { type PostComment, toPostComment } from "../lib/parse-comment";
 import { objectValue } from "../lib/parse-post";
@@ -12,6 +14,8 @@ import { objectValue } from "../lib/parse-post";
 export interface AddPostCommentResult {
 	ok: boolean;
 	comment: PostComment | null;
+	/** Set when the S9-03 bad-word gate rejected the comment before it reached Circle. */
+	blocked?: true;
 }
 
 /**
@@ -46,10 +50,25 @@ export const addPostComment = protectedProcedure
 
 		const member = await db.member.findFirst({
 			where: { userId: user.id, organizationId: input.organizationId },
-			select: { circleMemberId: true },
+			select: { id: true, circleMemberId: true },
 		});
 		if (!member?.circleMemberId) {
 			return fail();
+		}
+
+		// S9-03 bad-word gate — reject before any Circle write.
+		const metadata = parseOrgMetadata(org.metadata);
+		const screen = screenText(input.body, metadata.moderation?.extraBlockedWords);
+		if (!screen.allowed) {
+			void recordBlock({
+				organizationId: input.organizationId,
+				memberId: member.id,
+				surface: "comment",
+				text: input.body,
+				matches: screen.matches,
+				targetPostId: input.postId,
+			});
+			return { ok: false, blocked: true, comment: null };
 		}
 
 		const service = createCircleService(org.slug);

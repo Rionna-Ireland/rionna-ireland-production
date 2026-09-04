@@ -24,3 +24,8 @@ export const POSTS_PER_DAY = 20;
 export const MIN_BODY_CHARS = 10;
 export const MAX_TITLE_CHARS = 120;
 export const MAX_BODY_CHARS = 2000;
+
+/** Longest note a member can add when reporting a post or comment. */
+export const MAX_NOTE_CHARS = 500;
+/** Longest content excerpt stored on a moderation flag. */
+export const EXCERPT_CHARS = 200;

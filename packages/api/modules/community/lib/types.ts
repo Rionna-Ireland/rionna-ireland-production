@@ -48,3 +48,10 @@ export type CreatePostResult =
 export interface DeletePostResult {
 	ok: boolean;
 }
+
+/** Reasons a member can select when reporting a post or comment. */
+export type ReportReason = "spam" | "abusive" | "off_topic" | "other";
+
+export interface ReportContentResult {
+	ok: boolean;
+}

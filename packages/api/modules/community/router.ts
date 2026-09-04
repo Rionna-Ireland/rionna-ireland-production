@@ -3,6 +3,7 @@ import { createPostImageUploadUrl } from "./procedures/create-post-image-upload-
 import { deletePost } from "./procedures/delete-post";
 import { getCommunityOverview } from "./procedures/get-community-overview";
 import { listPostableSpaces } from "./procedures/list-postable-spaces";
+import { reportContent } from "./procedures/report-content";
 
 export const communityAdminRouter = {
 	overview: getCommunityOverview,
@@ -13,4 +14,5 @@ export const communityRouter = {
 	createPostImageUploadUrl,
 	createPost,
 	deletePost,
+	reportContent,
 };

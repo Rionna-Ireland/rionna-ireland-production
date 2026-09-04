@@ -7,12 +7,16 @@ const {
 	mockMemberFindFirst,
 	mockGetMemberToken,
 	mockInvalidateMemberFeedCache,
+	mockCreateModerationFlag,
+	mockParseOrgMetadata,
 } = vi.hoisted(() => ({
 	mockGetSession: vi.fn(),
 	mockOrgFindUnique: vi.fn(),
 	mockMemberFindFirst: vi.fn(),
 	mockGetMemberToken: vi.fn(),
 	mockInvalidateMemberFeedCache: vi.fn(),
+	mockCreateModerationFlag: vi.fn(),
+	mockParseOrgMetadata: vi.fn((raw: string | null) => (raw ? JSON.parse(raw) : {})),
 }));
 
 vi.mock("@repo/auth", () => ({
@@ -24,7 +28,8 @@ vi.mock("@repo/database", () => ({
 		organization: { findUnique: mockOrgFindUnique },
 		member: { findFirst: mockMemberFindFirst },
 	},
-	parseOrgMetadata: vi.fn(() => ({})),
+	parseOrgMetadata: mockParseOrgMetadata,
+	createModerationFlag: mockCreateModerationFlag,
 }));
 
 vi.mock("@repo/logs", () => ({
@@ -72,8 +77,9 @@ beforeEach(() => {
 	vi.clearAllMocks();
 	mockGetSession.mockResolvedValue({ user: USER, session: SESSION });
 	mockOrgFindUnique.mockResolvedValue({ id: ORG_ID, slug: "rionna", metadata: null });
-	mockMemberFindFirst.mockResolvedValue({ circleMemberId: "82236270" });
+	mockMemberFindFirst.mockResolvedValue({ id: "m1", circleMemberId: "82236270" });
 	mockGetMemberToken.mockResolvedValue({ ok: true, data: { accessToken: "jwt" } });
+	mockCreateModerationFlag.mockResolvedValue({ id: "flag1" });
 });
 
 describe("getPostComments", () => {
@@ -243,6 +249,30 @@ describe("addPostComment", () => {
 		await expect(
 			call(addPostComment, { organizationId: ORG_ID, postId: "1", body: "   " }, ctx),
 		).rejects.toThrow();
+	});
+
+	it("blocks a comment with a blocked word before any Circle fetch, and records the flag", async () => {
+		const fetchSpy = vi.fn();
+		vi.stubGlobal("fetch", fetchSpy);
+
+		const res = await call(
+			addPostComment,
+			{ organizationId: ORG_ID, postId: "34775788", body: "this is fuck great" },
+			ctx,
+		);
+
+		expect(res).toEqual({ ok: false, blocked: true, comment: null });
+		expect(fetchSpy).not.toHaveBeenCalled();
+		expect(mockInvalidateMemberFeedCache).not.toHaveBeenCalled();
+		expect(mockCreateModerationFlag).toHaveBeenCalledWith(
+			expect.objectContaining({
+				organizationId: ORG_ID,
+				source: "blocked",
+				surface: "comment",
+				memberId: "m1",
+				targetPostId: "34775788",
+			}),
+		);
 	});
 });
 
