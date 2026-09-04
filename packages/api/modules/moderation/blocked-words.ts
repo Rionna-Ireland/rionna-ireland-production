@@ -1,0 +1,20 @@
+/** Curated slurs + hard profanity. Racing club, adult members — keep to slurs and hard profanity (NOT damn/hell/bloody). */
+export const BASE_BLOCKED_WORDS = [
+	"cunt",
+	"fuck",
+	"shit",
+	"nigger",
+	"nigga",
+	"faggot",
+	"retard",
+	"paki",
+	"spastic",
+	"wanker",
+	"twat",
+	"bitch",
+	"kike",
+	"chink",
+	"tranny",
+	"whore",
+	"slut",
+] as const;
