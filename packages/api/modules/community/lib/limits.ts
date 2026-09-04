@@ -15,3 +15,12 @@ export const POST_IMAGE_CONTENT_TYPES = [
 	"image/webp",
 	"image/heic",
 ] as const;
+
+/** Member post rate limits (`lib/rate-limit.ts`). */
+export const POSTS_PER_HOUR = 5;
+export const POSTS_PER_DAY = 20;
+
+/** A post needs a title, or a body of at least this many characters. */
+export const MIN_BODY_CHARS = 10;
+export const MAX_TITLE_CHARS = 120;
+export const MAX_BODY_CHARS = 2000;

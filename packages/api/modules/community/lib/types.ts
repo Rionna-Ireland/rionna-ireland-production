@@ -32,3 +32,15 @@ export interface CreatePostImageUploadUrlResult {
 	signedUploadUrl: string;
 	path: string;
 }
+
+/** Reasons `community.createPost` can fail — the handler returns before any Circle write. */
+export type CreatePostFailure =
+	| "not_allowed"
+	| "blocked"
+	| "rate_limited"
+	| "image_failed"
+	| "circle_failed";
+
+export type CreatePostResult =
+	| { ok: true; post: { circlePostId: string; spaceId: string } }
+	| { ok: false; reason: CreatePostFailure };
