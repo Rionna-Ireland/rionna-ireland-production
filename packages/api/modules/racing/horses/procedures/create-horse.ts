@@ -4,12 +4,14 @@ import {
 	getHorseById,
 	getHorseByOrgAndSlug,
 } from "@repo/database";
+import { logger } from "@repo/logs";
 import { provisionHorseSpace } from "@repo/payments/lib/circle-horse-provisioning";
 import slugify from "@sindresorhus/slugify";
 import { nanoid } from "nanoid";
 import { z } from "zod";
 
 import { adminProcedure } from "../../../../orpc/procedures";
+import { mergeSpaceSettings } from "../../../community/lib/write-space-settings";
 
 export const createHorse = adminProcedure
 	.route({
@@ -100,7 +102,31 @@ export const createHorse = adminProcedure
 				organizationId: horse.organizationId,
 				inviteOnly: horse.inviteOnly,
 			});
-			return (await getHorseById(horse.id)) ?? horse;
+			const provisioned = (await getHorseById(horse.id)) ?? horse;
+
+			// New horse spaces default to member-posting on (S12-02a). Best-effort:
+			// a metadata-write hiccup must never fail horse creation — the admin
+			// can flip it manually from the community settings screen.
+			if (provisioned.circleSpaceId && provisioned.circleSpaceStatus === "active") {
+				try {
+					await mergeSpaceSettings({
+						organizationId: provisioned.organizationId,
+						spaceId: provisioned.circleSpaceId,
+						patch: { memberPosting: true },
+					});
+				}
+				catch (error) {
+					logger.error("Failed to default horse space to member-posting on", {
+						event: "horse_space_default_posting_failed",
+						horseId: provisioned.id,
+						organizationId: provisioned.organizationId,
+						spaceId: provisioned.circleSpaceId,
+						error: String(error),
+					});
+				}
+			}
+
+			return provisioned;
 		}
 
 		return horse;

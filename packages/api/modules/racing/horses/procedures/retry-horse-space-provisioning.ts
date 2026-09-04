@@ -1,9 +1,11 @@
 import { ORPCError } from "@orpc/client";
 import { getHorseById } from "@repo/database";
+import { logger } from "@repo/logs";
 import { provisionHorseSpace } from "@repo/payments/lib/circle-horse-provisioning";
 import { z } from "zod";
 
 import { adminProcedure } from "../../../../orpc/procedures";
+import { mergeSpaceSettings } from "../../../community/lib/write-space-settings";
 
 /**
  * Admin-triggered retry for a horse whose Circle space provisioning failed
@@ -33,5 +35,28 @@ export const retryHorseSpaceProvisioning = adminProcedure
 			name: horse.name,
 			organizationId: horse.organizationId,
 		});
-		return (await getHorseById(horse.id)) ?? horse;
+		const provisioned = (await getHorseById(horse.id)) ?? horse;
+
+		// New horse spaces default to member-posting on (S12-02a). Best-effort:
+		// a metadata-write hiccup must never fail the retry.
+		if (provisioned.circleSpaceId && provisioned.circleSpaceStatus === "active") {
+			try {
+				await mergeSpaceSettings({
+					organizationId: provisioned.organizationId,
+					spaceId: provisioned.circleSpaceId,
+					patch: { memberPosting: true },
+				});
+			}
+			catch (error) {
+				logger.error("Failed to default horse space to member-posting on", {
+					event: "horse_space_default_posting_failed",
+					horseId: provisioned.id,
+					organizationId: provisioned.organizationId,
+					spaceId: provisioned.circleSpaceId,
+					error: String(error),
+				});
+			}
+		}
+
+		return provisioned;
 	});
