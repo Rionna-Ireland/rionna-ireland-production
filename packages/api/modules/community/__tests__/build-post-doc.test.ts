@@ -20,6 +20,12 @@ describe("buildPostDoc", () => {
 		});
 	});
 
+	it("normalizes CRLF line endings to match plain LF input", () => {
+		expect(buildPostDoc({ body: "Line one\r\nline two\r\n\r\nPara two" })).toEqual(
+			buildPostDoc({ body: "Line one\nline two\n\nPara two" }),
+		);
+	});
+
 	it("auto-links URLs", () => {
 		const doc = buildPostDoc({ body: "see https://rionna.com now" });
 		expect(doc.content?.[0]).toEqual({

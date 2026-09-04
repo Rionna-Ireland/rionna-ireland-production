@@ -134,6 +134,18 @@ describe("community.createPost", () => {
 		expect(mockCreatePost).not.toHaveBeenCalled();
 	});
 
+	it("returns not_allowed when imageKey is under another member's prefix", async () => {
+		const result = await call(
+			createPost,
+			{ ...baseInput, imageKey: "community/org1/other-member/x.jpg" },
+			ctx,
+		);
+		expect(result).toEqual({ ok: false, reason: "not_allowed" });
+		expect(mockCreatePost).not.toHaveBeenCalled();
+		expect(mockSerializeNovelDocToCircle).not.toHaveBeenCalled();
+		expect(mockCreateModerationFlag).not.toHaveBeenCalled();
+	});
+
 	it("returns blocked and records the flag when the title has a blocked word", async () => {
 		const result = await call(
 			createPost,

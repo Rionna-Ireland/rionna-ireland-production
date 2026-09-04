@@ -47,7 +47,8 @@ function groupToNodes(group: string): TiptapNode[] {
 }
 
 export function buildPostDoc(p: { body: string; imageKey?: string }): NovelDoc {
-	const groups = p.body
+	const normalizedBody = p.body.replace(/\r\n?/g, "\n");
+	const groups = normalizedBody
 		.split(/\n{2,}/)
 		.map((group) => group.trim())
 		.filter((group) => group.length > 0);
