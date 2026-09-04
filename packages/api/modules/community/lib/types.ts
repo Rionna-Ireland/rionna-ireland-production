@@ -44,3 +44,7 @@ export type CreatePostFailure =
 export type CreatePostResult =
 	| { ok: true; post: { circlePostId: string; spaceId: string } }
 	| { ok: false; reason: CreatePostFailure };
+
+export interface DeletePostResult {
+	ok: boolean;
+}
