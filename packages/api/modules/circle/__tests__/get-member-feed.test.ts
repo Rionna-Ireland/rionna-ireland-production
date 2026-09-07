@@ -67,7 +67,12 @@ vi.mock("@repo/payments/lib/circle", () => ({
 	buildCircleCommunityTargetUrl: vi.fn(() => "https://community.rionna.com/c/x/y"),
 }));
 
-import { clearMemberFeedCache, invalidateMemberFeedCache } from "../lib/member-feed-cache";
+import {
+	clearMemberFeedCache,
+	invalidateMemberFeedCache,
+	writeMemberFeedBuffer,
+} from "../lib/member-feed-cache";
+import type { MemberFeedItem } from "../lib/parse-post";
 import { getMemberFeed } from "../procedures/get-member-feed";
 
 const ORG_ID = "org1";
@@ -601,6 +606,46 @@ describe("getMemberFeed (buffer cache — FABLE_AUDIT P4/C8)", () => {
 		invalidateMemberFeedCache(USER.id, ORG_ID);
 		await call(getMemberFeed, { organizationId: ORG_ID, page: 1, perPage: 15 }, ctx);
 		expect(fetchSpy.mock.calls.length).toBeGreaterThan(fetchesAfterP1);
+	});
+
+	it("filters the cached buffer before slicing (S12-02b)", async () => {
+		// 30 items across two spaces, alternating: "1", "2", "1", "2", ...
+		const buffered: MemberFeedItem[] = Array.from({ length: 30 }, (_, n) => ({
+			id: `item-${n}`,
+			spaceId: n % 2 === 0 ? "1" : "2",
+			kind: "post",
+			title: `item-${n}`,
+			excerpt: null,
+			createdAt: null,
+			spaceName: null,
+			authorName: null,
+			commentCount: 0,
+			likeCount: 0,
+			isLiked: false,
+			imageUrl: null,
+			url: null,
+		}));
+		writeMemberFeedBuffer(USER.id, ORG_ID, buffered);
+
+		const fetchSpy = routeFetch();
+		vi.stubGlobal("fetch", fetchSpy);
+
+		const page2 = await call(
+			getMemberFeed,
+			{ organizationId: ORG_ID, page: 2, perPage: 10, filterSpaceIds: ["1"] },
+			ctx,
+		);
+		// Filtered list is the 15 items with spaceId "1" (item-0, item-2, ..., item-28);
+		// page 2 of perPage 10 slices indices [10, 20) of that filtered list.
+		expect(page2.items.map((i) => i.id)).toEqual([
+			"item-20",
+			"item-22",
+			"item-24",
+			"item-26",
+			"item-28",
+		]);
+		expect(page2.hasNextPage).toBe(false);
+		expect(fetchSpy).not.toHaveBeenCalled(); // served entirely from the cached buffer
 	});
 
 	it("caches per member — another user does not hit this user's buffer", async () => {

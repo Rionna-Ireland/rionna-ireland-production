@@ -10,6 +10,7 @@ import { getSpacePollFeedItems } from "../../polls/lib/merge-space-polls";
 import { CLOSED_POLL_VISIBLE_MS } from "../../polls/lib/poll-view";
 import { toPollFeedItem } from "../../polls/lib/to-feed-item";
 import { getFollowedHorseIds } from "../../racing/horses/lib/horse-follows";
+import { type FeedFilterInput, applyFeedFilter } from "../lib/feed-filter";
 import { readMemberFeedBuffer, writeMemberFeedBuffer } from "../lib/member-feed-cache";
 import { getStoryFeedItems } from "../lib/story-feed-items";
 import {
@@ -59,6 +60,16 @@ export const getMemberFeed = protectedProcedure
 			// space) — one Circle call, no merged buffer, no follow filter (the
 			// member navigated to the space explicitly).
 			spaceId: z.string().optional(),
+			// S12-02b: optional filter chips (Community tab), applied to the merged
+			// buffer inside `paginate` — before slicing, so pages stay consistent.
+			filterKind: z.enum(["poll", "story"]).optional(),
+			filterCategory: z.enum(["charity"]).optional(),
+			filterSpaceIds: z
+				.preprocess(
+					(v) => (typeof v === "string" ? v.split(",").filter(Boolean) : v),
+					z.array(z.string().min(1)).max(50),
+				)
+				.optional(),
 		}),
 	)
 	.handler(async ({ input, context: { user } }): Promise<MemberFeedResult> => {
@@ -98,13 +109,19 @@ export const getMemberFeed = protectedProcedure
 		// Serve pages from the short-lived merged buffer when we have one
 		// (FABLE_AUDIT P4): "load more" then costs zero Circle calls, and the
 		// buffer can't shift under the pagination within the TTL (C8).
+		const filter: FeedFilterInput = {
+			kind: input.filterKind,
+			category: input.filterCategory,
+			spaceIds: input.filterSpaceIds,
+		};
 		const paginate = (merged: MemberFeedItem[]): MemberFeedResult => {
+			const visible = applyFeedFilter(merged, filter);
 			const start = (input.page - 1) * input.perPage;
 			return {
 				ok: true,
-				items: merged.slice(start, start + input.perPage),
+				items: visible.slice(start, start + input.perPage),
 				page: input.page,
-				hasNextPage: merged.length > start + input.perPage,
+				hasNextPage: visible.length > start + input.perPage,
 			};
 		};
 		const cachedBuffer = input.spaceId
@@ -134,6 +151,9 @@ export const getMemberFeed = protectedProcedure
 		// member opened the space explicitly. This does NOT bypass S9-05 access
 		// control: an invite-only horse's space is still gated on follow status
 		// below, independent of the horseFollows kill-switch (never consulted).
+		// It also ignores the S12-02b `filter*` inputs entirely (never calls
+		// `applyFeedFilter`/`paginate`) — the member is already scoped to one
+		// space, and Circle does its own paging over that space's posts.
 		if (input.spaceId) {
 			// Privacy fails closed — an error must never widen access: if we can't
 			// determine whether this space is an invite-only horse space (or, once
