@@ -11,6 +11,7 @@ import { CLOSED_POLL_VISIBLE_MS } from "../../polls/lib/poll-view";
 import { toPollFeedItem } from "../../polls/lib/to-feed-item";
 import { getFollowedHorseIds } from "../../racing/horses/lib/horse-follows";
 import { readMemberFeedBuffer, writeMemberFeedBuffer } from "../lib/member-feed-cache";
+import { getStoryFeedItems } from "../lib/story-feed-items";
 import {
 	type MemberFeedItem,
 	extractPosts,
@@ -427,6 +428,24 @@ export const getMemberFeed = protectedProcedure
 				for (const card of cards) merged.push(toPollFeedItem(card));
 			} catch (error) {
 				logger.warn("[MemberFeed] poll merge failed; serving feed without polls", {
+					organizationId: input.organizationId,
+					userId: user.id,
+					error: String(error),
+				});
+			}
+		}
+
+		// 3c. Stories (S12-02b): our published NewsPost rows (news + charity), club-scope
+		// only — never merged into a single-space view. Same fail-safe shape as the poll
+		// merge above: an error here must not hide the Circle posts that already loaded.
+		if (orgMetadata.features?.news !== false) {
+			try {
+				const now = new Date();
+				for (const item of await getStoryFeedItems({ organizationId: input.organizationId, now })) {
+					merged.push(item);
+				}
+			} catch (error) {
+				logger.warn("[MemberFeed] story merge failed; serving feed without stories", {
 					organizationId: input.organizationId,
 					userId: user.id,
 					error: String(error),

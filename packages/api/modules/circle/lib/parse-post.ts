@@ -5,7 +5,7 @@ import type { PollCardData } from "../../polls/lib/poll-view";
 export interface MemberFeedItem {
 	id: string;
 	spaceId: string | null;
-	kind: "news" | "post" | "poll";
+	kind: "news" | "post" | "poll" | "story";
 	title: string;
 	excerpt: string | null;
 	createdAt: string | null;
@@ -19,6 +19,8 @@ export interface MemberFeedItem {
 	url: string | null;
 	/** Present only when kind === "poll" (S12-01a). */
 	poll?: PollCardData;
+	/** Present only when kind === "story" (S12-02b): our NewsPost rows (news + charity). */
+	story?: { slug: string; category: "charity" | null };
 }
 
 export interface CirclePostDetail {
