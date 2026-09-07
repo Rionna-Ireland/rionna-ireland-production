@@ -100,7 +100,7 @@ describe("community.listFeedChips", () => {
 				{ id: "news", kind: "news", label: "News", spaceIds: [] },
 				{ id: "charity", kind: "charity", label: "Charity", spaceIds: [] },
 				{ id: "polls", kind: "polls", label: "Polls", spaceIds: [] },
-				{ id: "space:s1", kind: "space", label: "Announcements", spaceIds: [] },
+				{ id: "space:s1", kind: "space", label: "Announcements", spaceIds: ["s1"] },
 			],
 		});
 		expect(mockWriteMemberSpacesCache).toHaveBeenCalledWith("u1", "org1", SPACES);

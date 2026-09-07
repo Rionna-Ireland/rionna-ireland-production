@@ -17,6 +17,10 @@ import type { FeedChip, MemberSpace } from "./types";
  * showed the admin-listed group id can drift from
  * `metadata.circle.spaceGroupId`, so the space-group check alone isn't
  * reliable.
+ *
+ * Also excludes the Inside Track space (`metadata.circle.insideTrack.spaceId`)
+ * and the events space (`metadata.circle.eventsSpaceId`): the merged feed
+ * deliberately drops both, so a chip for either would always be empty.
  */
 export function buildFeedChips(p: {
 	spaces: MemberSpace[];
@@ -48,7 +52,9 @@ export function buildFeedChips(p: {
 		if (isHorse(space)) continue;
 		if (!space.spaceType || !POST_SPACE_TYPES.has(space.spaceType)) continue;
 		if (metadata.circle?.spaces?.[space.id]?.hideChip) continue;
-		chips.push({ id: `space:${space.id}`, kind: "space", label: space.name, spaceIds: [] });
+		if (space.id === metadata.circle?.insideTrack?.spaceId) continue;
+		if (space.id === metadata.circle?.eventsSpaceId) continue;
+		chips.push({ id: `space:${space.id}`, kind: "space", label: space.name, spaceIds: [space.id] });
 	}
 
 	return chips;

@@ -129,7 +129,11 @@ export class RealCircleService implements CircleService {
 					email: params.email,
 					name: params.name,
 					skip_invitation: true,
-					space_ids: params.spaceIds ?? [],
+					// Coerce to numbers, same as every other Admin v2 space id in this
+					// file (`addSpaceMember` sends `space_id: Number(...)`) — Circle's
+					// space ids are numeric even though our own types carry them as
+					// strings everywhere else.
+					space_ids: (params.spaceIds ?? []).map(Number).filter(Number.isFinite),
 				}),
 			});
 		} catch (err) {

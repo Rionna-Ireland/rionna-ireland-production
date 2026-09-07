@@ -47,8 +47,8 @@ describe("buildFeedChips", () => {
 			{ id: "news", kind: "news", label: "News", spaceIds: [] },
 			{ id: "charity", kind: "charity", label: "Charity", spaceIds: [] },
 			{ id: "polls", kind: "polls", label: "Polls", spaceIds: [] },
-			{ id: "space:s1", kind: "space", label: "Announcements", spaceIds: [] },
-			{ id: "space:s3", kind: "space", label: "Networking", spaceIds: [] },
+			{ id: "space:s1", kind: "space", label: "Announcements", spaceIds: ["s1"] },
+			{ id: "space:s3", kind: "space", label: "Networking", spaceIds: ["s3"] },
 		]);
 	});
 
@@ -57,6 +57,17 @@ describe("buildFeedChips", () => {
 		const chips = buildFeedChips({ spaces, metadata: {}, horseSpaceIds: new Set() });
 
 		expect(chips.map((c) => c.kind)).toEqual(["all", "news", "charity", "polls", "space", "space"]);
+	});
+
+	it("emits the space's own id in spaceIds for a space chip", () => {
+		const chips = buildFeedChips({
+			spaces: [NETWORKING],
+			metadata: {},
+			horseSpaceIds: new Set(),
+		});
+
+		const spaceChip = chips.find((c) => c.id === "space:s3");
+		expect(spaceChip?.spaceIds).toEqual(["s3"]);
 	});
 
 	it("excludes spaces the member is not a member of", () => {
@@ -101,5 +112,29 @@ describe("buildFeedChips", () => {
 		});
 
 		expect(chips.map((c) => c.kind)).toEqual(["all", "news", "charity", "space"]);
+	});
+
+	it("excludes the Inside Track space from space chips (its feed is always empty)", () => {
+		const insideTrack = space({ id: "it1", name: "Inside Track" });
+		const chips = buildFeedChips({
+			spaces: [insideTrack, NETWORKING],
+			metadata: { circle: { insideTrack: { spaceId: "it1" } } },
+			horseSpaceIds: new Set(),
+		});
+
+		expect(chips.some((c) => c.id === "space:it1")).toBe(false);
+		expect(chips.some((c) => c.id === "space:s3")).toBe(true);
+	});
+
+	it("excludes the events space from space chips (its feed is always empty)", () => {
+		const eventsSpace = space({ id: "ev1", name: "Events" });
+		const chips = buildFeedChips({
+			spaces: [eventsSpace, NETWORKING],
+			metadata: { circle: { eventsSpaceId: "ev1" } },
+			horseSpaceIds: new Set(),
+		});
+
+		expect(chips.some((c) => c.id === "space:ev1")).toBe(false);
+		expect(chips.some((c) => c.id === "space:s3")).toBe(true);
 	});
 });

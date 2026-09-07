@@ -38,8 +38,9 @@ export interface ListPostableSpacesResult {
  */
 export type FeedChipKind = "all" | "horses" | "news" | "charity" | "polls" | "space";
 
-/** A filter chip for the Community feed. `spaceIds` is empty for every fixed
- * kind except `horses` (all horse space ids the member is currently in). */
+/** A filter chip for the Community feed. `spaceIds` is empty only for the
+ * `all`/`news`/`charity`/`polls` kinds; `horses` carries every horse space id
+ * the member is currently in, and `space` carries that one space's id. */
 export interface FeedChip {
 	id: string;
 	kind: FeedChipKind;
