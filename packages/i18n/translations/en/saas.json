@@ -616,7 +616,8 @@
 					"name": "Name",
 					"group": "Group",
 					"horse": "Horse",
-					"memberPosting": "Members can post"
+					"memberPosting": "Members can post",
+					"showChip": "Show as filter chip"
 				},
 				"horseBadge": "Horse",
 				"toggleError": "Couldn't update posting settings. Try again."

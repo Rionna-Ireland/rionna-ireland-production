@@ -21,7 +21,9 @@ import { useTranslations } from "next-intl";
 /**
  * S12-02a Task 10: per-space "members can post" switches. Reuses the
  * `admin.community.listSpaces` / `setSpaceSettings` procedures built in
- * Task 9. The "show as filter chip" column is deferred to S12-02b.
+ * Task 9. S12-02b Task 3 adds the "show as filter chip" column
+ * (`hideChip`); horse rows show "—" since horses always collapse into one
+ * chip regardless of the per-space setting.
  */
 export function SpacesTable() {
 	const t = useTranslations();
@@ -70,6 +72,36 @@ export function SpacesTable() {
 		);
 	}
 
+	function onToggleChip(spaceId: string, showChip: boolean) {
+		if (!organizationId) return;
+
+		const hideChip = !showChip;
+		const previous = queryClient.getQueryData(listQueryOptions.queryKey);
+		queryClient.setQueryData(listQueryOptions.queryKey, (prev) =>
+			prev
+				? {
+						...prev,
+						spaces: prev.spaces.map((space) =>
+							space.id === spaceId ? { ...space, hideChip } : space,
+						),
+					}
+				: prev,
+		);
+
+		setSettings.mutate(
+			{ organizationId, spaceId, hideChip },
+			{
+				onError: () => {
+					queryClient.setQueryData(listQueryOptions.queryKey, previous);
+					toastError(t("admin.community.spaces.toggleError"));
+				},
+				onSettled: () => {
+					void queryClient.invalidateQueries({ queryKey: listQueryOptions.queryKey });
+				},
+			},
+		);
+	}
+
 	if (isLoading) {
 		return (
 			<Card className="p-6">
@@ -99,6 +131,7 @@ export function SpacesTable() {
 							<TableHead>{t("admin.community.spaces.columns.group")}</TableHead>
 							<TableHead>{t("admin.community.spaces.columns.horse")}</TableHead>
 							<TableHead>{t("admin.community.spaces.columns.memberPosting")}</TableHead>
+							<TableHead>{t("admin.community.spaces.columns.showChip")}</TableHead>
 						</TableRow>
 					</TableHeader>
 					<TableBody>
@@ -125,11 +158,26 @@ export function SpacesTable() {
 											aria-label={t("admin.community.spaces.columns.memberPosting")}
 										/>
 									</TableCell>
+									<TableCell className="py-2">
+										{space.isHorse ? (
+											"—"
+										) : (
+											<Switch
+												checked={!space.hideChip}
+												disabled={
+													setSettings.isPending &&
+													setSettings.variables?.spaceId === space.id
+												}
+												onCheckedChange={(checked) => onToggleChip(space.id, checked)}
+												aria-label={t("admin.community.spaces.columns.showChip")}
+											/>
+										)}
+									</TableCell>
 								</TableRow>
 							))
 						) : (
 							<TableRow>
-								<TableCell colSpan={4} className="h-24 text-center">
+								<TableCell colSpan={5} className="h-24 text-center">
 									<p>{t("admin.horses.noResults")}</p>
 								</TableCell>
 							</TableRow>
