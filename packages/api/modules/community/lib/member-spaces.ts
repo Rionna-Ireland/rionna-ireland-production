@@ -36,6 +36,7 @@ function parseMemberSpace(raw: Record<string, unknown>): MemberSpace | null {
 		emoji: textValue(raw.emoji),
 		canCreatePost: booleanValue(policies?.can_create_post),
 		isMember: booleanValue(raw.is_member),
+		isPrivate: booleanValue(raw.is_private),
 		spaceGroupId: idValue(raw.space_group_id),
 		isPostDisabled: booleanValue(raw.is_post_disabled),
 		spaceType: textValue(raw.space_type),

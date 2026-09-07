@@ -13,9 +13,9 @@ import { recordBlock } from "../../moderation/record-block";
 import { screenText } from "../../moderation/screen-text";
 import { buildPostDoc } from "../lib/build-post-doc";
 import { MAX_BODY_CHARS, MAX_TITLE_CHARS, MIN_BODY_CHARS } from "../lib/limits";
-import { fetchMemberSpaces, getMemberSpacesCached, writeMemberSpacesCache } from "../lib/member-spaces";
+import { fetchMemberSpaces, getMemberSpacesCached, invalidateMemberSpacesCache, writeMemberSpacesCache } from "../lib/member-spaces";
 import { checkPostRateLimit } from "../lib/rate-limit";
-import { isMemberPostingAllowed } from "../lib/space-settings";
+import { isMemberPostingAllowed, isPostableForMember, needsJoinToPost } from "../lib/space-settings";
 import type { CreatePostResult } from "../lib/types";
 
 const inputSchema = z
@@ -97,7 +97,7 @@ export const createPost = protectedProcedure
 			spaces = fetched;
 		}
 		const space = spaces.find((s) => s.id === spaceId);
-		if (!space?.canCreatePost || space.isPostDisabled) {
+		if (!space || !isPostableForMember(space)) {
 			return { ok: false, reason: "not_allowed" };
 		}
 
@@ -114,6 +114,18 @@ export const createPost = protectedProcedure
 				targetSpaceId: spaceId,
 			});
 			return { ok: false, reason: "blocked" };
+		}
+
+		// Join the member into a public space they haven't joined yet (Circle
+		// only grants can_create_post to joined members). Runs after the gate and
+		// before the rate limit so a blocked post never changes membership.
+		if (needsJoinToPost(space)) {
+			const joined = await circle.addSpaceMember({ spaceId, email: dbUser.email });
+			if (!joined.ok) {
+				logger.warn("community.post.join_failed", { organizationId, memberId: member.id, spaceId, reason: joined.reason });
+				return { ok: false, reason: "circle_failed" };
+			}
+			invalidateMemberSpacesCache(user.id, organizationId);
 		}
 
 		// Rate limits.

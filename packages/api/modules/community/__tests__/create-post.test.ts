@@ -11,6 +11,8 @@ const {
 	mockCreateModerationFlag,
 	mockGetMemberToken,
 	mockCreatePost,
+	mockAddSpaceMember,
+	mockInvalidateMemberSpacesCache,
 	mockSerializeNovelDocToCircle,
 	mockGetMemberSpacesCached,
 	mockFetchMemberSpaces,
@@ -27,6 +29,8 @@ const {
 	mockCreateModerationFlag: vi.fn(),
 	mockGetMemberToken: vi.fn(),
 	mockCreatePost: vi.fn(),
+	mockAddSpaceMember: vi.fn(),
+	mockInvalidateMemberSpacesCache: vi.fn(),
 	mockSerializeNovelDocToCircle: vi.fn(),
 	mockGetMemberSpacesCached: vi.fn(),
 	mockFetchMemberSpaces: vi.fn(),
@@ -49,13 +53,14 @@ vi.mock("@repo/database", () => ({
 	createModerationFlag: mockCreateModerationFlag,
 }));
 vi.mock("@repo/payments/lib/circle", () => ({
-	createCircleService: () => ({ getMemberToken: mockGetMemberToken, createPost: mockCreatePost }),
+	createCircleService: () => ({ getMemberToken: mockGetMemberToken, createPost: mockCreatePost, addSpaceMember: mockAddSpaceMember }),
 	serializeNovelDocToCircle: mockSerializeNovelDocToCircle,
 }));
 vi.mock("../lib/member-spaces", () => ({
 	getMemberSpacesCached: mockGetMemberSpacesCached,
 	fetchMemberSpaces: mockFetchMemberSpaces,
 	writeMemberSpacesCache: mockWriteMemberSpacesCache,
+	invalidateMemberSpacesCache: mockInvalidateMemberSpacesCache,
 }));
 vi.mock("../../circle/lib/member-feed-cache", () => ({
 	invalidateMemberFeedCache: mockInvalidateMemberFeedCache,
@@ -85,6 +90,7 @@ const SPACES = [
 		emoji: "🏇",
 		canCreatePost: true,
 		isMember: true,
+		isPrivate: false,
 		spaceGroupId: null,
 		isPostDisabled: false,
 		spaceType: "basic",
@@ -132,6 +138,41 @@ describe("community.createPost", () => {
 		const result = await call(createPost, baseInput, ctx);
 		expect(result).toEqual({ ok: false, reason: "not_allowed" });
 		expect(mockCreatePost).not.toHaveBeenCalled();
+	});
+
+	it("joins a public space the member hasn't joined, then posts", async () => {
+		mockGetMemberSpacesCached.mockReturnValue([{ ...SPACES[0], canCreatePost: false, isMember: false }]);
+		mockAddSpaceMember.mockResolvedValue({ ok: true, data: { spaceId: SPACE_ID, email: "jane@x.ie" } });
+		const result = await call(createPost, baseInput, ctx);
+		expect(mockAddSpaceMember).toHaveBeenCalledWith({ spaceId: SPACE_ID, email: "jane@x.ie" });
+		expect(mockInvalidateMemberSpacesCache).toHaveBeenCalledWith("u1", "org1");
+		expect(mockCreatePost).toHaveBeenCalledTimes(1);
+		expect(result).toMatchObject({ ok: true });
+	});
+
+	it("returns circle_failed when the self-join fails, without posting", async () => {
+		mockGetMemberSpacesCached.mockReturnValue([{ ...SPACES[0], canCreatePost: false, isMember: false }]);
+		mockAddSpaceMember.mockResolvedValue({ ok: false, reason: "forbidden", retriable: false });
+		const result = await call(createPost, baseInput, ctx);
+		expect(result).toEqual({ ok: false, reason: "circle_failed" });
+		expect(mockCreatePost).not.toHaveBeenCalled();
+	});
+
+	it("never joins a private space the member isn't in", async () => {
+		mockGetMemberSpacesCached.mockReturnValue([
+			{ ...SPACES[0], canCreatePost: false, isMember: false, isPrivate: true },
+		]);
+		const result = await call(createPost, baseInput, ctx);
+		expect(result).toEqual({ ok: false, reason: "not_allowed" });
+		expect(mockAddSpaceMember).not.toHaveBeenCalled();
+		expect(mockCreatePost).not.toHaveBeenCalled();
+	});
+
+	it("does not join when the post is blocked by the word gate", async () => {
+		mockGetMemberSpacesCached.mockReturnValue([{ ...SPACES[0], canCreatePost: false, isMember: false }]);
+		const result = await call(createPost, { ...baseInput, title: "what a cunt" }, ctx);
+		expect(result).toEqual({ ok: false, reason: "blocked" });
+		expect(mockAddSpaceMember).not.toHaveBeenCalled();
 	});
 
 	it("returns not_allowed when imageKey is under another member's prefix", async () => {
