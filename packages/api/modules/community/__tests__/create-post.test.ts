@@ -140,14 +140,31 @@ describe("community.createPost", () => {
 		expect(mockCreatePost).not.toHaveBeenCalled();
 	});
 
-	it("joins a public space the member hasn't joined, then posts", async () => {
-		mockGetMemberSpacesCached.mockReturnValue([{ ...SPACES[0], canCreatePost: false, isMember: false }]);
+	it("joins a public space the member hasn't joined (Circle reports it post-disabled for non-members), re-checks, then posts", async () => {
+		mockGetMemberSpacesCached.mockReturnValue([
+			{ ...SPACES[0], canCreatePost: false, isMember: false, isPostDisabled: true },
+		]);
 		mockAddSpaceMember.mockResolvedValue({ ok: true, data: { spaceId: SPACE_ID, email: "jane@x.ie" } });
+		mockGetMemberToken.mockResolvedValue({ ok: true, data: { accessToken: "tok" } });
+		mockFetchMemberSpaces.mockResolvedValue([{ ...SPACES[0], canCreatePost: true, isMember: true }]);
 		const result = await call(createPost, baseInput, ctx);
 		expect(mockAddSpaceMember).toHaveBeenCalledWith({ spaceId: SPACE_ID, email: "jane@x.ie" });
 		expect(mockInvalidateMemberSpacesCache).toHaveBeenCalledWith("u1", "org1");
+		expect(mockWriteMemberSpacesCache).toHaveBeenCalled();
 		expect(mockCreatePost).toHaveBeenCalledTimes(1);
 		expect(result).toMatchObject({ ok: true });
+	});
+
+	it("returns not_allowed when the space still forbids member posts after joining", async () => {
+		mockGetMemberSpacesCached.mockReturnValue([
+			{ ...SPACES[0], canCreatePost: false, isMember: false, isPostDisabled: true },
+		]);
+		mockAddSpaceMember.mockResolvedValue({ ok: true, data: { spaceId: SPACE_ID, email: "jane@x.ie" } });
+		mockGetMemberToken.mockResolvedValue({ ok: true, data: { accessToken: "tok" } });
+		mockFetchMemberSpaces.mockResolvedValue([{ ...SPACES[0], canCreatePost: false, isMember: true, isPostDisabled: true }]);
+		const result = await call(createPost, baseInput, ctx);
+		expect(result).toEqual({ ok: false, reason: "not_allowed" });
+		expect(mockCreatePost).not.toHaveBeenCalled();
 	});
 
 	it("returns circle_failed when the self-join fails, without posting", async () => {
