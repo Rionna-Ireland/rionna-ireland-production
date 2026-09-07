@@ -126,6 +126,20 @@ export const createPost = protectedProcedure
 				return { ok: false, reason: "circle_failed" };
 			}
 			invalidateMemberSpacesCache(user.id, organizationId);
+			// Re-read the real policy now that the member has joined: the admin
+			// token would happily post into a space Circle forbids members from
+			// posting in, so this is the only honest check.
+			const token = await circle.getMemberToken(member.circleMemberId);
+			const refreshed = token.ok ? await fetchMemberSpaces({ accessToken: token.data.accessToken }) : null;
+			if (!refreshed) {
+				return { ok: false, reason: "circle_failed" };
+			}
+			writeMemberSpacesCache(user.id, organizationId, refreshed);
+			const joinedSpace = refreshed.find((s) => s.id === spaceId);
+			if (!joinedSpace?.canCreatePost || joinedSpace.isPostDisabled) {
+				logger.warn("community.post.join_not_postable", { organizationId, memberId: member.id, spaceId });
+				return { ok: false, reason: "not_allowed" };
+			}
 		}
 
 		// Rate limits.

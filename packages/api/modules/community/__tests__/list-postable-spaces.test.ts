@@ -60,7 +60,9 @@ const METADATA = JSON.stringify({
 
 const SPACES = [
 	{
-		// public, not yet joined — included (createPost self-joins)
+		// public, not yet joined — included (createPost self-joins). Circle
+		// reports is_post_disabled:true for non-members; that flag is
+		// viewer-relative and must be ignored here.
 		id: "7",
 		name: "Networking",
 		emoji: "🤝",
@@ -68,7 +70,7 @@ const SPACES = [
 		isMember: false,
 		isPrivate: false,
 		spaceGroupId: null,
-		isPostDisabled: false,
+		isPostDisabled: true,
 		spaceType: "basic",
 	},
 	{

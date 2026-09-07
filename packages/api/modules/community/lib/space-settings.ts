@@ -23,18 +23,20 @@ export function isHorseSpace(
 
 /**
  * Circle only grants `can_create_post` to members who have *joined* a space,
- * and nothing auto-joins members into the general spaces. A public,
- * post-enabled space the member hasn't joined is therefore still postable:
- * `createPost` joins them (Admin v2 `addSpaceMember`) before creating the
+ * and nothing auto-joins members into the general spaces. For a non-member
+ * the member-token listing also reports `is_post_disabled: true` — that flag
+ * is viewer-relative ("posts disabled for you"), NOT the space setting — so
+ * it is ignored until the member has joined. A public space the member
+ * hasn't joined is therefore still postable: `createPost` joins them (Admin
+ * v2 `addSpaceMember`) and re-checks the real policy before creating the
  * post. Private spaces are admin-managed and never auto-joined.
  */
 export function needsJoinToPost(space: {
 	canCreatePost: boolean;
 	isMember: boolean;
 	isPrivate: boolean;
-	isPostDisabled: boolean;
 }): boolean {
-	return !space.isPostDisabled && !space.canCreatePost && !space.isMember && !space.isPrivate;
+	return !space.canCreatePost && !space.isMember && !space.isPrivate;
 }
 
 export function isPostableForMember(space: {
@@ -43,5 +45,6 @@ export function isPostableForMember(space: {
 	isPrivate: boolean;
 	isPostDisabled: boolean;
 }): boolean {
-	return !space.isPostDisabled && (space.canCreatePost || needsJoinToPost(space));
+	if (space.isMember) return space.canCreatePost && !space.isPostDisabled;
+	return needsJoinToPost(space);
 }
