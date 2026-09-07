@@ -4,6 +4,7 @@ import { createCircleService } from "@repo/payments/lib/circle";
 import { z } from "zod";
 
 import { adminProcedure } from "../../../../orpc/procedures";
+import { getHorseSpaceIds } from "../../lib/horse-space-ids";
 import { isHorseSpace } from "../../lib/space-settings";
 
 export interface AdminSpaceRow {
@@ -11,6 +12,8 @@ export interface AdminSpaceRow {
 	name: string;
 	groupName: string | null;
 	isHorse: boolean;
+	/** Circle's own `is_private` (final review I1) — drives the auto-join guard client-side too. */
+	isPrivate: boolean;
 	memberPosting: boolean;
 	hideChip: boolean;
 	autoJoin: boolean;
@@ -37,6 +40,11 @@ export async function runListSpaces(organizationId: string): Promise<ListSpacesR
 	}
 
 	const metadata = parseOrgMetadata(org.metadata as string | null);
+	// Final review I1: the space-group check alone can drift from a live
+	// horse's actual space (QA finding — see `buildFeedChips`'s doc comment),
+	// so combine it with the `Horse.circleSpaceId` signal here too, the same
+	// way the member-facing chips and the auto-join guard already do.
+	const horseSpaceIds = await getHorseSpaceIds(organizationId);
 
 	let groupNameById = new Map<string, string>();
 	let spacesResult: Awaited<ReturnType<ReturnType<typeof createCircleService>["listSpaces"]>>;
@@ -63,7 +71,10 @@ export async function runListSpaces(organizationId: string): Promise<ListSpacesR
 			id: space.id,
 			name: space.name,
 			groupName,
-			isHorse: isHorseSpace(metadata, { spaceGroupId: space.spaceGroupId ?? null }),
+			isHorse:
+				horseSpaceIds.has(space.id) ||
+				isHorseSpace(metadata, { spaceGroupId: space.spaceGroupId ?? null }),
+			isPrivate: space.isPrivate,
 			memberPosting: settings?.memberPosting === true,
 			hideChip: settings?.hideChip === true,
 			autoJoin: settings?.autoJoin === true,

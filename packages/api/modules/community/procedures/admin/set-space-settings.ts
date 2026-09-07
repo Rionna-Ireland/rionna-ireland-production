@@ -1,8 +1,12 @@
 import { ORPCError } from "@orpc/client";
+import { db, parseOrgMetadata } from "@repo/database";
 import { logger } from "@repo/logs";
+import { createCircleService } from "@repo/payments/lib/circle";
 import { z } from "zod";
 
 import { adminProcedure } from "../../../../orpc/procedures";
+import { getHorseSpaceIds } from "../../lib/horse-space-ids";
+import { isHorseSpace } from "../../lib/space-settings";
 import { mergeSpaceSettings } from "../../lib/write-space-settings";
 
 const setSpaceSettingsInput = z
@@ -31,6 +35,38 @@ export const setSpaceSettings = adminProcedure
 	.handler(async ({ input, context }) => {
 		if (context.session.activeOrganizationId !== input.organizationId) {
 			throw new ORPCError("FORBIDDEN");
+		}
+
+		// Final review I1: never let an admin flip `autoJoin` on for a private
+		// or horse-backed space — the seed already refuses these by default,
+		// but this is the other write path (the admin table) and has to enforce
+		// the same rule server-side (the admin token can read both signals).
+		if (input.autoJoin === true) {
+			const org = await db.organization.findUnique({
+				where: { id: input.organizationId },
+				select: { slug: true, metadata: true },
+			});
+			if (org?.slug) {
+				const metadata = parseOrgMetadata(org.metadata as string | null);
+				const circle = createCircleService(org.slug);
+				const [spacesResult, horseSpaceIds] = await Promise.all([
+					circle.listSpaces(),
+					getHorseSpaceIds(input.organizationId),
+				]);
+				const space = spacesResult.ok
+					? spacesResult.data.find((s) => s.id === input.spaceId)
+					: undefined;
+				const isPrivate = space?.isPrivate === true;
+				const isHorse =
+					horseSpaceIds.has(input.spaceId) ||
+					(space !== undefined &&
+						isHorseSpace(metadata, { spaceGroupId: space.spaceGroupId ?? null }));
+				if (isPrivate || isHorse) {
+					throw new ORPCError("BAD_REQUEST", {
+						message: "Cannot enable auto-join for a private or horse space",
+					});
+				}
+			}
 		}
 
 		const settings = await mergeSpaceSettings({

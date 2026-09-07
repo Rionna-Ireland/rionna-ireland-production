@@ -44,6 +44,14 @@ export interface OrganizationMetadata {
 		 * closed — S12-02b Task 6).
 		 */
 		spaces?: Record<string, { memberPosting?: boolean; hideChip?: boolean; autoJoin?: boolean }>;
+		/**
+		 * S12-02b final review I3: last processed member id (ascending order)
+		 * from the auto-join reconcile sweep, so a run resumes where the
+		 * previous one left off instead of re-processing the same members
+		 * every day once the org has more than the per-run cap. Cleared once a
+		 * full pass over the org's active members completes.
+		 */
+		autoJoinCursor?: string;
 		poll?: {
 			enabled: boolean;
 			cadenceMinutes: number;

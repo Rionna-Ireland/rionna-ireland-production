@@ -204,7 +204,7 @@ export function SpacesTable() {
 										)}
 									</TableCell>
 									<TableCell className="py-2">
-										{space.isHorse ? (
+										{space.isHorse || space.isPrivate ? (
 											"—"
 										) : (
 											<Switch

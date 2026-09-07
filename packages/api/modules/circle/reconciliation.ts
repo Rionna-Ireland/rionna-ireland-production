@@ -18,7 +18,8 @@ import { logger } from "@repo/logs";
 import { createCircleService } from "@repo/payments/lib/circle";
 import { provisionHorseSpace } from "@repo/payments/lib/circle-horse-provisioning";
 
-import { listAutoJoinSpaceIds } from "../community/lib/space-settings";
+import { getHorseSpaceIds } from "../community/lib/horse-space-ids";
+import { resolveAutoJoinSpaceIds } from "../community/lib/resolve-auto-join-space-ids";
 
 export async function reconcileCircleMembers(
 	organizationId: string,
@@ -36,7 +37,22 @@ export async function reconcileCircleMembers(
 
 	const circle = createCircleService(org.slug);
 	const metadata = parseOrgMetadata(org.metadata as string | null);
-	const autoJoinSpaceIds = listAutoJoinSpaceIds(metadata);
+
+	// Final review I1: same guard as the auto-join sweep — an admin-chosen
+	// autoJoin space is only trusted here once it's confirmed public (Circle's
+	// own `is_private`) and not horse-backed (Horse.circleSpaceId or the
+	// space-group signal). One Admin v2 listing per org, same cost as
+	// `runListSpaces`/`reconcileAutoJoinMemberships`.
+	const [spacesResult, horseSpaceIds] = await Promise.all([
+		circle.listSpaces(),
+		getHorseSpaceIds(organizationId),
+	]);
+	const adminSpaces = new Map(
+		spacesResult.ok
+			? spacesResult.data.map((s) => [s.id, { isPrivate: s.isPrivate, spaceGroupId: s.spaceGroupId ?? null }])
+			: [],
+	);
+	const autoJoinSpaceIds = resolveAutoJoinSpaceIds({ metadata, adminSpaces, horseSpaceIds });
 
 	let provisioned = 0;
 	let deactivated = 0;
