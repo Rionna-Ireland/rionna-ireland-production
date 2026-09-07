@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { protectedProcedure } from "../../../orpc/procedures";
 import { fetchMemberSpaces, getMemberSpacesCached, writeMemberSpacesCache } from "../lib/member-spaces";
-import { isHorseSpace, isMemberPostingAllowed } from "../lib/space-settings";
+import { isHorseSpace, isMemberPostingAllowed, isPostableForMember } from "../lib/space-settings";
 import type { ListPostableSpacesResult } from "../lib/types";
 
 /**
@@ -56,7 +56,7 @@ export const listPostableSpaces = protectedProcedure
 			ok: true,
 			spaces: spaces
 				.filter(
-					(s) => s.canCreatePost && !s.isPostDisabled && isMemberPostingAllowed(metadata, s.id),
+					(s) => isPostableForMember(s) && isMemberPostingAllowed(metadata, s.id),
 				)
 				.map((s) => ({ id: s.id, name: s.name, emoji: s.emoji, isHorse: isHorseSpace(metadata, s) })),
 		};

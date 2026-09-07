@@ -9,6 +9,8 @@ export interface MemberSpace {
 	emoji: string | null;
 	canCreatePost: boolean;
 	isMember: boolean;
+	/** Circle `is_private` — members can't be self-joined into private spaces. */
+	isPrivate: boolean;
 	spaceGroupId: string | null;
 	isPostDisabled: boolean;
 	/** S12-02b needs the raw Circle space type (e.g. "basic", "chat"). */

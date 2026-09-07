@@ -52,17 +52,44 @@ const METADATA = JSON.stringify({
 		spaces: {
 			"1": { memberPosting: true },
 			"3": { memberPosting: true },
+			"7": { memberPosting: true },
+			"8": { memberPosting: true },
 		},
 	},
 });
 
 const SPACES = [
 	{
+		// public, not yet joined — included (createPost self-joins)
+		id: "7",
+		name: "Networking",
+		emoji: "🤝",
+		canCreatePost: false,
+		isMember: false,
+		isPrivate: false,
+		spaceGroupId: null,
+		isPostDisabled: false,
+		spaceType: "basic",
+	},
+	{
+		// private, not joined — excluded
+		id: "8",
+		name: "Owners Only",
+		emoji: null,
+		canCreatePost: false,
+		isMember: false,
+		isPrivate: true,
+		spaceGroupId: null,
+		isPostDisabled: false,
+		spaceType: "basic",
+	},
+	{
 		id: "1",
 		name: "Inside Track",
 		emoji: "🏇",
 		canCreatePost: true,
 		isMember: true,
+		isPrivate: false,
 		spaceGroupId: "9",
 		isPostDisabled: false,
 		spaceType: "basic",
@@ -74,6 +101,7 @@ const SPACES = [
 		emoji: null,
 		canCreatePost: false,
 		isMember: true,
+		isPrivate: false,
 		spaceGroupId: null,
 		isPostDisabled: false,
 		spaceType: "basic",
@@ -85,6 +113,7 @@ const SPACES = [
 		emoji: null,
 		canCreatePost: true,
 		isMember: true,
+		isPrivate: false,
 		spaceGroupId: null,
 		isPostDisabled: false,
 		spaceType: "basic",
@@ -96,6 +125,7 @@ const SPACES = [
 		emoji: "📣",
 		canCreatePost: true,
 		isMember: true,
+		isPrivate: false,
 		spaceGroupId: null,
 		isPostDisabled: true,
 		spaceType: "basic",
@@ -117,7 +147,10 @@ describe("community.listPostableSpaces", () => {
 		const result = await call(listPostableSpaces, { organizationId: "org1" }, ctx);
 		expect(result).toEqual({
 			ok: true,
-			spaces: [{ id: "1", name: "Inside Track", emoji: "🏇", isHorse: true }],
+			spaces: [
+				{ id: "7", name: "Networking", emoji: "🤝", isHorse: false },
+				{ id: "1", name: "Inside Track", emoji: "🏇", isHorse: true },
+			],
 		});
 		expect(mockWriteMemberSpacesCache).toHaveBeenCalledWith("u1", "org1", SPACES);
 	});

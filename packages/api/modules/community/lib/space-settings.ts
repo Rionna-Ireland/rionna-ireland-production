@@ -20,3 +20,28 @@ export function isHorseSpace(
 		space.spaceGroupId !== null && space.spaceGroupId === metadata.circle?.spaceGroupId
 	);
 }
+
+/**
+ * Circle only grants `can_create_post` to members who have *joined* a space,
+ * and nothing auto-joins members into the general spaces. A public,
+ * post-enabled space the member hasn't joined is therefore still postable:
+ * `createPost` joins them (Admin v2 `addSpaceMember`) before creating the
+ * post. Private spaces are admin-managed and never auto-joined.
+ */
+export function needsJoinToPost(space: {
+	canCreatePost: boolean;
+	isMember: boolean;
+	isPrivate: boolean;
+	isPostDisabled: boolean;
+}): boolean {
+	return !space.isPostDisabled && !space.canCreatePost && !space.isMember && !space.isPrivate;
+}
+
+export function isPostableForMember(space: {
+	canCreatePost: boolean;
+	isMember: boolean;
+	isPrivate: boolean;
+	isPostDisabled: boolean;
+}): boolean {
+	return !space.isPostDisabled && (space.canCreatePost || needsJoinToPost(space));
+}
