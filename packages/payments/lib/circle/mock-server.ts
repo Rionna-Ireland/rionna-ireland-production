@@ -85,7 +85,7 @@ export class MockServerCircleService implements CircleService {
 					email: params.email,
 					name: params.name,
 					sso_user_id: params.ssoUserId,
-					space_ids: params.spaceIds ?? [],
+					space_ids: (params.spaceIds ?? []).map(Number).filter(Number.isFinite),
 					idempotency_key: params.idempotencyKey,
 				}),
 			});

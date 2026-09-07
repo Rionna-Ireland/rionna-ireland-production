@@ -30,6 +30,29 @@ export interface ListPostableSpacesResult {
 	spaces: PostableSpace[];
 }
 
+/**
+ * Fixed chip kinds plus the per-space chip discriminator (S12-02b). `all` is
+ * the unfiltered feed; `horses` collapses every horse space into one chip;
+ * `news`/`charity`/`polls` are the fixed story/poll kinds; `space` is one
+ * chip per non-horse post-type space the member belongs to.
+ */
+export type FeedChipKind = "all" | "horses" | "news" | "charity" | "polls" | "space";
+
+/** A filter chip for the Community feed. `spaceIds` is empty only for the
+ * `all`/`news`/`charity`/`polls` kinds; `horses` carries every horse space id
+ * the member is currently in, and `space` carries that one space's id. */
+export interface FeedChip {
+	id: string;
+	kind: FeedChipKind;
+	label: string;
+	spaceIds: string[];
+}
+
+export interface ListFeedChipsResult {
+	ok: boolean;
+	chips: FeedChip[];
+}
+
 export interface CreatePostImageUploadUrlResult {
 	signedUploadUrl: string;
 	path: string;

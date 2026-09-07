@@ -1,16 +1,24 @@
 /**
- * One-off seed (S12-02a): writes the default per-space `memberPosting`
- * setting for every org with a Circle community configured.
+ * One-off seed (S12-02a, extended S12-02b Task 6): writes the default
+ * per-space `memberPosting` and `autoJoin` settings for every org with a
+ * Circle community configured.
  *
- * Default is opt-in-by-default EXCEPT the three "official" surfaces the org
- * itself posts into — announcements (`communitySpaceId`), Inside Track
- * (`insideTrack.spaceId`) and events (`eventsSpaceId`) — which default to
- * off. There is no stored polls-space id, so it isn't excluded here.
+ * `memberPosting` default is opt-in-by-default EXCEPT the three "official"
+ * surfaces the org itself posts into — announcements (`communitySpaceId`),
+ * Inside Track (`insideTrack.spaceId`) and events (`eventsSpaceId`) — which
+ * default to off. There is no stored polls-space id, so it isn't excluded
+ * here.
+ *
+ * `autoJoin` default (S12-02b §10) comes from the pure `defaultSpaceSettings`
+ * helper: on for public, non-horse, post-type spaces; off for horse spaces
+ * (follow-driven — never auto-joined), the events space, and any private
+ * space.
  *
  * Read-modify-write via Circle Admin v2 only for the space list; writes go
- * to our own `Organization.metadata`, not Circle. Idempotent: only writes
- * entries missing from `metadata.circle.spaces`, so reruns are safe and a
- * manually-set entry is never clobbered.
+ * to our own `Organization.metadata`, not Circle. Idempotent **per key, not
+ * per space**: an existing entry missing only `autoJoin` (e.g. written by
+ * the original S12-02a run) gets `autoJoin` filled in without touching its
+ * `memberPosting`/`hideChip`, and a manually-set key is never clobbered.
  *
  * Run per env (mirrors the seed script pattern):
  *   cd packages/database
@@ -20,6 +28,7 @@
  *
  * Pass --dry-run to report without writing.
  */
+import { defaultSpaceSettings } from "./lib/default-space-settings";
 import { db } from "../prisma/client";
 import { parseOrgMetadata } from "../types/organization-metadata";
 
@@ -82,19 +91,69 @@ async function main() {
 
 		const spaces = await listPaginated("/spaces");
 		const existing = metadata.circle.spaces ?? {};
-		const rows: Array<{ id: string; name: string; memberPosting: boolean; written: boolean }> = [];
-		const nextSpaces: Record<string, { memberPosting?: boolean; hideChip?: boolean }> = { ...existing };
+		const rows: Array<{
+			id: string;
+			name: string;
+			memberPosting: boolean;
+			autoJoin: boolean;
+			written: boolean;
+		}> = [];
+		const nextSpaces: Record<string, { memberPosting?: boolean; hideChip?: boolean; autoJoin?: boolean }> = {
+			...existing,
+		};
+
+		// Horse-space detection for the autoJoin default (S12-02b §10): a
+		// space is a horse space when its id matches a Horse.circleSpaceId in
+		// this org, OR its space_group_id equals circle.spaceGroupId — a QA
+		// finding (S12-02a) showed the group id alone can mismatch, so both
+		// checks feed the pure helper.
+		const horses = await db.horse.findMany({
+			where: { organizationId: org.id, circleSpaceId: { not: null } },
+			select: { circleSpaceId: true },
+		});
+		const horseSpaceIds = new Set(
+			horses.map((h) => h.circleSpaceId).filter((id): id is string => Boolean(id)),
+		);
 
 		for (const space of spaces) {
 			const id = String(space.id);
 			const name = typeof space.name === "string" ? space.name : id;
-			if (existing[id]) {
-				rows.push({ id, name, memberPosting: existing[id].memberPosting === true, written: false });
+			const existingEntry = existing[id];
+
+			const memberPostingMissing = existingEntry?.memberPosting === undefined;
+			const autoJoinMissing = existingEntry?.autoJoin === undefined;
+
+			if (!memberPostingMissing && !autoJoinMissing) {
+				rows.push({
+					id,
+					name,
+					memberPosting: existingEntry.memberPosting === true,
+					autoJoin: existingEntry.autoJoin === true,
+					written: false,
+				});
 				continue;
 			}
-			const memberPosting = !offByDefault.has(id);
-			nextSpaces[id] = { memberPosting };
-			rows.push({ id, name, memberPosting, written: true });
+
+			const memberPostingDefault = !offByDefault.has(id);
+			const { autoJoin: autoJoinDefault } = defaultSpaceSettings(
+				{
+					id,
+					isPrivate: Boolean(space.is_private),
+					spaceType: typeof space.space_type === "string" ? space.space_type : null,
+					spaceGroupId: space.space_group_id != null ? String(space.space_group_id) : null,
+				},
+				{
+					horseSpaceIds,
+					spaceGroupId: metadata.circle.spaceGroupId ?? null,
+					eventsSpaceId: metadata.circle.eventsSpaceId ?? null,
+				},
+			);
+
+			const memberPosting = memberPostingMissing ? memberPostingDefault : (existingEntry!.memberPosting ?? false);
+			const autoJoin = autoJoinMissing ? autoJoinDefault : (existingEntry!.autoJoin ?? false);
+
+			nextSpaces[id] = { ...existingEntry, memberPosting, autoJoin };
+			rows.push({ id, name, memberPosting, autoJoin, written: true });
 		}
 
 		console.log(`\norg ${org.slug ?? org.id}${DRY_RUN ? " (dry run)" : ""}:`);
@@ -103,6 +162,7 @@ async function main() {
 				"space id": r.id,
 				name: r.name,
 				memberPosting: r.memberPosting,
+				autoJoin: r.autoJoin,
 				action: r.written ? "written" : "skipped (already set)",
 			})),
 		);

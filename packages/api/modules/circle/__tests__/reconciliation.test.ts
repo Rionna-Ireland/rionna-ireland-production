@@ -19,8 +19,10 @@ const {
 	mockMemberFindManyUnprovisioned,
 	mockMemberFindManyStale,
 	mockMemberUpdate,
+	mockHorseFindMany,
 	mockCreateMember,
 	mockDeactivateMember,
+	mockListSpaces,
 	mockLoggerInfo,
 	mockLoggerWarn,
 	mockLoggerError,
@@ -29,8 +31,10 @@ const {
 	mockMemberFindManyUnprovisioned: vi.fn(),
 	mockMemberFindManyStale: vi.fn(),
 	mockMemberUpdate: vi.fn(),
+	mockHorseFindMany: vi.fn(),
 	mockCreateMember: vi.fn(),
 	mockDeactivateMember: vi.fn(),
+	mockListSpaces: vi.fn(),
 	mockLoggerInfo: vi.fn(),
 	mockLoggerWarn: vi.fn(),
 	mockLoggerError: vi.fn(),
@@ -51,6 +55,19 @@ vi.mock("@repo/database", () => ({
 			}),
 			update: mockMemberUpdate,
 		},
+		horse: { findMany: mockHorseFindMany },
+	},
+	parseOrgMetadata: (raw: string | null) => (raw ? JSON.parse(raw) : {}),
+	isHorseSpace: (
+		metadata: { circle?: { spaceGroupId?: string } },
+		space: { spaceGroupId: string | null },
+	) => space.spaceGroupId !== null && space.spaceGroupId === metadata.circle?.spaceGroupId,
+	listAutoJoinSpaceIds: (metadata: { circle?: { spaces?: Record<string, { autoJoin?: boolean }> } }) => {
+		const spaces = metadata.circle?.spaces;
+		if (!spaces) return [];
+		return Object.entries(spaces)
+			.filter(([, settings]) => settings.autoJoin === true)
+			.map(([id]) => id);
 	},
 }));
 
@@ -70,6 +87,7 @@ vi.mock("@repo/payments/lib/circle", () => ({
 		reactivateMember: vi.fn(),
 		deleteMember: vi.fn(),
 		getMemberToken: vi.fn(),
+		listSpaces: mockListSpaces,
 	})),
 }));
 
@@ -118,6 +136,8 @@ describe("reconcileCircleMembers", () => {
 		mockMemberFindManyUnprovisioned.mockResolvedValue([]);
 		mockMemberFindManyStale.mockResolvedValue([]);
 		mockMemberUpdate.mockResolvedValue({});
+		mockHorseFindMany.mockResolvedValue([]);
+		mockListSpaces.mockResolvedValue({ ok: true, data: [] });
 	});
 
 	it("returns zeros when no members need reconciliation", async () => {
@@ -154,6 +174,7 @@ describe("reconcileCircleMembers", () => {
 				email: "u1@test.com",
 				name: "User u1",
 				ssoUserId: "u1",
+				spaceIds: [],
 				idempotencyKey: "reconcile-provision-m1",
 			});
 			expect(mockMemberUpdate).toHaveBeenCalledWith({
@@ -201,6 +222,81 @@ describe("reconcileCircleMembers", () => {
 			expect(mockCreateMember).toHaveBeenCalledWith(
 				expect.objectContaining({ name: "u1@test.com" }),
 			);
+		});
+
+		it("passes every autoJoin space id from org metadata as spaceIds, once the I1 guard confirms them safe (S12-02b)", async () => {
+			mockOrgFindUnique.mockResolvedValue({
+				...ORG,
+				metadata: JSON.stringify({
+					circle: {
+						spaces: {
+							"1": { memberPosting: true, autoJoin: true },
+							"2": { memberPosting: true, autoJoin: false },
+							"3": { autoJoin: true },
+						},
+					},
+				}),
+			});
+			mockListSpaces.mockResolvedValue({
+				ok: true,
+				data: [
+					{ id: "1", name: "Networking", isPrivate: false, spaceGroupId: null },
+					{ id: "3", name: "Announcements", isPrivate: false, spaceGroupId: null },
+				],
+			});
+			const member = makeUnprovisionedMember("m1", "u1");
+			mockMemberFindManyUnprovisioned.mockResolvedValue([member]);
+			mockCreateMember.mockResolvedValue({
+				ok: true,
+				data: { circleMemberId: "c-1" },
+			});
+
+			await reconcileCircleMembers(ORG_ID);
+
+			expect(mockCreateMember).toHaveBeenCalledWith(
+				expect.objectContaining({ spaceIds: ["1", "3"] }),
+			);
+		});
+
+		it("excludes a private autoJoin space from spaceIds even though metadata says autoJoin (I1)", async () => {
+			mockOrgFindUnique.mockResolvedValue({
+				...ORG,
+				metadata: JSON.stringify({
+					circle: { spaces: { "1": { autoJoin: true } } },
+				}),
+			});
+			mockListSpaces.mockResolvedValue({
+				ok: true,
+				data: [{ id: "1", name: "Private space", isPrivate: true, spaceGroupId: null }],
+			});
+			const member = makeUnprovisionedMember("m1", "u1");
+			mockMemberFindManyUnprovisioned.mockResolvedValue([member]);
+			mockCreateMember.mockResolvedValue({ ok: true, data: { circleMemberId: "c-1" } });
+
+			await reconcileCircleMembers(ORG_ID);
+
+			expect(mockCreateMember).toHaveBeenCalledWith(expect.objectContaining({ spaceIds: [] }));
+		});
+
+		it("excludes a horse-backed autoJoin space from spaceIds (I1)", async () => {
+			mockOrgFindUnique.mockResolvedValue({
+				...ORG,
+				metadata: JSON.stringify({
+					circle: { spaces: { "1": { autoJoin: true } } },
+				}),
+			});
+			mockListSpaces.mockResolvedValue({
+				ok: true,
+				data: [{ id: "1", name: "Harry", isPrivate: false, spaceGroupId: null }],
+			});
+			mockHorseFindMany.mockResolvedValue([{ circleSpaceId: "1" }]);
+			const member = makeUnprovisionedMember("m1", "u1");
+			mockMemberFindManyUnprovisioned.mockResolvedValue([member]);
+			mockCreateMember.mockResolvedValue({ ok: true, data: { circleMemberId: "c-1" } });
+
+			await reconcileCircleMembers(ORG_ID);
+
+			expect(mockCreateMember).toHaveBeenCalledWith(expect.objectContaining({ spaceIds: [] }));
 		});
 	});
 

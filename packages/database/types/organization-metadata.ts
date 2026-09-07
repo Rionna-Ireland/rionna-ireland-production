@@ -38,8 +38,20 @@ export interface OrganizationMetadata {
 			pinnedPostIds?: string[];
 		};
 		webhookSecretRef?: string;
-		/** S12-02: per-space community settings keyed by Circle space id. Missing entry ⇒ memberPosting false, hideChip false. */
-		spaces?: Record<string, { memberPosting?: boolean; hideChip?: boolean }>;
+		/**
+		 * S12-02: per-space community settings keyed by Circle space id. Missing
+		 * entry ⇒ memberPosting false, hideChip false, autoJoin false (fail
+		 * closed — S12-02b Task 6).
+		 */
+		spaces?: Record<string, { memberPosting?: boolean; hideChip?: boolean; autoJoin?: boolean }>;
+		/**
+		 * S12-02b final review I3: last processed member id (ascending order)
+		 * from the auto-join reconcile sweep, so a run resumes where the
+		 * previous one left off instead of re-processing the same members
+		 * every day once the org has more than the per-run cap. Cleared once a
+		 * full pass over the org's active members completes.
+		 */
+		autoJoinCursor?: string;
 		poll?: {
 			enabled: boolean;
 			cadenceMinutes: number;
@@ -90,4 +102,27 @@ export function parseOrgMetadata(raw: string | null): OrganizationMetadata {
 	} catch {
 		return {};
 	}
+}
+
+/**
+ * Whether admins have opted this space into auto-join (S12-02b Task 6):
+ * provisioning and the daily reconcile cron join every active member into
+ * it, rather than relying on the member self-joining on first post. Missing
+ * entry ⇒ false (fail closed — same opt-in default as `memberPosting`).
+ *
+ * Pure over `OrganizationMetadata` so it can be called from both
+ * `@repo/api` and the Stripe-webhook hot path in `@repo/payments`, which
+ * must not depend on `@repo/api` (see `packages/payments/lib/circle-provisioning.ts`).
+ */
+export function isAutoJoinSpace(metadata: OrganizationMetadata, spaceId: string): boolean {
+	return metadata.circle?.spaces?.[spaceId]?.autoJoin === true;
+}
+
+/** Every Circle space id with `autoJoin: true` in this org's metadata. */
+export function listAutoJoinSpaceIds(metadata: OrganizationMetadata): string[] {
+	const spaces = metadata.circle?.spaces;
+	if (!spaces) return [];
+	return Object.entries(spaces)
+		.filter(([, settings]) => settings.autoJoin === true)
+		.map(([id]) => id);
 }

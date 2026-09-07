@@ -1,18 +1,21 @@
 import { call } from "@orpc/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockGetSession, mockOrgFindUnique, mockListSpaceGroups, mockListSpaces } = vi.hoisted(() => ({
-	mockGetSession: vi.fn(),
-	mockOrgFindUnique: vi.fn(),
-	mockListSpaceGroups: vi.fn(),
-	mockListSpaces: vi.fn(),
-}));
+const { mockGetSession, mockOrgFindUnique, mockHorseFindMany, mockListSpaceGroups, mockListSpaces } =
+	vi.hoisted(() => ({
+		mockGetSession: vi.fn(),
+		mockOrgFindUnique: vi.fn(),
+		mockHorseFindMany: vi.fn(),
+		mockListSpaceGroups: vi.fn(),
+		mockListSpaces: vi.fn(),
+	}));
 
 vi.mock("@repo/auth", () => ({ auth: { api: { getSession: mockGetSession } } }));
 // Mock @repo/database wholesale (no importActual) — the real module needs DATABASE_URL.
 vi.mock("@repo/database", () => ({
 	db: {
 		organization: { findUnique: mockOrgFindUnique },
+		horse: { findMany: mockHorseFindMany },
 	},
 	parseOrgMetadata: (raw: string | null) => (raw ? JSON.parse(raw) : {}),
 }));
@@ -31,6 +34,7 @@ const ORG_ID = "org1";
 beforeEach(() => {
 	vi.clearAllMocks();
 	mockGetSession.mockResolvedValue({ user: ADMIN, session: SESSION });
+	mockHorseFindMany.mockResolvedValue([]);
 });
 
 describe("admin.community.listSpaces (S12-02a)", () => {
@@ -40,7 +44,7 @@ describe("admin.community.listSpaces (S12-02a)", () => {
 			metadata: JSON.stringify({
 				circle: {
 					spaceGroupId: "grp-horses",
-					spaces: { "1": { memberPosting: true, hideChip: true } },
+					spaces: { "1": { memberPosting: true, hideChip: true, autoJoin: true } },
 				},
 			}),
 		});
@@ -69,29 +73,54 @@ describe("admin.community.listSpaces (S12-02a)", () => {
 				name: "Announcements",
 				groupName: "General",
 				isHorse: false,
+				isPrivate: false,
 				memberPosting: false,
 				hideChip: false,
+				autoJoin: false,
 			},
 			{
 				id: "1",
 				name: "Pink Diamond Lass",
 				groupName: "Horses",
 				isHorse: true,
+				isPrivate: true,
 				memberPosting: true,
 				hideChip: true,
+				autoJoin: true,
 			},
 			{
 				id: "3",
 				name: "Unlisted Space",
 				groupName: null,
 				isHorse: false,
+				isPrivate: false,
 				memberPosting: false,
 				hideChip: false,
+				autoJoin: false,
 			},
 		]);
 	});
 
-	it("defaults memberPosting/hideChip to false for a space missing from metadata", async () => {
+	it("marks a space as horse via Horse.circleSpaceId even when its group id has drifted from metadata (I1)", async () => {
+		mockOrgFindUnique.mockResolvedValue({
+			slug: "rionna",
+			metadata: JSON.stringify({ circle: { spaceGroupId: "grp-horses" } }),
+		});
+		mockListSpaceGroups.mockResolvedValue({ ok: true, data: [] });
+		mockListSpaces.mockResolvedValue({
+			ok: true,
+			data: [{ id: "drifted", name: "Drifted Horse", spaceGroupId: "other-group", isPrivate: false }],
+		});
+		mockHorseFindMany.mockResolvedValue([{ circleSpaceId: "drifted" }]);
+
+		const result = await call(listSpaces, { organizationId: ORG_ID }, ctx);
+
+		expect(result.spaces).toEqual([
+			expect.objectContaining({ id: "drifted", isHorse: true }),
+		]);
+	});
+
+	it("defaults memberPosting/hideChip/autoJoin to false for a space missing from metadata", async () => {
 		mockOrgFindUnique.mockResolvedValue({ slug: "rionna", metadata: JSON.stringify({}) });
 		mockListSpaceGroups.mockResolvedValue({ ok: true, data: [] });
 		mockListSpaces.mockResolvedValue({
@@ -107,8 +136,10 @@ describe("admin.community.listSpaces (S12-02a)", () => {
 				name: "New Space",
 				groupName: null,
 				isHorse: false,
+				isPrivate: false,
 				memberPosting: false,
 				hideChip: false,
+				autoJoin: false,
 			},
 		]);
 	});

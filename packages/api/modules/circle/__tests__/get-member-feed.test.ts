@@ -14,6 +14,7 @@ const {
 	mockParseOrgMetadata,
 	mockGetVisiblePolls,
 	mockBuildPollCards,
+	mockGetStoryFeedItems,
 } = vi.hoisted(() => ({
 	mockGetSession: vi.fn(),
 	mockOrgFindUnique: vi.fn(),
@@ -27,6 +28,7 @@ const {
 	),
 	mockGetVisiblePolls: vi.fn(async (): Promise<unknown[]> => []),
 	mockBuildPollCards: vi.fn(async (): Promise<unknown[]> => []),
+	mockGetStoryFeedItems: vi.fn(async (): Promise<unknown[]> => []),
 }));
 
 vi.mock("@repo/auth", () => ({
@@ -47,6 +49,10 @@ vi.mock("../../polls/lib/build-poll-cards", () => ({
 	buildPollCards: mockBuildPollCards,
 }));
 
+vi.mock("../lib/story-feed-items", () => ({
+	getStoryFeedItems: mockGetStoryFeedItems,
+}));
+
 vi.mock("../../racing/horses/lib/horse-follows", () => ({
 	getFollowedHorseIds: mockGetFollowedHorseIds,
 }));
@@ -61,7 +67,12 @@ vi.mock("@repo/payments/lib/circle", () => ({
 	buildCircleCommunityTargetUrl: vi.fn(() => "https://community.rionna.com/c/x/y"),
 }));
 
-import { clearMemberFeedCache, invalidateMemberFeedCache } from "../lib/member-feed-cache";
+import {
+	clearMemberFeedCache,
+	invalidateMemberFeedCache,
+	writeMemberFeedBuffer,
+} from "../lib/member-feed-cache";
+import type { MemberFeedItem } from "../lib/parse-post";
 import { getMemberFeed } from "../procedures/get-member-feed";
 
 const ORG_ID = "org1";
@@ -130,6 +141,7 @@ describe("getMemberFeed (spaces aggregation)", () => {
 		vi.clearAllMocks();
 		mockGetVisiblePolls.mockResolvedValue([]);
 		mockBuildPollCards.mockResolvedValue([]);
+		mockGetStoryFeedItems.mockResolvedValue([]);
 		clearMemberFeedCache();
 		mockHorseFindFirst.mockResolvedValue(null);
 		mockGetSession.mockResolvedValue({ user: USER, session: SESSION });
@@ -198,6 +210,76 @@ describe("getMemberFeed (spaces aggregation)", () => {
 		);
 	});
 
+	it("merges published stories into the feed as kind:story items, newest first", async () => {
+		mockGetStoryFeedItems.mockResolvedValue([
+			{
+				id: "story:n1",
+				kind: "story",
+				story: { slug: "galway-recap", category: null },
+				spaceId: null,
+				spaceName: "News",
+				title: "Galway recap",
+				excerpt: "Three winners",
+				imageUrl: null,
+				createdAt: "2026-07-01T08:30:00.000Z",
+				authorName: "Emma",
+				commentCount: 0,
+				likeCount: 0,
+				isLiked: false,
+				url: null,
+			},
+		]);
+		vi.stubGlobal("fetch", routeFetch());
+		const result = await call(
+			getMemberFeed,
+			{ organizationId: ORG_ID, page: 1, perPage: 15 },
+			ctx,
+		);
+		expect(result.ok).toBe(true);
+		// 09:00 (post 2), 08:30 (story), 08:00 (post 1)
+		expect(result.items.map((i) => i.id)).toEqual(["2", "story:n1", "1"]);
+		expect(mockGetStoryFeedItems).toHaveBeenCalledWith(
+			expect.objectContaining({ organizationId: ORG_ID }),
+		);
+	});
+
+	it("fails open when the story merge throws — serves the feed without stories", async () => {
+		mockGetStoryFeedItems.mockRejectedValue(new Error("db down"));
+		vi.stubGlobal("fetch", routeFetch());
+		const res = await call(
+			getMemberFeed,
+			{ organizationId: ORG_ID, page: 1, perPage: 15 },
+			ctx,
+		);
+		expect(res.ok).toBe(true);
+		expect(res.items.map((i) => i.id)).toEqual(["2", "1"]);
+		expect(res.items.some((i) => i.kind === "story")).toBe(false);
+		expect(logger.warn).toHaveBeenCalledWith(
+			"[MemberFeed] story merge failed; serving feed without stories",
+			expect.objectContaining({
+				organizationId: ORG_ID,
+				userId: USER.id,
+				error: "Error: db down",
+			}),
+		);
+	});
+
+	it("skips the story lookup when the news kill-switch is off", async () => {
+		mockParseOrgMetadata.mockReturnValue({
+			circle: { communityDomain: "community.rionna.com" },
+			features: { news: false },
+		});
+		vi.stubGlobal("fetch", routeFetch());
+		const res = await call(
+			getMemberFeed,
+			{ organizationId: ORG_ID, page: 1, perPage: 15 },
+			ctx,
+		);
+		expect(res.ok).toBe(true);
+		expect(res.items.some((i) => i.kind === "story")).toBe(false);
+		expect(mockGetStoryFeedItems).not.toHaveBeenCalled();
+	});
+
 	it("injects space context when a post omits it", async () => {
 		vi.stubGlobal("fetch", routeFetch());
 		const res = await call(
@@ -249,6 +331,7 @@ describe("getMemberFeed (horse follow filter)", () => {
 		vi.clearAllMocks();
 		mockGetVisiblePolls.mockResolvedValue([]);
 		mockBuildPollCards.mockResolvedValue([]);
+		mockGetStoryFeedItems.mockResolvedValue([]);
 		clearMemberFeedCache();
 		mockHorseFindFirst.mockResolvedValue(null);
 		mockGetSession.mockResolvedValue({ user: USER, session: SESSION });
@@ -343,6 +426,7 @@ describe("getMemberFeed (S9-05 invite-only gating — merged path)", () => {
 		vi.clearAllMocks();
 		mockGetVisiblePolls.mockResolvedValue([]);
 		mockBuildPollCards.mockResolvedValue([]);
+		mockGetStoryFeedItems.mockResolvedValue([]);
 		clearMemberFeedCache();
 		mockHorseFindFirst.mockResolvedValue(null);
 		mockGetSession.mockResolvedValue({ user: USER, session: SESSION });
@@ -418,6 +502,7 @@ describe("getMemberFeed (S8-04 §5 kill-switch)", () => {
 		vi.clearAllMocks();
 		mockGetVisiblePolls.mockResolvedValue([]);
 		mockBuildPollCards.mockResolvedValue([]);
+		mockGetStoryFeedItems.mockResolvedValue([]);
 		clearMemberFeedCache();
 		mockHorseFindFirst.mockResolvedValue(null);
 		mockGetSession.mockResolvedValue({ user: USER, session: SESSION });
@@ -450,6 +535,7 @@ describe("getMemberFeed (buffer cache — FABLE_AUDIT P4/C8)", () => {
 		vi.clearAllMocks();
 		mockGetVisiblePolls.mockResolvedValue([]);
 		mockBuildPollCards.mockResolvedValue([]);
+		mockGetStoryFeedItems.mockResolvedValue([]);
 		clearMemberFeedCache();
 		mockHorseFindFirst.mockResolvedValue(null);
 		mockGetSession.mockResolvedValue({ user: USER, session: SESSION });
@@ -522,6 +608,46 @@ describe("getMemberFeed (buffer cache — FABLE_AUDIT P4/C8)", () => {
 		expect(fetchSpy.mock.calls.length).toBeGreaterThan(fetchesAfterP1);
 	});
 
+	it("filters the cached buffer before slicing (S12-02b)", async () => {
+		// 30 items across two spaces, alternating: "1", "2", "1", "2", ...
+		const buffered: MemberFeedItem[] = Array.from({ length: 30 }, (_, n) => ({
+			id: `item-${n}`,
+			spaceId: n % 2 === 0 ? "1" : "2",
+			kind: "post",
+			title: `item-${n}`,
+			excerpt: null,
+			createdAt: null,
+			spaceName: null,
+			authorName: null,
+			commentCount: 0,
+			likeCount: 0,
+			isLiked: false,
+			imageUrl: null,
+			url: null,
+		}));
+		writeMemberFeedBuffer(USER.id, ORG_ID, buffered);
+
+		const fetchSpy = routeFetch();
+		vi.stubGlobal("fetch", fetchSpy);
+
+		const page2 = await call(
+			getMemberFeed,
+			{ organizationId: ORG_ID, page: 2, perPage: 10, filterSpaceIds: ["1"] },
+			ctx,
+		);
+		// Filtered list is the 15 items with spaceId "1" (item-0, item-2, ..., item-28);
+		// page 2 of perPage 10 slices indices [10, 20) of that filtered list.
+		expect(page2.items.map((i) => i.id)).toEqual([
+			"item-20",
+			"item-22",
+			"item-24",
+			"item-26",
+			"item-28",
+		]);
+		expect(page2.hasNextPage).toBe(false);
+		expect(fetchSpy).not.toHaveBeenCalled(); // served entirely from the cached buffer
+	});
+
 	it("caches per member — another user does not hit this user's buffer", async () => {
 		const fetchSpy = routeFetch();
 		vi.stubGlobal("fetch", fetchSpy);
@@ -543,6 +669,7 @@ describe("getMemberFeed (single-space feed — horse discussion)", () => {
 		vi.clearAllMocks();
 		mockGetVisiblePolls.mockResolvedValue([]);
 		mockBuildPollCards.mockResolvedValue([]);
+		mockGetStoryFeedItems.mockResolvedValue([]);
 		clearMemberFeedCache();
 		mockHorseFindFirst.mockResolvedValue({ id: "horse-1", inviteOnly: false });
 		mockGetSession.mockResolvedValue({ user: USER, session: SESSION });
@@ -712,6 +839,36 @@ describe("getMemberFeed (single-space feed — horse discussion)", () => {
 		expect(res.items.some((i) => i.kind === "poll")).toBe(false);
 		expect(mockGetVisiblePolls).not.toHaveBeenCalled();
 	});
+
+	it("does not merge stories into the space view", async () => {
+		mockGetStoryFeedItems.mockResolvedValue([
+			{
+				id: "story:n1",
+				kind: "story",
+				story: { slug: "galway-recap", category: null },
+				spaceId: null,
+				spaceName: "News",
+				title: "Galway recap",
+				excerpt: null,
+				imageUrl: null,
+				createdAt: "2026-09-01T00:00:00.000Z",
+				authorName: null,
+				commentCount: 0,
+				likeCount: 0,
+				isLiked: false,
+				url: null,
+			},
+		]);
+		vi.stubGlobal("fetch", routeFetch());
+		const res = await call(
+			getMemberFeed,
+			{ organizationId: ORG_ID, page: 1, perPage: 15, spaceId: "9" },
+			ctx,
+		);
+		expect(res.ok).toBe(true);
+		expect(res.items.some((i) => i.kind === "story")).toBe(false);
+		expect(mockGetStoryFeedItems).not.toHaveBeenCalled();
+	});
 });
 
 describe("getMemberFeed (S9-05 invite-only gating — spaceId branch)", () => {
@@ -719,6 +876,7 @@ describe("getMemberFeed (S9-05 invite-only gating — spaceId branch)", () => {
 		vi.clearAllMocks();
 		mockGetVisiblePolls.mockResolvedValue([]);
 		mockBuildPollCards.mockResolvedValue([]);
+		mockGetStoryFeedItems.mockResolvedValue([]);
 		clearMemberFeedCache();
 		mockGetSession.mockResolvedValue({ user: USER, session: SESSION });
 		mockOrgFindUnique.mockResolvedValue({ id: ORG_ID, slug: "rionna", metadata: null });
@@ -858,6 +1016,7 @@ describe("getMemberFeed (S11-01 insideTrack exclusion — merged path)", () => {
 		vi.clearAllMocks();
 		mockGetVisiblePolls.mockResolvedValue([]);
 		mockBuildPollCards.mockResolvedValue([]);
+		mockGetStoryFeedItems.mockResolvedValue([]);
 		clearMemberFeedCache();
 		mockHorseFindFirst.mockResolvedValue(null);
 		mockGetSession.mockResolvedValue({ user: USER, session: SESSION });
@@ -912,6 +1071,7 @@ describe("getMemberFeed (total per-space failure — Kimi M1)", () => {
 		vi.clearAllMocks();
 		mockGetVisiblePolls.mockResolvedValue([]);
 		mockBuildPollCards.mockResolvedValue([]);
+		mockGetStoryFeedItems.mockResolvedValue([]);
 		clearMemberFeedCache();
 		mockHorseFindFirst.mockResolvedValue(null);
 		mockGetSession.mockResolvedValue({ user: USER, session: SESSION });

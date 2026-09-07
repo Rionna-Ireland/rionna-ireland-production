@@ -54,6 +54,16 @@ vi.mock("@repo/database", () => ({
 			return {};
 		}
 	},
+	// S12-02b review fix: real implementation so `provisionCircleMember`'s
+	// `spaceIds` derivation exercises its normal path rather than throwing on
+	// an unmocked import.
+	listAutoJoinSpaceIds: (metadata: { circle?: { spaces?: Record<string, { autoJoin?: boolean }> } }) => {
+		const spaces = metadata.circle?.spaces;
+		if (!spaces) return [];
+		return Object.entries(spaces)
+			.filter(([, settings]) => settings.autoJoin === true)
+			.map(([id]) => id);
+	},
 }));
 
 vi.mock("@repo/logs", () => ({

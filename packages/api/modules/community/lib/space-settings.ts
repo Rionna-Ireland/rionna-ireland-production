@@ -1,4 +1,17 @@
 import type { OrganizationMetadata } from "@repo/database";
+// Prisma-free subpath (see other `@repo/database/types` import sites) — this
+// module must stay importable without a live DATABASE_URL, same as before
+// this re-export was added.
+import { isAutoJoinSpace, listAutoJoinSpaceIds } from "@repo/database/types";
+
+/**
+ * Re-exported from `@repo/database` (S12-02b review fix): these two are pure
+ * over `OrganizationMetadata`, and the Stripe-webhook hot path in
+ * `@repo/payments` needs them but must not depend on `@repo/api` — see
+ * `packages/payments/lib/circle-provisioning.ts`. Kept re-exported here too
+ * so every existing `../lib/space-settings` import site keeps working.
+ */
+export { isAutoJoinSpace, listAutoJoinSpaceIds };
 
 /**
  * Org-metadata gates for member posting (S12-02a).
