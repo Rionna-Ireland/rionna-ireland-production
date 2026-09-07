@@ -38,8 +38,12 @@ export interface OrganizationMetadata {
 			pinnedPostIds?: string[];
 		};
 		webhookSecretRef?: string;
-		/** S12-02: per-space community settings keyed by Circle space id. Missing entry ⇒ memberPosting false, hideChip false. */
-		spaces?: Record<string, { memberPosting?: boolean; hideChip?: boolean }>;
+		/**
+		 * S12-02: per-space community settings keyed by Circle space id. Missing
+		 * entry ⇒ memberPosting false, hideChip false, autoJoin false (fail
+		 * closed — S12-02b Task 6).
+		 */
+		spaces?: Record<string, { memberPosting?: boolean; hideChip?: boolean; autoJoin?: boolean }>;
 		poll?: {
 			enabled: boolean;
 			cadenceMinutes: number;

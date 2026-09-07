@@ -39,6 +39,25 @@ export function needsJoinToPost(space: {
 	return !space.canCreatePost && !space.isMember && !space.isPrivate;
 }
 
+/**
+ * Whether admins have opted this space into auto-join (S12-02b Task 6):
+ * provisioning and the daily reconcile cron join every active member into
+ * it, rather than relying on the member self-joining on first post. Missing
+ * entry ⇒ false (fail closed — same opt-in default as `memberPosting`).
+ */
+export function isAutoJoinSpace(metadata: OrganizationMetadata, spaceId: string): boolean {
+	return metadata.circle?.spaces?.[spaceId]?.autoJoin === true;
+}
+
+/** Every Circle space id with `autoJoin: true` in this org's metadata. */
+export function listAutoJoinSpaceIds(metadata: OrganizationMetadata): string[] {
+	const spaces = metadata.circle?.spaces;
+	if (!spaces) return [];
+	return Object.entries(spaces)
+		.filter(([, settings]) => settings.autoJoin === true)
+		.map(([id]) => id);
+}
+
 export function isPostableForMember(space: {
 	canCreatePost: boolean;
 	isMember: boolean;

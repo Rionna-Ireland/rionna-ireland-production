@@ -13,6 +13,7 @@ export interface AdminSpaceRow {
 	isHorse: boolean;
 	memberPosting: boolean;
 	hideChip: boolean;
+	autoJoin: boolean;
 }
 
 export interface ListSpacesResult {
@@ -65,6 +66,7 @@ export async function runListSpaces(organizationId: string): Promise<ListSpacesR
 			isHorse: isHorseSpace(metadata, { spaceGroupId: space.spaceGroupId ?? null }),
 			memberPosting: settings?.memberPosting === true,
 			hideChip: settings?.hideChip === true,
+			autoJoin: settings?.autoJoin === true,
 		};
 	});
 

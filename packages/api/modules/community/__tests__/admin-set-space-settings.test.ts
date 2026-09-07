@@ -53,7 +53,10 @@ describe("admin.community.setSpaceSettings (S12-02a)", () => {
 			ctx,
 		);
 
-		expect(result).toEqual({ ok: true, settings: { memberPosting: true, hideChip: true } });
+		expect(result).toEqual({
+			ok: true,
+			settings: { memberPosting: true, hideChip: true, autoJoin: false },
+		});
 		expect(mockOrgUpdateMany).toHaveBeenCalledWith({
 			where: { id: ORG_ID, metadata: rawMetadata },
 			data: {
@@ -62,7 +65,7 @@ describe("admin.community.setSpaceSettings (S12-02a)", () => {
 						communitySpaceId: "1",
 						spaces: {
 							"1": { memberPosting: false },
-							[SPACE_ID]: { memberPosting: true, hideChip: true },
+							[SPACE_ID]: { memberPosting: true, hideChip: true, autoJoin: false },
 						},
 					},
 				}),
@@ -88,14 +91,19 @@ describe("admin.community.setSpaceSettings (S12-02a)", () => {
 			ctx,
 		);
 
-		expect(result).toEqual({ ok: true, settings: { memberPosting: true, hideChip: true } });
+		expect(result).toEqual({
+			ok: true,
+			settings: { memberPosting: true, hideChip: true, autoJoin: false },
+		});
 		expect(mockOrgFindUnique).toHaveBeenCalledTimes(2);
 		expect(mockOrgUpdateMany).toHaveBeenCalledTimes(2);
 		expect(mockOrgUpdateMany).toHaveBeenNthCalledWith(2, {
 			where: { id: ORG_ID, metadata: freshMetadata },
 			data: {
 				metadata: JSON.stringify({
-					circle: { spaces: { [SPACE_ID]: { memberPosting: true, hideChip: true } } },
+					circle: {
+						spaces: { [SPACE_ID]: { memberPosting: true, hideChip: true, autoJoin: false } },
+					},
 				}),
 			},
 		});
@@ -116,7 +124,7 @@ describe("admin.community.setSpaceSettings (S12-02a)", () => {
 		expect(mockOrgUpdateMany).toHaveBeenCalledTimes(3);
 	});
 
-	it("defaults hideChip to false for a space with no prior entry", async () => {
+	it("defaults hideChip and autoJoin to false for a space with no prior entry", async () => {
 		mockOrgFindUnique.mockResolvedValue({ id: ORG_ID, metadata: JSON.stringify({}) });
 
 		const result = await call(
@@ -125,7 +133,38 @@ describe("admin.community.setSpaceSettings (S12-02a)", () => {
 			ctx,
 		);
 
-		expect(result).toEqual({ ok: true, settings: { memberPosting: true, hideChip: false } });
+		expect(result).toEqual({
+			ok: true,
+			settings: { memberPosting: true, hideChip: false, autoJoin: false },
+		});
+	});
+
+	it("merges autoJoin without clobbering memberPosting/hideChip", async () => {
+		const rawMetadata = JSON.stringify({
+			circle: { spaces: { [SPACE_ID]: { memberPosting: true, hideChip: true } } },
+		});
+		mockOrgFindUnique.mockResolvedValue({ id: ORG_ID, metadata: rawMetadata });
+
+		const result = await call(
+			setSpaceSettings,
+			{ organizationId: ORG_ID, spaceId: SPACE_ID, autoJoin: true },
+			ctx,
+		);
+
+		expect(result).toEqual({
+			ok: true,
+			settings: { memberPosting: true, hideChip: true, autoJoin: true },
+		});
+		expect(mockOrgUpdateMany).toHaveBeenCalledWith({
+			where: { id: ORG_ID, metadata: rawMetadata },
+			data: {
+				metadata: JSON.stringify({
+					circle: {
+						spaces: { [SPACE_ID]: { memberPosting: true, hideChip: true, autoJoin: true } },
+					},
+				}),
+			},
+		});
 	});
 
 	it("logs admin_space_settings_updated", async () => {

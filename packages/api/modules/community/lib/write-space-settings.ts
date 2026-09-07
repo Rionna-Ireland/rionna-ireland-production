@@ -3,11 +3,13 @@ import { db, parseOrgMetadata } from "@repo/database";
 export interface SpaceSettingsPatch {
 	memberPosting?: boolean;
 	hideChip?: boolean;
+	autoJoin?: boolean;
 }
 
 export interface SpaceSettings {
 	memberPosting: boolean;
 	hideChip: boolean;
+	autoJoin: boolean;
 }
 
 const MAX_ATTEMPTS = 3;
@@ -42,6 +44,7 @@ export async function mergeSpaceSettings(p: {
 		const merged: SpaceSettings = {
 			memberPosting: p.patch.memberPosting ?? existing.memberPosting ?? false,
 			hideChip: p.patch.hideChip ?? existing.hideChip ?? false,
+			autoJoin: p.patch.autoJoin ?? existing.autoJoin ?? false,
 		};
 
 		const { count } = await db.organization.updateMany({

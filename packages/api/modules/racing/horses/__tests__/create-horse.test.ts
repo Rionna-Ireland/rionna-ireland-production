@@ -142,7 +142,7 @@ describe("createHorse — Circle space provisioning (S2-09)", () => {
 			where: { id: "org1", metadata: JSON.stringify({}) },
 			data: {
 				metadata: JSON.stringify({
-					circle: { spaces: { "777": { memberPosting: true, hideChip: false } } },
+					circle: { spaces: { "777": { memberPosting: true, hideChip: false, autoJoin: false } } },
 				}),
 			},
 		});

@@ -52,6 +52,7 @@ vi.mock("@repo/database", () => ({
 			update: mockMemberUpdate,
 		},
 	},
+	parseOrgMetadata: (raw: string | null) => (raw ? JSON.parse(raw) : {}),
 }));
 
 vi.mock("@repo/logs", () => ({
@@ -154,6 +155,7 @@ describe("reconcileCircleMembers", () => {
 				email: "u1@test.com",
 				name: "User u1",
 				ssoUserId: "u1",
+				spaceIds: [],
 				idempotencyKey: "reconcile-provision-m1",
 			});
 			expect(mockMemberUpdate).toHaveBeenCalledWith({
@@ -200,6 +202,33 @@ describe("reconcileCircleMembers", () => {
 
 			expect(mockCreateMember).toHaveBeenCalledWith(
 				expect.objectContaining({ name: "u1@test.com" }),
+			);
+		});
+
+		it("passes every autoJoin space id from org metadata as spaceIds (S12-02b)", async () => {
+			mockOrgFindUnique.mockResolvedValue({
+				...ORG,
+				metadata: JSON.stringify({
+					circle: {
+						spaces: {
+							"1": { memberPosting: true, autoJoin: true },
+							"2": { memberPosting: true, autoJoin: false },
+							"3": { autoJoin: true },
+						},
+					},
+				}),
+			});
+			const member = makeUnprovisionedMember("m1", "u1");
+			mockMemberFindManyUnprovisioned.mockResolvedValue([member]);
+			mockCreateMember.mockResolvedValue({
+				ok: true,
+				data: { circleMemberId: "c-1" },
+			});
+
+			await reconcileCircleMembers(ORG_ID);
+
+			expect(mockCreateMember).toHaveBeenCalledWith(
+				expect.objectContaining({ spaceIds: ["1", "3"] }),
 			);
 		});
 	});

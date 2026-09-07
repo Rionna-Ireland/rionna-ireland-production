@@ -11,10 +11,14 @@ const setSpaceSettingsInput = z
 		spaceId: z.string().min(1),
 		memberPosting: z.boolean().optional(),
 		hideChip: z.boolean().optional(),
+		autoJoin: z.boolean().optional(),
 	})
-	.refine((v) => v.memberPosting !== undefined || v.hideChip !== undefined, {
-		message: "At least one of memberPosting or hideChip must be set",
-	});
+	.refine(
+		(v) => v.memberPosting !== undefined || v.hideChip !== undefined || v.autoJoin !== undefined,
+		{
+			message: "At least one of memberPosting, hideChip or autoJoin must be set",
+		},
+	);
 
 export const setSpaceSettings = adminProcedure
 	.route({
@@ -32,7 +36,11 @@ export const setSpaceSettings = adminProcedure
 		const settings = await mergeSpaceSettings({
 			organizationId: input.organizationId,
 			spaceId: input.spaceId,
-			patch: { memberPosting: input.memberPosting, hideChip: input.hideChip },
+			patch: {
+				memberPosting: input.memberPosting,
+				hideChip: input.hideChip,
+				autoJoin: input.autoJoin,
+			},
 		});
 
 		logger.info("Admin updated space posting settings", {

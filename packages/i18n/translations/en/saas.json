@@ -617,7 +617,8 @@
 					"group": "Group",
 					"horse": "Horse",
 					"memberPosting": "Members can post",
-					"showChip": "Show as filter chip"
+					"showChip": "Show as filter chip",
+					"autoJoin": "Auto-join members"
 				},
 				"horseBadge": "Horse",
 				"toggleError": "Couldn't update posting settings. Try again."

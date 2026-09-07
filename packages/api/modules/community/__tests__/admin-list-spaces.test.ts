@@ -40,7 +40,7 @@ describe("admin.community.listSpaces (S12-02a)", () => {
 			metadata: JSON.stringify({
 				circle: {
 					spaceGroupId: "grp-horses",
-					spaces: { "1": { memberPosting: true, hideChip: true } },
+					spaces: { "1": { memberPosting: true, hideChip: true, autoJoin: true } },
 				},
 			}),
 		});
@@ -71,6 +71,7 @@ describe("admin.community.listSpaces (S12-02a)", () => {
 				isHorse: false,
 				memberPosting: false,
 				hideChip: false,
+				autoJoin: false,
 			},
 			{
 				id: "1",
@@ -79,6 +80,7 @@ describe("admin.community.listSpaces (S12-02a)", () => {
 				isHorse: true,
 				memberPosting: true,
 				hideChip: true,
+				autoJoin: true,
 			},
 			{
 				id: "3",
@@ -87,11 +89,12 @@ describe("admin.community.listSpaces (S12-02a)", () => {
 				isHorse: false,
 				memberPosting: false,
 				hideChip: false,
+				autoJoin: false,
 			},
 		]);
 	});
 
-	it("defaults memberPosting/hideChip to false for a space missing from metadata", async () => {
+	it("defaults memberPosting/hideChip/autoJoin to false for a space missing from metadata", async () => {
 		mockOrgFindUnique.mockResolvedValue({ slug: "rionna", metadata: JSON.stringify({}) });
 		mockListSpaceGroups.mockResolvedValue({ ok: true, data: [] });
 		mockListSpaces.mockResolvedValue({
@@ -109,6 +112,7 @@ describe("admin.community.listSpaces (S12-02a)", () => {
 				isHorse: false,
 				memberPosting: false,
 				hideChip: false,
+				autoJoin: false,
 			},
 		]);
 	});

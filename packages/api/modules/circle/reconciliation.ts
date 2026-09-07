@@ -13,10 +13,12 @@
  * @see Architecture/specs/S1-06-reconciliation-cron.md
  */
 
-import { db } from "@repo/database";
+import { db, parseOrgMetadata } from "@repo/database";
 import { logger } from "@repo/logs";
 import { createCircleService } from "@repo/payments/lib/circle";
 import { provisionHorseSpace } from "@repo/payments/lib/circle-horse-provisioning";
+
+import { listAutoJoinSpaceIds } from "../community/lib/space-settings";
 
 export async function reconcileCircleMembers(
 	organizationId: string,
@@ -33,6 +35,8 @@ export async function reconcileCircleMembers(
 	}
 
 	const circle = createCircleService(org.slug);
+	const metadata = parseOrgMetadata(org.metadata as string | null);
+	const autoJoinSpaceIds = listAutoJoinSpaceIds(metadata);
 
 	let provisioned = 0;
 	let deactivated = 0;
@@ -66,6 +70,7 @@ export async function reconcileCircleMembers(
 				email: member.user.email,
 				name: member.user.name ?? member.user.email,
 				ssoUserId: member.userId,
+				spaceIds: autoJoinSpaceIds,
 				idempotencyKey: `reconcile-provision-${member.id}`,
 			});
 

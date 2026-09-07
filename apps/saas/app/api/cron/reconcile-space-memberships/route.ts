@@ -19,10 +19,18 @@
  * live inside `reconcileSpaceMemberships`. This route is just the
  * authenticated trigger.
  *
+ * S12-02b Task 6 adds a second, independent pass after the horse-follow one:
+ * `reconcileAutoJoinMemberships` joins every active member into every
+ * admin-chosen `autoJoin` space (spec §10) — this is what makes auto-join
+ * deterministic for members provisioned (or spaces flipped on) before the
+ * setting existed, since provisioning only sets `spaceIds` at creation time.
+ *
  * @see Architecture/specs/S8-04-horse-space-membership-reconciliation.md
+ * @see Architecture/specs/S12-02-member-posting-filters-moderation.md §10
  */
 
 import { isAuthorizedCronRequest } from "@repo/api/lib/cron-auth";
+import { reconcileAutoJoinMemberships } from "@repo/api/modules/community/lib/reconcile-auto-join";
 import { reconcileSpaceMemberships } from "@repo/api/modules/racing/horses/lib/reconcile-space-memberships";
 import { logger } from "@repo/logs";
 
@@ -35,10 +43,19 @@ export async function POST(request: Request) {
 		return new Response("Unauthorized", { status: 401 });
 	}
 
-	const summary = await reconcileSpaceMemberships();
-	logger.info("space_membership.reconcile.cron.complete", summary);
+	const horseSpaceSummary = await reconcileSpaceMemberships();
+	logger.info("space_membership.reconcile.cron.complete", horseSpaceSummary);
 
-	return Response.json({ ok: true, summary });
+	// S12-02b Task 6: second pass — join every active member into every
+	// admin-chosen autoJoin space (spec §10). Independent of the horse-follow
+	// pass above; a failure here never blocks or is blocked by it.
+	const autoJoinSummary = await reconcileAutoJoinMemberships();
+	logger.info("community.auto_join.reconcile.cron.complete", autoJoinSummary);
+
+	return Response.json({
+		ok: true,
+		summary: { horseSpaceMemberships: horseSpaceSummary, autoJoin: autoJoinSummary },
+	});
 }
 
 // Native Vercel Cron invokes registered paths with GET, not POST — without

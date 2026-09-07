@@ -72,6 +72,35 @@ export function SpacesTable() {
 		);
 	}
 
+	function onToggleAutoJoin(spaceId: string, autoJoin: boolean) {
+		if (!organizationId) return;
+
+		const previous = queryClient.getQueryData(listQueryOptions.queryKey);
+		queryClient.setQueryData(listQueryOptions.queryKey, (prev) =>
+			prev
+				? {
+						...prev,
+						spaces: prev.spaces.map((space) =>
+							space.id === spaceId ? { ...space, autoJoin } : space,
+						),
+					}
+				: prev,
+		);
+
+		setSettings.mutate(
+			{ organizationId, spaceId, autoJoin },
+			{
+				onError: () => {
+					queryClient.setQueryData(listQueryOptions.queryKey, previous);
+					toastError(t("admin.community.spaces.toggleError"));
+				},
+				onSettled: () => {
+					void queryClient.invalidateQueries({ queryKey: listQueryOptions.queryKey });
+				},
+			},
+		);
+	}
+
 	function onToggleChip(spaceId: string, showChip: boolean) {
 		if (!organizationId) return;
 
@@ -132,6 +161,7 @@ export function SpacesTable() {
 							<TableHead>{t("admin.community.spaces.columns.horse")}</TableHead>
 							<TableHead>{t("admin.community.spaces.columns.memberPosting")}</TableHead>
 							<TableHead>{t("admin.community.spaces.columns.showChip")}</TableHead>
+							<TableHead>{t("admin.community.spaces.columns.autoJoin")}</TableHead>
 						</TableRow>
 					</TableHeader>
 					<TableBody>
@@ -173,11 +203,26 @@ export function SpacesTable() {
 											/>
 										)}
 									</TableCell>
+									<TableCell className="py-2">
+										{space.isHorse ? (
+											"—"
+										) : (
+											<Switch
+												checked={space.autoJoin}
+												disabled={
+													setSettings.isPending &&
+													setSettings.variables?.spaceId === space.id
+												}
+												onCheckedChange={(checked) => onToggleAutoJoin(space.id, checked)}
+												aria-label={t("admin.community.spaces.columns.autoJoin")}
+											/>
+										)}
+									</TableCell>
 								</TableRow>
 							))
 						) : (
 							<TableRow>
-								<TableCell colSpan={5} className="h-24 text-center">
+								<TableCell colSpan={6} className="h-24 text-center">
 									<p>{t("admin.horses.noResults")}</p>
 								</TableCell>
 							</TableRow>
