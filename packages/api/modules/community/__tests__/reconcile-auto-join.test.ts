@@ -29,6 +29,16 @@ vi.mock("@repo/database", () => ({
 		member: { findMany: mockMemberFindMany },
 	},
 	parseOrgMetadata: (raw: string | null) => (raw ? JSON.parse(raw) : {}),
+	// S12-02b review fix: `listAutoJoinSpaceIds` now lives in @repo/database and
+	// is imported transitively via ../lib/space-settings — supply a real
+	// implementation so the mocked module still behaves correctly.
+	listAutoJoinSpaceIds: (metadata: { circle?: { spaces?: Record<string, { autoJoin?: boolean }> } }) => {
+		const spaces = metadata.circle?.spaces;
+		if (!spaces) return [];
+		return Object.entries(spaces)
+			.filter(([, settings]) => settings.autoJoin === true)
+			.map(([id]) => id);
+	},
 }));
 
 vi.mock("@repo/logs", () => ({
@@ -109,6 +119,29 @@ describe("reconcileAutoJoinMemberships", () => {
 
 		expect(mockAddSpaceMember).toHaveBeenCalledTimes(2);
 		expect(summary).toEqual({ orgs: 1, members: 2, joined: 1, skipped: 0, errors: 1 });
+	});
+
+	it("counts a duplicate-membership (invalid_input) addSpaceMember failure as skipped, not errors (review fix)", async () => {
+		mockOrgFindMany.mockResolvedValue([ORG]);
+		mockMemberFindMany.mockResolvedValue([makeMember("m1", "cm1"), makeMember("m2", "cm2")]);
+		mockGetMemberToken.mockResolvedValue({ ok: true, data: { accessToken: "tok" } });
+		mockFetchMemberSpaces.mockResolvedValue([{ id: "1", isMember: false }]);
+		mockAddSpaceMember
+			.mockResolvedValueOnce({ ok: false, reason: "invalid_input", retriable: false })
+			.mockResolvedValueOnce({ ok: true, data: { spaceId: "1", email: "m2@test.com" } });
+
+		const summary = await reconcileAutoJoinMemberships();
+
+		expect(summary).toEqual({ orgs: 1, members: 2, joined: 1, skipped: 1, errors: 0 });
+		expect(mockLoggerInfo).toHaveBeenCalledWith(
+			"community.auto_join.join_skipped_invalid_input",
+			expect.objectContaining({
+				organizationId: "org1",
+				memberId: "m1",
+				spaceId: "1",
+				reason: "invalid_input",
+			}),
+		);
 	});
 
 	it("treats an addSpaceMember throw the same as a failure and keeps going", async () => {

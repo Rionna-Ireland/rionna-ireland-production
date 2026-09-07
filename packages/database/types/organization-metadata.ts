@@ -95,3 +95,26 @@ export function parseOrgMetadata(raw: string | null): OrganizationMetadata {
 		return {};
 	}
 }
+
+/**
+ * Whether admins have opted this space into auto-join (S12-02b Task 6):
+ * provisioning and the daily reconcile cron join every active member into
+ * it, rather than relying on the member self-joining on first post. Missing
+ * entry ⇒ false (fail closed — same opt-in default as `memberPosting`).
+ *
+ * Pure over `OrganizationMetadata` so it can be called from both
+ * `@repo/api` and the Stripe-webhook hot path in `@repo/payments`, which
+ * must not depend on `@repo/api` (see `packages/payments/lib/circle-provisioning.ts`).
+ */
+export function isAutoJoinSpace(metadata: OrganizationMetadata, spaceId: string): boolean {
+	return metadata.circle?.spaces?.[spaceId]?.autoJoin === true;
+}
+
+/** Every Circle space id with `autoJoin: true` in this org's metadata. */
+export function listAutoJoinSpaceIds(metadata: OrganizationMetadata): string[] {
+	const spaces = metadata.circle?.spaces;
+	if (!spaces) return [];
+	return Object.entries(spaces)
+		.filter(([, settings]) => settings.autoJoin === true)
+		.map(([id]) => id);
+}

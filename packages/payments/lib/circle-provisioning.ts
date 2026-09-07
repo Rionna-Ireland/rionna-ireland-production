@@ -8,7 +8,7 @@
  * @see Architecture/specs/S1-05-circle-provisioning.md
  */
 
-import { db, parseOrgMetadata } from "@repo/database";
+import { db, listAutoJoinSpaceIds, parseOrgMetadata } from "@repo/database";
 import { logger } from "@repo/logs";
 
 import { syncCircleSpaceMembership } from "./circle-space-membership";
@@ -42,10 +42,16 @@ export async function provisionCircleMember(
 		return;
 	}
 
+	// S12-02b review fix: join the member into every admin-chosen autoJoin
+	// space at creation time instead of relying solely on the next daily
+	// reconcile pass. `listAutoJoinSpaceIds` is pure over `OrganizationMetadata`
+	// (lives in @repo/database, not @repo/api — see the module-cycle note
+	// further down this file) so it's safe to call from this hot path.
 	const outcome = await service.createMember({
 		email: user.email,
 		name: user.name ?? user.email,
 		ssoUserId: user.id,
+		spaceIds: listAutoJoinSpaceIds(parseOrgMetadata(org.metadata ?? null)),
 		idempotencyKey,
 	});
 

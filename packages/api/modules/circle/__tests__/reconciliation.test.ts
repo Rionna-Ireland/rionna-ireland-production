@@ -53,6 +53,16 @@ vi.mock("@repo/database", () => ({
 		},
 	},
 	parseOrgMetadata: (raw: string | null) => (raw ? JSON.parse(raw) : {}),
+	// S12-02b review fix: `listAutoJoinSpaceIds` now lives in @repo/database and
+	// is imported transitively via ../community/lib/space-settings — supply a
+	// real implementation so the mocked module still behaves correctly.
+	listAutoJoinSpaceIds: (metadata: { circle?: { spaces?: Record<string, { autoJoin?: boolean }> } }) => {
+		const spaces = metadata.circle?.spaces;
+		if (!spaces) return [];
+		return Object.entries(spaces)
+			.filter(([, settings]) => settings.autoJoin === true)
+			.map(([id]) => id);
+	},
 }));
 
 vi.mock("@repo/logs", () => ({

@@ -17,6 +17,7 @@ const {
 	mockHorseFindMany,
 	mockHorseFollowCreateMany,
 	mockParseOrgMetadata,
+	mockListAutoJoinSpaceIds,
 	mockCreateMember,
 	mockConfirmMemberProfile,
 	mockLoggerInfo,
@@ -30,6 +31,7 @@ const {
 	mockHorseFindMany: vi.fn(),
 	mockHorseFollowCreateMany: vi.fn(),
 	mockParseOrgMetadata: vi.fn(),
+	mockListAutoJoinSpaceIds: vi.fn(),
 	mockCreateMember: vi.fn(),
 	mockConfirmMemberProfile: vi.fn(),
 	mockLoggerInfo: vi.fn(),
@@ -47,6 +49,7 @@ vi.mock("@repo/database", () => ({
 		horseFollow: { createMany: mockHorseFollowCreateMany },
 	},
 	parseOrgMetadata: mockParseOrgMetadata,
+	listAutoJoinSpaceIds: mockListAutoJoinSpaceIds,
 }));
 
 vi.mock("@repo/logs", () => ({
@@ -85,6 +88,7 @@ describe("provisionCircleMember — horse auto-follow (S6-07 Surface D)", () => 
 		});
 		mockConfirmMemberProfile.mockResolvedValue({ ok: true, data: undefined });
 		mockParseOrgMetadata.mockReturnValue({});
+		mockListAutoJoinSpaceIds.mockReturnValue([]);
 		mockHorseFindMany.mockResolvedValue(PUBLISHED_HORSES);
 		mockHorseFollowCreateMany.mockResolvedValue({ count: 2 });
 		mockSyncCircleSpaceMembership.mockResolvedValue({ ok: true });
@@ -213,6 +217,32 @@ describe("provisionCircleMember — horse auto-follow (S6-07 Surface D)", () => 
 			mockSyncCircleSpaceMembership.mockResolvedValue({ ok: false });
 
 			await expect(provisionCircleMember(MEMBER, "idem-key")).resolves.toBeUndefined();
+		});
+	});
+
+	describe("auto-join spaceIds on createMember (S12-02b review fix)", () => {
+		it("passes the org's autoJoin space ids to createMember", async () => {
+			mockParseOrgMetadata.mockReturnValue({
+				circle: { spaces: { "1": { autoJoin: true }, "2": { autoJoin: false } } },
+			});
+			mockListAutoJoinSpaceIds.mockReturnValue(["1"]);
+
+			await provisionCircleMember(MEMBER, "idem-key");
+
+			expect(mockListAutoJoinSpaceIds).toHaveBeenCalledWith(
+				mockParseOrgMetadata.mock.results[0]?.value,
+			);
+			expect(mockCreateMember).toHaveBeenCalledWith(
+				expect.objectContaining({ spaceIds: ["1"] }),
+			);
+		});
+
+		it("passes an empty array when the org has no autoJoin spaces", async () => {
+			mockListAutoJoinSpaceIds.mockReturnValue([]);
+
+			await provisionCircleMember(MEMBER, "idem-key");
+
+			expect(mockCreateMember).toHaveBeenCalledWith(expect.objectContaining({ spaceIds: [] }));
 		});
 	});
 

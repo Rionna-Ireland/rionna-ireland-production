@@ -24,6 +24,14 @@
  * so a member already in the space is counted as `skipped` and never makes
  * an Admin v2 write.
  *
+ * That check is best-effort, not a lock — a member can join a space between
+ * the `fetchMemberSpaces` read and the `addSpaceMember` write (self-join on
+ * first post, a concurrent reconcile tick, …). Circle's Admin v2 rejects a
+ * duplicate join with a 4xx ("already a member"), which `real.ts`/`mock.ts`
+ * classify as `{ ok: false, reason: "invalid_input" }` — that outcome is
+ * counted as `skipped` here (not `errors`), since it means the member is
+ * already where we wanted them. Any other failure reason is a real error.
+ *
  * @see Architecture/specs/S12-02-member-posting-filters-moderation.md §10
  */
 
@@ -149,6 +157,19 @@ export async function reconcileAutoJoinMemberships(): Promise<ReconcileAutoJoinS
 						const outcome = await circle.addSpaceMember({ spaceId, email });
 						if (outcome.ok) {
 							joined++;
+						} else if (outcome.reason === "invalid_input") {
+							// Likely an already-a-member race (see the module doc
+							// comment above): the member joined between our
+							// fetchMemberSpaces read and this write. Not an error —
+							// the desired end-state (member is in the space) holds.
+							skipped++;
+							logger.info("community.auto_join.join_skipped_invalid_input", {
+								surface: "community.auto_join_reconcile",
+								organizationId: org.id,
+								memberId: member.id,
+								spaceId,
+								reason: outcome.reason,
+							});
 						} else {
 							errors++;
 							logger.warn("community.auto_join.join_failed", {
