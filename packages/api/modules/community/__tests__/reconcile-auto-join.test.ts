@@ -18,7 +18,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
 	mockOrgFindMany,
 	mockOrgFindUnique,
-	mockOrgUpdate,
+	mockOrgUpdateMany,
 	mockMemberFindMany,
 	mockHorseFindMany,
 	mockGetMemberToken,
@@ -30,7 +30,7 @@ const {
 } = vi.hoisted(() => ({
 	mockOrgFindMany: vi.fn(),
 	mockOrgFindUnique: vi.fn(),
-	mockOrgUpdate: vi.fn(),
+	mockOrgUpdateMany: vi.fn(),
 	mockMemberFindMany: vi.fn(),
 	mockHorseFindMany: vi.fn(),
 	mockGetMemberToken: vi.fn(),
@@ -43,7 +43,7 @@ const {
 
 vi.mock("@repo/database", () => ({
 	db: {
-		organization: { findMany: mockOrgFindMany, findUnique: mockOrgFindUnique, update: mockOrgUpdate },
+		organization: { findMany: mockOrgFindMany, findUnique: mockOrgFindUnique, updateMany: mockOrgUpdateMany },
 		member: { findMany: mockMemberFindMany },
 		horse: { findMany: mockHorseFindMany },
 	},
@@ -115,7 +115,7 @@ beforeEach(() => {
 		if (where.id === ORG.id) return ORG;
 		return null;
 	});
-	mockOrgUpdate.mockResolvedValue({});
+	mockOrgUpdateMany.mockResolvedValue({ count: 1 });
 });
 
 describe("reconcileAutoJoinMemberships", () => {
@@ -392,9 +392,9 @@ describe("reconcileAutoJoinMemberships", () => {
 			const summary1 = await reconcileAutoJoinMemberships();
 			expect(summary1.members).toBe(200);
 
-			expect(mockOrgUpdate).toHaveBeenCalledWith(
+			expect(mockOrgUpdateMany).toHaveBeenCalledWith(
 				expect.objectContaining({
-					where: { id: "org1" },
+					where: expect.objectContaining({ id: "org1" }),
 					data: expect.objectContaining({
 						metadata: expect.stringContaining(`"autoJoinCursor":"m199"`),
 					}),
@@ -420,9 +420,9 @@ describe("reconcileAutoJoinMemberships", () => {
 
 			// Run 2 has plenty of members left after the cursor (m200-m399), so
 			// it fills the cap without wrapping and simply advances the cursor.
-			expect(mockOrgUpdate).toHaveBeenLastCalledWith(
+			expect(mockOrgUpdateMany).toHaveBeenLastCalledWith(
 				expect.objectContaining({
-					where: { id: "org1" },
+					where: expect.objectContaining({ id: "org1" }),
 					data: expect.objectContaining({
 						metadata: expect.stringContaining(`"autoJoinCursor":"m399"`),
 					}),
@@ -452,7 +452,7 @@ describe("reconcileAutoJoinMemberships", () => {
 			// startIdx is m200 (index 200); afterCursor covers m200-m219 (20,
 			// reaching the literal end of the 220-member list) — a full pass
 			// completes this run, so the cursor is cleared.
-			const calls = mockOrgUpdate.mock.calls;
+			const calls = mockOrgUpdateMany.mock.calls;
 			const lastCall = calls[calls.length - 1]?.[0] as { data: { metadata: string } };
 			const written = JSON.parse(lastCall.data.metadata) as { circle?: { autoJoinCursor?: string } };
 			expect(written.circle?.autoJoinCursor).toBeUndefined();
@@ -464,7 +464,102 @@ describe("reconcileAutoJoinMemberships", () => {
 
 			await reconcileAutoJoinMemberships();
 
-			expect(mockOrgUpdate).not.toHaveBeenCalled();
+			expect(mockOrgUpdateMany).not.toHaveBeenCalled();
+		});
+	});
+
+	describe("residual fix — cursor write CAS and truncated-run cursor", () => {
+		function makeManyMembers(count: number) {
+			return Array.from({ length: count }, (_, i) => makeMember(`m${String(i).padStart(3, "0")}`, `cm${i}`));
+		}
+
+		it("retries once on a compare-and-set miss (count: 0) and succeeds with the re-read value", async () => {
+			const members = makeManyMembers(1000);
+			mockOrgFindMany.mockResolvedValue([ORG]);
+			mockMemberFindMany.mockResolvedValue(members);
+			mockGetMemberToken.mockResolvedValue({ ok: true, data: { accessToken: "tok" } });
+			mockFetchMemberSpaces.mockResolvedValue([{ id: "1", isMember: true }]);
+
+			// First cursor-write attempt misses (a concurrent admin toggle landed
+			// first); the retry re-reads and succeeds.
+			mockOrgUpdateMany.mockResolvedValueOnce({ count: 0 }).mockResolvedValueOnce({ count: 1 });
+
+			const summary = await reconcileAutoJoinMemberships();
+
+			expect(summary.members).toBe(200);
+			expect(mockOrgFindUnique).toHaveBeenCalledTimes(2);
+			expect(mockOrgUpdateMany).toHaveBeenCalledTimes(2);
+			expect(mockLoggerWarn).not.toHaveBeenCalledWith(
+				"community.auto_join.cursor_write_failed",
+				expect.anything(),
+			);
+		});
+
+		it("gives up after three straight compare-and-set misses and logs a warning instead of throwing", async () => {
+			const members = makeManyMembers(1000);
+			mockOrgFindMany.mockResolvedValue([ORG]);
+			mockMemberFindMany.mockResolvedValue(members);
+			mockGetMemberToken.mockResolvedValue({ ok: true, data: { accessToken: "tok" } });
+			mockFetchMemberSpaces.mockResolvedValue([{ id: "1", isMember: true }]);
+			mockOrgUpdateMany.mockResolvedValue({ count: 0 });
+
+			const summary = await reconcileAutoJoinMemberships();
+
+			expect(summary.members).toBe(200);
+			expect(mockOrgUpdateMany).toHaveBeenCalledTimes(3);
+			expect(mockLoggerWarn).toHaveBeenCalledWith(
+				"community.auto_join.cursor_write_failed",
+				expect.objectContaining({ organizationId: "org1" }),
+			);
+		});
+
+		it("leaves the cursor at the last member actually processed when the run truncates mid-batch", async () => {
+			mockOrgFindMany.mockResolvedValue([ORG]);
+			const members = [makeMember("m1", "cm1"), makeMember("m2", "cm2"), makeMember("m3", "cm3")];
+			mockMemberFindMany.mockResolvedValue(members);
+			mockGetMemberToken.mockResolvedValue({ ok: true, data: { accessToken: "tok" } });
+			mockFetchMemberSpaces.mockResolvedValue([{ id: "1", isMember: true }]);
+
+			// now() is called: (1) sweep start, (2) the per-org budget check, then
+			// once per task as `runBounded` starts it in index order — m1's task
+			// starts and passes its own check (3rd call), then m2's task starts
+			// and trips the budget (4th call), setting `truncated` before m3's
+			// task ever begins (it bails on the `if (truncated) return` guard
+			// without consuming a `now()` call at all). Only m1 is ever counted.
+			let calls = 0;
+			const now = () => {
+				calls++;
+				return calls <= 3 ? 0 : 200_000;
+			};
+
+			const summary = await reconcileAutoJoinMemberships({ now });
+
+			expect(summary.truncated).toBe(true);
+			expect(mockOrgUpdateMany).toHaveBeenCalledWith(
+				expect.objectContaining({
+					where: expect.objectContaining({ id: "org1" }),
+					data: expect.objectContaining({
+						metadata: expect.stringContaining(`"autoJoinCursor":"m1"`),
+					}),
+				}),
+			);
+		});
+
+		it("does not write a cursor at all when the run truncates before processing any member", async () => {
+			mockOrgFindMany.mockResolvedValue([ORG]);
+			mockMemberFindMany.mockResolvedValue([makeMember("m1", "cm1"), makeMember("m2", "cm2")]);
+			mockGetMemberToken.mockResolvedValue({ ok: true, data: { accessToken: "tok" } });
+			mockFetchMemberSpaces.mockResolvedValue([{ id: "1", isMember: true }]);
+
+			// Budget already exceeded before the very first member is picked up.
+			let calls = 0;
+			const now = () => (calls++ === 0 ? 0 : 200_000);
+
+			const summary = await reconcileAutoJoinMemberships({ now });
+
+			expect(summary.truncated).toBe(true);
+			expect(summary.members).toBe(0);
+			expect(mockOrgUpdateMany).not.toHaveBeenCalled();
 		});
 	});
 });

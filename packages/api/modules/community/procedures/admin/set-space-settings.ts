@@ -46,26 +46,38 @@ export const setSpaceSettings = adminProcedure
 				where: { id: input.organizationId },
 				select: { slug: true, metadata: true },
 			});
-			if (org?.slug) {
-				const metadata = parseOrgMetadata(org.metadata as string | null);
-				const circle = createCircleService(org.slug);
-				const [spacesResult, horseSpaceIds] = await Promise.all([
-					circle.listSpaces(),
-					getHorseSpaceIds(input.organizationId),
-				]);
-				const space = spacesResult.ok
-					? spacesResult.data.find((s) => s.id === input.spaceId)
-					: undefined;
-				const isPrivate = space?.isPrivate === true;
-				const isHorse =
-					horseSpaceIds.has(input.spaceId) ||
-					(space !== undefined &&
-						isHorseSpace(metadata, { spaceGroupId: space.spaceGroupId ?? null }));
-				if (isPrivate || isHorse) {
-					throw new ORPCError("BAD_REQUEST", {
-						message: "Cannot enable auto-join for a private or horse space",
-					});
-				}
+			// Residual fix (final re-review): don't fail open when we can't
+			// verify the space with Circle — an org with no slug (can't build a
+			// Circle service) or a failed listing means the private/horse guard
+			// below can't be trusted, so refuse rather than silently allowing
+			// auto-join on a space we never actually checked.
+			if (!org?.slug) {
+				throw new ORPCError("BAD_REQUEST", {
+					message: "Couldn't verify the space with Circle — try again.",
+				});
+			}
+
+			const metadata = parseOrgMetadata(org.metadata as string | null);
+			const circle = createCircleService(org.slug);
+			const [spacesResult, horseSpaceIds] = await Promise.all([
+				circle.listSpaces(),
+				getHorseSpaceIds(input.organizationId),
+			]);
+			if (!spacesResult.ok) {
+				throw new ORPCError("BAD_REQUEST", {
+					message: "Couldn't verify the space with Circle — try again.",
+				});
+			}
+
+			const space = spacesResult.data.find((s) => s.id === input.spaceId);
+			const isPrivate = space?.isPrivate === true;
+			const isHorse =
+				horseSpaceIds.has(input.spaceId) ||
+				(space !== undefined && isHorseSpace(metadata, { spaceGroupId: space.spaceGroupId ?? null }));
+			if (isPrivate || isHorse) {
+				throw new ORPCError("BAD_REQUEST", {
+					message: "Cannot enable auto-join for a private or horse space",
+				});
 			}
 		}
 

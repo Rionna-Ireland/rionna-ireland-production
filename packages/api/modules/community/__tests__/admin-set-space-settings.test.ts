@@ -159,7 +159,7 @@ describe("admin.community.setSpaceSettings (S12-02a)", () => {
 		const rawMetadata = JSON.stringify({
 			circle: { spaces: { [SPACE_ID]: { memberPosting: true, hideChip: true } } },
 		});
-		mockOrgFindUnique.mockResolvedValue({ id: ORG_ID, metadata: rawMetadata });
+		mockOrgFindUnique.mockResolvedValue({ id: ORG_ID, slug: "rionna", metadata: rawMetadata });
 
 		const result = await call(
 			setSpaceSettings,
@@ -278,6 +278,42 @@ describe("admin.community.setSpaceSettings (S12-02a)", () => {
 
 			await call(setSpaceSettings, { organizationId: ORG_ID, spaceId: SPACE_ID, hideChip: true }, ctx);
 
+			expect(mockListSpaces).not.toHaveBeenCalled();
+		});
+	});
+
+	describe("residual fix — fail closed when Circle can't be verified", () => {
+		it("rejects autoJoin:true when the Circle space listing is down", async () => {
+			mockOrgFindUnique.mockResolvedValue({ id: ORG_ID, slug: "rionna", metadata: JSON.stringify({}) });
+			mockListSpaces.mockResolvedValue({ ok: false, reason: "server_error" });
+
+			await expect(
+				call(setSpaceSettings, { organizationId: ORG_ID, spaceId: SPACE_ID, autoJoin: true }, ctx),
+			).rejects.toThrow();
+			expect(mockOrgUpdateMany).not.toHaveBeenCalled();
+		});
+
+		it("rejects autoJoin:true when the org has no slug", async () => {
+			mockOrgFindUnique.mockResolvedValue({ id: ORG_ID, slug: null, metadata: JSON.stringify({}) });
+
+			await expect(
+				call(setSpaceSettings, { organizationId: ORG_ID, spaceId: SPACE_ID, autoJoin: true }, ctx),
+			).rejects.toThrow();
+			expect(mockListSpaces).not.toHaveBeenCalled();
+			expect(mockOrgUpdateMany).not.toHaveBeenCalled();
+		});
+
+		it("leaves hideChip/memberPosting-only updates unaffected by the listing-down guard", async () => {
+			mockOrgFindUnique.mockResolvedValue({ id: ORG_ID, slug: "rionna", metadata: JSON.stringify({}) });
+			mockListSpaces.mockResolvedValue({ ok: false, reason: "server_error" });
+
+			const result = await call(
+				setSpaceSettings,
+				{ organizationId: ORG_ID, spaceId: SPACE_ID, hideChip: true },
+				ctx,
+			);
+
+			expect(result.ok).toBe(true);
 			expect(mockListSpaces).not.toHaveBeenCalled();
 		});
 	});

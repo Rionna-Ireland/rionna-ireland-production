@@ -62,6 +62,7 @@ import { runBounded } from "../../circle/lib/run-bounded";
 import { getHorseSpaceIds } from "./horse-space-ids";
 import { fetchMemberSpaces } from "./member-spaces";
 import { resolveAutoJoinSpaceIds } from "./resolve-auto-join-space-ids";
+import { mergeOrgMetadata } from "./write-space-settings";
 
 /**
  * Safety cap on members processed per cron run, matching the bounded design
@@ -238,9 +239,19 @@ export async function reconcileAutoJoinMemberships(opts?: {
 			});
 		}
 
+		// Residual fix I2 (final re-review): track the highest candidate index
+		// actually started this run, so a truncated run's cursor reflects only
+		// what was really processed. `runBounded` assigns indices to tasks
+		// strictly in ascending order off one shared counter (see its doc
+		// comment) even though tasks may *finish* out of order under
+		// concurrency, so once the sweep truncates, every started task forms a
+		// contiguous prefix of `candidates` — the max index among them is safe
+		// to use as "everything up to here was processed".
+		let lastProcessedIndex = -1;
+
 		await runBounded(
 			CONCURRENCY,
-			candidates.map((member) => async () => {
+			candidates.map((member, index) => async () => {
 				if (truncated) return;
 				if (now() - start > AUTO_JOIN_TIME_BUDGET_MS) {
 					truncated = true;
@@ -255,6 +266,7 @@ export async function reconcileAutoJoinMemberships(opts?: {
 				}
 
 				members++;
+				lastProcessedIndex = Math.max(lastProcessedIndex, index);
 				const email = member.user?.email;
 				if (!member.circleMemberId || !email) {
 					skipped += autoJoinSpaceIds.length;
@@ -343,26 +355,42 @@ export async function reconcileAutoJoinMemberships(opts?: {
 			}),
 		);
 
+		// Residual fix I2: a truncated run must not advance the cursor past
+		// members it never actually processed — `nextCursor` (from
+		// `selectCandidates`) assumes the whole `candidates` batch ran, which
+		// is false once truncation cut the sweep short. Use the last
+		// candidate actually started instead, or leave the cursor unchanged
+		// (no persist) when nothing in this batch was processed at all.
+		const cursorToPersist = truncated
+			? (candidates[lastProcessedIndex]?.id ?? cursor)
+			: nextCursor;
+
 		// Persist the cursor for this org, preserving whatever else changed in
-		// metadata since the read above (e.g. an admin toggling a setting mid-run).
-		if (nextCursor !== cursor) {
-			const freshOrg = await db.organization.findUnique({
-				where: { id: org.id },
-				select: { metadata: true },
-			});
-			const freshMetadata = parseOrgMetadata(freshOrg?.metadata ?? null);
-			await db.organization.update({
-				where: { id: org.id },
-				data: {
-					metadata: JSON.stringify({
+		// metadata since the read above (e.g. an admin toggling a setting
+		// mid-run). Routed through the same compare-and-set helper as
+		// `mergeSpaceSettings` (residual fix — final re-review) so a
+		// concurrent admin `circle.spaces` toggle can't be clobbered by this
+		// plain re-read-and-write; best-effort only, so a write that still
+		// can't land after retrying is logged and dropped rather than thrown.
+		if (cursorToPersist !== cursor) {
+			try {
+				await mergeOrgMetadata({
+					organizationId: org.id,
+					mutate: (freshMetadata) => ({
 						...freshMetadata,
 						circle: {
 							...freshMetadata.circle,
-							autoJoinCursor: nextCursor,
+							autoJoinCursor: cursorToPersist,
 						},
 					}),
-				},
-			});
+				});
+			} catch (error) {
+				logger.warn("community.auto_join.cursor_write_failed", {
+					surface: "community.auto_join_reconcile",
+					organizationId: org.id,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
 		}
 	}
 
