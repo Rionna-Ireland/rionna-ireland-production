@@ -12,6 +12,7 @@ import { toPollFeedItem } from "../../polls/lib/to-feed-item";
 import { getFollowedHorseIds } from "../../racing/horses/lib/horse-follows";
 import { type FeedFilterInput, applyFeedFilter } from "../lib/feed-filter";
 import { readMemberFeedBuffer, writeMemberFeedBuffer } from "../lib/member-feed-cache";
+import { POST_SPACE_TYPES } from "../lib/space-types";
 import { getStoryFeedItems } from "../lib/story-feed-items";
 import {
 	type MemberFeedItem,
@@ -28,8 +29,6 @@ export interface MemberFeedResult {
 	hasNextPage: boolean;
 }
 
-// Space types that carry readable posts for the feed (exclude chat/course/members).
-const POST_SPACE_TYPES = new Set(["basic", "image"]);
 // How many recent posts to pull per space, and how many spaces to scan, per load.
 const POSTS_PER_SPACE = 15;
 const MAX_SPACES = 30;

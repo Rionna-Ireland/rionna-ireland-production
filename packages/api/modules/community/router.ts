@@ -6,6 +6,7 @@ import { createPost } from "./procedures/create-post";
 import { createPostImageUploadUrl } from "./procedures/create-post-image-upload-url";
 import { deletePost } from "./procedures/delete-post";
 import { getCommunityOverview } from "./procedures/get-community-overview";
+import { listFeedChips } from "./procedures/list-feed-chips";
 import { listPostableSpaces } from "./procedures/list-postable-spaces";
 import { reportContent } from "./procedures/report-content";
 
@@ -21,6 +22,7 @@ export const communityAdminRouter = {
 
 export const communityRouter = {
 	listPostableSpaces,
+	listFeedChips,
 	createPostImageUploadUrl,
 	createPost,
 	deletePost,
