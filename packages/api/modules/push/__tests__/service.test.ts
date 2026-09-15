@@ -329,4 +329,58 @@ describe("sendPush", () => {
 			expect.objectContaining({ followersOfHorseId: undefined }),
 		);
 	});
+
+	it("uses the per-user badge from badgeByUserId, clamped to 99", async () => {
+		mockGetAudienceTokens.mockResolvedValue([
+			{ expoPushToken: "ExponentPushToken[a]", userId: "user-1" },
+			{ expoPushToken: "ExponentPushToken[b]", userId: "user-2" },
+		]);
+		mockCreate.mockResolvedValueOnce({ id: "log-1" }).mockResolvedValueOnce({ id: "log-2" });
+		mockSendPushNotificationsAsync.mockResolvedValueOnce([{ status: "ok" }, { status: "ok" }]);
+
+		await sendPush({
+			organizationId: "org-1",
+			triggerType: "NEWS_POST",
+			triggerRefId: "n1",
+			title: "t",
+			body: "b",
+			badgeByUserId: new Map([
+				["user-1", 4],
+				["user-2", 250],
+			]),
+		});
+
+		const sent = mockSendPushNotificationsAsync.mock.calls[0][0] as Array<{ to: string; badge: number }>;
+		expect(sent.find((m) => m.to === "ExponentPushToken[a]")?.badge).toBe(4);
+		expect(sent.find((m) => m.to === "ExponentPushToken[b]")?.badge).toBe(99);
+	});
+
+	it("falls back to request.badge, then 1, for users missing from the map", async () => {
+		mockGetAudienceTokens.mockResolvedValue([{ expoPushToken: "ExponentPushToken[a]", userId: "user-1" }]);
+		mockCreate.mockResolvedValue({ id: "log-1" });
+		mockSendPushNotificationsAsync.mockResolvedValue([{ status: "ok" }]);
+
+		await sendPush({
+			organizationId: "org-1",
+			triggerType: "NEWS_POST",
+			triggerRefId: "n2",
+			title: "t",
+			body: "b",
+			badgeByUserId: new Map(),
+		});
+		await sendPush({
+			organizationId: "org-1",
+			triggerType: "NEWS_POST",
+			triggerRefId: "n3",
+			title: "t",
+			body: "b",
+			badge: 7,
+			badgeByUserId: new Map(),
+		});
+
+		const first = mockSendPushNotificationsAsync.mock.calls[0][0] as Array<{ badge: number }>;
+		const second = mockSendPushNotificationsAsync.mock.calls[1][0] as Array<{ badge: number }>;
+		expect(first[0]?.badge).toBe(1);
+		expect(second[0]?.badge).toBe(7);
+	});
 });

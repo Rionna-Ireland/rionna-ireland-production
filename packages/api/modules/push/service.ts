@@ -44,6 +44,8 @@ export interface PushRequest {
 	data?: Record<string, string>;
 	/** iOS app-icon badge count. Defaults to 1 so background pushes show a badge. */
 	badge?: number;
+	/** S12-06: per-recipient unseen inbox count, from recordInbox. Wins over `badge`. */
+	badgeByUserId?: Map<string, number>;
 	/** If set, only push to this user. Otherwise, push to all org members with relevant prefs. */
 	targetUserId?: string;
 	/** If set, restrict the audience to followers of this horse (S8-03 §2). Omit for org-wide pushes. */
@@ -69,7 +71,7 @@ async function reservePush(
 		title: request.title,
 		body: request.body,
 		data: request.data,
-		badge: request.badge ?? 1,
+		badge: Math.max(0, Math.min(99, request.badgeByUserId?.get(token.userId) ?? request.badge ?? 1)),
 		sound: "default" as const,
 	};
 
