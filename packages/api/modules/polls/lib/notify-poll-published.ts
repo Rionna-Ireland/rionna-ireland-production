@@ -43,6 +43,11 @@ async function releaseClaim(pollId: string): Promise<void> {
  * (club → org-wide, space → the horse's followers, using a `spaceFeed` deep
  * link — inbox is skipped only if `circleSpaceId` is missing). On a quiet
  * publish (`push: false`) we return right after recording.
+ *
+ * S12-06b: a space-scope push's `data` also carries `spaceId` alongside
+ * `screen: "community"` when `circleSpaceId` is known — installed builds
+ * ignore the extra field and still open Community; S12-06b builds route
+ * natively. Club-scope `poll` pushes are unchanged.
  */
 export async function notifyPollPublished(input: NotifyPollPublishedInput): Promise<void> {
 	if (input.scope === "space" && !input.followersOfHorseId) {
@@ -101,7 +106,12 @@ export async function notifyPollPublished(input: NotifyPollPublishedInput): Prom
 			title: `New vote: ${input.question}`,
 			body: "Tap to have your say.",
 			...(input.scope === "space"
-				? { followersOfHorseId: input.followersOfHorseId, data: { screen: "community" } }
+				? {
+						followersOfHorseId: input.followersOfHorseId,
+						data: input.circleSpaceId
+							? { screen: "community", spaceId: input.circleSpaceId }
+							: { screen: "community" },
+					}
 				: { data: { screen: "poll", pollId: input.pollId } }),
 			badgeByUserId,
 		});

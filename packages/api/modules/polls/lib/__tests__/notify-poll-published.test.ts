@@ -170,7 +170,7 @@ describe("notifyPollPublished", () => {
 			title: "New vote: Best warm-up routine?",
 			body: "Tap to have your say.",
 			followersOfHorseId: "h1",
-			data: { screen: "community" },
+			data: { screen: "community", spaceId: "sp1" },
 			badgeByUserId: BADGE_MAP,
 		});
 		expect(mockRelease).not.toHaveBeenCalled();
@@ -202,7 +202,7 @@ describe("notifyPollPublished", () => {
 		});
 		expect(mockRecordInbox).not.toHaveBeenCalled();
 		expect(mockSendPush).toHaveBeenCalledWith(
-			expect.objectContaining({ followersOfHorseId: "h1" }),
+			expect.objectContaining({ followersOfHorseId: "h1", data: { screen: "community" } }),
 		);
 	});
 });

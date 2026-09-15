@@ -23,6 +23,10 @@ export interface NotifyCommunityMembersInput {
  * S12-06: always records an org-wide inbox item first — even on a quiet
  * publish (`push: false`), the push is simply skipped.
  *
+ * S12-06b: the push `data` also carries `spaceId`/`postId` alongside
+ * `screen: "community"` — installed builds ignore the extra fields and still
+ * open Community; S12-06b builds route natively.
+ *
  * Best-effort: publishMemberPost has already committed the published row —
  * a total push delivery failure (or a throw from sendPush itself) is
  * logged, never thrown, so the admin's publish action still succeeds.
@@ -52,8 +56,13 @@ export async function notifyCommunityMembers(
 			title: input.title,
 			body: "New announcement for all members.",
 			data: input.circlePostUrl
-				? { screen: "community", url: input.circlePostUrl }
-				: { screen: "community" },
+				? {
+						screen: "community",
+						url: input.circlePostUrl,
+						spaceId: input.circleSpaceId,
+						postId: input.circlePostId,
+					}
+				: { screen: "community", spaceId: input.circleSpaceId, postId: input.circlePostId },
 			badgeByUserId,
 		});
 
