@@ -55,7 +55,7 @@ export type OrganizationScalarFieldEnum = z.infer<typeof OrganizationScalarField
 
 // File: MemberScalarFieldEnum.schema.ts
 
-export const MemberScalarFieldEnumSchema = z.enum(['id', 'organizationId', 'userId', 'role', 'createdAt', 'circleMemberId', 'circleProvisionedAt', 'circleStatus', 'circleRefreshToken', 'circleProfileConfirmedAt', 'circleAccessToken', 'circleAccessTokenExpiresAt', 'circleLastSeenNotificationId', 'circleLastPolledAt'])
+export const MemberScalarFieldEnumSchema = z.enum(['id', 'organizationId', 'userId', 'role', 'createdAt', 'circleMemberId', 'circleProvisionedAt', 'circleStatus', 'circleRefreshToken', 'circleProfileConfirmedAt', 'circleAccessToken', 'circleAccessTokenExpiresAt', 'circleLastSeenNotificationId', 'circleLastPolledAt', 'inboxUnseenCount'])
 
 export type MemberScalarFieldEnum = z.infer<typeof MemberScalarFieldEnumSchema>;
 
@@ -197,6 +197,12 @@ export const CommunityPostScalarFieldEnumSchema = z.enum(['id', 'organizationId'
 
 export type CommunityPostScalarFieldEnum = z.infer<typeof CommunityPostScalarFieldEnumSchema>;
 
+// File: InboxItemScalarFieldEnum.schema.ts
+
+export const InboxItemScalarFieldEnumSchema = z.enum(['id', 'organizationId', 'userId', 'kind', 'groupKey', 'title', 'body', 'imageUrl', 'actorUserId', 'actorName', 'actorCount', 'data', 'refId', 'readAt', 'lastPushedAt', 'createdAt', 'updatedAt'])
+
+export type InboxItemScalarFieldEnum = z.infer<typeof InboxItemScalarFieldEnumSchema>;
+
 // File: ModerationFlagScalarFieldEnum.schema.ts
 
 export const ModerationFlagScalarFieldEnumSchema = z.enum(['id', 'organizationId', 'source', 'surface', 'memberId', 'targetPostId', 'targetCommentId', 'targetSpaceId', 'targetAuthorName', 'contentExcerpt', 'matchedTerms', 'reason', 'note', 'status', 'resolvedAt', 'resolvedByUserId', 'createdAt'])
@@ -277,7 +283,7 @@ export type DevicePlatform = z.infer<typeof DevicePlatformSchema>;
 
 // File: PushTriggerType.schema.ts
 
-export const PushTriggerTypeSchema = z.enum(['HORSE_DECLARED', 'HORSE_NON_RUNNER', 'RACE_RESULT', 'TRAINER_POST', 'NEWS_POST', 'SYSTEM', 'CIRCLE_MENTION', 'CIRCLE_REPLY', 'CIRCLE_REACTION', 'CIRCLE_DM', 'CIRCLE_HORSE_DISCUSSION', 'HORSE_WELLBEING', 'HORSE_UPDATE', 'INSIDE_TRACK', 'EVENT_PUBLISHED', 'POLL'])
+export const PushTriggerTypeSchema = z.enum(['HORSE_DECLARED', 'HORSE_NON_RUNNER', 'RACE_RESULT', 'TRAINER_POST', 'NEWS_POST', 'SYSTEM', 'CIRCLE_MENTION', 'CIRCLE_REPLY', 'CIRCLE_REACTION', 'CIRCLE_DM', 'CIRCLE_HORSE_DISCUSSION', 'HORSE_WELLBEING', 'HORSE_UPDATE', 'INSIDE_TRACK', 'EVENT_PUBLISHED', 'POLL', 'COMMUNITY_COMMENT'])
 
 export type PushTriggerType = z.infer<typeof PushTriggerTypeSchema>;
 
@@ -433,6 +439,7 @@ export const MemberSchema = z.object({
   circleAccessTokenExpiresAt: z.date().nullish(),
   circleLastSeenNotificationId: z.string().nullish(),
   circleLastPolledAt: z.date().nullish(),
+  inboxUnseenCount: z.number().int(),
 });
 
 export type MemberType = z.infer<typeof MemberSchema>;
@@ -866,6 +873,31 @@ export const CommunityPostSchema = z.object({
 });
 
 export type CommunityPostType = z.infer<typeof CommunityPostSchema>;
+
+
+// File: InboxItem.schema.ts
+
+export const InboxItemSchema = z.object({
+  id: z.string(),
+  organizationId: z.string(),
+  userId: z.string(),
+  kind: z.string(),
+  groupKey: z.string(),
+  title: z.string(),
+  body: z.string(),
+  imageUrl: z.string().nullish(),
+  actorUserId: z.string().nullish(),
+  actorName: z.string().nullish(),
+  actorCount: z.number().int().default(1),
+  data: z.unknown().refine((val) => { const getDepth = (obj: unknown, depth: number = 0): number => { if (depth > 10) return depth; if (obj === null || typeof obj !== 'object') return depth; const values = Object.values(obj as Record<string, unknown>); if (values.length === 0) return depth; return Math.max(...values.map(v => getDepth(v, depth + 1))); }; return getDepth(val) <= 10; }, "JSON nesting depth exceeds maximum of 10"),
+  refId: z.string().nullish(),
+  readAt: z.date().nullish(),
+  lastPushedAt: z.date().nullish(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
+export type InboxItemType = z.infer<typeof InboxItemSchema>;
 
 
 // File: ModerationFlag.schema.ts

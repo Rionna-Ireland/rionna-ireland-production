@@ -60,6 +60,11 @@ export function getPrefKey(triggerType: PushTriggerType): string | null {
 			return "polls";
 		case "SYSTEM":
 			return null;
+		case "COMMUNITY_COMMENT":
+			// S12-06a: inbox comment notifications are gated by the inbox writer's
+			// own throttle, not a push preference — no push is sent through this
+			// path for this trigger yet (wired in a later S12-06 task).
+			return null;
 	}
 }
 
