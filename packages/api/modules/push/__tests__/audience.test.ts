@@ -94,6 +94,10 @@ describe("getPrefKey", () => {
 	it("maps POLL to the polls preference", () => {
 		expect(getPrefKey("POLL")).toBe("polls");
 	});
+
+	it("maps COMMUNITY_COMMENT to postComments", () => {
+		expect(getPrefKey("COMMUNITY_COMMENT")).toBe("postComments");
+	});
 });
 
 describe("getAudienceTokens", () => {
