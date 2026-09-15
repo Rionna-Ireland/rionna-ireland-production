@@ -116,6 +116,35 @@ describe("updatePreferences — pushPreferences.horseUpdates (S8-01a3)", () => {
 		expect(result.pushPreferences).toEqual({ raceResult: false, insideTrack: false });
 	});
 
+	it("accepts postComments and merges it into existing preferences (S12-06b)", async () => {
+		mockFindUniqueOrThrow.mockResolvedValue({
+			pushPreferences: { raceResult: false },
+			emailPreferences: {},
+		});
+		mockUpdate.mockResolvedValue({
+			pushEnabled: true,
+			pushPreferences: { raceResult: false, postComments: false },
+			emailPreferences: {},
+		});
+
+		const result = await call(
+			updatePreferences,
+			{ pushPreferences: { postComments: false } },
+			ctx,
+		);
+
+		expect(mockUpdate).toHaveBeenCalledWith({
+			where: { id: "u1" },
+			data: { pushPreferences: { raceResult: false, postComments: false } },
+			select: {
+				pushEnabled: true,
+				pushPreferences: true,
+				emailPreferences: true,
+			},
+		});
+		expect(result.pushPreferences).toEqual({ raceResult: false, postComments: false });
+	});
+
 	it("no longer accepts the legacy horseWellbeing key (unknown keys are stripped)", async () => {
 		mockUpdate.mockResolvedValue({
 			pushEnabled: true,

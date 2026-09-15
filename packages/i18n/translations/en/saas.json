@@ -375,7 +375,7 @@
 				"notifications": {
 					"draftSaved": "Draft saved.",
 					"published": "Posted to {horse}'s members.",
-					"publishFailed": "Couldn't publish to Circle — see the fallback below.",
+					"publishFailed": "Couldn't publish — see the details below.",
 					"error": "Something went wrong. Please try again."
 				}
 			}
