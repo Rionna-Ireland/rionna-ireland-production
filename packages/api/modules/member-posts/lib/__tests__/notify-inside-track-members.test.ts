@@ -3,11 +3,15 @@
  * insideTrack pref) fired when an admin publishes an Inside Track piece
  * with "Notify members" checked. triggerRefId is the memberPost id so
  * PushLog dedup does not collide with other trigger types (S11-01).
+ *
+ * S12-06: an org-wide inbox item is always recorded, even on a quiet publish
+ * (`push: false`) — only the push is gated.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockSendPush } = vi.hoisted(() => ({
+const { mockSendPush, mockRecordInbox } = vi.hoisted(() => ({
 	mockSendPush: vi.fn(),
+	mockRecordInbox: vi.fn(),
 }));
 
 vi.mock("@repo/logs", () => ({
@@ -18,10 +22,15 @@ vi.mock("../../../push/service", () => ({
 	sendPush: mockSendPush,
 }));
 
+vi.mock("../../../inbox/record", () => ({
+	recordInbox: mockRecordInbox,
+}));
+
 import { notifyInsideTrackMembers } from "../notify-inside-track-members";
 
 beforeEach(() => {
 	vi.clearAllMocks();
+	mockRecordInbox.mockResolvedValue(new Map([["u1", 2]]));
 });
 
 describe("notifyInsideTrackMembers", () => {
@@ -41,7 +50,45 @@ describe("notifyInsideTrackMembers", () => {
 			title: "How to read a racecard",
 			body: "New from the Inside Track.",
 			data: { screen: "insideTrack" },
+			badgeByUserId: new Map([["u1", 2]]),
 		});
+	});
+
+	it("records the inbox item and passes badges to the push", async () => {
+		mockSendPush.mockResolvedValue({ attempted: 1, sent: 1, failed: 0 });
+
+		await notifyInsideTrackMembers({
+			organizationId: "org-1",
+			memberPostId: "mp-1",
+			title: "How to read a racecard",
+		});
+
+		expect(mockRecordInbox).toHaveBeenCalledWith({
+			organizationId: "org-1",
+			audience: { kind: "org" },
+			item: expect.objectContaining({
+				kind: "inside_track",
+				groupKey: "inside_track:mp-1",
+				title: "How to read a racecard",
+				body: "New from the Inside Track.",
+				data: { screen: "insideTrack" },
+			}),
+		});
+		expect(mockSendPush).toHaveBeenCalledWith(
+			expect.objectContaining({ badgeByUserId: new Map([["u1", 2]]) }),
+		);
+	});
+
+	it("records but does not push on a quiet publish", async () => {
+		await notifyInsideTrackMembers({
+			organizationId: "org-1",
+			memberPostId: "mp-1",
+			title: "How to read a racecard",
+			push: false,
+		});
+
+		expect(mockRecordInbox).toHaveBeenCalled();
+		expect(mockSendPush).not.toHaveBeenCalled();
 	});
 
 	it("never throws when sendPush itself throws — the publish already committed", async () => {

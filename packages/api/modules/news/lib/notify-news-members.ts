@@ -4,6 +4,7 @@ import {
 } from "@repo/database";
 import { logger } from "@repo/logs";
 
+import { recordInbox } from "../../inbox/record";
 import { sendNewsNotificationEmails } from "../../mail/send-news-notification";
 import { sendPush } from "../../racing/ingest/send-push";
 
@@ -14,12 +15,18 @@ export interface NotifyNewsMembersInput {
 	subtitle: string | null;
 	featuredImageUrl: string | null;
 	slug: string;
+	/** S12-06: false = quiet publish — inbox item only, no push/email/claim. */
+	push?: boolean;
 }
 
 /**
  * One-shot NEWS_POST fan-out (push + email) after an admin publishes with
  * notify on. Shared by createNewsPost and updateNewsPost so create+publish
  * doesn't skip Expo (S2-02).
+ *
+ * S12-06: an org-wide inbox item is always recorded first (idempotent by
+ * groupKey, so a re-publish is a no-op). On a quiet publish (`push: false`)
+ * we return right after recording — no claim, no email.
  *
  * FABLE_AUDIT P1: the claim is atomic (two concurrent publishes can't both
  * send), and is released when nothing went out so a re-publish can retry.
@@ -30,6 +37,21 @@ export interface NotifyNewsMembersInput {
  * fetches `GET /api/news/{slug}`.
  */
 export async function notifyNewsMembers(post: NotifyNewsMembersInput): Promise<void> {
+	const badgeByUserId = await recordInbox({
+		organizationId: post.organizationId,
+		audience: { kind: "org" },
+		item: {
+			kind: "news",
+			groupKey: `news:${post.id}`,
+			title: `New post: ${post.title}`,
+			body: post.subtitle ?? post.title,
+			data: { screen: "news", newsPostId: post.slug },
+			imageUrl: post.featuredImageUrl,
+		},
+	});
+
+	if (post.push === false) return;
+
 	const claimed = await claimNewsPostNotification(post.id);
 	if (!claimed) {
 		return;
@@ -43,6 +65,7 @@ export async function notifyNewsMembers(post: NotifyNewsMembersInput): Promise<v
 			title: `New post: ${post.title}`,
 			body: post.subtitle ?? post.title,
 			data: { screen: "news", newsPostId: post.slug },
+			badgeByUserId,
 		});
 
 		const emailResult = await sendNewsNotificationEmails({

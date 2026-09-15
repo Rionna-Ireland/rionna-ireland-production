@@ -227,16 +227,19 @@ describe("publishMemberPost (S2-09)", () => {
 					title: "Trainer update",
 					horseName: "Pink Diamond Lass",
 					updateType,
+					push: true,
 				});
 			},
 		);
 
-		it("does not notify when notifyFollowers is omitted", async () => {
+		it("notifies the horse's followers with push:false when notifyFollowers is omitted (quiet publish still records the inbox item)", async () => {
 			mockGetMemberPostById.mockResolvedValue(draftPost({ updateType: "wellbeing" }));
 
 			await call(publishMemberPost, { memberPostId: "mp1" }, ctx);
 
-			expect(mockNotifyHorseFollowers).not.toHaveBeenCalled();
+			expect(mockNotifyHorseFollowers).toHaveBeenCalledWith(
+				expect.objectContaining({ push: false }),
+			);
 		});
 
 		it("does not notify horse followers for a community post even when notifyFollowers is set", async () => {
@@ -255,7 +258,9 @@ describe("publishMemberPost (S2-09)", () => {
 			await call(publishMemberPost, { memberPostId: "mp1", notifyFollowers: true }, ctx);
 
 			expect(mockNotifyHorseFollowers).not.toHaveBeenCalled();
-			expect(mockNotifyCommunityMembers).not.toHaveBeenCalled();
+			expect(mockNotifyCommunityMembers).toHaveBeenCalledWith(
+				expect.objectContaining({ push: false }),
+			);
 		});
 
 		it("notifies all members when notifyMembers is set on a community announcement", async () => {
@@ -279,10 +284,13 @@ describe("publishMemberPost (S2-09)", () => {
 				memberPostId: "mp1",
 				title: "Club dinner Friday",
 				circlePostUrl: "https://rionna.circle.so/posts/5001",
+				circleSpaceId: "2695457",
+				circlePostId: "5001",
+				push: true,
 			});
 		});
 
-		it("does not notify members when notifyMembers is omitted on a community announcement", async () => {
+		it("notifies members with push:false when notifyMembers is omitted on a community announcement (quiet publish still records the inbox item)", async () => {
 			mockParseOrgMetadata.mockReturnValue({
 				circle: { communitySpaceId: "2695457" },
 			});
@@ -292,16 +300,20 @@ describe("publishMemberPost (S2-09)", () => {
 
 			await call(publishMemberPost, { memberPostId: "mp1" }, ctx);
 
-			expect(mockNotifyCommunityMembers).not.toHaveBeenCalled();
+			expect(mockNotifyCommunityMembers).toHaveBeenCalledWith(
+				expect.objectContaining({ push: false }),
+			);
 		});
 
-		it("does not notify members when notifyMembers is set on a horse update", async () => {
+		it("does not notify community members for a horse update, but still notifies horse followers", async () => {
 			mockGetMemberPostById.mockResolvedValue(draftPost({ updateType: "trainer" }));
 
 			await call(publishMemberPost, { memberPostId: "mp1", notifyMembers: true }, ctx);
 
 			expect(mockNotifyCommunityMembers).not.toHaveBeenCalled();
-			expect(mockNotifyHorseFollowers).not.toHaveBeenCalled();
+			expect(mockNotifyHorseFollowers).toHaveBeenCalledWith(
+				expect.objectContaining({ push: false }),
+			);
 		});
 
 		it("does not notify when publish fails safe", async () => {
@@ -449,10 +461,11 @@ describe("publishMemberPost (S2-09)", () => {
 				organizationId: "org1",
 				memberPostId: "mp1",
 				title: "How to read a racecard",
+				push: true,
 			});
 		});
 
-		it("does not fire notifyInsideTrackMembers when notifyMembers is false", async () => {
+		it("fires notifyInsideTrackMembers with push:false when notifyMembers is false (quiet publish still records the inbox item)", async () => {
 			mockParseOrgMetadata.mockReturnValue({
 				circle: { insideTrack: { spaceId: "space_it" } },
 			});
@@ -468,7 +481,9 @@ describe("publishMemberPost (S2-09)", () => {
 
 			await call(publishMemberPost, { memberPostId: "mp1", notifyMembers: false }, ctx);
 
-			expect(mockNotifyInsideTrackMembers).not.toHaveBeenCalled();
+			expect(mockNotifyInsideTrackMembers).toHaveBeenCalledWith(
+				expect.objectContaining({ push: false }),
+			);
 		});
 	});
 });

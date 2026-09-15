@@ -1,6 +1,7 @@
 import { claimPollNotification, releasePollNotification } from "@repo/database";
 import { logger } from "@repo/logs";
 
+import { recordInbox } from "../../inbox/record";
 import { sendPush } from "../../push/service";
 
 export interface NotifyPollPublishedInput {
@@ -10,6 +11,10 @@ export interface NotifyPollPublishedInput {
 	scope: "club" | "space";
 	/** Space-scope only: the horse whose followers should get the push. */
 	followersOfHorseId?: string;
+	/** Space-scope only: the Circle space id, used for the inbox deep link. */
+	circleSpaceId?: string | null;
+	/** S12-06: false = quiet publish — inbox item only, no push. */
+	push?: boolean;
 }
 
 async function releaseClaim(pollId: string): Promise<void> {
@@ -33,6 +38,11 @@ async function releaseClaim(pollId: string): Promise<void> {
  * will actually be attempted, so concurrent publishes can't double-send;
  * it is released on total delivery failure or a throw so a re-publish can
  * retry. Never throws.
+ *
+ * S12-06: once the no-horse guard clears, an inbox item is always recorded
+ * (club → org-wide, space → the horse's followers, using a `spaceFeed` deep
+ * link — inbox is skipped only if `circleSpaceId` is missing). On a quiet
+ * publish (`push: false`) we return right after recording.
  */
 export async function notifyPollPublished(input: NotifyPollPublishedInput): Promise<void> {
 	if (input.scope === "space" && !input.followersOfHorseId) {
@@ -42,6 +52,36 @@ export async function notifyPollPublished(input: NotifyPollPublishedInput): Prom
 		});
 		return;
 	}
+
+	let badgeByUserId: Awaited<ReturnType<typeof recordInbox>> | undefined;
+	if (input.scope === "club") {
+		badgeByUserId = await recordInbox({
+			organizationId: input.organizationId,
+			audience: { kind: "org" },
+			item: {
+				kind: "poll",
+				groupKey: `poll:${input.pollId}`,
+				title: `New vote: ${input.question}`,
+				body: "Tap to have your say.",
+				data: { screen: "poll", pollId: input.pollId },
+			},
+		});
+	} else if (input.circleSpaceId) {
+		badgeByUserId = await recordInbox({
+			organizationId: input.organizationId,
+			audience: { kind: "horseFollowers", horseId: input.followersOfHorseId! },
+			item: {
+				kind: "poll",
+				groupKey: `poll:${input.pollId}`,
+				title: `New vote: ${input.question}`,
+				body: "Tap to have your say.",
+				data: { screen: "spaceFeed", spaceId: input.circleSpaceId },
+			},
+		});
+	}
+
+	if (input.push === false) return;
+
 	let claimed: boolean;
 	try {
 		claimed = await claimPollNotification(input.pollId);
@@ -63,6 +103,7 @@ export async function notifyPollPublished(input: NotifyPollPublishedInput): Prom
 			...(input.scope === "space"
 				? { followersOfHorseId: input.followersOfHorseId, data: { screen: "community" } }
 				: { data: { screen: "poll", pollId: input.pollId } }),
+			badgeByUserId,
 		});
 		logger.info("[Polls] publish notify summary", { pollId: input.pollId, ...delivery });
 		if (delivery.attempted > 0 && delivery.sent === 0) {

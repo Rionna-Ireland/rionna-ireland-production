@@ -119,12 +119,12 @@ export const publishMemberPost = adminProcedure
 		}
 
 		// Best-effort, after the publish result is recorded: notify a horse's
-		// followers on ANY update type, if the composer asked for it (S8-01a3 —
-		// one shared "horse updates" preference/trigger covering all four
-		// admin-authored update types, replacing the wellbeing-only gate).
-		const shouldNotifyFollowers =
-			input.notifyFollowers && post.audienceType === "horse" && Boolean(post.horseId);
-		if (shouldNotifyFollowers && post.horseId) {
+		// followers on ANY update type (S8-01a3 — one shared "horse updates"
+		// preference/trigger covering all four admin-authored update types,
+		// replacing the wellbeing-only gate). S12-06: the notifier always
+		// records an inbox item; push only fires when the composer asked for
+		// it.
+		if (post.audienceType === "horse" && post.horseId) {
 			await notifyHorseFollowers({
 				organizationId: post.organizationId,
 				horseId: post.horseId,
@@ -132,24 +132,29 @@ export const publishMemberPost = adminProcedure
 				title: post.title,
 				horseName: post.horse?.name ?? "Your horse",
 				updateType: post.updateType ?? null,
+				push: Boolean(input.notifyFollowers),
 			});
 		}
 
-		if (input.notifyMembers && post.audienceType === "community") {
+		if (post.audienceType === "community") {
 			const communityDomain = parseOrgMetadata(org.metadata).circle?.communityDomain;
 			await notifyCommunityMembers({
 				organizationId: post.organizationId,
 				memberPostId: post.id,
 				title: post.title,
 				circlePostUrl: circlePostUrl(communityDomain, created.data.circlePostId),
+				circleSpaceId: spaceId,
+				circlePostId: created.data.circlePostId,
+				push: Boolean(input.notifyMembers),
 			});
 		}
 
-		if (input.notifyMembers && post.audienceType === "insideTrack") {
+		if (post.audienceType === "insideTrack") {
 			await notifyInsideTrackMembers({
 				organizationId: post.organizationId,
 				memberPostId: post.id,
 				title: post.title,
+				push: Boolean(input.notifyMembers),
 			});
 		}
 

@@ -36,30 +36,31 @@ export const publishPoll = adminProcedure
 			pollId: input.pollId,
 			notifyMembers: input.notifyMembers,
 		});
-		if (input.notifyMembers) {
-			if (poll.scope === "space") {
-				const horse = await db.horse.findFirst({
-					where: {
-						organizationId: input.organizationId,
-						circleSpaceId: poll.circleSpaceId,
-					},
-					select: { id: true },
-				});
-				await notifyPollPublished({
+		if (poll.scope === "space") {
+			const horse = await db.horse.findFirst({
+				where: {
 					organizationId: input.organizationId,
-					pollId: input.pollId,
-					question: poll.question,
-					scope: "space",
-					followersOfHorseId: horse?.id,
-				});
-			} else {
-				await notifyPollPublished({
-					organizationId: input.organizationId,
-					pollId: input.pollId,
-					question: poll.question,
-					scope: "club",
-				});
-			}
+					circleSpaceId: poll.circleSpaceId,
+				},
+				select: { id: true },
+			});
+			await notifyPollPublished({
+				organizationId: input.organizationId,
+				pollId: input.pollId,
+				question: poll.question,
+				scope: "space",
+				followersOfHorseId: horse?.id,
+				circleSpaceId: poll.circleSpaceId,
+				push: Boolean(input.notifyMembers),
+			});
+		} else {
+			await notifyPollPublished({
+				organizationId: input.organizationId,
+				pollId: input.pollId,
+				question: poll.question,
+				scope: "club",
+				push: Boolean(input.notifyMembers),
+			});
 		}
 		return { ok: true as const };
 	});
