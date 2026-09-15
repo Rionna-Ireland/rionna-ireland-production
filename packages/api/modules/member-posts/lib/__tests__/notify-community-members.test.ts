@@ -55,6 +55,8 @@ describe("notifyCommunityMembers", () => {
 			data: {
 				screen: "community",
 				url: "https://rionna.circle.so/posts/5001",
+				spaceId: "s1",
+				postId: "cp1",
 			},
 			badgeByUserId: new Map([["u1", 2]]),
 		});
@@ -115,7 +117,7 @@ describe("notifyCommunityMembers", () => {
 
 		expect(mockSendPush).toHaveBeenCalledWith(
 			expect.objectContaining({
-				data: { screen: "community" },
+				data: { screen: "community", spaceId: "s1", postId: "cp1" },
 			}),
 		);
 	});

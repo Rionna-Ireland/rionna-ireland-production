@@ -30,10 +30,10 @@ describe("inbox.badgeCount", () => {
 		expect(result).toEqual({ count: 7 });
 	});
 
-	it("clamps to 99", async () => {
+	it("returns the raw count uncapped, so the app can show 99+", async () => {
 		mockMemberFindUnique.mockResolvedValue({ inboxUnseenCount: 250 });
 		const result = await call(getBadgeCount, { organizationId: "org1" }, ctx);
-		expect(result).toEqual({ count: 99 });
+		expect(result).toEqual({ count: 250 });
 	});
 
 	it("returns 0 for non-members", async () => {

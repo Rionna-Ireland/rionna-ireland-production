@@ -43,8 +43,10 @@
 		"step1": "Download the {clubName} app from the App Store or Google Play",
 		"step2": "Sign in with your email and password",
 		"step3": "Explore Our Stables to meet the horses",
-		"step4": "Join the community to connect with other members",
-		"cta": "Visit the Community",
+		"step4": "Explore the Rionna app to connect with other members",
+		"ctaIos": "Download for iPhone",
+		"ctaAndroid": "Download for Android",
+		"ctaSoon": "The Rionna app is launching soon — we'll email you the download link.",
 		"footer": "You can manage your email preferences in the app at any time."
 	},
 	"newsNotification": {

@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { protectedProcedure } from "../../../orpc/procedures";
-import { readUnseenCount } from "../../inbox/procedures/get-badge-count";
+import { clampBadge, readUnseenCount } from "../../inbox/procedures/get-badge-count";
 
 export const getNotificationBadgeCount = protectedProcedure
 	.route({
@@ -12,5 +12,5 @@ export const getNotificationBadgeCount = protectedProcedure
 	})
 	.input(z.object({ organizationId: z.string() }))
 	.handler(async ({ input, context: { user } }) => ({
-		count: await readUnseenCount(user.id, input.organizationId),
+		count: clampBadge(await readUnseenCount(user.id, input.organizationId)),
 	}));

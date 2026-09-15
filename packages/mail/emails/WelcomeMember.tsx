@@ -10,13 +10,15 @@ import type { BaseMailProps } from "../types";
 export function WelcomeMember({
 	memberName,
 	clubName,
-	communityUrl,
+	iosUrl,
+	androidUrl,
 	locale,
 	translations,
 }: {
 	memberName: string;
 	clubName: string;
-	communityUrl: string;
+	iosUrl?: string | null;
+	androidUrl?: string | null;
 } & BaseMailProps) {
 	const t = createTranslator({
 		locale,
@@ -43,9 +45,20 @@ export function WelcomeMember({
 				{"\n"}4. {t("step4")}
 			</Text>
 
-			<PrimaryButton href={communityUrl}>
-				{t("cta")} &rarr;
-			</PrimaryButton>
+			{iosUrl || androidUrl ? (
+				<>
+					{iosUrl ? (
+						<PrimaryButton href={iosUrl}>{t("ctaIos")} &rarr;</PrimaryButton>
+					) : null}
+					{androidUrl ? (
+						<PrimaryButton href={androidUrl}>
+							{t("ctaAndroid")} &rarr;
+						</PrimaryButton>
+					) : null}
+				</>
+			) : (
+				<Text>{t("ctaSoon")}</Text>
+			)}
 
 			<Hr className="border-border my-4" />
 
@@ -59,7 +72,8 @@ WelcomeMember.PreviewProps = {
 	translations: defaultTranslations,
 	memberName: "John Doe",
 	clubName: "Rionna",
-	communityUrl: "https://community.rionna.com",
+	iosUrl: "https://apps.apple.com/app/rionna",
+	androidUrl: "https://play.google.com/store/apps/details?id=com.rionna",
 };
 
 export default WelcomeMember;

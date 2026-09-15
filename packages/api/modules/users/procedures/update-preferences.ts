@@ -18,6 +18,7 @@ const pushPreferencesSchema = z
 		insideTrack: z.boolean().optional(),
 		events: z.boolean().optional(),
 		polls: z.boolean().optional(),
+		postComments: z.boolean().optional(),
 	})
 	.optional();
 

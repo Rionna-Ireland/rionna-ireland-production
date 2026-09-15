@@ -137,18 +137,6 @@ export function MembersRoster() {
 														<ExternalLinkIcon className="ml-1 size-3" />
 													</a>
 												</Button>
-												{communityDomain && (
-													<Button asChild variant="ghost" size="sm">
-														<a
-															href={`https://${communityDomain}`}
-															target="_blank"
-															rel="noopener noreferrer"
-														>
-															{t("admin.members.openCircle")}
-															<ExternalLinkIcon className="ml-1 size-3" />
-														</a>
-													</Button>
-												)}
 												{row.userId !== user?.id && (
 													<Button
 														variant="ghost"

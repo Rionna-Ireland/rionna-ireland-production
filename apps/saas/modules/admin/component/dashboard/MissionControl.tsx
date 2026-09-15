@@ -25,14 +25,9 @@ const CIRCLE_ADMIN_URL = "https://app.circle.so";
 
 export function MissionControl() {
 	const t = useTranslations();
-	const { organizationId: orgId, organization } = useAdminOrganization();
+	const { organizationId: orgId } = useAdminOrganization();
 	const organizationId = orgId ?? "";
 	const enabled = !!organizationId;
-
-	const communityDomain =
-		(organization?.metadata as { circle?: { communityDomain?: string } } | undefined)?.circle
-			?.communityDomain ?? null;
-	const communityUrl = communityDomain ? `https://${communityDomain}` : null;
 
 	const { data: health } = useQuery({
 		...orpc.dashboard.admin.health.queryOptions({ input: { organizationId } }),
@@ -106,8 +101,7 @@ export function MissionControl() {
 	const deepLinks = [
 		{ key: "stripe", href: STRIPE_DASHBOARD_URL },
 		{ key: "circleAdmin", href: CIRCLE_ADMIN_URL },
-		{ key: "community", href: communityUrl },
-	].filter((l): l is { key: string; href: string } => Boolean(l.href));
+	];
 
 	return (
 		<div className="gap-6 grid grid-cols-1">
