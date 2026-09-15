@@ -28,9 +28,7 @@ export async function sendWelcomeEmail(
 		}
 
 		const metadata = parseOrgMetadata(org.metadata as string | null);
-		const communityUrl = metadata.circle?.communityDomain
-			? `https://${metadata.circle.communityDomain}`
-			: "";
+		const appLinks = metadata.appLinks ?? {};
 
 		await sendEmail({
 			to: user.email,
@@ -38,7 +36,8 @@ export async function sendWelcomeEmail(
 			context: {
 				memberName: user.name ?? user.email,
 				clubName: org.name,
-				communityUrl,
+				iosUrl: appLinks.iosUrl ?? null,
+				androidUrl: appLinks.androidUrl ?? null,
 			},
 			locale: "en",
 		});
