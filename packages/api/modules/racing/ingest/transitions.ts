@@ -10,15 +10,25 @@
 import { db } from "@repo/database";
 import type { RaceEntryStatus } from "@repo/database";
 
+import { firstPhotoUrl } from "../../inbox/kinds";
+import { recordInbox } from "../../inbox/record";
 import { postRaceUpdateToCircle } from "./post-to-circle";
 import { buildPushContent } from "./push-content";
 import { sendPush } from "./send-push";
 
 const PUSH_WORTHY_STATUSES: RaceEntryStatus[] = ["DECLARED", "NON_RUNNER", "RAN"];
 
+const INBOX_KIND_BY_TRIGGER = {
+	HORSE_DECLARED: "race_declared",
+	HORSE_NON_RUNNER: "race_non_runner",
+	RACE_RESULT: "race_result",
+} as const;
+
 interface TransitionHorse {
 	id: string;
 	name: string;
+	/** S12-06a: only present when the caller already has the full Horse row. */
+	photos?: unknown;
 }
 
 interface TransitionRace {
@@ -60,6 +70,21 @@ export async function handleStatusTransition(
 		raceEntry,
 	);
 
+	const inboxKind = INBOX_KIND_BY_TRIGGER[pushContent.triggerType];
+	const badgeByUserId = await recordInbox({
+		organizationId,
+		audience: { kind: "horseFollowers", horseId: horse.id },
+		item: {
+			kind: inboxKind,
+			groupKey: `${inboxKind}:${raceEntry.id}`,
+			title: pushContent.title,
+			body: pushContent.body,
+			data: { screen: "horse", horseId: horse.id },
+			refId: raceEntry.id,
+			imageUrl: firstPhotoUrl(horse.photos),
+		},
+	});
+
 	const delivery = await sendPush({
 		organizationId,
 		triggerType: pushContent.triggerType,
@@ -68,6 +93,7 @@ export async function handleStatusTransition(
 		body: pushContent.body,
 		data: { screen: "horse", horseId: horse.id },
 		followersOfHorseId: horse.id,
+		badgeByUserId,
 	});
 
 	// FABLE_AUDIT C4: if delivery failed for the entire audience (e.g. Expo

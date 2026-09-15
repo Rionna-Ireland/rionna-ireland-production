@@ -76,7 +76,7 @@ export async function checkForResults(
 
 					await handleStatusTransition(
 						organizationId,
-						{ id: raceEntry.horse.id, name: raceEntry.horse.name },
+						{ id: raceEntry.horse.id, name: raceEntry.horse.name, photos: raceEntry.horse.photos },
 						{
 							id: race.id,
 							name: race.name,

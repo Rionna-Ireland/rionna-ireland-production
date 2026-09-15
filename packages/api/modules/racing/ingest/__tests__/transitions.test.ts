@@ -34,6 +34,12 @@ vi.mock("../post-to-circle", () => ({
 	postRaceUpdateToCircle: (...args: unknown[]) => mockPostToCircle(...args),
 }));
 
+// Mock recordInbox — default: returns a badge map.
+const mockRecordInbox = vi.fn();
+vi.mock("../../../inbox/record", () => ({
+	recordInbox: (...args: unknown[]) => mockRecordInbox(...args),
+}));
+
 import { handleStatusTransition } from "../transitions";
 
 const mockHorse = { id: "horse-1", name: "Pink Jasmine" };
@@ -61,6 +67,94 @@ describe("handleStatusTransition", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mockSendPush.mockResolvedValue({ attempted: 3, sent: 3, failed: 0 });
+		mockRecordInbox.mockResolvedValue(new Map([["user-1", 2]]));
+	});
+
+	// ── Inbox recording (S12-06a Task 6) ─────────────────────────────
+
+	it("records a race_declared inbox item for DECLARED and passes the badge map to sendPush", async () => {
+		await handleStatusTransition(
+			"org-1",
+			mockHorse,
+			mockRace,
+			makeEntry("DECLARED"),
+			"ENTERED",
+		);
+
+		expect(mockRecordInbox).toHaveBeenCalledOnce();
+		expect(mockRecordInbox.mock.calls[0][0]).toMatchObject({
+			organizationId: "org-1",
+			audience: { kind: "horseFollowers", horseId: "horse-1" },
+			item: expect.objectContaining({
+				kind: "race_declared",
+				groupKey: "race_declared:entry-1",
+				title: expect.any(String),
+				body: expect.any(String),
+				data: { screen: "horse", horseId: "horse-1" },
+				refId: "entry-1",
+				imageUrl: null,
+			}),
+		});
+
+		expect(mockSendPush).toHaveBeenCalledOnce();
+		expect(mockSendPush.mock.calls[0][0].badgeByUserId).toEqual(new Map([["user-1", 2]]));
+	});
+
+	it("records a race_non_runner inbox item for NON_RUNNER", async () => {
+		await handleStatusTransition(
+			"org-1",
+			mockHorse,
+			mockRace,
+			makeEntry("NON_RUNNER"),
+			"DECLARED",
+		);
+
+		expect(mockRecordInbox.mock.calls[0][0].item).toMatchObject({
+			kind: "race_non_runner",
+			groupKey: "race_non_runner:entry-1",
+		});
+	});
+
+	it("records a race_result inbox item for RAN", async () => {
+		await handleStatusTransition(
+			"org-1",
+			mockHorse,
+			mockRace,
+			makeEntry("RAN", [], 1),
+			"DECLARED",
+		);
+
+		expect(mockRecordInbox.mock.calls[0][0].item).toMatchObject({
+			kind: "race_result",
+			groupKey: "race_result:entry-1",
+		});
+	});
+
+	it("uses firstPhotoUrl(horse.photos) for imageUrl when photos are present", async () => {
+		await handleStatusTransition(
+			"org-1",
+			{ ...mockHorse, photos: [{ url: "https://example.com/pic.jpg" }] },
+			mockRace,
+			makeEntry("DECLARED"),
+			"ENTERED",
+		);
+
+		expect(mockRecordInbox.mock.calls[0][0].item.imageUrl).toBe(
+			"https://example.com/pic.jpg",
+		);
+	});
+
+	it("does NOT record an inbox item for an already-notified status (early return precedes the inbox write)", async () => {
+		await handleStatusTransition(
+			"org-1",
+			mockHorse,
+			mockRace,
+			makeEntry("DECLARED", ["DECLARED"]),
+			"ENTERED",
+		);
+
+		expect(mockRecordInbox).not.toHaveBeenCalled();
+		expect(mockSendPush).not.toHaveBeenCalled();
 	});
 
 	// ── Push delivery failure (FABLE_AUDIT C4) ───────────────────────
