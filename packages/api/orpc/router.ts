@@ -6,6 +6,7 @@ import { circleRouter } from "../modules/circle/router";
 import { communityRouter } from "../modules/community/router";
 import { dashboardRouter } from "../modules/dashboard/router";
 import { eventsRouter } from "../modules/events/router";
+import { inboxRouter } from "../modules/inbox/router";
 import { memberPostsRouter } from "../modules/member-posts/router";
 import { membersRouter } from "../modules/members/router";
 import { newsRouter } from "../modules/news/router";
@@ -29,6 +30,7 @@ export const router = publicProcedure.router({
 	dashboard: dashboardRouter,
 	events: eventsRouter,
 	horses: horsesPublicRouter,
+	inbox: inboxRouter,
 	memberPosts: memberPostsRouter,
 	members: membersRouter,
 	news: newsRouter,
