@@ -2,8 +2,9 @@
  * Horse-update composer logic (S2-09 slice 2b)
  *
  * Pure, framework-free logic the composer leans on: publish readiness gating,
- * and the fail-safe interpretation of the publish outcome (success vs the
- * "post directly in Circle" fallback + the Circle URL to offer).
+ * and the fail-safe interpretation of the publish outcome (success vs a
+ * "couldn't publish, try again" fallback — S12-06b B3 dropped the
+ * "post directly in Circle" escape hatch, so this no longer resolves a URL).
  */
 
 import { describe, expect, it } from "vitest";
@@ -11,7 +12,6 @@ import { describe, expect, it } from "vitest";
 import {
 	canPublish,
 	canPublishAnnouncement,
-	circleCommunityUrl,
 	isMemberUpdateType,
 	resolvePublishOutcome,
 } from "./composer-logic";
@@ -53,50 +53,21 @@ describe("composer-logic (S2-09)", () => {
 		});
 	});
 
-	describe("circleCommunityUrl", () => {
-		it("builds an https URL from a bare domain", () => {
-			expect(circleCommunityUrl("rionna.circle.so")).toBe("https://rionna.circle.so");
-		});
-
-		it("normalises an existing scheme and trailing slash", () => {
-			expect(circleCommunityUrl("https://rionna.circle.so/")).toBe(
-				"https://rionna.circle.so",
-			);
-		});
-
-		it("returns null for a missing domain", () => {
-			expect(circleCommunityUrl(null)).toBeNull();
-			expect(circleCommunityUrl(undefined)).toBeNull();
-			expect(circleCommunityUrl("")).toBeNull();
-		});
-	});
-
 	describe("resolvePublishOutcome", () => {
-		it("maps an ok outcome to success with no fallback url", () => {
-			expect(
-				resolvePublishOutcome(
-					{ ok: true, circlePostId: "5001" },
-					{ communityDomain: "rionna.circle.so" },
-				),
-			).toEqual({ kind: "success", circleUrl: null });
+		it("maps an ok outcome to success", () => {
+			expect(resolvePublishOutcome({ ok: true, circlePostId: "5001" })).toEqual({
+				kind: "success",
+			});
 		});
 
-		it("maps a failed outcome to a fallback carrying the Circle URL", () => {
-			expect(
-				resolvePublishOutcome(
-					{ ok: false, reason: "server_error" },
-					{ communityDomain: "rionna.circle.so" },
-				),
-			).toEqual({ kind: "fallback", circleUrl: "https://rionna.circle.so" });
+		it("maps a failed outcome to a fallback, with no circleUrl property", () => {
+			const resolution = resolvePublishOutcome({ ok: false, reason: "server_error" });
+			expect(resolution).toEqual({ kind: "fallback" });
+			expect(resolution).not.toHaveProperty("circleUrl");
 		});
 
-		it("still falls back (with a null url) when no community domain is known", () => {
-			expect(
-				resolvePublishOutcome(
-					{ ok: false, reason: "no_circle_space" },
-					{ communityDomain: null },
-				),
-			).toEqual({ kind: "fallback", circleUrl: null });
+		it("still falls back when there's no reason on the outcome", () => {
+			expect(resolvePublishOutcome({ ok: false })).toEqual({ kind: "fallback" });
 		});
 	});
 });

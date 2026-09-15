@@ -27,7 +27,7 @@ import { useRouter } from "@shared/hooks/router";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { toSafeFilename } from "@shared/lib/safe-filename";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeftIcon, ExternalLinkIcon, GraduationCapIcon } from "lucide-react";
+import { ArrowLeftIcon, GraduationCapIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import type { JSONContent } from "novel";
@@ -49,19 +49,15 @@ export function InsideTrackPieceForm({ memberPostId }: InsideTrackPieceFormProps
 	const t = useTranslations();
 	const router = useRouter();
 	const queryClient = useQueryClient();
-	const { organizationId: orgId, organization } = useAdminOrganization();
+	const { organizationId: orgId } = useAdminOrganization();
 	const organizationId = orgId ?? "";
 	const uploadVideo = useCircleVideoUpload(organizationId);
-
-	const communityDomain =
-		(organization?.metadata as { circle?: { communityDomain?: string } } | undefined)?.circle
-			?.communityDomain ?? null;
 
 	const contentJsonRef = useRef<JSONContent | undefined>(undefined);
 	const contentHtmlRef = useRef<string>("");
 	const [hasBody, setHasBody] = useState(false);
 	const [isUploading, setIsUploading] = useState(false);
-	const [fallback, setFallback] = useState<{ circleUrl: string | null } | null>(null);
+	const [fallback, setFallback] = useState(false);
 	const [notifyMembers, setNotifyMembers] = useState(true);
 
 	const isEdit = !!memberPostId;
@@ -156,14 +152,14 @@ export function InsideTrackPieceForm({ memberPostId }: InsideTrackPieceFormProps
 	});
 
 	const handlePublish = form.handleSubmit(async (values) => {
-		setFallback(null);
+		setFallback(false);
 		try {
 			const id = await ensureDraftId(values);
 			const outcome = await publishMutation.mutateAsync({
 				memberPostId: id,
 				notifyMembers,
 			});
-			const resolution = resolvePublishOutcome(outcome, { communityDomain });
+			const resolution = resolvePublishOutcome(outcome);
 			await queryClient.invalidateQueries({ queryKey: orpc.memberPosts.admin.list.key() });
 			await queryClient.invalidateQueries({ queryKey: orpc.memberPosts.admin.find.key() });
 
@@ -171,7 +167,7 @@ export function InsideTrackPieceForm({ memberPostId }: InsideTrackPieceFormProps
 				toastSuccess(t("admin.insideTrack.published"));
 				router.replace(getAdminPath("/inside-track"));
 			} else {
-				setFallback({ circleUrl: resolution.circleUrl });
+				setFallback(true);
 				toastError(t("admin.updates.form.notifications.publishFailed"));
 			}
 		} catch {
@@ -268,23 +264,6 @@ export function InsideTrackPieceForm({ memberPostId }: InsideTrackPieceFormProps
 									<p className="mt-1 text-sm">
 										{t("admin.updates.form.fallback.body")}
 									</p>
-									{fallback.circleUrl && (
-										<Button
-											asChild
-											variant="outline"
-											size="sm"
-											className="mt-3"
-										>
-											<a
-												href={fallback.circleUrl}
-												target="_blank"
-												rel="noopener noreferrer"
-											>
-												{t("admin.updates.form.fallback.openCircle")}
-												<ExternalLinkIcon className="ml-1.5 size-3.5" />
-											</a>
-										</Button>
-									)}
 								</div>
 							)}
 

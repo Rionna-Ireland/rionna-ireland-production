@@ -33,13 +33,6 @@ export function canPublishAnnouncement(input: { title: string; hasBody: boolean 
 	return input.title.trim().length > 0 && input.hasBody;
 }
 
-/** Normalise a community domain (bare or schemed) to an https origin, or null. */
-export function circleCommunityUrl(communityDomain?: string | null): string | null {
-	if (!communityDomain) return null;
-	const host = communityDomain.replace(/^https?:\/\//, "").replace(/\/+$/, "");
-	return host ? `https://${host}` : null;
-}
-
 export interface PublishOutcomeLike {
 	ok: boolean;
 	reason?: string;
@@ -48,20 +41,16 @@ export interface PublishOutcomeLike {
 
 export interface PublishResolution {
 	kind: "success" | "fallback";
-	/** On fallback: a Circle URL to "post directly in Circle", if resolvable. */
-	circleUrl: string | null;
 }
 
 /**
  * Interpret the publish procedure's outcome. A failure never throws — it
- * resolves to a fallback that points the admin at Circle (the spec's fail-safe).
+ * resolves to a fallback that tells the admin their draft is safe and to
+ * retry (S12-06b B3: admin no longer sends staff into Circle to recover).
  */
-export function resolvePublishOutcome(
-	outcome: PublishOutcomeLike,
-	opts: { communityDomain?: string | null },
-): PublishResolution {
+export function resolvePublishOutcome(outcome: PublishOutcomeLike): PublishResolution {
 	if (outcome.ok) {
-		return { kind: "success", circleUrl: null };
+		return { kind: "success" };
 	}
-	return { kind: "fallback", circleUrl: circleCommunityUrl(opts.communityDomain) };
+	return { kind: "fallback" };
 }

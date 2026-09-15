@@ -5,7 +5,6 @@ import { useEventCoverUpload } from "@admin/lib/event-cover-upload";
 import { getAdminPath } from "@admin/lib/links";
 import { useHydrateOnce } from "@admin/lib/use-hydrate-once";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { parseOrgMetadata } from "@repo/database/types";
 import { Button } from "@repo/ui/components/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@repo/ui/components/card";
 import {
@@ -31,7 +30,7 @@ import { toastError, toastSuccess } from "@repo/ui/components/toast";
 import { useRouter } from "@shared/hooks/router";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeftIcon, CalendarPlusIcon, ExternalLinkIcon } from "lucide-react";
+import { ArrowLeftIcon, CalendarPlusIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -77,19 +76,9 @@ export function EventForm({ eventId }: EventFormProps) {
 	const t = useTranslations();
 	const router = useRouter();
 	const queryClient = useQueryClient();
-	const { organizationId: orgId, organization } = useAdminOrganization();
+	const { organizationId: orgId } = useAdminOrganization();
 	const organizationId = orgId ?? "";
 	const uploadCover = useEventCoverUpload(organizationId);
-
-	// organization.metadata can reach the client as a raw JSON string (see
-	// InsideTrackList) — a plain object cast silently yields undefined then.
-	const rawMetadata = organization?.metadata as unknown;
-	const orgMetadata =
-		typeof rawMetadata === "string"
-			? parseOrgMetadata(rawMetadata)
-			: ((rawMetadata ?? {}) as ReturnType<typeof parseOrgMetadata>);
-	const communityDomain = orgMetadata.circle?.communityDomain ?? null;
-	const communityUrl = communityDomain ? `https://${communityDomain}` : null;
 
 	const isEdit = !!eventId;
 
@@ -456,23 +445,6 @@ export function EventForm({ eventId }: EventFormProps) {
 										<p className="mt-1 text-sm">
 											{t("admin.events.fallback.body")}
 										</p>
-										{communityUrl && (
-											<Button
-												asChild
-												variant="outline"
-												size="sm"
-												className="mt-3"
-											>
-												<a
-													href={communityUrl}
-													target="_blank"
-													rel="noopener noreferrer"
-												>
-													{t("admin.events.fallback.openCircle")}
-													<ExternalLinkIcon className="ml-1.5 size-3.5" />
-												</a>
-											</Button>
-										)}
 									</div>
 								)}
 

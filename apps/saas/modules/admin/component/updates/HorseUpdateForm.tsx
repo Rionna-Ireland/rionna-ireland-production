@@ -33,7 +33,7 @@ import { useRouter } from "@shared/hooks/router";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { toSafeFilename } from "@shared/lib/safe-filename";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeftIcon, ExternalLinkIcon, LockIcon } from "lucide-react";
+import { ArrowLeftIcon, LockIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import type { JSONContent } from "novel";
@@ -68,13 +68,9 @@ export function HorseUpdateForm({ memberPostId }: HorseUpdateFormProps) {
 	const t = useTranslations();
 	const router = useRouter();
 	const queryClient = useQueryClient();
-	const { organizationId: orgId, organization } = useAdminOrganization();
+	const { organizationId: orgId } = useAdminOrganization();
 	const organizationId = orgId ?? "";
 	const uploadVideo = useCircleVideoUpload(organizationId);
-
-	const communityDomain =
-		(organization?.metadata as { circle?: { communityDomain?: string } } | undefined)?.circle
-			?.communityDomain ?? null;
 
 	const contentJsonRef = useRef<JSONContent | undefined>(undefined);
 	const contentHtmlRef = useRef<string>("");
@@ -82,7 +78,7 @@ export function HorseUpdateForm({ memberPostId }: HorseUpdateFormProps) {
 	const [previewDoc, setPreviewDoc] = useState<JSONContent | undefined>(undefined);
 	const deferredPreviewDoc = useDeferredValue(previewDoc);
 	const [isUploading, setIsUploading] = useState(false);
-	const [fallback, setFallback] = useState<{ circleUrl: string | null } | null>(null);
+	const [fallback, setFallback] = useState(false);
 	const [notifyFollowers, setNotifyFollowers] = useState(true);
 
 	const isEdit = !!memberPostId;
@@ -214,14 +210,14 @@ export function HorseUpdateForm({ memberPostId }: HorseUpdateFormProps) {
 	});
 
 	const handlePublish = form.handleSubmit(async (values) => {
-		setFallback(null);
+		setFallback(false);
 		try {
 			const id = await ensureDraftId(values);
 			const outcome = await publishMutation.mutateAsync({
 				memberPostId: id,
 				notifyFollowers,
 			});
-			const resolution = resolvePublishOutcome(outcome, { communityDomain });
+			const resolution = resolvePublishOutcome(outcome);
 			await queryClient.invalidateQueries({ queryKey: orpc.memberPosts.admin.list.key() });
 			await queryClient.invalidateQueries({ queryKey: orpc.memberPosts.admin.find.key() });
 
@@ -229,7 +225,7 @@ export function HorseUpdateForm({ memberPostId }: HorseUpdateFormProps) {
 				toastSuccess(t("admin.updates.form.notifications.published", { horse: horseName }));
 				router.replace(getAdminPath("/updates"));
 			} else {
-				setFallback({ circleUrl: resolution.circleUrl });
+				setFallback(true);
 				toastError(t("admin.updates.form.notifications.publishFailed"));
 			}
 		} catch {
@@ -419,7 +415,7 @@ export function HorseUpdateForm({ memberPostId }: HorseUpdateFormProps) {
 								</label>
 							)}
 
-							{/* Fail-safe: Circle publish failed → post directly in Circle */}
+							{/* Fail-safe: publish failed — draft is saved, ask the admin to retry */}
 							{fallback && (
 								<div className="border-amber-300 bg-amber-50 p-4 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100 rounded-md border">
 									<p className="font-medium">
@@ -428,23 +424,6 @@ export function HorseUpdateForm({ memberPostId }: HorseUpdateFormProps) {
 									<p className="mt-1 text-sm">
 										{t("admin.updates.form.fallback.body")}
 									</p>
-									{fallback.circleUrl && (
-										<Button
-											asChild
-											variant="outline"
-											size="sm"
-											className="mt-3"
-										>
-											<a
-												href={fallback.circleUrl}
-												target="_blank"
-												rel="noopener noreferrer"
-											>
-												{t("admin.updates.form.fallback.openCircle")}
-												<ExternalLinkIcon className="ml-1.5 size-3.5" />
-											</a>
-										</Button>
-									)}
 								</div>
 							)}
 
