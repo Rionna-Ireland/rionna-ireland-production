@@ -5,6 +5,7 @@ import { createCircleService, getCircleHeadlessApiBaseUrl } from "@repo/payments
 import { z } from "zod";
 
 import { protectedProcedure } from "../../../orpc/procedures";
+import { onPostCommented } from "../../inbox/activity-hooks";
 import { recordBlock } from "../../moderation/record-block";
 import { screenText } from "../../moderation/screen-text";
 import { invalidateMemberFeedCache } from "../lib/member-feed-cache";
@@ -131,6 +132,13 @@ export const addPostComment = protectedProcedure
 
 		// Comment counts on feed cards come from the 60s merged buffer.
 		invalidateMemberFeedCache(user.id, input.organizationId);
+
+		void onPostCommented({
+			organizationId: input.organizationId,
+			circlePostId: input.postId,
+			commentBody: input.body,
+			actor: { userId: user.id, name: user.name ?? null },
+		});
 
 		try {
 			const payload = objectValue(await res.json());

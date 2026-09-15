@@ -6,6 +6,7 @@ import { syncCircleSpaceMembership } from "@repo/payments/lib/circle-space-membe
 import { z } from "zod";
 
 import { protectedProcedure } from "../../../orpc/procedures";
+import { onPostLiked } from "../../inbox/activity-hooks";
 import { invalidateMemberFeedCache } from "../lib/member-feed-cache";
 
 export interface SetPostLikeResult {
@@ -111,6 +112,13 @@ export const setPostLike = protectedProcedure
 				}
 			} catch {
 				// No parseable body — the like still landed; count stays null.
+			}
+			if (input.liked) {
+				void onPostLiked({
+					organizationId: input.organizationId,
+					circlePostId: input.postId,
+					actor: { userId: user.id, name: user.name ?? null },
+				});
 			}
 			return result;
 		};

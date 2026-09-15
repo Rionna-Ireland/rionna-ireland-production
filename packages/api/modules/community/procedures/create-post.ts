@@ -7,6 +7,7 @@ import { z } from "zod";
 
 import { protectedProcedure } from "../../../orpc/procedures";
 import { invalidateMemberFeedCache } from "../../circle/lib/member-feed-cache";
+import { onMemberPostCreated } from "../../inbox/activity-hooks";
 import { fetchImageBytes } from "../../member-posts/lib/fetch-image-bytes";
 import { excerptOf } from "../../moderation/excerpt";
 import { recordBlock } from "../../moderation/record-block";
@@ -187,6 +188,13 @@ export const createPost = protectedProcedure
 		});
 
 		invalidateMemberFeedCache(user.id, organizationId);
+
+		void onMemberPostCreated({
+			organizationId,
+			circleSpaceId: spaceId,
+			circlePostId: created.data.circlePostId,
+			author: { userId: user.id, name: user.name ?? null },
+		});
 
 		logger.info("community.post.created", {
 			organizationId,

@@ -10,6 +10,7 @@ const {
 	mockInvalidateMemberFeedCache,
 	mockSyncCircleSpaceMembership,
 	mockParseOrgMetadata,
+	mockOnPostLiked,
 } = vi.hoisted(() => ({
 	mockGetSession: vi.fn(),
 	mockOrgFindUnique: vi.fn(),
@@ -19,6 +20,7 @@ const {
 	mockInvalidateMemberFeedCache: vi.fn(),
 	mockSyncCircleSpaceMembership: vi.fn(),
 	mockParseOrgMetadata: vi.fn(() => ({})),
+	mockOnPostLiked: vi.fn(),
 }));
 
 vi.mock("@repo/auth", () => ({
@@ -51,6 +53,10 @@ vi.mock("../lib/member-feed-cache", () => ({
 	invalidateMemberFeedCache: mockInvalidateMemberFeedCache,
 }));
 
+vi.mock("../../inbox/activity-hooks", () => ({
+	onPostLiked: mockOnPostLiked,
+}));
+
 import { setPostLike } from "../procedures/set-post-like";
 
 const ORG_ID = "org1";
@@ -79,6 +85,7 @@ describe("setPostLike", () => {
 		mockGetMemberToken.mockResolvedValue({ ok: true, data: { accessToken: "jwt" } });
 		mockSyncCircleSpaceMembership.mockResolvedValue({ ok: true });
 		mockParseOrgMetadata.mockReturnValue({});
+		mockOnPostLiked.mockResolvedValue(undefined);
 	});
 
 	it("likes a post via POST and invalidates the member's feed buffer", async () => {
@@ -100,9 +107,15 @@ describe("setPostLike", () => {
 			}),
 		);
 		expect(mockInvalidateMemberFeedCache).toHaveBeenCalledWith(USER.id, ORG_ID);
+		expect(mockOnPostLiked).toHaveBeenCalledTimes(1);
+		expect(mockOnPostLiked).toHaveBeenCalledWith({
+			organizationId: ORG_ID,
+			circlePostId: "34130292",
+			actor: { userId: USER.id, name: USER.name },
+		});
 	});
 
-	it("unlikes a post via DELETE", async () => {
+	it("unlikes a post via DELETE, without firing the like hook", async () => {
 		const fetchSpy = vi.fn(async () => jsonResponse(200));
 		vi.stubGlobal("fetch", fetchSpy);
 
@@ -118,6 +131,35 @@ describe("setPostLike", () => {
 			expect.objectContaining({ method: "DELETE" }),
 		);
 		expect(mockInvalidateMemberFeedCache).toHaveBeenCalledWith(USER.id, ORG_ID);
+		expect(mockOnPostLiked).not.toHaveBeenCalled();
+	});
+
+	it("does not fire the like hook when the Circle call fails", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(async () => jsonResponse(500)),
+		);
+		const res = await call(
+			setPostLike,
+			{ organizationId: ORG_ID, postId: "34130292", liked: true },
+			ctx,
+		);
+		expect(res).toEqual({ ok: false, liked: true, likeCount: null });
+		expect(mockOnPostLiked).not.toHaveBeenCalled();
+	});
+
+	it("leaves the result unchanged when the like hook rejects", async () => {
+		mockOnPostLiked.mockRejectedValue(new Error("inbox down"));
+		const fetchSpy = vi.fn(async () => jsonResponse(200, { user_likes_count: 6 }));
+		vi.stubGlobal("fetch", fetchSpy);
+
+		const res = await call(
+			setPostLike,
+			{ organizationId: ORG_ID, postId: "34130292", liked: true },
+			ctx,
+		);
+
+		expect(res).toEqual({ ok: true, liked: true, likeCount: 6 });
 	});
 
 	it("treats an already-liked 4xx as success (idempotent)", async () => {
@@ -231,6 +273,8 @@ describe("setPostLike", () => {
 				action: "join",
 			});
 			expect(mockInvalidateMemberFeedCache).toHaveBeenCalledWith(USER.id, ORG_ID);
+			// The join-retry self-heal must not double-fire the like hook.
+			expect(mockOnPostLiked).toHaveBeenCalledTimes(1);
 		});
 
 		it("401 -> join -> retry still 401 -> ok:false", async () => {

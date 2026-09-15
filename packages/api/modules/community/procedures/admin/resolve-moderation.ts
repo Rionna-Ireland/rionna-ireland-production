@@ -6,6 +6,7 @@ import { createCircleService } from "@repo/payments/lib/circle";
 import { z } from "zod";
 
 import { adminProcedure } from "../../../../orpc/procedures";
+import { onCommunityPostRemoved } from "../../../inbox/activity-hooks";
 
 export interface ResolveModerationResult {
 	ok: boolean;
@@ -77,6 +78,7 @@ export async function runResolveModeration(
 			return { ok: false, status: "open" };
 		}
 		await markCommunityPostDeleted({ circlePostId: targetId, deletedBy: "admin" });
+		void onCommunityPostRemoved({ organizationId: p.organizationId, circlePostId: targetId });
 	}
 	else {
 		const outcome = await circle.deleteComment(targetId);

@@ -9,6 +9,7 @@ const {
 	mockInvalidateMemberFeedCache,
 	mockCreateModerationFlag,
 	mockParseOrgMetadata,
+	mockOnPostCommented,
 } = vi.hoisted(() => ({
 	mockGetSession: vi.fn(),
 	mockOrgFindUnique: vi.fn(),
@@ -17,6 +18,7 @@ const {
 	mockInvalidateMemberFeedCache: vi.fn(),
 	mockCreateModerationFlag: vi.fn(),
 	mockParseOrgMetadata: vi.fn((raw: string | null) => (raw ? JSON.parse(raw) : {})),
+	mockOnPostCommented: vi.fn(),
 }));
 
 vi.mock("@repo/auth", () => ({
@@ -43,6 +45,10 @@ vi.mock("@repo/payments/lib/circle", () => ({
 
 vi.mock("../lib/member-feed-cache", () => ({
 	invalidateMemberFeedCache: mockInvalidateMemberFeedCache,
+}));
+
+vi.mock("../../inbox/activity-hooks", () => ({
+	onPostCommented: mockOnPostCommented,
 }));
 
 import { addPostComment } from "../procedures/add-post-comment";
@@ -80,6 +86,7 @@ beforeEach(() => {
 	mockMemberFindFirst.mockResolvedValue({ id: "m1", circleMemberId: "82236270" });
 	mockGetMemberToken.mockResolvedValue({ ok: true, data: { accessToken: "jwt" } });
 	mockCreateModerationFlag.mockResolvedValue({ id: "flag1" });
+	mockOnPostCommented.mockResolvedValue(undefined);
 });
 
 describe("getPostComments", () => {
@@ -199,9 +206,15 @@ describe("addPostComment", () => {
 			},
 		});
 		expect(mockInvalidateMemberFeedCache).toHaveBeenCalledWith(USER.id, ORG_ID);
+		expect(mockOnPostCommented).toHaveBeenCalledWith({
+			organizationId: ORG_ID,
+			circlePostId: "34775788",
+			commentBody: "Great run today!",
+			actor: { userId: USER.id, name: USER.name },
+		});
 	});
 
-	it("returns ok:false on 401/403 (auth or comments disabled) without invalidating", async () => {
+	it("returns ok:false on 401/403 (auth or comments disabled) without invalidating or notifying", async () => {
 		vi.stubGlobal(
 			"fetch",
 			vi.fn(async () => jsonResponse(401, { message: "You cannot perform this action." })),
@@ -213,6 +226,21 @@ describe("addPostComment", () => {
 		);
 		expect(res).toEqual({ ok: false, comment: null });
 		expect(mockInvalidateMemberFeedCache).not.toHaveBeenCalled();
+		expect(mockOnPostCommented).not.toHaveBeenCalled();
+	});
+
+	it("leaves the result unchanged when the comment hook rejects", async () => {
+		mockOnPostCommented.mockRejectedValue(new Error("inbox down"));
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(async () => jsonResponse(201, commentRecord(9002))),
+		);
+		const res = await call(
+			addPostComment,
+			{ organizationId: ORG_ID, postId: "34775788", body: "hi" },
+			ctx,
+		);
+		expect(res.ok).toBe(true);
 	});
 
 	it("still reports ok when the 201 body is unparseable (comment landed)", async () => {
@@ -264,6 +292,7 @@ describe("addPostComment", () => {
 		expect(res).toEqual({ ok: false, blocked: true, comment: null });
 		expect(fetchSpy).not.toHaveBeenCalled();
 		expect(mockInvalidateMemberFeedCache).not.toHaveBeenCalled();
+		expect(mockOnPostCommented).not.toHaveBeenCalled();
 		expect(mockCreateModerationFlag).toHaveBeenCalledWith(
 			expect.objectContaining({
 				organizationId: ORG_ID,
