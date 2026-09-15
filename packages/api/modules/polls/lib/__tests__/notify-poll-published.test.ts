@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockSendPush, mockClaim, mockRelease } = vi.hoisted(() => ({
+const { mockSendPush, mockClaim, mockRelease, mockRecordInbox } = vi.hoisted(() => ({
 	mockSendPush: vi.fn(),
 	mockClaim: vi.fn(),
 	mockRelease: vi.fn(),
+	mockRecordInbox: vi.fn(),
 }));
 
 vi.mock("../../../push/service", () => ({ sendPush: mockSendPush }));
@@ -14,6 +15,7 @@ vi.mock("@repo/database", () => ({
 vi.mock("@repo/logs", () => ({
 	logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), log: vi.fn() },
 }));
+vi.mock("../../../inbox/record", () => ({ recordInbox: mockRecordInbox }));
 
 import { logger } from "@repo/logs";
 
@@ -32,12 +34,16 @@ const SPACE_INPUT = {
 	question: "Best warm-up routine?",
 	scope: "space" as const,
 	followersOfHorseId: "h1",
+	circleSpaceId: "sp1",
 };
+
+const BADGE_MAP = new Map([["u1", 2]]);
 
 beforeEach(() => {
 	vi.clearAllMocks();
 	mockClaim.mockResolvedValue(true);
 	mockSendPush.mockResolvedValue({ attempted: 3, sent: 3, failed: 0 });
+	mockRecordInbox.mockResolvedValue(BADGE_MAP);
 });
 
 describe("notifyPollPublished", () => {
@@ -51,9 +57,61 @@ describe("notifyPollPublished", () => {
 			title: "New vote: Which charity next?",
 			body: "Tap to have your say.",
 			data: { screen: "poll", pollId: "p1" },
+			badgeByUserId: BADGE_MAP,
 		});
 		expect(mockRelease).not.toHaveBeenCalled();
 	});
+
+	it("records an org-wide inbox item for a club-scope poll and passes badges to the push", async () => {
+		await notifyPollPublished(CLUB_INPUT);
+		expect(mockRecordInbox).toHaveBeenCalledWith({
+			organizationId: "org1",
+			audience: { kind: "org" },
+			item: expect.objectContaining({
+				kind: "poll",
+				groupKey: "poll:p1",
+				title: "New vote: Which charity next?",
+				body: "Tap to have your say.",
+				data: { screen: "poll", pollId: "p1" },
+			}),
+		});
+		expect(mockSendPush).toHaveBeenCalledWith(
+			expect.objectContaining({ badgeByUserId: BADGE_MAP }),
+		);
+	});
+
+	it("records but does not claim or push on a quiet club-scope publish", async () => {
+		await notifyPollPublished({ ...CLUB_INPUT, push: false });
+		expect(mockRecordInbox).toHaveBeenCalled();
+		expect(mockClaim).not.toHaveBeenCalled();
+		expect(mockSendPush).not.toHaveBeenCalled();
+	});
+
+	it("records a horseFollowers inbox item with a spaceFeed deep link for a space-scope poll and passes badges to the push", async () => {
+		await notifyPollPublished(SPACE_INPUT);
+		expect(mockRecordInbox).toHaveBeenCalledWith({
+			organizationId: "org1",
+			audience: { kind: "horseFollowers", horseId: "h1" },
+			item: expect.objectContaining({
+				kind: "poll",
+				groupKey: "poll:p2",
+				title: "New vote: Best warm-up routine?",
+				body: "Tap to have your say.",
+				data: { screen: "spaceFeed", spaceId: "sp1" },
+			}),
+		});
+		expect(mockSendPush).toHaveBeenCalledWith(
+			expect.objectContaining({ badgeByUserId: BADGE_MAP }),
+		);
+	});
+
+	it("records but does not claim or push on a quiet space-scope publish", async () => {
+		await notifyPollPublished({ ...SPACE_INPUT, push: false });
+		expect(mockRecordInbox).toHaveBeenCalled();
+		expect(mockClaim).not.toHaveBeenCalled();
+		expect(mockSendPush).not.toHaveBeenCalled();
+	});
+
 	it("does nothing when the claim is already taken (no double push)", async () => {
 		mockClaim.mockResolvedValue(false);
 		await notifyPollPublished(CLUB_INPUT);
@@ -113,6 +171,7 @@ describe("notifyPollPublished", () => {
 			body: "Tap to have your say.",
 			followersOfHorseId: "h1",
 			data: { screen: "community" },
+			badgeByUserId: BADGE_MAP,
 		});
 		expect(mockRelease).not.toHaveBeenCalled();
 	});
@@ -124,11 +183,26 @@ describe("notifyPollPublished", () => {
 			question: "Best warm-up routine?",
 			scope: "space",
 		});
+		expect(mockRecordInbox).not.toHaveBeenCalled();
 		expect(mockClaim).not.toHaveBeenCalled();
 		expect(mockSendPush).not.toHaveBeenCalled();
 		expect(logger.warn).toHaveBeenCalledWith(
 			"[Polls] space poll published with no horse resolved; skipping push",
 			expect.objectContaining({ organizationId: "org1", pollId: "p2" }),
+		);
+	});
+
+	it("skips the inbox write when a space-scope poll has no circleSpaceId, but still pushes", async () => {
+		await notifyPollPublished({
+			organizationId: "org1",
+			pollId: "p2",
+			question: "Best warm-up routine?",
+			scope: "space",
+			followersOfHorseId: "h1",
+		});
+		expect(mockRecordInbox).not.toHaveBeenCalled();
+		expect(mockSendPush).toHaveBeenCalledWith(
+			expect.objectContaining({ followersOfHorseId: "h1" }),
 		);
 	});
 });

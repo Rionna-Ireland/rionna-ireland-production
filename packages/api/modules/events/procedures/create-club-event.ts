@@ -82,22 +82,23 @@ export const createClubEvent = adminProcedure
 		// EVENT_PUBLISHED push, must see the new event — never a stale cache.
 		clearEventsCache();
 
-		if (input.notifyMembers) {
-			// Belt-and-suspenders: notifyEventPublished already swallows its own
-			// errors, but the event is already committed in Circle either way —
-			// a notify failure must never fail the create.
-			try {
-				await notifyEventPublished({
-					organizationId: input.organizationId,
-					circleEventId: outcome.data.circleEventId,
-					name: input.name,
-				});
-			} catch (error) {
-				logger.error("[Events] publish notify threw unexpectedly", {
-					circleEventId: outcome.data.circleEventId,
-					error,
-				});
-			}
+		// Belt-and-suspenders: notifyEventPublished already swallows its own
+		// errors, but the event is already committed in Circle either way —
+		// a notify failure must never fail the create. S12-06: the notifier
+		// always records an inbox item; push only fires when the admin asked
+		// for it.
+		try {
+			await notifyEventPublished({
+				organizationId: input.organizationId,
+				circleEventId: outcome.data.circleEventId,
+				name: input.name,
+				push: Boolean(input.notifyMembers),
+			});
+		} catch (error) {
+			logger.error("[Events] publish notify threw unexpectedly", {
+				circleEventId: outcome.data.circleEventId,
+				error,
+			});
 		}
 
 		return { ok: true as const, circleEventId: outcome.data.circleEventId };

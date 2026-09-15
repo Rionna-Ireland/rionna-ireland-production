@@ -63,7 +63,7 @@ export const createNewsPost = adminProcedure
 			authorUserId: context.user.id,
 		});
 
-		if (input.publish && input.notifyMembersOnPublish) {
+		if (input.publish) {
 			await notifyNewsMembers({
 				id: post.id,
 				organizationId: post.organizationId,
@@ -71,6 +71,7 @@ export const createNewsPost = adminProcedure
 				subtitle: post.subtitle,
 				featuredImageUrl: post.featuredImageUrl,
 				slug: post.slug,
+				push: Boolean(input.notifyMembersOnPublish),
 			});
 		}
 

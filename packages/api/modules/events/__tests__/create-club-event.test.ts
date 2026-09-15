@@ -152,6 +152,7 @@ describe("createClubEvent (S2-09 surface E)", () => {
 			organizationId: "org1",
 			circleEventId: "555",
 			name: "Yard visit",
+			push: true,
 		});
 	});
 
@@ -163,11 +164,13 @@ describe("createClubEvent (S2-09 surface E)", () => {
 		expect(result).toMatchObject({ ok: true, circleEventId: "555" });
 	});
 
-	it("skips the notify call when notifyMembers is false", async () => {
+	it("calls the notifier with push:false when notifyMembers is false (quiet publish still records the inbox item)", async () => {
 		const result = await call(createClubEvent, { ...INPUT, notifyMembers: false }, ctx);
 
 		expect(result).toMatchObject({ ok: true, circleEventId: "555" });
-		expect(mockNotifyEventPublished).not.toHaveBeenCalled();
+		expect(mockNotifyEventPublished).toHaveBeenCalledWith(
+			expect.objectContaining({ push: false }),
+		);
 	});
 
 	it("skips the notify call when Circle event creation fails", async () => {

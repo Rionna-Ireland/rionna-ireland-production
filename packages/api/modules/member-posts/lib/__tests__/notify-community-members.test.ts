@@ -3,11 +3,15 @@
  * fired when an admin publishes a community announcement with "Notify members"
  * checked. Same Expo trigger as website news; triggerRefId is the memberPost
  * id so PushLog dedup does not collide with NewsPost rows.
+ *
+ * S12-06: an org-wide inbox item is always recorded, even on a quiet publish
+ * (`push: false`) — only the push is gated.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockSendPush } = vi.hoisted(() => ({
+const { mockSendPush, mockRecordInbox } = vi.hoisted(() => ({
 	mockSendPush: vi.fn(),
+	mockRecordInbox: vi.fn(),
 }));
 
 vi.mock("@repo/logs", () => ({
@@ -18,10 +22,15 @@ vi.mock("../../../push/service", () => ({
 	sendPush: mockSendPush,
 }));
 
+vi.mock("../../../inbox/record", () => ({
+	recordInbox: mockRecordInbox,
+}));
+
 import { notifyCommunityMembers } from "../notify-community-members";
 
 beforeEach(() => {
 	vi.clearAllMocks();
+	mockRecordInbox.mockResolvedValue(new Map([["u1", 2]]));
 });
 
 describe("notifyCommunityMembers", () => {
@@ -33,6 +42,8 @@ describe("notifyCommunityMembers", () => {
 			memberPostId: "mp-1",
 			title: "Club dinner Friday",
 			circlePostUrl: "https://rionna.circle.so/posts/5001",
+			circleSpaceId: "s1",
+			circlePostId: "cp1",
 		});
 
 		expect(mockSendPush).toHaveBeenCalledWith({
@@ -45,8 +56,50 @@ describe("notifyCommunityMembers", () => {
 				screen: "community",
 				url: "https://rionna.circle.so/posts/5001",
 			},
+			badgeByUserId: new Map([["u1", 2]]),
 		});
 		expect(mockSendPush.mock.calls[0][0]).not.toHaveProperty("followersOfHorseId");
+	});
+
+	it("records the inbox item with the post deep link and passes badges to the push", async () => {
+		mockSendPush.mockResolvedValue({ attempted: 1, sent: 1, failed: 0 });
+
+		await notifyCommunityMembers({
+			organizationId: "org-1",
+			memberPostId: "mp-1",
+			title: "Club dinner Friday",
+			circleSpaceId: "s1",
+			circlePostId: "cp1",
+		});
+
+		expect(mockRecordInbox).toHaveBeenCalledWith({
+			organizationId: "org-1",
+			audience: { kind: "org" },
+			item: expect.objectContaining({
+				kind: "announcement",
+				groupKey: "announcement:mp-1",
+				title: "Club dinner Friday",
+				body: "New announcement for all members.",
+				data: { screen: "post", spaceId: "s1", postId: "cp1" },
+			}),
+		});
+		expect(mockSendPush).toHaveBeenCalledWith(
+			expect.objectContaining({ badgeByUserId: new Map([["u1", 2]]) }),
+		);
+	});
+
+	it("records but does not push on a quiet publish", async () => {
+		await notifyCommunityMembers({
+			organizationId: "org-1",
+			memberPostId: "mp-1",
+			title: "Club dinner Friday",
+			circleSpaceId: "s1",
+			circlePostId: "cp1",
+			push: false,
+		});
+
+		expect(mockRecordInbox).toHaveBeenCalled();
+		expect(mockSendPush).not.toHaveBeenCalled();
 	});
 
 	it("omits the url when no Circle post URL is available", async () => {
@@ -56,6 +109,8 @@ describe("notifyCommunityMembers", () => {
 			organizationId: "org-1",
 			memberPostId: "mp-1",
 			title: "Club dinner Friday",
+			circleSpaceId: "s1",
+			circlePostId: "cp1",
 		});
 
 		expect(mockSendPush).toHaveBeenCalledWith(
@@ -73,6 +128,8 @@ describe("notifyCommunityMembers", () => {
 				organizationId: "org-1",
 				memberPostId: "mp-1",
 				title: "Title",
+				circleSpaceId: "s1",
+				circlePostId: "cp1",
 			}),
 		).resolves.toBeUndefined();
 	});
@@ -85,6 +142,8 @@ describe("notifyCommunityMembers", () => {
 				organizationId: "org-1",
 				memberPostId: "mp-1",
 				title: "Title",
+				circleSpaceId: "s1",
+				circlePostId: "cp1",
 			}),
 		).resolves.toBeUndefined();
 	});

@@ -91,6 +91,7 @@ describe("createNewsPost — publish notifications (S2-02)", () => {
 			title: "New post: Race day",
 			body: "Gates at noon",
 			data: { screen: "news", newsPostId: "race-day" },
+			badgeByUserId: new Map(),
 		});
 		expect(mockSendNewsNotificationEmails).toHaveBeenCalledWith({
 			id: "n1",
@@ -114,7 +115,7 @@ describe("createNewsPost — publish notifications (S2-02)", () => {
 		expect(mockSendNewsNotificationEmails).not.toHaveBeenCalled();
 	});
 
-	it("does not fan out when publishing with notify off", async () => {
+	it("records the inbox item but does not claim/push/email when publishing with notify off", async () => {
 		await call(
 			createNewsPost,
 			{ organizationId: "org1", title: "Race day", publish: true },
@@ -123,6 +124,7 @@ describe("createNewsPost — publish notifications (S2-02)", () => {
 
 		expect(mockClaimNotification).not.toHaveBeenCalled();
 		expect(mockSendPush).not.toHaveBeenCalled();
+		expect(mockSendNewsNotificationEmails).not.toHaveBeenCalled();
 	});
 
 	it("skips push and email when the claim was already taken", async () => {

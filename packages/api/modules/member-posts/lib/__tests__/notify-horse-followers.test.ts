@@ -4,25 +4,41 @@
  * published with "Notify followers" checked. One shared trigger + preference
  * covers all four update types, replacing the wellbeing-only HORSE_WELLBEING
  * push.
+ *
+ * S12-06: an inbox item is always recorded for the horse's followers, even
+ * on a quiet publish (`push: false`) — only the push is gated.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockSendPush } = vi.hoisted(() => ({
+const { mockSendPush, mockRecordInbox, mockHorseFindUnique, mockLoggerWarn } = vi.hoisted(() => ({
 	mockSendPush: vi.fn(),
+	mockRecordInbox: vi.fn(),
+	mockHorseFindUnique: vi.fn(),
+	mockLoggerWarn: vi.fn(),
 }));
 
 vi.mock("@repo/logs", () => ({
-	logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+	logger: { info: vi.fn(), warn: mockLoggerWarn, error: vi.fn() },
+}));
+
+vi.mock("@repo/database", () => ({
+	db: { horse: { findUnique: mockHorseFindUnique } },
 }));
 
 vi.mock("../../../push/service", () => ({
 	sendPush: mockSendPush,
 }));
 
+vi.mock("../../../inbox/record", () => ({
+	recordInbox: mockRecordInbox,
+}));
+
 import { notifyHorseFollowers } from "../notify-horse-followers";
 
 beforeEach(() => {
 	vi.clearAllMocks();
+	mockHorseFindUnique.mockReturnValue(Promise.resolve(null));
+	mockRecordInbox.mockResolvedValue(new Map([["u1", 2]]));
 });
 
 describe("notifyHorseFollowers", () => {
@@ -46,7 +62,51 @@ describe("notifyHorseFollowers", () => {
 			body: "Pink Diamond Lass has a new Wellbeing update.",
 			data: { screen: "horse", horseId: "h-1" },
 			followersOfHorseId: "h-1",
+			badgeByUserId: new Map([["u1", 2]]),
 		});
+	});
+
+	it("records the inbox item and passes badges to the push", async () => {
+		mockSendPush.mockResolvedValue({ attempted: 1, sent: 1, failed: 0 });
+
+		await notifyHorseFollowers({
+			organizationId: "org1",
+			horseId: "h1",
+			memberPostId: "mp1",
+			title: "Gallops",
+			horseName: "Dream",
+			updateType: "trainer",
+		});
+
+		expect(mockRecordInbox).toHaveBeenCalledWith({
+			organizationId: "org1",
+			audience: { kind: "horseFollowers", horseId: "h1" },
+			item: expect.objectContaining({
+				kind: "horse_update",
+				groupKey: "horse_update:mp1",
+				title: "Gallops",
+				body: "Dream has a new Trainer update.",
+				data: { screen: "horse", horseId: "h1" },
+			}),
+		});
+		expect(mockSendPush).toHaveBeenCalledWith(
+			expect.objectContaining({ badgeByUserId: new Map([["u1", 2]]) }),
+		);
+	});
+
+	it("records but does not push on a quiet publish", async () => {
+		await notifyHorseFollowers({
+			organizationId: "org1",
+			horseId: "h1",
+			memberPostId: "mp1",
+			title: "Gallops",
+			horseName: "Dream",
+			updateType: null,
+			push: false,
+		});
+
+		expect(mockRecordInbox).toHaveBeenCalled();
+		expect(mockSendPush).not.toHaveBeenCalled();
 	});
 
 	it.each([
@@ -100,5 +160,27 @@ describe("notifyHorseFollowers", () => {
 				updateType: "general",
 			}),
 		).resolves.toBeUndefined();
+	});
+
+	it("never throws when the horse photo lookup rejects, and logs a warning", async () => {
+		const lookupError = new Error("db down");
+		mockHorseFindUnique.mockReturnValue(Promise.reject(lookupError));
+		mockSendPush.mockResolvedValue({ attempted: 1, sent: 1, failed: 0 });
+
+		await expect(
+			notifyHorseFollowers({
+				organizationId: "org-1",
+				horseId: "h-1",
+				memberPostId: "mp-1",
+				title: "Title",
+				horseName: "Horse",
+				updateType: "general",
+			}),
+		).resolves.toBeUndefined();
+
+		expect(mockLoggerWarn).toHaveBeenCalledWith("inbox.horse_photo_lookup_failed", {
+			horseId: "h-1",
+			error: lookupError,
+		});
 	});
 });

@@ -158,6 +158,7 @@ describe("polls.admin.publish", () => {
 			pollId: "p1",
 			question: "Which charity next?",
 			scope: "club",
+			push: true,
 		});
 		expect(mockHorseFindFirst).not.toHaveBeenCalled();
 	});
@@ -185,6 +186,8 @@ describe("polls.admin.publish", () => {
 			question: "Which charity next?",
 			scope: "space",
 			followersOfHorseId: "h1",
+			circleSpaceId: "sp1",
+			push: true,
 		});
 	});
 	it("passes followersOfHorseId: undefined when no horse resolves for a space-scope poll", async () => {
@@ -201,15 +204,19 @@ describe("polls.admin.publish", () => {
 			question: "Which charity next?",
 			scope: "space",
 			followersOfHorseId: undefined,
+			circleSpaceId: "sp1",
+			push: true,
 		});
 	});
-	it("does not push when notifyMembers is false", async () => {
+	it("still resolves the horse and calls the notifier with push:false when notifyMembers is false (quiet publish still records the inbox item)", async () => {
 		await call(
 			publishPoll,
 			{ organizationId: "org1", pollId: "p1", notifyMembers: false },
 			ctx,
 		);
-		expect(mockNotify).not.toHaveBeenCalled();
+		expect(mockNotify).toHaveBeenCalledWith(
+			expect.objectContaining({ scope: "club", push: false }),
+		);
 	});
 	it("returns not_draft when the row is not a draft (or belongs to another org)", async () => {
 		mockSetPollStatus.mockResolvedValue(false);

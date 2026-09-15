@@ -68,7 +68,7 @@ export const updateNewsPost = adminProcedure
 
 		const post = await updateNewsPostDb(input.newsPostId, updateData);
 
-		if (input.publish && input.notifyMembersOnPublish) {
+		if (input.publish) {
 			await notifyNewsMembers({
 				id: post.id,
 				organizationId: post.organizationId,
@@ -76,6 +76,7 @@ export const updateNewsPost = adminProcedure
 				subtitle: post.subtitle,
 				featuredImageUrl: post.featuredImageUrl,
 				slug: post.slug,
+				push: Boolean(input.notifyMembersOnPublish ?? post.notifyMembersOnPublish),
 			});
 		}
 

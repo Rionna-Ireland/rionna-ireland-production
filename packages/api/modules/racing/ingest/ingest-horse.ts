@@ -20,6 +20,8 @@ interface IngestHorse {
 	name: string;
 	providerEntityId: string | null;
 	trainerId: string | null;
+	/** S12-06a: callers already hold the full Horse row — pass it through for the inbox imageUrl. */
+	photos?: unknown;
 }
 
 export async function ingestHorse(
@@ -65,7 +67,7 @@ export async function ingestHorse(
 				try {
 					await handleStatusTransition(
 						organizationId,
-						{ id: horse.id, name: horse.name },
+						{ id: horse.id, name: horse.name, photos: horse.photos },
 						{
 							id: race.id,
 							name: race.name,

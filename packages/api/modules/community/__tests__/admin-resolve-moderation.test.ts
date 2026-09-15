@@ -9,6 +9,7 @@ const {
 	mockMarkCommunityPostDeleted,
 	mockDeletePost,
 	mockDeleteComment,
+	mockOnCommunityPostRemoved,
 } = vi.hoisted(() => ({
 	mockGetSession: vi.fn(),
 	mockModerationFlagFindUnique: vi.fn(),
@@ -17,6 +18,7 @@ const {
 	mockMarkCommunityPostDeleted: vi.fn(),
 	mockDeletePost: vi.fn(),
 	mockDeleteComment: vi.fn(),
+	mockOnCommunityPostRemoved: vi.fn(),
 }));
 
 vi.mock("@repo/auth", () => ({ auth: { api: { getSession: mockGetSession } } }));
@@ -34,6 +36,9 @@ vi.mock("@repo/payments/lib/circle", () => ({
 }));
 vi.mock("@repo/logs", () => ({
 	logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), log: vi.fn() },
+}));
+vi.mock("../../inbox/activity-hooks", () => ({
+	onCommunityPostRemoved: mockOnCommunityPostRemoved,
 }));
 
 import { resolveModeration } from "../procedures/admin/resolve-moderation";
@@ -67,6 +72,7 @@ beforeEach(() => {
 	vi.clearAllMocks();
 	mockGetSession.mockResolvedValue({ user: ADMIN, session: SESSION });
 	mockOrgFindUnique.mockResolvedValue({ slug: "rionna" });
+	mockOnCommunityPostRemoved.mockResolvedValue(undefined);
 });
 
 describe("admin.community.moderation.resolve (S12-02a)", () => {
@@ -89,6 +95,22 @@ describe("admin.community.moderation.resolve (S12-02a)", () => {
 			status: "dismissed",
 			resolvedByUserId: ADMIN.id,
 		});
+		expect(mockOnCommunityPostRemoved).not.toHaveBeenCalled();
+	});
+
+	it("leaves the result unchanged when the post-removed hook rejects", async () => {
+		mockModerationFlagFindUnique.mockResolvedValue(openPostFlag);
+		mockDeletePost.mockResolvedValue({ ok: true, data: undefined });
+		mockResolveModerationFlag.mockResolvedValue({ ...openPostFlag, status: "deleted" });
+		mockOnCommunityPostRemoved.mockRejectedValue(new Error("inbox down"));
+
+		const result = await call(
+			resolveModeration,
+			{ organizationId: ORG_ID, flagId: FLAG_ID, action: "delete" },
+			ctx,
+		);
+
+		expect(result).toEqual({ ok: true, status: "deleted" });
 	});
 
 	it("delete on a post row: deletes via Circle then marks the CommunityPost row deleted", async () => {
@@ -108,9 +130,13 @@ describe("admin.community.moderation.resolve (S12-02a)", () => {
 			deletedBy: "admin",
 		});
 		expect(result).toEqual({ ok: true, status: "deleted" });
+		expect(mockOnCommunityPostRemoved).toHaveBeenCalledWith({
+			organizationId: ORG_ID,
+			circlePostId: "post-1",
+		});
 	});
 
-	it("delete on a comment row: deletes via Circle deleteComment (Admin v2)", async () => {
+	it("delete on a comment row: deletes via Circle deleteComment (Admin v2), no post-removed hook", async () => {
 		mockModerationFlagFindUnique.mockResolvedValue(openCommentFlag);
 		mockDeleteComment.mockResolvedValue({ ok: true, data: undefined });
 		mockResolveModerationFlag.mockResolvedValue({ ...openCommentFlag, status: "deleted" });
@@ -124,6 +150,7 @@ describe("admin.community.moderation.resolve (S12-02a)", () => {
 		expect(mockDeleteComment).toHaveBeenCalledWith("comment-1");
 		expect(mockMarkCommunityPostDeleted).not.toHaveBeenCalled();
 		expect(result).toEqual({ ok: true, status: "deleted" });
+		expect(mockOnCommunityPostRemoved).not.toHaveBeenCalled();
 	});
 
 	it("delete: a Circle not_found result counts as success and proceeds to mark deleted", async () => {

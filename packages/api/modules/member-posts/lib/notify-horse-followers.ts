@@ -1,5 +1,8 @@
+import { db } from "@repo/database";
 import { logger } from "@repo/logs";
 
+import { firstPhotoUrl } from "../../inbox/kinds";
+import { recordInbox } from "../../inbox/record";
 import { sendPush } from "../../push/service";
 
 export interface NotifyHorseFollowersInput {
@@ -9,6 +12,8 @@ export interface NotifyHorseFollowersInput {
 	title: string;
 	horseName: string;
 	updateType: string | null;
+	/** S12-06: false = quiet publish — inbox item only, no push. */
+	push?: boolean;
 }
 
 const UPDATE_TYPE_LABELS: Record<string, string> = {
@@ -32,11 +37,35 @@ function pushBody(horseName: string, updateType: string | null): string {
  * covering all update types, replacing the wellbeing-only HORSE_WELLBEING
  * push).
  *
+ * S12-06: always records an inbox item for the horse's followers first —
+ * even on a quiet publish (`push: false`), the push is simply skipped.
+ *
  * Best-effort: publishMemberPost has already committed the published row —
  * a total push delivery failure (or a throw from sendPush itself) is
  * logged, never thrown, so the admin's publish action still succeeds.
  */
 export async function notifyHorseFollowers(input: NotifyHorseFollowersInput): Promise<void> {
+	const horse = await db.horse.findUnique({ where: { id: input.horseId }, select: { photos: true } }).catch((error) => {
+		logger.warn("inbox.horse_photo_lookup_failed", { horseId: input.horseId, error });
+		return null;
+	});
+
+	const badgeByUserId = await recordInbox({
+		organizationId: input.organizationId,
+		audience: { kind: "horseFollowers", horseId: input.horseId },
+		item: {
+			kind: "horse_update",
+			groupKey: `horse_update:${input.memberPostId}`,
+			title: input.title,
+			body: pushBody(input.horseName, input.updateType),
+			data: { screen: "horse", horseId: input.horseId },
+			refId: input.memberPostId,
+			imageUrl: firstPhotoUrl(horse?.photos),
+		},
+	});
+
+	if (input.push === false) return;
+
 	try {
 		const delivery = await sendPush({
 			organizationId: input.organizationId,
@@ -46,6 +75,7 @@ export async function notifyHorseFollowers(input: NotifyHorseFollowersInput): Pr
 			body: pushBody(input.horseName, input.updateType),
 			data: { screen: "horse", horseId: input.horseId },
 			followersOfHorseId: input.horseId,
+			badgeByUserId,
 		});
 
 		if (delivery.attempted > 0 && delivery.sent === 0) {

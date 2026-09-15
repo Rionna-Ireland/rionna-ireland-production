@@ -53,6 +53,7 @@ model User {
   follows             HorseFollow[]
   polls               Poll[]
   pollVotes           PollVote[]
+  inboxItems          InboxItem[]
 
   @@unique([email])
   @@unique([username])
@@ -204,6 +205,9 @@ model Member {
   // Circle notification poller cursor (S6-01)
   circleLastSeenNotificationId String?
   circleLastPolledAt           DateTime?
+
+  // Notification centre unseen badge (S12-06a)
+  inboxUnseenCount Int @default(0)
 
   @@unique([organizationId, userId])
   @@index([organizationId])
@@ -752,6 +756,7 @@ enum PushTriggerType {
   INSIDE_TRACK
   EVENT_PUBLISHED
   POLL
+  COMMUNITY_COMMENT
 }
 
 enum PushStatus {
@@ -818,6 +823,35 @@ model CommunityPost {
   @@index([organizationId, memberId, createdAt])
   @@index([organizationId, createdAt])
   @@map("community_post")
+}
+
+/// S12-06 notification centre. One row per recipient. `groupKey` is unique per
+/// user and makes every write idempotent: broadcasts use `${kind}:${refId}`,
+/// grouped activity uses e.g. `likes:${circlePostId}`.
+model InboxItem {
+  id             String    @id @default(cuid())
+  organizationId String
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind           String
+  groupKey       String
+  title          String
+  body           String
+  imageUrl       String?
+  actorUserId    String?
+  actorName      String?
+  actorCount     Int       @default(1)
+  data           Json
+  refId          String?
+  readAt         DateTime?
+  lastPushedAt   DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([userId, groupKey])
+  @@index([userId, organizationId, updatedAt(sort: Desc), id(sort: Desc)])
+  @@index([updatedAt])
+  @@map("inbox_item")
 }
 
 /// S9-03 blocks + S12-02a reports, one table.

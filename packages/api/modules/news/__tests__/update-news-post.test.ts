@@ -107,6 +107,7 @@ describe("updateNewsPost — publish notifications (FABLE_AUDIT P1)", () => {
 			title: "New post: Updated",
 			body: "Updated",
 			data: { screen: "news", newsPostId: "updated" },
+			badgeByUserId: new Map(),
 		});
 		expect(mockSendNewsNotificationEmails).toHaveBeenCalled();
 	});
@@ -119,6 +120,41 @@ describe("updateNewsPost — publish notifications (FABLE_AUDIT P1)", () => {
 		expect(mockSendPush).not.toHaveBeenCalled();
 		expect(mockSendNewsNotificationEmails).not.toHaveBeenCalled();
 		expect(mockReleaseNotification).not.toHaveBeenCalled();
+	});
+
+	it("does not claim/push/email when publishing with notifyMembersOnPublish=false (still records the inbox item)", async () => {
+		await call(
+			updateNewsPost,
+			{ newsPostId: "n1", publish: true, notifyMembersOnPublish: false },
+			ctx,
+		);
+
+		expect(mockClaimNotification).not.toHaveBeenCalled();
+		expect(mockSendPush).not.toHaveBeenCalled();
+		expect(mockSendNewsNotificationEmails).not.toHaveBeenCalled();
+	});
+
+	it("falls back to the persisted notifyMembersOnPublish when the input omits it", async () => {
+		mockGetNewsPostById.mockResolvedValue({
+			id: "n1",
+			organizationId: "org1",
+			publishedAt: null,
+			notificationSentAt: null,
+		});
+		mockUpdateNewsPost.mockResolvedValue({
+			id: "n1",
+			organizationId: "org1",
+			title: "Updated",
+			subtitle: null,
+			featuredImageUrl: null,
+			slug: "updated",
+			notifyMembersOnPublish: true,
+		});
+
+		await call(updateNewsPost, { newsPostId: "n1", publish: true }, ctx);
+
+		expect(mockClaimNotification).toHaveBeenCalledWith("n1");
+		expect(mockSendPush).toHaveBeenCalled();
 	});
 
 	it("releases the claim when every email failed, so a re-publish can retry", async () => {

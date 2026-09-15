@@ -19,6 +19,7 @@ const {
 	mockWriteMemberSpacesCache,
 	mockInvalidateMemberFeedCache,
 	mockFetchImageBytes,
+	mockOnMemberPostCreated,
 } = vi.hoisted(() => ({
 	mockGetSession: vi.fn(),
 	mockOrgFindUnique: vi.fn(),
@@ -37,6 +38,7 @@ const {
 	mockWriteMemberSpacesCache: vi.fn(),
 	mockInvalidateMemberFeedCache: vi.fn(),
 	mockFetchImageBytes: vi.fn(),
+	mockOnMemberPostCreated: vi.fn(),
 }));
 
 vi.mock("@repo/auth", () => ({ auth: { api: { getSession: mockGetSession } } }));
@@ -67,6 +69,9 @@ vi.mock("../../circle/lib/member-feed-cache", () => ({
 }));
 vi.mock("../../member-posts/lib/fetch-image-bytes", () => ({
 	fetchImageBytes: mockFetchImageBytes,
+}));
+vi.mock("../../inbox/activity-hooks", () => ({
+	onMemberPostCreated: mockOnMemberPostCreated,
 }));
 vi.mock("@repo/logs", () => ({
 	logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), log: vi.fn() },
@@ -119,6 +124,7 @@ beforeEach(() => {
 	});
 	mockCreatePost.mockResolvedValue({ ok: true, data: { circlePostId: "cp1", status: "published" } });
 	mockCreateCommunityPost.mockResolvedValue({ id: "row1" });
+	mockOnMemberPostCreated.mockResolvedValue(undefined);
 });
 
 describe("community.createPost", () => {
@@ -253,6 +259,25 @@ describe("community.createPost", () => {
 		);
 		expect(mockCreateCommunityPost).toHaveBeenCalled();
 		expect(mockInvalidateMemberFeedCache).toHaveBeenCalledWith("u1", "org1");
+		expect(result).toEqual({ ok: true, post: { circlePostId: "cp1", spaceId: SPACE_ID } });
+		expect(mockOnMemberPostCreated).toHaveBeenCalledWith({
+			organizationId: "org1",
+			circleSpaceId: SPACE_ID,
+			circlePostId: "cp1",
+			author: { userId: "u1", name: "Jane" },
+		});
+	});
+
+	it("does not fire the post-created hook on any failure path", async () => {
+		mockCreatePost.mockResolvedValue({ ok: false, reason: "server_error", retriable: true });
+		const result = await call(createPost, baseInput, ctx);
+		expect(result).toEqual({ ok: false, reason: "circle_failed" });
+		expect(mockOnMemberPostCreated).not.toHaveBeenCalled();
+	});
+
+	it("leaves the result unchanged when the post-created hook rejects", async () => {
+		mockOnMemberPostCreated.mockRejectedValue(new Error("inbox down"));
+		const result = await call(createPost, baseInput, ctx);
 		expect(result).toEqual({ ok: true, post: { circlePostId: "cp1", spaceId: SPACE_ID } });
 	});
 
