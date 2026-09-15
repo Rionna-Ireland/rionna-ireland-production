@@ -100,6 +100,12 @@ describe("inbox.list", () => {
 		expect(mockUserFindMany).toHaveBeenCalledWith({ where: { id: { in: ["sarah"] } }, select: { id: true, image: true } });
 	});
 
+	it("returns empty for a malformed cursor without querying items", async () => {
+		const result = await call(listInbox, { organizationId: "org1", cursor: "not-a-valid-cursor" }, ctx);
+		expect(result).toEqual({ items: [], nextCursor: null });
+		expect(mockItemFindMany).not.toHaveBeenCalled();
+	});
+
 	it("drops rows with unknown kinds and returns empty for non-members", async () => {
 		mockItemFindMany.mockResolvedValue([row(0, { kind: "retired_kind" })]);
 		expect((await call(listInbox, { organizationId: "org1" }, ctx)).items).toEqual([]);

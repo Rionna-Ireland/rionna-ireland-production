@@ -10,14 +10,15 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockSendPush, mockRecordInbox, mockHorseFindUnique } = vi.hoisted(() => ({
+const { mockSendPush, mockRecordInbox, mockHorseFindUnique, mockLoggerWarn } = vi.hoisted(() => ({
 	mockSendPush: vi.fn(),
 	mockRecordInbox: vi.fn(),
 	mockHorseFindUnique: vi.fn(),
+	mockLoggerWarn: vi.fn(),
 }));
 
 vi.mock("@repo/logs", () => ({
-	logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+	logger: { info: vi.fn(), warn: mockLoggerWarn, error: vi.fn() },
 }));
 
 vi.mock("@repo/database", () => ({
@@ -161,8 +162,9 @@ describe("notifyHorseFollowers", () => {
 		).resolves.toBeUndefined();
 	});
 
-	it("never throws when the horse photo lookup rejects", async () => {
-		mockHorseFindUnique.mockReturnValue(Promise.reject(new Error("db down")));
+	it("never throws when the horse photo lookup rejects, and logs a warning", async () => {
+		const lookupError = new Error("db down");
+		mockHorseFindUnique.mockReturnValue(Promise.reject(lookupError));
 		mockSendPush.mockResolvedValue({ attempted: 1, sent: 1, failed: 0 });
 
 		await expect(
@@ -175,5 +177,10 @@ describe("notifyHorseFollowers", () => {
 				updateType: "general",
 			}),
 		).resolves.toBeUndefined();
+
+		expect(mockLoggerWarn).toHaveBeenCalledWith("inbox.horse_photo_lookup_failed", {
+			horseId: "h-1",
+			error: lookupError,
+		});
 	});
 });

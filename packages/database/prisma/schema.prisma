@@ -849,7 +849,7 @@ model InboxItem {
   updatedAt      DateTime  @updatedAt
 
   @@unique([userId, groupKey])
-  @@index([userId, organizationId, updatedAt(sort: Desc), id])
+  @@index([userId, organizationId, updatedAt(sort: Desc), id(sort: Desc)])
   @@index([updatedAt])
   @@map("inbox_item")
 }

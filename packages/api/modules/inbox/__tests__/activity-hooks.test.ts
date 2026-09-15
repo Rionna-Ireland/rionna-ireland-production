@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockPostFindUnique, mockMemberFindUnique, mockHorseFindFirst, mockRecordActivity, mockRecordInbox, mockSendPush, mockLoggerError } =
+const { mockPostFindFirst, mockMemberFindFirst, mockHorseFindFirst, mockRecordActivity, mockRecordInbox, mockSendPush, mockLoggerError } =
 	vi.hoisted(() => ({
-		mockPostFindUnique: vi.fn(),
-		mockMemberFindUnique: vi.fn(),
+		mockPostFindFirst: vi.fn(),
+		mockMemberFindFirst: vi.fn(),
 		mockHorseFindFirst: vi.fn(),
 		mockRecordActivity: vi.fn(),
 		mockRecordInbox: vi.fn(),
@@ -13,8 +13,8 @@ const { mockPostFindUnique, mockMemberFindUnique, mockHorseFindFirst, mockRecord
 
 vi.mock("@repo/database", () => ({
 	db: {
-		communityPost: { findUnique: mockPostFindUnique },
-		member: { findUnique: mockMemberFindUnique },
+		communityPost: { findFirst: mockPostFindFirst },
+		member: { findFirst: mockMemberFindFirst },
 		horse: { findFirst: mockHorseFindFirst },
 	},
 }));
@@ -30,8 +30,8 @@ const PUSHED_AT = new Date("2026-09-15T12:00:00Z");
 
 beforeEach(() => {
 	vi.clearAllMocks();
-	mockPostFindUnique.mockResolvedValue({ memberId: "m-author", circleSpaceId: "s1", excerpt: "My post", deletedAt: null });
-	mockMemberFindUnique.mockResolvedValue({ userId: "author" });
+	mockPostFindFirst.mockResolvedValue({ memberId: "m-author", circleSpaceId: "s1", excerpt: "My post", deletedAt: null });
+	mockMemberFindFirst.mockResolvedValue({ userId: "author" });
 	mockRecordActivity.mockResolvedValue({ unseenCount: 3, shouldPush: false, pushedAt: null });
 	mockRecordInbox.mockResolvedValue(new Map());
 	mockSendPush.mockResolvedValue({ attempted: 1, sent: 1, failed: 0 });
@@ -40,8 +40,8 @@ beforeEach(() => {
 describe("onPostLiked", () => {
 	it("records a grouped like for the post author", async () => {
 		await onPostLiked({ organizationId: "org1", circlePostId: "p1", actor });
-		expect(mockPostFindUnique).toHaveBeenCalledWith({
-			where: { circlePostId: "p1" },
+		expect(mockPostFindFirst).toHaveBeenCalledWith({
+			where: { circlePostId: "p1", organizationId: "org1" },
 			select: { memberId: true, circleSpaceId: true, excerpt: true, deletedAt: true },
 		});
 		expect(mockRecordActivity).toHaveBeenCalledWith({
@@ -54,10 +54,20 @@ describe("onPostLiked", () => {
 	});
 
 	it("ignores club posts and deleted posts", async () => {
-		mockPostFindUnique.mockResolvedValueOnce(null);
+		mockPostFindFirst.mockResolvedValueOnce(null);
 		await onPostLiked({ organizationId: "org1", circlePostId: "p1", actor });
-		mockPostFindUnique.mockResolvedValueOnce({ memberId: "m", circleSpaceId: "s1", excerpt: "x", deletedAt: new Date() });
+		mockPostFindFirst.mockResolvedValueOnce({ memberId: "m", circleSpaceId: "s1", excerpt: "x", deletedAt: new Date() });
 		await onPostLiked({ organizationId: "org1", circlePostId: "p1", actor });
+		expect(mockRecordActivity).not.toHaveBeenCalled();
+	});
+
+	it("ignores a post from another organization", async () => {
+		mockPostFindFirst.mockResolvedValueOnce(null);
+		await onPostLiked({ organizationId: "org2", circlePostId: "p1", actor });
+		expect(mockPostFindFirst).toHaveBeenCalledWith({
+			where: { circlePostId: "p1", organizationId: "org2" },
+			select: { memberId: true, circleSpaceId: true, excerpt: true, deletedAt: true },
+		});
 		expect(mockRecordActivity).not.toHaveBeenCalled();
 	});
 });
@@ -130,7 +140,7 @@ describe("onCommunityPostRemoved", () => {
 		expect(mockRecordActivity).toHaveBeenCalledWith({
 			organizationId: "org1",
 			recipientUserId: "author",
-			actor: { userId: "system:moderation", name: null },
+			actor: null,
 			item: {
 				kind: "post_removed",
 				groupKey: "post_removed:p1",
@@ -144,14 +154,14 @@ describe("onCommunityPostRemoved", () => {
 	});
 
 	it("looks the post up even when already soft-deleted", async () => {
-		mockPostFindUnique.mockResolvedValue({ memberId: "m-author", circleSpaceId: "s1", excerpt: "x", deletedAt: new Date() });
+		mockPostFindFirst.mockResolvedValue({ memberId: "m-author", circleSpaceId: "s1", excerpt: "x", deletedAt: new Date() });
 		await onCommunityPostRemoved({ organizationId: "org1", circlePostId: "p1" });
 		expect(mockRecordActivity).toHaveBeenCalled();
 	});
 });
 
 it("hooks never throw", async () => {
-	mockPostFindUnique.mockRejectedValue(new Error("db down"));
+	mockPostFindFirst.mockRejectedValue(new Error("db down"));
 	await expect(onPostLiked({ organizationId: "org1", circlePostId: "p1", actor })).resolves.toBeUndefined();
 	expect(mockLoggerError).toHaveBeenCalledWith("inbox.hook.failed", expect.objectContaining({ hook: "onPostLiked" }));
 });

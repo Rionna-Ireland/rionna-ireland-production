@@ -26,20 +26,20 @@ async function guard(hook: string, context: Record<string, unknown>, run: () => 
 	}
 }
 
-/** Author of a member-created post; null for club posts (no CommunityPost row). */
-async function findPostAuthor(circlePostId: string, includeDeleted = false) {
-	const post = await db.communityPost.findUnique({
-		where: { circlePostId },
+/** Author of a member-created post; null for club posts (no CommunityPost row) or a post from another org. */
+async function findPostAuthor(organizationId: string, circlePostId: string, includeDeleted = false) {
+	const post = await db.communityPost.findFirst({
+		where: { circlePostId, organizationId },
 		select: { memberId: true, circleSpaceId: true, excerpt: true, deletedAt: true },
 	});
 	if (!post || (post.deletedAt && !includeDeleted)) return null;
-	const member = await db.member.findUnique({ where: { id: post.memberId }, select: { userId: true } });
+	const member = await db.member.findFirst({ where: { id: post.memberId, organizationId }, select: { userId: true } });
 	return member ? { userId: member.userId, spaceId: post.circleSpaceId, excerpt: post.excerpt } : null;
 }
 
 export function onPostLiked(p: { organizationId: string; circlePostId: string; actor: Actor }): Promise<void> {
 	return guard("onPostLiked", { circlePostId: p.circlePostId }, async () => {
-		const author = await findPostAuthor(p.circlePostId);
+		const author = await findPostAuthor(p.organizationId, p.circlePostId);
 		if (!author) return;
 		await recordActivity({
 			organizationId: p.organizationId,
@@ -64,7 +64,7 @@ export function onPostCommented(p: {
 	actor: Actor;
 }): Promise<void> {
 	return guard("onPostCommented", { circlePostId: p.circlePostId }, async () => {
-		const author = await findPostAuthor(p.circlePostId);
+		const author = await findPostAuthor(p.organizationId, p.circlePostId);
 		if (!author) return;
 		const data = { screen: "post" as const, spaceId: author.spaceId, postId: p.circlePostId };
 		const body = excerptOf(p.commentBody, 140);
@@ -123,12 +123,12 @@ export function onMemberPostCreated(p: {
 
 export function onCommunityPostRemoved(p: { organizationId: string; circlePostId: string }): Promise<void> {
 	return guard("onCommunityPostRemoved", { circlePostId: p.circlePostId }, async () => {
-		const author = await findPostAuthor(p.circlePostId, true);
+		const author = await findPostAuthor(p.organizationId, p.circlePostId, true);
 		if (!author) return;
 		await recordActivity({
 			organizationId: p.organizationId,
 			recipientUserId: author.userId,
-			actor: { userId: "system:moderation", name: null },
+			actor: null,
 			item: {
 				kind: "post_removed",
 				groupKey: `post_removed:${p.circlePostId}`,

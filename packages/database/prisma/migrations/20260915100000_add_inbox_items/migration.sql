@@ -24,7 +24,7 @@ CREATE TABLE "inbox_item" (
   CONSTRAINT "inbox_item_pkey" PRIMARY KEY ("id")
 );
 CREATE UNIQUE INDEX "inbox_item_userId_groupKey_key" ON "inbox_item"("userId", "groupKey");
-CREATE INDEX "inbox_item_userId_organizationId_updatedAt_id_idx" ON "inbox_item"("userId", "organizationId", "updatedAt" DESC, "id");
+CREATE INDEX "inbox_item_userId_organizationId_updatedAt_id_idx" ON "inbox_item"("userId", "organizationId", "updatedAt" DESC, "id" DESC);
 CREATE INDEX "inbox_item_updatedAt_idx" ON "inbox_item"("updatedAt");
 ALTER TABLE "inbox_item" ADD CONSTRAINT "inbox_item_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "inbox_item" ENABLE ROW LEVEL SECURITY;

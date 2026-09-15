@@ -18,13 +18,13 @@ function isUniqueConstraintError(error: unknown): boolean {
 export async function recordActivity(p: {
 	organizationId: string;
 	recipientUserId: string;
-	actor: { userId: string; name: string | null };
+	actor: { userId: string; name: string | null } | null;
 	item: Omit<InboxItemInput, "actorUserId" | "actorName">;
 	throttlePushMs?: number;
 	now?: Date;
 }): Promise<{ unseenCount: number; shouldPush: boolean; pushedAt: Date | null } | null> {
 	const { organizationId, recipientUserId: userId, actor, item } = p;
-	if (userId === actor.userId) return null;
+	if (actor && userId === actor.userId) return null;
 	const now = p.now ?? new Date();
 
 	try {
@@ -41,8 +41,8 @@ export async function recordActivity(p: {
 					data: item.data,
 					refId: item.refId ?? null,
 					imageUrl: item.imageUrl ?? null,
-					actorUserId: actor.userId,
-					actorName: actor.name,
+					actorUserId: actor?.userId ?? null,
+					actorName: actor?.name ?? null,
 				},
 			});
 		} catch (error) {
@@ -54,8 +54,8 @@ export async function recordActivity(p: {
 					readAt: null,
 					body: item.body,
 					data: item.data,
-					actorUserId: actor.userId,
-					actorName: actor.name,
+					actorUserId: actor?.userId ?? null,
+					actorName: actor?.name ?? null,
 					actorCount: { increment: 1 },
 				},
 			});

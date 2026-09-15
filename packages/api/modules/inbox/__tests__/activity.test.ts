@@ -100,6 +100,23 @@ describe("recordActivity", () => {
 		expect(result).toEqual({ unseenCount: 5, shouldPush: false, pushedAt: null });
 	});
 
+	it("records a null actor without a self-skip, writing null actorUserId/actorName", async () => {
+		const result = await recordActivity({ ...base, recipientUserId: "author", actor: null });
+		expect(mockCreate).toHaveBeenCalledWith({
+			data: expect.objectContaining({ userId: "author", actorUserId: null, actorName: null }),
+		});
+		expect(result).not.toBeNull();
+	});
+
+	it("regroups a null actor writing null actorUserId/actorName", async () => {
+		mockCreate.mockRejectedValue(uniqueError);
+		await recordActivity({ ...base, actor: null });
+		expect(mockUpdate).toHaveBeenCalledWith({
+			where: { userId_groupKey: { userId: "author", groupKey: "comments:p1" } },
+			data: expect.objectContaining({ actorUserId: null, actorName: null }),
+		});
+	});
+
 	it("never throws", async () => {
 		mockCreate.mockRejectedValue(new Error("db down"));
 		expect(await recordActivity(base)).toBeNull();

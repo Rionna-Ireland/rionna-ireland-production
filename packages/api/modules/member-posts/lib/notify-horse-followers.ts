@@ -45,9 +45,10 @@ function pushBody(horseName: string, updateType: string | null): string {
  * logged, never thrown, so the admin's publish action still succeeds.
  */
 export async function notifyHorseFollowers(input: NotifyHorseFollowersInput): Promise<void> {
-	const horse = await db.horse
-		.findUnique({ where: { id: input.horseId }, select: { photos: true } })
-		.catch(() => null);
+	const horse = await db.horse.findUnique({ where: { id: input.horseId }, select: { photos: true } }).catch((error) => {
+		logger.warn("inbox.horse_photo_lookup_failed", { horseId: input.horseId, error });
+		return null;
+	});
 
 	const badgeByUserId = await recordInbox({
 		organizationId: input.organizationId,

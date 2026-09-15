@@ -25,6 +25,8 @@ export interface InboxListResult {
 	nextCursor: string | null;
 }
 
+const EMPTY_RESULT: InboxListResult = { items: [], nextCursor: null };
+
 /**
  * S12-06 notification centre feed: keyset-paginated, isolated to the caller's
  * (userId, organizationId). Grouped kinds (likes/comments/horse posts) are
@@ -35,14 +37,17 @@ export const listInbox = protectedProcedure
 	.route({ method: "GET", path: "/inbox", tags: ["Inbox"], summary: "List the member's notification centre items" })
 	.input(z.object({ organizationId: z.string(), cursor: z.string().optional() }))
 	.handler(async ({ input, context: { user } }): Promise<InboxListResult> => {
-		const empty: InboxListResult = { items: [], nextCursor: null };
 		const member = await db.member.findUnique({
 			where: { organizationId_userId: { organizationId: input.organizationId, userId: user.id } },
 			select: { id: true },
 		});
-		if (!member) return empty;
+		if (!member) return EMPTY_RESULT;
 
+		// A cursor that fails to decode is malformed input, not "no cursor" —
+		// return empty rather than silently restarting at page 1.
 		const cursor = input.cursor ? decodeCursor(input.cursor) : null;
+		if (input.cursor && !cursor) return EMPTY_RESULT;
+
 		const rows = await db.inboxItem.findMany({
 			where: {
 				userId: user.id,
