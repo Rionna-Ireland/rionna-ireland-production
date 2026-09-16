@@ -10,7 +10,9 @@ import { invalidateMemberFeedCache } from "../../circle/lib/member-feed-cache";
 import { onMemberPostCreated } from "../../inbox/activity-hooks";
 import { fetchImageBytes } from "../../member-posts/lib/fetch-image-bytes";
 import { excerptOf } from "../../moderation/excerpt";
+import { recordAutoBlock } from "../../moderation/record-auto-block";
 import { recordBlock } from "../../moderation/record-block";
+import { screenAuto } from "../../moderation/screen-auto";
 import { screenText } from "../../moderation/screen-text";
 import { buildPostDoc } from "../lib/build-post-doc";
 import { MAX_BODY_CHARS, MAX_TITLE_CHARS, MIN_BODY_CHARS } from "../lib/limits";
@@ -117,9 +119,28 @@ export const createPost = protectedProcedure
 			return { ok: false, reason: "blocked" };
 		}
 
+		// S12-08 auto-moderation (OpenAI) — after the free word gate, before any
+		// membership change or rate-limit use. Fails open inside screenAuto.
+		if (metadata.features?.autoModeration !== false) {
+			const auto = await screenAuto(screenSubject, { organizationId, memberId: member.id, surface: "post" });
+			if (!auto.allowed) {
+				void recordAutoBlock({
+					organizationId,
+					memberId: member.id,
+					surface: "post",
+					text: screenSubject,
+					categories: auto.categories,
+					scores: auto.scores,
+					targetSpaceId: spaceId,
+				});
+				return { ok: false, reason: "blocked" };
+			}
+		}
+
 		// Join the member into a public space they haven't joined yet (Circle
-		// only grants can_create_post to joined members). Runs after the gate and
-		// before the rate limit so a blocked post never changes membership.
+		// only grants can_create_post to joined members). Runs after both
+		// moderation gates and before the rate limit so a blocked post never
+		// changes membership.
 		if (needsJoinToPost(space)) {
 			const joined = await circle.addSpaceMember({ spaceId, email: dbUser.email });
 			if (!joined.ok) {
