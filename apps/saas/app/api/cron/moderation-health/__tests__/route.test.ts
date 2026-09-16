@@ -49,6 +49,12 @@ describe("POST /api/cron/moderation-health", () => {
 		expect(mockLoggerInfo).toHaveBeenCalledWith("moderation.health.ok", {});
 	});
 
+	it("gives classifyText a 10s timeout so a slow cold call doesn't trip the 2s member-path timeout", async () => {
+		mockClassifyText.mockResolvedValue({ ok: true, scores: {} });
+		await POST(authed());
+		expect(mockClassifyText).toHaveBeenCalledWith("health check", { timeoutMs: 10_000 });
+	});
+
 	it("emails OPS_ALERT_EMAIL with a billing hint on a 429", async () => {
 		mockClassifyText.mockResolvedValue({ ok: false, reason: "http_error", status: 429 });
 		const res = await POST(authed());

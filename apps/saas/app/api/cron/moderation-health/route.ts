@@ -21,7 +21,7 @@ export async function POST(request: Request) {
 		return new Response("Unauthorized", { status: 401 });
 	}
 
-	const result = await classifyText("health check");
+	const result = await classifyText("health check", { timeoutMs: 10_000 });
 	if (result.ok) {
 		logger.info("moderation.health.ok", {});
 		return Response.json({ ok: true });

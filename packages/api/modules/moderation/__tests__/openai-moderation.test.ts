@@ -53,13 +53,31 @@ describe("classifyText", () => {
 		expect(await classifyText("x")).toEqual({ ok: false, reason: "timeout" });
 	});
 
-	it("returns http_error on a network failure", async () => {
+	it("returns network on a non-abort network failure (e.g. fetch failed, DNS)", async () => {
 		fetchMock.mockRejectedValue(new TypeError("fetch failed"));
-		expect(await classifyText("x")).toEqual({ ok: false, reason: "http_error" });
+		expect(await classifyText("x")).toEqual({ ok: false, reason: "network" });
 	});
 
 	it("returns bad_response when the body has no category_scores", async () => {
 		fetchMock.mockResolvedValue(okResponse({ results: [] }));
 		expect(await classifyText("x")).toEqual({ ok: false, reason: "bad_response" });
+	});
+
+	it("uses the default 2000ms timeout when no options are passed", async () => {
+		const timeoutSpy = vi.spyOn(AbortSignal, "timeout");
+		fetchMock.mockResolvedValue(okResponse({ results: [{ category_scores: {} }] }));
+
+		await classifyText("x");
+
+		expect(timeoutSpy).toHaveBeenCalledWith(2000);
+	});
+
+	it("honours a custom timeoutMs option (e.g. the health probe's 10s)", async () => {
+		const timeoutSpy = vi.spyOn(AbortSignal, "timeout");
+		fetchMock.mockResolvedValue(okResponse({ results: [{ category_scores: {} }] }));
+
+		await classifyText("health check", { timeoutMs: 10_000 });
+
+		expect(timeoutSpy).toHaveBeenCalledWith(10_000);
 	});
 });
