@@ -5,6 +5,8 @@ import { z } from "zod";
 
 import { adminProcedure } from "../../../../orpc/procedures";
 
+const sourceEnum = z.enum(["blocked", "reported", "auto", "attention"]);
+
 export type ModerationFlagRow = ModerationFlagType & {
 	memberName: string | null;
 	memberEmail: string | null;
@@ -18,7 +20,7 @@ export interface ListModerationResult {
 /** Pure, unit-testable core. Batch-loads member name/email in one query. */
 export async function runListModeration(p: {
 	organizationId: string;
-	source: ModerationSource;
+	source: ModerationSource | ModerationSource[];
 	status?: ModerationStatus;
 	cursor?: string;
 }): Promise<ListModerationResult> {
@@ -48,12 +50,12 @@ export const listModeration = adminProcedure
 		method: "GET",
 		path: "/admin/community/moderation",
 		tags: ["Community"],
-		summary: "List moderation flags (reports + blocks)",
+		summary: "List moderation flags (reports, blocks, auto blocks)",
 	})
 	.input(
 		z.object({
 			organizationId: z.string(),
-			source: z.enum(["blocked", "reported"]),
+			source: z.union([sourceEnum, z.array(sourceEnum).min(1)]),
 			status: z.enum(["open", "deleted", "dismissed"]).optional(),
 			cursor: z.string().optional(),
 		}),

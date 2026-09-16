@@ -1,4 +1,5 @@
 import { listModeration } from "./procedures/admin/list-moderation";
+import { listModerationAttention } from "./procedures/admin/list-moderation-attention";
 import { listSpaces } from "./procedures/admin/list-spaces";
 import { resolveModeration } from "./procedures/admin/resolve-moderation";
 import { setSpaceSettings } from "./procedures/admin/set-space-settings";
@@ -17,6 +18,7 @@ export const communityAdminRouter = {
 	moderation: {
 		list: listModeration,
 		resolve: resolveModeration,
+		attention: listModerationAttention,
 	},
 };
 
