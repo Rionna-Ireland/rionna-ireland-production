@@ -3,7 +3,7 @@ import { db, findLastDismissedAttention, listMemberBlocksSince, listModerationFl
 import { z } from "zod";
 
 import { adminProcedure } from "../../../../orpc/procedures";
-import { ESCALATION_WINDOW_DAYS } from "../../../moderation/escalate-member";
+import { escalationWindowStart } from "../../../moderation/escalate-member";
 
 export interface AttentionBlock {
 	id: string;
@@ -28,8 +28,6 @@ export interface ListAttentionResult {
 	nextCursor: string | null;
 }
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
 /** Pure, unit-testable core. Open "member needs attention" items (S12-08). */
 export async function runListModerationAttention(p: { organizationId: string; cursor?: string }): Promise<ListAttentionResult> {
 	const { rows, nextCursor } = await listModerationFlags({
@@ -50,10 +48,8 @@ export async function runListModerationAttention(p: { organizationId: string; cu
 
 	const out: AttentionRow[] = [];
 	for (const row of rows) {
-		const windowStart = new Date(row.createdAt.getTime() - ESCALATION_WINDOW_DAYS * DAY_MS);
 		const lastDismissed = await findLastDismissedAttention({ organizationId: p.organizationId, memberId: row.memberId });
-		const dismissedAt = lastDismissed?.resolvedAt ?? null;
-		const since = dismissedAt && dismissedAt > windowStart ? dismissedAt : windowStart;
+		const since = escalationWindowStart(row.createdAt, lastDismissed?.resolvedAt ?? null);
 		const blocks = await listMemberBlocksSince({ organizationId: p.organizationId, memberId: row.memberId, since });
 
 		out.push({

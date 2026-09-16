@@ -19,7 +19,7 @@ vi.mock("@repo/logs", () => ({
 }));
 vi.mock("../notify-club-admins", () => ({ notifyClubAdmins: mockNotify }));
 
-import { maybeEscalateMember } from "../escalate-member";
+import { escalationWindowStart, maybeEscalateMember } from "../escalate-member";
 
 const NOW = new Date("2026-09-16T12:00:00Z");
 const THIRTY_DAYS_AGO = new Date("2026-08-17T12:00:00Z");
@@ -87,5 +87,21 @@ describe("maybeEscalateMember", () => {
 		mockCount.mockRejectedValue(new Error("db down"));
 		await expect(maybeEscalateMember({ organizationId: "org1", memberId: "m1", now: NOW })).resolves.toBeUndefined();
 		expect(mockLoggerWarn).toHaveBeenCalledWith("moderation.escalation_failed", { organizationId: "org1", memberId: "m1", error: "Error: db down" });
+	});
+});
+
+describe("escalationWindowStart", () => {
+	it("uses the dismissal when it falls inside the window", () => {
+		const dismissedAt = new Date("2026-09-10T09:00:00Z");
+		expect(escalationWindowStart(NOW, dismissedAt)).toEqual(dismissedAt);
+	});
+
+	it("falls back to anchor minus 30 days when the dismissal is outside the window", () => {
+		const dismissedAt = new Date("2026-01-01T00:00:00Z");
+		expect(escalationWindowStart(NOW, dismissedAt)).toEqual(THIRTY_DAYS_AGO);
+	});
+
+	it("falls back to anchor minus 30 days when there is no dismissal", () => {
+		expect(escalationWindowStart(NOW, null)).toEqual(THIRTY_DAYS_AGO);
 	});
 });
