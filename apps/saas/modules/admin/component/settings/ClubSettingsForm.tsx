@@ -55,6 +55,7 @@ const clubSettingsSchema = z.object({
 		}),
 	}),
 	horseAutoFollow: z.boolean(),
+	autoModeration: z.boolean(),
 	extraBlockedWords: z.string(),
 });
 
@@ -108,6 +109,7 @@ export function ClubSettingsForm() {
 				},
 			},
 			horseAutoFollow: true,
+			autoModeration: true,
 			extraBlockedWords: "",
 		},
 	});
@@ -133,6 +135,7 @@ export function ClubSettingsForm() {
 					},
 				},
 				horseAutoFollow: settings.horseAutoFollow ?? true,
+				autoModeration: settings.features?.autoModeration !== false,
 				extraBlockedWords: (settings.moderation?.extraBlockedWords ?? []).join("\n"),
 			});
 		}
@@ -155,6 +158,7 @@ export function ClubSettingsForm() {
 					socialLinks: values.contact.socialLinks,
 				},
 				horseAutoFollow: values.horseAutoFollow,
+				autoModeration: values.autoModeration,
 				moderation: { extraBlockedWords },
 			});
 
@@ -508,6 +512,26 @@ export function ClubSettingsForm() {
 							<CardTitle>{t("admin.settings.moderation.title")}</CardTitle>
 						</CardHeader>
 						<CardContent className="gap-4 grid grid-cols-1">
+							<FormField
+								control={form.control}
+								name="autoModeration"
+								render={({ field }) => (
+									<FormItem className="gap-3 flex items-center">
+										<FormControl>
+											<Switch checked={field.value} onCheckedChange={field.onChange} />
+										</FormControl>
+										<div>
+											<FormLabel className="!mt-0">
+												{t("admin.settings.moderation.autoModeration")}
+											</FormLabel>
+											<p className="text-muted-foreground text-sm">
+												{t("admin.settings.moderation.autoModerationHint")}
+											</p>
+										</div>
+									</FormItem>
+								)}
+							/>
+
 							<FormField
 								control={form.control}
 								name="extraBlockedWords"

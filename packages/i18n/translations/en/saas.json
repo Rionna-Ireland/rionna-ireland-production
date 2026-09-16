@@ -447,6 +447,8 @@
 			},
 			"moderation": {
 				"title": "Moderation",
+				"autoModeration": "Auto-moderation",
+				"autoModerationHint": "Automatically blocks hateful, threatening, sexual and self-harm posts and comments before they're published. Turn off if genuine racing posts are being blocked.",
 				"extraBlockedWords": "Extra blocked words",
 				"extraBlockedWordsPlaceholder": "One word or phrase per line",
 				"extraBlockedWordsHint": "Matched alongside the platform's base blocked-word list when members post or comment."

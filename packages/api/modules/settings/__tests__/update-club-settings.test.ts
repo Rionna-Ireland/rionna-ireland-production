@@ -98,3 +98,23 @@ describe("updateClubSettings — horseAutoFollow (S6-07 Surface D)", () => {
 		expect(JSON.parse(call1.data.metadata)).toMatchObject({ horseAutoFollow: false });
 	});
 });
+
+describe("updateClubSettings — autoModeration (S12-08)", () => {
+	it("writes features.autoModeration while keeping other feature flags", async () => {
+		mockParseOrgMetadata.mockReturnValue({ features: { polls: true } });
+
+		await call(updateClubSettings, { organizationId: "org1", autoModeration: false }, ctx);
+
+		const written = JSON.parse(mockUpdate.mock.calls[0][0].data.metadata);
+		expect(written.features).toEqual({ polls: true, autoModeration: false });
+	});
+
+	it("leaves features untouched when autoModeration is omitted", async () => {
+		mockParseOrgMetadata.mockReturnValue({ features: { polls: false } });
+
+		await call(updateClubSettings, { organizationId: "org1", brand: { primaryColor: "#fff" } }, ctx);
+
+		const written = JSON.parse(mockUpdate.mock.calls[0][0].data.metadata);
+		expect(written.features).toEqual({ polls: false });
+	});
+});
