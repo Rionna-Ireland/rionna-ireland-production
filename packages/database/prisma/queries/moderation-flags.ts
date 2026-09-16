@@ -1,16 +1,28 @@
 import { db } from "../client";
-import { Prisma } from "../generated/client";
+import type { Prisma } from "../generated/client";
 
 export type ModerationSource = "blocked" | "reported" | "auto" | "attention";
 export type ModerationSurface = "post" | "comment" | "member";
 export type ModerationStatus = "open" | "deleted" | "dismissed";
 
-/** Returns null when the partial unique index rejects a duplicate report (P2002). */
+/**
+ * Prisma unique violation. Checked by `code`, not `instanceof`: Next bundles
+ * @repo/database (transpilePackages), so the bundled `Prisma` error class is a
+ * different object from the one the runtime throws and `instanceof` is false.
+ */
+function isUniqueViolation(error: unknown): boolean {
+	return typeof error === "object" && error !== null && (error as { code?: unknown }).code === "P2002";
+}
+
+/**
+ * Returns null when a partial unique index rejects the insert (P2002): a
+ * duplicate report, or an already-open attention item (S12-08).
+ */
 export async function createModerationFlag(data: Prisma.ModerationFlagUncheckedCreateInput) {
 	try {
 		return await db.moderationFlag.create({ data });
 	} catch (error) {
-		if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") return null;
+		if (isUniqueViolation(error)) return null;
 		throw error;
 	}
 }
