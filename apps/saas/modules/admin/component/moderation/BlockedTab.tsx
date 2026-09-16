@@ -17,9 +17,9 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 
 /**
- * Blocked tab of `/admin/moderation` — S9-03's blocked-word log. Purely
- * informational: the flagged content was never posted, so there's nothing
- * to delete/dismiss here.
+ * Blocked tab of `/admin/moderation` — S9-03 word-list blocks and S12-08
+ * auto-moderation blocks. Purely informational: the content was never
+ * posted, so there's nothing to delete/dismiss here.
  */
 export function BlockedTab() {
 	const t = useTranslations();
@@ -30,7 +30,7 @@ export function BlockedTab() {
 		...orpc.admin.community.moderation.list.infiniteOptions({
 			input: (cursor: string | undefined) => ({
 				organizationId,
-				source: "blocked" as const,
+				source: ["blocked", "auto"] as ("blocked" | "auto")[],
 				cursor,
 			}),
 			initialPageParam: undefined as string | undefined,
@@ -57,6 +57,7 @@ export function BlockedTab() {
 								<TableHead>{t("admin.moderation.columns.when")}</TableHead>
 								<TableHead>{t("admin.moderation.columns.member")}</TableHead>
 								<TableHead>{t("admin.moderation.columns.surface")}</TableHead>
+								<TableHead>{t("admin.moderation.columns.caughtBy")}</TableHead>
 								<TableHead>{t("admin.moderation.columns.excerpt")}</TableHead>
 								<TableHead>{t("admin.moderation.columns.matchedTerms")}</TableHead>
 							</TableRow>
@@ -72,6 +73,11 @@ export function BlockedTab() {
 									</TableCell>
 									<TableCell className="py-2">
 										{t(`admin.moderation.surface.${row.surface}` as never)}
+									</TableCell>
+									<TableCell className="py-2">
+										<Badge status={row.source === "auto" ? "info" : "warning"}>
+											{t(`admin.moderation.source.${row.source}` as never)}
+										</Badge>
 									</TableCell>
 									<TableCell className="py-2 max-w-xs truncate" title={row.contentExcerpt}>
 										{row.contentExcerpt}
