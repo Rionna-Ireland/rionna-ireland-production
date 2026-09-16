@@ -1,8 +1,8 @@
 import { db } from "../client";
 import { Prisma } from "../generated/client";
 
-export type ModerationSource = "blocked" | "reported";
-export type ModerationSurface = "post" | "comment";
+export type ModerationSource = "blocked" | "reported" | "auto" | "attention";
+export type ModerationSurface = "post" | "comment" | "member";
 export type ModerationStatus = "open" | "deleted" | "dismissed";
 
 /** Returns null when the partial unique index rejects a duplicate report (P2002). */
@@ -17,14 +17,15 @@ export async function createModerationFlag(data: Prisma.ModerationFlagUncheckedC
 
 export async function listModerationFlags(p: {
 	organizationId: string;
-	source: ModerationSource;
+	source: ModerationSource | ModerationSource[];
 	status?: ModerationStatus;
 	take?: number;
 	cursor?: string;
 }) {
 	const take = Math.min(p.take ?? 50, 100);
+	const source = Array.isArray(p.source) ? { in: p.source } : p.source;
 	const rows = await db.moderationFlag.findMany({
-		where: { organizationId: p.organizationId, source: p.source, ...(p.status ? { status: p.status } : {}) },
+		where: { organizationId: p.organizationId, source, ...(p.status ? { status: p.status } : {}) },
 		orderBy: { createdAt: "desc" },
 		take: take + 1,
 		...(p.cursor ? { cursor: { id: p.cursor }, skip: 1 } : {}),
@@ -44,4 +45,39 @@ export async function resolveModerationFlag(p: {
 		data: { status: p.status, resolvedAt: new Date(), resolvedByUserId: p.resolvedByUserId },
 	});
 	return count === 1 ? db.moderationFlag.findUnique({ where: { id: p.id } }) : null;
+}
+
+/** S12-08: blocks (word gate + auto) by one member since `since`. */
+export async function countMemberBlocksSince(p: { organizationId: string; memberId: string; since: Date }) {
+	return db.moderationFlag.count({
+		where: {
+			organizationId: p.organizationId,
+			memberId: p.memberId,
+			source: { in: ["blocked", "auto"] },
+			createdAt: { gte: p.since },
+		},
+	});
+}
+
+/** S12-08: the member's most recently dismissed attention item (resets the escalation window). */
+export async function findLastDismissedAttention(p: { organizationId: string; memberId: string }) {
+	return db.moderationFlag.findFirst({
+		where: { organizationId: p.organizationId, memberId: p.memberId, source: "attention", status: "dismissed" },
+		orderBy: { resolvedAt: "desc" },
+		select: { resolvedAt: true },
+	});
+}
+
+/** S12-08: the member's blocks since `since`, newest first (attention tab detail). */
+export async function listMemberBlocksSince(p: { organizationId: string; memberId: string; since: Date; take?: number }) {
+	return db.moderationFlag.findMany({
+		where: {
+			organizationId: p.organizationId,
+			memberId: p.memberId,
+			source: { in: ["blocked", "auto"] },
+			createdAt: { gte: p.since },
+		},
+		orderBy: { createdAt: "desc" },
+		take: Math.min(p.take ?? 20, 50),
+	});
 }
