@@ -32,6 +32,7 @@ const updateClubSettingsInput = z.object({
 		})
 		.optional(),
 	horseAutoFollow: z.boolean().optional(),
+	autoModeration: z.boolean().optional(),
 	moderation: z
 		.object({
 			extraBlockedWords: z.array(z.string()).optional(),
@@ -49,7 +50,7 @@ export const updateClubSettings = adminProcedure
 	.input(updateClubSettingsInput)
 	.handler(
 		async ({
-			input: { organizationId, brand, contact, horseAutoFollow, moderation },
+			input: { organizationId, brand, contact, horseAutoFollow, autoModeration, moderation },
 			context,
 		}) => {
 			const organization = await db.organization.findUnique({
@@ -84,6 +85,10 @@ export const updateClubSettings = adminProcedure
 						}
 					: existing.contact,
 				horseAutoFollow: horseAutoFollow ?? existing.horseAutoFollow,
+				features:
+					autoModeration === undefined
+						? existing.features
+						: { ...existing.features, autoModeration },
 				moderation: moderation
 					? {
 							...existing.moderation,

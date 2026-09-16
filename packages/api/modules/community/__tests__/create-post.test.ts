@@ -20,6 +20,8 @@ const {
 	mockInvalidateMemberFeedCache,
 	mockFetchImageBytes,
 	mockOnMemberPostCreated,
+	mockScreenAuto,
+	mockRecordAutoBlock,
 } = vi.hoisted(() => ({
 	mockGetSession: vi.fn(),
 	mockOrgFindUnique: vi.fn(),
@@ -39,6 +41,8 @@ const {
 	mockInvalidateMemberFeedCache: vi.fn(),
 	mockFetchImageBytes: vi.fn(),
 	mockOnMemberPostCreated: vi.fn(),
+	mockScreenAuto: vi.fn(),
+	mockRecordAutoBlock: vi.fn(),
 }));
 
 vi.mock("@repo/auth", () => ({ auth: { api: { getSession: mockGetSession } } }));
@@ -76,6 +80,9 @@ vi.mock("../../inbox/activity-hooks", () => ({
 vi.mock("@repo/logs", () => ({
 	logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), log: vi.fn() },
 }));
+vi.mock("../../moderation/screen-auto", () => ({ screenAuto: mockScreenAuto }));
+vi.mock("../../moderation/record-auto-block", () => ({ recordAutoBlock: mockRecordAutoBlock }));
+vi.mock("../../moderation/escalate-member", () => ({ maybeEscalateMember: vi.fn() }));
 
 import { createPost } from "../procedures/create-post";
 
@@ -125,6 +132,8 @@ beforeEach(() => {
 	mockCreatePost.mockResolvedValue({ ok: true, data: { circlePostId: "cp1", status: "published" } });
 	mockCreateCommunityPost.mockResolvedValue({ id: "row1" });
 	mockOnMemberPostCreated.mockResolvedValue(undefined);
+	mockScreenAuto.mockResolvedValue({ allowed: true });
+	mockRecordAutoBlock.mockResolvedValue(undefined);
 });
 
 describe("community.createPost", () => {
@@ -221,6 +230,51 @@ describe("community.createPost", () => {
 		expect(mockCreateModerationFlag).toHaveBeenCalledWith(
 			expect.objectContaining({ source: "blocked", surface: "post" }),
 		);
+	});
+
+	it("blocks when auto-moderation trips, records it, and never joins, rate-limits or posts", async () => {
+		mockScreenAuto.mockResolvedValue({ allowed: false, categories: ["hate"], scores: { hate: 0.97 } });
+		mockGetMemberSpacesCached.mockReturnValue([
+			{ ...SPACES[0], canCreatePost: false, isMember: false, isPostDisabled: true },
+		]);
+
+		const result = await call(createPost, baseInput, ctx);
+
+		expect(result).toEqual({ ok: false, reason: "blocked" });
+		expect(mockScreenAuto).toHaveBeenCalledWith(`${baseInput.title}\n${baseInput.body}`, {
+			organizationId: "org1",
+			memberId: "m1",
+			surface: "post",
+		});
+		expect(mockRecordAutoBlock).toHaveBeenCalledWith({
+			organizationId: "org1",
+			memberId: "m1",
+			surface: "post",
+			text: `${baseInput.title}\n${baseInput.body}`,
+			categories: ["hate"],
+			scores: { hate: 0.97 },
+			targetSpaceId: SPACE_ID,
+		});
+		expect(mockAddSpaceMember).not.toHaveBeenCalled();
+		expect(mockCountRecentCommunityPosts).not.toHaveBeenCalled();
+		expect(mockCreatePost).not.toHaveBeenCalled();
+	});
+
+	it("skips auto-moderation when features.autoModeration is false", async () => {
+		mockOrgFindUnique.mockResolvedValue({
+			id: "org1",
+			slug: "org-slug",
+			metadata: JSON.stringify({ circle: { spaces: { [SPACE_ID]: { memberPosting: true } } }, features: { autoModeration: false } }),
+		});
+		const result = await call(createPost, baseInput, ctx);
+		expect(mockScreenAuto).not.toHaveBeenCalled();
+		expect(result).toMatchObject({ ok: true });
+	});
+
+	it("does not call auto-moderation when the word gate already blocked", async () => {
+		const result = await call(createPost, { ...baseInput, title: "fuck this" }, ctx);
+		expect(result).toEqual({ ok: false, reason: "blocked" });
+		expect(mockScreenAuto).not.toHaveBeenCalled();
 	});
 
 	it("returns rate_limited at 5 posts in the last hour", async () => {

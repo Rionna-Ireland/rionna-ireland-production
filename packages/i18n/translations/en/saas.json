@@ -447,6 +447,8 @@
 			},
 			"moderation": {
 				"title": "Moderation",
+				"autoModeration": "Auto-moderation",
+				"autoModerationHint": "Automatically blocks hateful, threatening, sexual and self-harm posts and comments before they're published. Turn off if genuine racing posts are being blocked.",
 				"extraBlockedWords": "Extra blocked words",
 				"extraBlockedWordsPlaceholder": "One word or phrase per line",
 				"extraBlockedWordsHint": "Matched alongside the platform's base blocked-word list when members post or comment."
@@ -624,7 +626,8 @@
 			"title": "Moderation",
 			"tabs": {
 				"reported": "Reports",
-				"blocked": "Blocked"
+				"blocked": "Blocked",
+				"attention": "Needs attention"
 			},
 			"filter": {
 				"open": "Open",
@@ -641,7 +644,8 @@
 				"excerpt": "Excerpt",
 				"reason": "Reason",
 				"matchedTerms": "Matched terms",
-				"actions": "Actions"
+				"actions": "Actions",
+				"caughtBy": "Caught by"
 			},
 			"surface": {
 				"post": "Post",
@@ -660,6 +664,19 @@
 				"error": "Couldn't complete that action. Try again.",
 				"confirmDeleteTitle": "Delete this content?",
 				"confirmDelete": "This removes the post or comment from Circle and marks the report resolved. This can't be undone."
+			},
+			"source": {
+				"blocked": "Word list",
+				"auto": "Auto-moderation"
+			},
+			"attention": {
+				"intro": "Members with 3 or more posts or comments blocked in 30 days. Email the member if you want them to change how they post, then dismiss.",
+				"empty": "No members need attention.",
+				"blockedCount": "{count} blocked",
+				"emailMember": "Email member",
+				"dismiss": "Dismiss",
+				"dismissed": "Dismissed. Their count starts again from zero.",
+				"error": "Couldn't dismiss. Try again."
 			}
 		},
 		"organizations": {

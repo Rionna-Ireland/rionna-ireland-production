@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockCreateModerationFlag, mockLoggerInfo, mockLoggerWarn } = vi.hoisted(() => ({
+const { mockCreateModerationFlag, mockLoggerInfo, mockLoggerWarn, mockEscalate } = vi.hoisted(() => ({
 	mockCreateModerationFlag: vi.fn(),
 	mockLoggerInfo: vi.fn(),
 	mockLoggerWarn: vi.fn(),
+	mockEscalate: vi.fn(),
 }));
 
 // Mock @repo/database wholesale (no importActual) — the real module needs DATABASE_URL.
@@ -13,11 +14,13 @@ vi.mock("@repo/database", () => ({
 vi.mock("@repo/logs", () => ({
 	logger: { info: mockLoggerInfo, warn: mockLoggerWarn, error: vi.fn(), log: vi.fn() },
 }));
+vi.mock("../escalate-member", () => ({ maybeEscalateMember: mockEscalate }));
 
 import { recordBlock } from "../record-block";
 
 beforeEach(() => {
 	vi.clearAllMocks();
+	mockEscalate.mockResolvedValue(undefined);
 });
 
 describe("recordBlock", () => {
@@ -78,5 +81,11 @@ describe("recordBlock", () => {
 			organizationId: "org1",
 			error: "Error: db down",
 		});
+	});
+
+	it("escalates the member after recording (S12-08)", async () => {
+		mockCreateModerationFlag.mockResolvedValue({ id: "flag3" });
+		await recordBlock({ organizationId: "org1", memberId: "m1", surface: "post", text: "shit", matches: ["shit"] });
+		expect(mockEscalate).toHaveBeenCalledWith({ organizationId: "org1", memberId: "m1" });
 	});
 });

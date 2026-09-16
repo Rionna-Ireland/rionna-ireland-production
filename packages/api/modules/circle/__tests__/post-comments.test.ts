@@ -10,6 +10,8 @@ const {
 	mockCreateModerationFlag,
 	mockParseOrgMetadata,
 	mockOnPostCommented,
+	mockScreenAuto,
+	mockRecordAutoBlock,
 } = vi.hoisted(() => ({
 	mockGetSession: vi.fn(),
 	mockOrgFindUnique: vi.fn(),
@@ -19,6 +21,8 @@ const {
 	mockCreateModerationFlag: vi.fn(),
 	mockParseOrgMetadata: vi.fn((raw: string | null) => (raw ? JSON.parse(raw) : {})),
 	mockOnPostCommented: vi.fn(),
+	mockScreenAuto: vi.fn(),
+	mockRecordAutoBlock: vi.fn(),
 }));
 
 vi.mock("@repo/auth", () => ({
@@ -50,6 +54,10 @@ vi.mock("../lib/member-feed-cache", () => ({
 vi.mock("../../inbox/activity-hooks", () => ({
 	onPostCommented: mockOnPostCommented,
 }));
+
+vi.mock("../../moderation/screen-auto", () => ({ screenAuto: mockScreenAuto }));
+vi.mock("../../moderation/record-auto-block", () => ({ recordAutoBlock: mockRecordAutoBlock }));
+vi.mock("../../moderation/escalate-member", () => ({ maybeEscalateMember: vi.fn() }));
 
 import { addPostComment } from "../procedures/add-post-comment";
 import { deletePostComment } from "../procedures/delete-post-comment";
@@ -87,6 +95,8 @@ beforeEach(() => {
 	mockGetMemberToken.mockResolvedValue({ ok: true, data: { accessToken: "jwt" } });
 	mockCreateModerationFlag.mockResolvedValue({ id: "flag1" });
 	mockOnPostCommented.mockResolvedValue(undefined);
+	mockScreenAuto.mockResolvedValue({ allowed: true });
+	mockRecordAutoBlock.mockResolvedValue(undefined);
 });
 
 describe("getPostComments", () => {
@@ -302,6 +312,43 @@ describe("addPostComment", () => {
 				targetPostId: "34775788",
 			}),
 		);
+	});
+
+	it("blocks a comment when auto-moderation trips, before any Circle call, and records it", async () => {
+		// arrange: same org + member mocks as the blocked-word test above
+		mockScreenAuto.mockResolvedValue({ allowed: false, categories: ["harassment"], scores: { harassment: 0.96 } });
+
+		const res = await call(addPostComment, { organizationId: ORG_ID, postId: "p1", body: "you are pathetic" }, ctx);
+
+		expect(res).toEqual({ ok: false, blocked: true, comment: null });
+		expect(mockScreenAuto).toHaveBeenCalledWith("you are pathetic", { organizationId: ORG_ID, memberId: expect.any(String), surface: "comment" });
+		expect(mockRecordAutoBlock).toHaveBeenCalledWith(expect.objectContaining({
+			organizationId: ORG_ID,
+			surface: "comment",
+			text: "you are pathetic",
+			categories: ["harassment"],
+			scores: { harassment: 0.96 },
+			targetPostId: "p1",
+		}));
+		expect(mockGetMemberToken).not.toHaveBeenCalled();
+	});
+
+	it("skips auto-moderation for comments when features.autoModeration is false", async () => {
+		// arrange: same org + member mocks as the blocked-word test, but org metadata
+		// JSON.stringify({ features: { autoModeration: false } }); then the same
+		// token/fetch arrangement as this file's successful-comment test.
+		mockOrgFindUnique.mockResolvedValue({
+			id: ORG_ID,
+			slug: "rionna",
+			metadata: JSON.stringify({ features: { autoModeration: false } }),
+		});
+		const fetchSpy = vi.fn(async (_url: unknown, _init?: unknown) =>
+			jsonResponse(201, commentRecord(9003)),
+		);
+		vi.stubGlobal("fetch", fetchSpy);
+
+		await call(addPostComment, { organizationId: ORG_ID, postId: "p1", body: "lovely run" }, ctx);
+		expect(mockScreenAuto).not.toHaveBeenCalled();
 	});
 });
 

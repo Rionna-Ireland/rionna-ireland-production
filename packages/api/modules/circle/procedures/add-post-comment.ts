@@ -6,7 +6,9 @@ import { z } from "zod";
 
 import { protectedProcedure } from "../../../orpc/procedures";
 import { onPostCommented } from "../../inbox/activity-hooks";
+import { recordAutoBlock } from "../../moderation/record-auto-block";
 import { recordBlock } from "../../moderation/record-block";
+import { screenAuto } from "../../moderation/screen-auto";
 import { screenText } from "../../moderation/screen-text";
 import { invalidateMemberFeedCache } from "../lib/member-feed-cache";
 import { type PostComment, toPostComment } from "../lib/parse-comment";
@@ -15,7 +17,7 @@ import { objectValue } from "../lib/parse-post";
 export interface AddPostCommentResult {
 	ok: boolean;
 	comment: PostComment | null;
-	/** Set when the S9-03 bad-word gate rejected the comment before it reached Circle. */
+	/** Set when the word gate or auto-moderation rejected the comment before it reached Circle. */
 	blocked?: true;
 }
 
@@ -70,6 +72,23 @@ export const addPostComment = protectedProcedure
 				targetPostId: input.postId,
 			});
 			return { ok: false, blocked: true, comment: null };
+		}
+
+		// S12-08 auto-moderation — fails open inside screenAuto.
+		if (metadata.features?.autoModeration !== false) {
+			const auto = await screenAuto(input.body, { organizationId: input.organizationId, memberId: member.id, surface: "comment" });
+			if (!auto.allowed) {
+				void recordAutoBlock({
+					organizationId: input.organizationId,
+					memberId: member.id,
+					surface: "comment",
+					text: input.body,
+					categories: auto.categories,
+					scores: auto.scores,
+					targetPostId: input.postId,
+				});
+				return { ok: false, blocked: true, comment: null };
+			}
 		}
 
 		const service = createCircleService(org.slug);
