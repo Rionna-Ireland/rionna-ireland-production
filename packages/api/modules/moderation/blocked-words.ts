@@ -1,4 +1,13 @@
-/** Curated slurs + hard profanity. Racing club, adult members — keep to slurs and hard profanity (NOT damn/hell/bloody). */
+/**
+ * Curated slurs, hard profanity, UK/Irish insults and abusive phrases. Racing
+ * club, adult members — keep to slurs, hard profanity, insults and abuse (NOT
+ * damn/hell/bloody). Mild banter words `feck` and `eejit` are deliberately
+ * allowed (Tom). `knacker` is deliberately NOT blocked ("knackered", "knacker's
+ * yard").
+ *
+ * Suffix-tolerant list — matched via the full suffix group in `screen-text.ts`
+ * (s|es|ed|ing|er|ers|y|ty).
+ */
 export const BASE_BLOCKED_WORDS = [
 	"cunt",
 	"fuck",
@@ -19,4 +28,85 @@ export const BASE_BLOCKED_WORDS = [
 	"slut",
 	"bullshit",
 	"motherfucker",
+	"shite",
+	"bollocks",
+	"arsehole",
+	"asshole",
+	"dickhead",
+	"knobhead",
+	"bellend",
+	"tosser",
+	"bastard",
+	"scumbag",
+	"shithead",
+	"shitbag",
+	"fuckwit",
+	"dipshit",
+	"cocksucker",
+	"thundercunt",
+	"wankstain",
+	"slapper",
+	"skank",
+	"gobshite",
+	"pikey",
+	"gyppo",
+	"gypo",
+	"minger",
+	"munter",
+	"paedo",
+	"pedo",
+	"spacker",
+	"towelhead",
+	"raghead",
+	"wetback",
+	"golliwog",
+	"poofter",
+	"shemale",
+	"batty boy",
+	"arse",
+	"crap",
+	"bugger",
+	"muppet",
+	"plonker",
+	"gombeen",
+	"bogger",
+	"pisshead",
+	"sodding",
+	"kill yourself",
+	"kill urself",
+	"kys",
+	"neck yourself",
+	"hang yourself",
+	"go die",
+	"hope you die",
+	"die in a fire",
+	"hope you get cancer",
+	"slit your wrists",
+	"drink bleach",
+	"piss off",
+] as const;
+
+/**
+ * Exact-match list — matched with the word itself or a plain plural `s` only
+ * (no full suffix tolerance), so legitimate suffixed racing forms (e.g.
+ * "pricked", "pissed down") pass. See `screen-text.ts`.
+ */
+export const EXACT_BLOCKED_WORDS = [
+	"prick",
+	"piss",
+	"sod",
+	"git",
+	"prat",
+	"spaz",
+	"mong",
+	"gook",
+	"wog",
+	"coon",
+	"spic",
+	"sambo",
+	"polack",
+	"yid",
+	"poof",
+	"langer",
+	"nonce",
 ] as const;
