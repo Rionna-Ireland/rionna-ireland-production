@@ -1,4 +1,4 @@
-import { BASE_BLOCKED_WORDS } from "./blocked-words";
+import { BASE_BLOCKED_WORDS, EXACT_BLOCKED_WORDS } from "./blocked-words";
 
 export interface ScreenResult {
 	allowed: boolean;
@@ -29,18 +29,25 @@ export function normalize(input: string): string {
 	return s;
 }
 
-function toPhraseRegex(term: string): RegExp {
+function toPhraseRegex(term: string, exact = false): RegExp {
 	const escaped = normalize(term)
 		.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 		.replace(/\s+/g, "\\s+");
-	return new RegExp(`(^|[^a-z])${escaped}(?:s|es|ed|ing|er|ers|y|ty)?(?=$|[^a-z])`, "i");
+	const suffixGroup = exact ? "(?:s)?" : "(?:s|es|ed|ing|er|ers|y|ty)?";
+	return new RegExp(`(^|[^a-z])${escaped}${suffixGroup}(?=$|[^a-z])`, "i");
 }
 
 export function screenText(text: string, extraBlockedWords: string[] = []): ScreenResult {
 	if (!text.trim()) return { allowed: true, matches: [] };
 	const norm = normalize(text);
 	const matches = new Set<string>();
-	for (const term of [...BASE_BLOCKED_WORDS, ...extraBlockedWords]) {
+	for (const term of BASE_BLOCKED_WORDS) {
+		if (term.trim() && toPhraseRegex(term).test(norm)) matches.add(term.toLowerCase());
+	}
+	for (const term of EXACT_BLOCKED_WORDS) {
+		if (term.trim() && toPhraseRegex(term, true).test(norm)) matches.add(term.toLowerCase());
+	}
+	for (const term of extraBlockedWords) {
 		if (term.trim() && toPhraseRegex(term).test(norm)) matches.add(term.toLowerCase());
 	}
 	const result = [...matches];

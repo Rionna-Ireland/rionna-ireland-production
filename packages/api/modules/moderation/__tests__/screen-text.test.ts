@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
+import { BASE_BLOCKED_WORDS, EXACT_BLOCKED_WORDS } from "../blocked-words";
 import { screenText } from "../screen-text";
+import { LEGIT_RACING_LINES } from "./fixtures/legit-racing-lines";
 
 describe("screenText", () => {
 	it.each([
@@ -37,4 +39,41 @@ describe("screenText", () => {
 		expect(screenText("bring the brown envelope", ["brown envelope"]).allowed).toBe(false);
 	});
 	it("ignores case and diacritics", () => expect(screenText("CÜNT").allowed).toBe(false));
+
+	describe("expanded UK/Irish word list", () => {
+		it.each(BASE_BLOCKED_WORDS)("blocks base term %j in a simple sentence", (term) => {
+			const r = screenText(`you absolute ${term}`);
+			expect(r.allowed).toBe(false);
+			expect(r.matches).toContain(term.toLowerCase());
+		});
+
+		it.each(EXACT_BLOCKED_WORDS)("blocks exact term %j in a simple sentence", (term) => {
+			const r = screenText(`you absolute ${term}`);
+			expect(r.allowed).toBe(false);
+			expect(r.matches).toContain(term.toLowerCase());
+		});
+
+		it.each(["pr1ck", "d.i.c.k.h.e.a.d", "DICKHEAD", "gobsh1te", "k y s"])(
+			"blocks disguised form %j",
+			(s) => {
+				expect(screenText(s).allowed).toBe(false);
+			},
+		);
+
+		it.each([
+			"dickheads",
+			"bastards",
+			"scumbags",
+			"pricks",
+			"nonces",
+			"bollocksed",
+			"buggered",
+		])("blocks suffixed form %j", (s) => {
+			expect(screenText(s).allowed).toBe(false);
+		});
+
+		it.each(LEGIT_RACING_LINES)("allows legit racing line %#: %j", (line) => {
+			expect(screenText(line).allowed).toBe(true);
+		});
+	});
 });
