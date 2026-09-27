@@ -7,10 +7,11 @@ import { Button } from "@repo/ui/components/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@repo/ui/components/card";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useQuery } from "@tanstack/react-query";
-import { ExternalLinkIcon } from "lucide-react";
+import { DownloadIcon, ExternalLinkIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
+import { ExportHriDialog } from "./ExportHriDialog";
 import { RemoveMemberDialog } from "./RemoveMemberDialog";
 
 type BadgeStatus = "success" | "info" | "warning" | "error" | undefined;
@@ -42,7 +43,7 @@ function roleBadge(role: string): BadgeStatus {
 	return undefined;
 }
 
-export function MembersRoster() {
+export function MembersRoster({ openHriExport = false }: { openHriExport?: boolean }) {
 	const t = useTranslations();
 	const { user } = useSession();
 	const { organizationId: orgId, organization } = useAdminOrganization();
@@ -54,6 +55,9 @@ export function MembersRoster() {
 
 	const [removeTarget, setRemoveTarget] = useState<RemoveTarget | null>(null);
 
+	// S12-10: `/admin/members?export=hri` deep-links straight into the export dialog.
+	const [exportOpen, setExportOpen] = useState(openHriExport);
+
 	const { data, isLoading } = useQuery({
 		...orpc.members.admin.roster.queryOptions({ input: { organizationId } }),
 		enabled: !!organizationId,
@@ -62,9 +66,20 @@ export function MembersRoster() {
 
 	return (
 		<Card>
-			<CardHeader>
-				<CardTitle>{t("admin.members.title")}</CardTitle>
-				<p className="text-sm text-muted-foreground">{t("admin.members.subtitle")}</p>
+			<CardHeader className="gap-4 flex flex-row flex-wrap items-start justify-between">
+				<div className="gap-1.5 flex flex-col">
+					<CardTitle>{t("admin.members.title")}</CardTitle>
+					<p className="text-sm text-muted-foreground">{t("admin.members.subtitle")}</p>
+				</div>
+				<Button
+					variant="outline"
+					size="sm"
+					onClick={() => setExportOpen(true)}
+					disabled={!organizationId}
+				>
+					<DownloadIcon className="mr-1.5 size-4" />
+					{t("admin.members.hriExport.action")}
+				</Button>
 			</CardHeader>
 			<CardContent>
 				{isLoading ? (
@@ -162,6 +177,14 @@ export function MembersRoster() {
 					</div>
 				)}
 			</CardContent>
+
+			{organizationId && (
+				<ExportHriDialog
+					organizationId={organizationId}
+					open={exportOpen}
+					onOpenChange={setExportOpen}
+				/>
+			)}
 
 			{removeTarget && (
 				<RemoveMemberDialog
