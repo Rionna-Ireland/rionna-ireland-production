@@ -63,6 +63,8 @@ const legalPages = defineCollection({
 	include: "**/*.{mdx,md}",
 	schema: z.object({
 		title: z.string(),
+		/** S12-10: legal copy version (terms.md must match CURRENT_TERMS_VERSION). */
+		version: z.string().optional(),
 		content: z.string(),
 	}),
 	transform: async (document, context) => {

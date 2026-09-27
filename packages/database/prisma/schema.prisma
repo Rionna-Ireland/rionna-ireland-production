@@ -44,9 +44,9 @@ model User {
   notificationPreferences  UserNotificationPreference[]
 
   // Notification preferences (S1-02)
-  pushEnabled         Boolean       @default(true)
-  pushPreferences     Json          @default("{}")
-  emailPreferences    Json          @default("{}")
+  pushEnabled         Boolean           @default(true)
+  pushPreferences     Json              @default("{}")
+  emailPreferences    Json              @default("{}")
   pushTokens          PushToken[]
   authoredNewsPosts   NewsPost[]
   authoredMemberPosts MemberPost[]
@@ -54,6 +54,7 @@ model User {
   polls               Poll[]
   pollVotes           PollVote[]
   inboxItems          InboxItem[]
+  legalAcceptances    LegalAcceptance[]
 
   @@unique([email])
   @@unique([username])
@@ -174,6 +175,10 @@ model Organization {
   polls          Poll[]
   partnerOffers  PartnerOffer[]
   charityConfigs CharityConfig[]
+
+  // Pre-launch waitlist (S12-09) + legal acceptance evidence (S12-10)
+  waitlistSignups  WaitlistSignup[]
+  legalAcceptances LegalAcceptance[]
 
   @@unique([slug])
   @@map("organization")
@@ -876,4 +881,54 @@ model ModerationFlag {
 
   @@index([organizationId, source, status, createdAt])
   @@map("moderation_flag")
+}
+
+/// S12-09 pre-launch waitlist. Single opt-in (ticked consent box); nothing is
+/// emailed until launch. No IP / user agent is stored (data minimisation).
+model WaitlistSignup {
+  id                String       @id @default(cuid())
+  organizationId    String
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  /// Lower-cased + trimmed.
+  email             String
+  firstName         String
+  lastName          String
+  /// "subscribed" | "unsubscribed"
+  status            String       @default("subscribed")
+  /// `?src=` tag, e.g. "race-day", "press".
+  source            String?
+  /// Version of the consent sentence shown (WAITLIST_CONSENT_VERSION).
+  consentVersion    String
+  consentedAt       DateTime
+  /// Random, never expires. Used by the one-click unsubscribe link.
+  unsubscribeToken  String       @unique
+  unsubscribedAt    DateTime?
+  /// Phase 2 launch-send idempotency.
+  launchEmailSentAt DateTime?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  @@unique([organizationId, email])
+  @@map("waitlist_signup")
+}
+
+/// S12-10 evidence that a user accepted a specific version of a legal document.
+/// Append-only: a new row per (re-)acceptance; never updated or deleted except
+/// via user deletion (cascade).
+model LegalAcceptance {
+  id             String       @id @default(cuid())
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  /// "terms" only for now; kept as a column so "privacy" can be added without a migration.
+  document       String
+  /// e.g. "2026-09-27"; matches the `version` frontmatter in content/legal/terms.md.
+  version        String
+  /// "web_signup" | "web_prompt" | "mobile_prompt"
+  source         String
+  acceptedAt     DateTime     @default(now())
+
+  @@index([organizationId, document, userId, acceptedAt])
+  @@map("legal_acceptance")
 }

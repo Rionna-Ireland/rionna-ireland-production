@@ -209,6 +209,18 @@ export const ModerationFlagScalarFieldEnumSchema = z.enum(['id', 'organizationId
 
 export type ModerationFlagScalarFieldEnum = z.infer<typeof ModerationFlagScalarFieldEnumSchema>;
 
+// File: WaitlistSignupScalarFieldEnum.schema.ts
+
+export const WaitlistSignupScalarFieldEnumSchema = z.enum(['id', 'organizationId', 'email', 'firstName', 'lastName', 'status', 'source', 'consentVersion', 'consentedAt', 'unsubscribeToken', 'unsubscribedAt', 'launchEmailSentAt', 'createdAt', 'updatedAt'])
+
+export type WaitlistSignupScalarFieldEnum = z.infer<typeof WaitlistSignupScalarFieldEnumSchema>;
+
+// File: LegalAcceptanceScalarFieldEnum.schema.ts
+
+export const LegalAcceptanceScalarFieldEnumSchema = z.enum(['id', 'userId', 'organizationId', 'document', 'version', 'source', 'acceptedAt'])
+
+export type LegalAcceptanceScalarFieldEnum = z.infer<typeof LegalAcceptanceScalarFieldEnumSchema>;
+
 // File: SortOrder.schema.ts
 
 export const SortOrderSchema = z.enum(['asc', 'desc'])
@@ -923,4 +935,41 @@ export const ModerationFlagSchema = z.object({
 });
 
 export type ModerationFlagType = z.infer<typeof ModerationFlagSchema>;
+
+
+// File: WaitlistSignup.schema.ts
+
+export const WaitlistSignupSchema = z.object({
+  id: z.string(),
+  organizationId: z.string(),
+  email: z.string(),
+  firstName: z.string(),
+  lastName: z.string(),
+  status: z.string().default("subscribed"),
+  source: z.string().nullish(),
+  consentVersion: z.string(),
+  consentedAt: z.date(),
+  unsubscribeToken: z.string(),
+  unsubscribedAt: z.date().nullish(),
+  launchEmailSentAt: z.date().nullish(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
+export type WaitlistSignupType = z.infer<typeof WaitlistSignupSchema>;
+
+
+// File: LegalAcceptance.schema.ts
+
+export const LegalAcceptanceSchema = z.object({
+  id: z.string(),
+  userId: z.string(),
+  organizationId: z.string(),
+  document: z.string(),
+  version: z.string(),
+  source: z.string(),
+  acceptedAt: z.date(),
+});
+
+export type LegalAcceptanceType = z.infer<typeof LegalAcceptanceSchema>;
 
