@@ -71,8 +71,9 @@ export const createCheckoutLink = protectedProcedure
 			}
 
 			// S12-10 A3: nobody becomes a member without accepting the current terms,
-			// whether signup is open or closed.
-			if (!(await hasAcceptedCurrentTerms({ userId: user.id, organizationId }))) {
+			// whether signup is open or closed. Same check as the /accept-terms gate
+			// (org-agnostic, D37), so the two can never disagree.
+			if (!(await hasAcceptedCurrentTerms({ userId: user.id }))) {
 				throw new ORPCError("PRECONDITION_FAILED", {
 					message: "Please accept the current Terms & Conditions before subscribing.",
 				});

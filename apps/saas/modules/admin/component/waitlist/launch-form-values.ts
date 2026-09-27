@@ -1,5 +1,13 @@
 import { z } from "zod";
 
+/**
+ * Per-run send limits; mirror DEFAULT_LAUNCH_PER_RUN / MAX_LAUNCH_PER_RUN in
+ * packages/api/modules/waitlist/procedures/send-launch.ts (a run must finish
+ * inside the 60 s API route).
+ */
+export const DEFAULT_LAUNCH_PER_RUN = 500;
+export const MAX_LAUNCH_PER_RUN = 2000;
+
 /** Typed confirmation gate for the real launch send. */
 export const LAUNCH_CONFIRM_WORD = "SEND";
 
@@ -8,8 +16,14 @@ export const launchFormSchema = z.object({
 	heading: z.string().trim().min(1).max(200),
 	body: z.string().trim().min(1).max(10_000),
 	ctaUrl: z.union([z.literal(""), z.string().trim().url()]),
-	/** Empty = send to everyone pending. */
-	maxToSend: z.union([z.literal(""), z.string().regex(/^[1-9]\d*$/)]),
+	/** Empty = DEFAULT_LAUNCH_PER_RUN. */
+	maxToSend: z.union([
+		z.literal(""),
+		z
+			.string()
+			.regex(/^[1-9]\d*$/)
+			.refine((value) => Number(value) <= MAX_LAUNCH_PER_RUN),
+	]),
 });
 
 export type LaunchFormValues = z.infer<typeof launchFormSchema>;
@@ -33,11 +47,12 @@ export function toLaunchContent(values: LaunchFormValues) {
 	};
 }
 
-export function toMaxToSend(values: LaunchFormValues): number | undefined {
-	return values.maxToSend ? Number(values.maxToSend) : undefined;
+/** The per-run cap sent to the server; blank means DEFAULT_LAUNCH_PER_RUN. */
+export function toMaxToSend(values: LaunchFormValues): number {
+	return values.maxToSend ? Number(values.maxToSend) : DEFAULT_LAUNCH_PER_RUN;
 }
 
 /** How many people the real send reaches right now. */
-export function recipientsForRun(pending: number, maxToSend: number | undefined): number {
-	return maxToSend === undefined ? pending : Math.min(pending, maxToSend);
+export function recipientsForRun(pending: number, maxToSend: number): number {
+	return Math.min(pending, maxToSend);
 }

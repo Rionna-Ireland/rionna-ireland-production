@@ -7,7 +7,7 @@ import { adminProcedure } from "../../../orpc/procedures";
 /**
  * S12-09 §6: waitlist counts for `/admin/waitlist` — subscribed/unsubscribed,
  * a breakdown by `?src=` source, and how many subscribers the launch email
- * would still reach (status subscribed, not yet sent).
+ * would still reach (status subscribed, not yet sent) vs. has already reached.
  */
 export const getWaitlistStats = adminProcedure
 	.route({
@@ -22,7 +22,7 @@ export const getWaitlistStats = adminProcedure
 			throw new ORPCError("FORBIDDEN");
 		}
 
-		const [groups, launchPending] = await Promise.all([
+		const [groups, launchPending, launchSent] = await Promise.all([
 			db.waitlistSignup.groupBy({
 				by: ["status", "source"],
 				where: { organizationId },
@@ -30,6 +30,10 @@ export const getWaitlistStats = adminProcedure
 			}),
 			db.waitlistSignup.count({
 				where: { organizationId, status: "subscribed", launchEmailSentAt: null },
+			}),
+			// Everyone stamped, including people who unsubscribed after the send.
+			db.waitlistSignup.count({
+				where: { organizationId, launchEmailSentAt: { not: null } },
 			}),
 		]);
 
@@ -53,7 +57,7 @@ export const getWaitlistStats = adminProcedure
 			subscribed,
 			unsubscribed,
 			launchPending,
-			launchSent: subscribed - launchPending,
+			launchSent,
 			bySource: [...bySource.entries()]
 				.map(([source, counts]) => ({ source, ...counts }))
 				.sort((a, b) => b.subscribed - a.subscribed),

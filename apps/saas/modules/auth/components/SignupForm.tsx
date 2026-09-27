@@ -101,6 +101,10 @@ export function SignupForm({ prefillEmail }: { prefillEmail?: string }) {
 				return;
 			}
 
+			// Dormant while email verification is required: sign-up returns no
+			// token, so we return above and never get here. Acceptance is then
+			// captured by the /accept-terms gate as `web_prompt` after verifying.
+			// Kept for when sign-up signs the user straight in.
 			try {
 				await orpcClient.legal.accept({
 					version: CURRENT_TERMS_VERSION,

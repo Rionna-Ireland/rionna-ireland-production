@@ -31,10 +31,12 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 
 import {
+	DEFAULT_LAUNCH_PER_RUN,
 	EMPTY_LAUNCH_FORM,
 	LAUNCH_CONFIRM_WORD,
 	type LaunchFormValues,
 	launchFormSchema,
+	MAX_LAUNCH_PER_RUN,
 	recipientsForRun,
 	toLaunchContent,
 	toMaxToSend,
@@ -48,8 +50,9 @@ interface LaunchEmailPanelProps {
 
 /**
  * S12-09 Phase 2: compose the launch email, send a test to yourself, then do
- * the real send behind a typed confirmation. Re-running resumes where the
- * last run stopped (server stamps `launchEmailSentAt` per sent chunk).
+ * the real send behind a typed confirmation. Each run sends at most
+ * `maxToSend` (default DEFAULT_LAUNCH_PER_RUN); re-running resumes where the
+ * last run stopped (server claims `launchEmailSentAt` per chunk).
  */
 export function LaunchEmailPanel({ organizationId, pending }: LaunchEmailPanelProps) {
 	const t = useTranslations();
@@ -87,7 +90,7 @@ export function LaunchEmailPanel({ organizationId, pending }: LaunchEmailPanelPr
 		const values = form.getValues();
 		const maxToSend = toMaxToSend(values);
 		sendMutation.mutate(
-			{ organizationId, ...toLaunchContent(values), ...(maxToSend ? { maxToSend } : {}) },
+			{ organizationId, ...toLaunchContent(values), maxToSend },
 			{
 				onSuccess: async (data) => {
 					setConfirmOpen(false);
@@ -186,10 +189,17 @@ export function LaunchEmailPanel({ organizationId, pending }: LaunchEmailPanelPr
 											{t("admin.waitlist.launch.maxToSend")}
 										</FormLabel>
 										<FormControl>
-											<Input inputMode="numeric" {...field} />
+											<Input
+												inputMode="numeric"
+												placeholder={String(DEFAULT_LAUNCH_PER_RUN)}
+												{...field}
+											/>
 										</FormControl>
 										<FormDescription>
-											{t("admin.waitlist.launch.maxToSendHint")}
+											{t("admin.waitlist.launch.maxToSendHint", {
+												defaultCount: DEFAULT_LAUNCH_PER_RUN,
+												max: MAX_LAUNCH_PER_RUN,
+											})}
 										</FormDescription>
 										<FormMessage />
 									</FormItem>

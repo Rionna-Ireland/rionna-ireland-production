@@ -35,10 +35,7 @@ export default async function AcceptTermsPage({
 	const { redirectTo } = await searchParams;
 	const destination = safeRedirectPath(Array.isArray(redirectTo) ? redirectTo[0] : redirectTo);
 
-	const { needsAcceptance } = await getTermsStatus({
-		userId: session.user.id,
-		activeOrganizationId: session.session.activeOrganizationId,
-	});
+	const { needsAcceptance } = await getTermsStatus({ userId: session.user.id });
 
 	if (!needsAcceptance) {
 		redirect(destination);

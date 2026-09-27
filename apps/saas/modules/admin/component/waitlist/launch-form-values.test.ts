@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
+	DEFAULT_LAUNCH_PER_RUN,
 	EMPTY_LAUNCH_FORM,
 	launchFormSchema,
+	MAX_LAUNCH_PER_RUN,
 	recipientsForRun,
 	toLaunchContent,
 	toMaxToSend,
@@ -20,9 +22,16 @@ describe("launch form values", () => {
 		expect(launchFormSchema.safeParse(VALID).success).toBe(true);
 	});
 
-	it("rejects a malformed CTA URL and a non-positive max", () => {
+	it("rejects a malformed CTA URL and a max outside 1..MAX_LAUNCH_PER_RUN", () => {
 		expect(launchFormSchema.safeParse({ ...VALID, ctaUrl: "not a url" }).success).toBe(false);
 		expect(launchFormSchema.safeParse({ ...VALID, maxToSend: "0" }).success).toBe(false);
+		expect(
+			launchFormSchema.safeParse({ ...VALID, maxToSend: String(MAX_LAUNCH_PER_RUN) }).success,
+		).toBe(true);
+		expect(
+			launchFormSchema.safeParse({ ...VALID, maxToSend: String(MAX_LAUNCH_PER_RUN + 1) })
+				.success,
+		).toBe(false);
 	});
 
 	it("omits a blank ctaUrl and trims content", () => {
@@ -36,10 +45,10 @@ describe("launch form values", () => {
 		);
 	});
 
-	it("maps maxToSend and caps the recipient count", () => {
-		expect(toMaxToSend(VALID)).toBeUndefined();
+	it("maps maxToSend (blank = default per-run cap) and caps the recipient count", () => {
+		expect(toMaxToSend(VALID)).toBe(DEFAULT_LAUNCH_PER_RUN);
 		expect(toMaxToSend({ ...VALID, maxToSend: "50" })).toBe(50);
-		expect(recipientsForRun(120, undefined)).toBe(120);
+		expect(recipientsForRun(1200, toMaxToSend(VALID))).toBe(DEFAULT_LAUNCH_PER_RUN);
 		expect(recipientsForRun(120, 50)).toBe(50);
 		expect(recipientsForRun(20, 50)).toBe(20);
 	});

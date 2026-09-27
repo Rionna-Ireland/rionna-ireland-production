@@ -48,16 +48,24 @@ export async function resolveLegalOrganizationId({
 	return club?.id ?? null;
 }
 
-/** Latest terms version the user accepted for the org, or null. */
+/*
+ * Checking acceptance is deliberately org-agnostic: Rionna is a single club
+ * (D37), and the `/accept-terms` gate (getTermsStatus), `legal.accept`
+ * idempotency and the checkout guard (hasAcceptedCurrentTerms) must never
+ * disagree. They all read the same thing — the user's latest terms
+ * acceptance, whichever org row it was recorded against — so a user who
+ * passed the gate can always check out, and vice versa. The org is still
+ * resolved (resolveLegalOrganizationId) when *recording* an acceptance.
+ */
+
+/** Latest terms version the user accepted (any org, see above), or null. */
 export async function getAcceptedTermsVersion({
 	userId,
-	organizationId,
 }: {
 	userId: string;
-	organizationId: string;
 }): Promise<string | null> {
 	const latest = await db.legalAcceptance.findFirst({
-		where: { userId, organizationId, document: TERMS_DOCUMENT },
+		where: { userId, document: TERMS_DOCUMENT },
 		orderBy: { acceptedAt: "desc" },
 		select: { version: true },
 	});
@@ -65,17 +73,8 @@ export async function getAcceptedTermsVersion({
 	return latest?.version ?? null;
 }
 
-export async function getTermsStatus({
-	userId,
-	activeOrganizationId,
-}: {
-	userId: string;
-	activeOrganizationId?: string | null;
-}): Promise<TermsStatus> {
-	const organizationId = await resolveLegalOrganizationId({ userId, activeOrganizationId });
-	const acceptedVersion = organizationId
-		? await getAcceptedTermsVersion({ userId, organizationId })
-		: null;
+export async function getTermsStatus({ userId }: { userId: string }): Promise<TermsStatus> {
+	const acceptedVersion = await getAcceptedTermsVersion({ userId });
 
 	return {
 		currentVersion: CURRENT_TERMS_VERSION,
@@ -85,26 +84,10 @@ export async function getTermsStatus({
 }
 
 /**
- * True when the user has a LegalAcceptance row for the CURRENT terms version —
- * scoped to `organizationId` when given (the org being checked out). Used by
- * the checkout guard.
+ * True when the user's latest acceptance is the CURRENT terms version — the
+ * exact inverse of `getTermsStatus().needsAcceptance`. Used by the checkout
+ * guard.
  */
-export async function hasAcceptedCurrentTerms({
-	userId,
-	organizationId,
-}: {
-	userId: string;
-	organizationId?: string | null;
-}): Promise<boolean> {
-	const row = await db.legalAcceptance.findFirst({
-		where: {
-			userId,
-			document: TERMS_DOCUMENT,
-			version: CURRENT_TERMS_VERSION,
-			...(organizationId ? { organizationId } : {}),
-		},
-		select: { id: true },
-	});
-
-	return row !== null;
+export async function hasAcceptedCurrentTerms({ userId }: { userId: string }): Promise<boolean> {
+	return (await getTermsStatus({ userId })).needsAcceptance === false;
 }

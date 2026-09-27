@@ -12,9 +12,6 @@ export const getLegalStatus = protectedProcedure
 		tags: ["Legal"],
 		summary: "Get the caller's Terms & Conditions acceptance status",
 	})
-	.handler(async ({ context: { session, user } }) => {
-		return await getTermsStatus({
-			userId: user.id,
-			activeOrganizationId: session.activeOrganizationId,
-		});
+	.handler(async ({ context: { user } }) => {
+		return await getTermsStatus({ userId: user.id });
 	});

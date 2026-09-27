@@ -13,14 +13,29 @@ function pendingWhere(organizationId: string) {
 }
 
 /**
+ * Recipients per run when the admin gives no `maxToSend`. Sized so a run
+ * finishes well inside the 60 s API route limit; `MAX_LAUNCH_PER_RUN` caps an
+ * explicit value for the same reason. Keep in sync with the admin form
+ * (`launch-form-values.ts`).
+ */
+export const DEFAULT_LAUNCH_PER_RUN = 500;
+export const MAX_LAUNCH_PER_RUN = 2000;
+
+/**
  * S12-09 Phase 2: send the launch email to the waitlist.
  *
  * Renders WaitlistLaunch per recipient (first-name greeting + their own
  * unsubscribe link and RFC 8058 headers) and sends in chunks of
- * MAX_BATCH_SIZE, following send-news-notification.ts. `launchEmailSentAt` is
- * stamped only for chunks the provider accepted, so a failed chunk stays
- * pending and a re-run resumes where it stopped without double-sending.
- * `maxToSend` spreads a list larger than the Resend daily cap over days.
+ * MAX_BATCH_SIZE, following send-news-notification.ts.
+ *
+ * Concurrency-safe via claim-before-send: each chunk is first claimed by
+ * stamping `launchEmailSentAt` on rows that are still pending
+ * (`updateManyAndReturn`, a single conditional UPDATE … RETURNING), and only
+ * the rows this run actually claimed are sent. A concurrent run (double
+ * click, second admin tab) finds those rows already stamped and skips them.
+ * If the provider rejects a chunk, its claim is released so a re-run resumes.
+ * Each run sends at most `maxToSend` (default DEFAULT_LAUNCH_PER_RUN), which
+ * also spreads a big list over days under the Resend daily cap.
  *
  * @see Architecture/specs/S12-09-waitlist-landing.md §"Phase 2: launch send"
  */
@@ -34,7 +49,7 @@ export const sendWaitlistLaunch = adminProcedure
 	.input(
 		launchContentSchema.extend({
 			organizationId: z.string(),
-			maxToSend: z.number().int().min(1).max(100_000).optional(),
+			maxToSend: z.number().int().min(1).max(MAX_LAUNCH_PER_RUN).optional(),
 		}),
 	)
 	.handler(async ({ input: { organizationId, maxToSend, ...content }, context }) => {
@@ -42,57 +57,68 @@ export const sendWaitlistLaunch = adminProcedure
 			throw new ORPCError("FORBIDDEN");
 		}
 
-		const recipients = await db.waitlistSignup.findMany({
+		const limit = maxToSend ?? DEFAULT_LAUNCH_PER_RUN;
+		const candidates = await db.waitlistSignup.findMany({
 			where: pendingWhere(organizationId),
-			select: { id: true, email: true, firstName: true, unsubscribeToken: true },
+			select: { id: true },
 			orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-			...(maxToSend ? { take: maxToSend } : {}),
+			take: limit,
 		});
 
 		const marketingUrl = getMarketingUrl();
+		let attempted = 0;
 		let sent = 0;
 		let failedChunks = 0;
 
-		for (let start = 0; start < recipients.length; start += MAX_BATCH_SIZE) {
-			const chunk = recipients.slice(start, start + MAX_BATCH_SIZE);
+		for (let start = 0; start < candidates.length; start += MAX_BATCH_SIZE) {
+			const chunkIds = candidates.slice(start, start + MAX_BATCH_SIZE).map((row) => row.id);
+			const claimedAt = new Date();
+			// Claim first: only rows still pending are stamped, and RETURNING
+			// tells us exactly which ones this run won.
+			const claimed = await db.waitlistSignup.updateManyAndReturn({
+				where: { ...pendingWhere(organizationId), id: { in: chunkIds } },
+				data: { launchEmailSentAt: claimedAt },
+				select: { id: true, email: true, firstName: true, unsubscribeToken: true },
+			});
+			if (claimed.length === 0) continue;
+			attempted += claimed.length;
+
 			try {
 				const messages = await Promise.all(
-					chunk.map((recipient) =>
+					claimed.map((recipient) =>
 						buildLaunchEmail({ recipient, content, marketingUrl }),
 					),
 				);
 				await sendRawEmailBatch(messages);
+				sent += claimed.length;
 			} catch (error) {
-				// Leave the chunk unstamped so a re-run picks it up again.
+				// Release the claim so a re-run picks the chunk up again.
 				failedChunks += 1;
+				await db.waitlistSignup.updateMany({
+					where: {
+						id: { in: claimed.map((recipient) => recipient.id) },
+						launchEmailSentAt: claimedAt,
+					},
+					data: { launchEmailSentAt: null },
+				});
 				logger.error("Waitlist launch batch failed", {
 					event: "admin_waitlist_launch_chunk_failed",
 					organizationId,
 					chunkStart: start,
-					chunkSize: chunk.length,
+					chunkSize: claimed.length,
 					error: error instanceof Error ? error.message : String(error),
 				});
-				continue;
 			}
-
-			await db.waitlistSignup.updateMany({
-				where: {
-					id: { in: chunk.map((recipient) => recipient.id) },
-					launchEmailSentAt: null,
-				},
-				data: { launchEmailSentAt: new Date() },
-			});
-			sent += chunk.length;
 		}
 
 		const remaining = await db.waitlistSignup.count({ where: pendingWhere(organizationId) });
 
-		const result = { attempted: recipients.length, sent, failedChunks, remaining };
+		const result = { attempted, sent, failedChunks, remaining };
 		logger.info("Admin sent waitlist launch email", {
 			event: "admin_waitlist_launch_sent",
 			actorUserId: context.user.id,
 			organizationId,
-			maxToSend: maxToSend ?? null,
+			maxToSend: limit,
 			...result,
 		});
 

@@ -40,13 +40,15 @@ describe("getWaitlistStats", () => {
 		);
 	});
 
-	it("totals by status and breaks down by source", async () => {
+	it("totals by status, breaks down by source, and counts every stamped launch send", async () => {
 		mockGroupBy.mockResolvedValue([
 			{ status: "subscribed", source: "race-day", _count: { _all: 7 } },
 			{ status: "unsubscribed", source: "race-day", _count: { _all: 1 } },
 			{ status: "subscribed", source: null, _count: { _all: 3 } },
 		]);
-		mockCount.mockResolvedValue(4);
+		// pending = 4; sent = 7, which includes the one who unsubscribed after
+		// receiving the launch email (so it isn't `subscribed - pending`).
+		mockCount.mockResolvedValueOnce(4).mockResolvedValueOnce(7);
 
 		const result = await call(getWaitlistStats, { organizationId: "org1" }, ctx);
 
@@ -54,7 +56,7 @@ describe("getWaitlistStats", () => {
 			subscribed: 10,
 			unsubscribed: 1,
 			launchPending: 4,
-			launchSent: 6,
+			launchSent: 7,
 			bySource: [
 				{ source: "race-day", subscribed: 7, unsubscribed: 1 },
 				{ source: null, subscribed: 3, unsubscribed: 0 },
@@ -62,6 +64,9 @@ describe("getWaitlistStats", () => {
 		});
 		expect(mockCount).toHaveBeenCalledWith({
 			where: { organizationId: "org1", status: "subscribed", launchEmailSentAt: null },
+		});
+		expect(mockCount).toHaveBeenCalledWith({
+			where: { organizationId: "org1", launchEmailSentAt: { not: null } },
 		});
 	});
 });

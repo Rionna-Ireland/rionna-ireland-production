@@ -19,6 +19,7 @@ import { admin, magicLink, openAPI, organization } from "better-auth/plugins";
 import { parse as parseCookies } from "cookie";
 
 import { config } from "./config";
+import { apiErrorLogFields } from "./lib/api-error-log";
 import { updateSeatsInOrganizationSubscription } from "./lib/organization";
 import { assertSignupAllowed } from "./lib/signup-guard";
 
@@ -303,8 +304,10 @@ export const auth = betterAuth({
 		openAPI(),
 	],
 	onAPIError: {
-		onError(error, ctx) {
-			logger.error(error, { ctx });
+		// The second argument is the full AuthContext (secret, options, provider
+		// credentials) — never log it; see apiErrorLogFields.
+		onError(error) {
+			logger.error(error, { event: "better_auth_api_error", ...apiErrorLogFields(error) });
 		},
 	},
 });

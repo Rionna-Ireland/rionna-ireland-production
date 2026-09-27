@@ -1,9 +1,10 @@
 /**
  * waitlist.admin.sendLaunch / sendLaunchTest (S12-09 Phase 2)
  *
- * Per-recipient render + chunked batch send. `launchEmailSentAt` is stamped
- * only for chunks the provider accepted, so re-runs resume and never
- * double-send. Backed by a tiny in-memory waitlist table.
+ * Per-recipient render + chunked batch send with claim-before-send:
+ * `launchEmailSentAt` is claimed per chunk before sending (so concurrent runs
+ * never double-send) and released when the provider rejects the chunk (so
+ * re-runs resume). Backed by a tiny in-memory waitlist table.
  */
 
 import { call } from "@orpc/server";
@@ -35,7 +36,11 @@ function matches(row: Row, where: Record<string, unknown>): boolean {
 		if (key === "id" && value && typeof value === "object" && "in" in value) {
 			return (value.in as string[]).includes(row.id);
 		}
-		return row[key as keyof Row] === value;
+		const actual = row[key as keyof Row];
+		if (actual instanceof Date && value instanceof Date) {
+			return actual.getTime() === value.getTime();
+		}
+		return actual === value;
 	});
 }
 
@@ -64,6 +69,13 @@ vi.mock("@repo/database", () => ({
 					return { count: hits.length };
 				},
 			),
+			updateManyAndReturn: vi.fn(
+				async ({ where, data }: { where: Record<string, unknown>; data: Partial<Row> }) => {
+					const hits = store.rows.filter((row) => matches(row, where));
+					for (const row of hits) Object.assign(row, data);
+					return hits.map((row) => ({ ...row }));
+				},
+			),
 			count: vi.fn(
 				async ({ where }: { where: Record<string, unknown> }) =>
 					store.rows.filter((row) => matches(row, where)).length,
@@ -72,7 +84,11 @@ vi.mock("@repo/database", () => ({
 	},
 }));
 
-import { sendWaitlistLaunch, sendWaitlistLaunchTest } from "../procedures/send-launch";
+import {
+	DEFAULT_LAUNCH_PER_RUN,
+	sendWaitlistLaunch,
+	sendWaitlistLaunchTest,
+} from "../procedures/send-launch";
 
 const ADMIN = { id: "admin", role: "admin", name: "Emma Walsh", email: "emma@club.ie" };
 const SESSION = { id: "s1", activeOrganizationId: "org1" };
@@ -182,10 +198,15 @@ describe("sendWaitlistLaunch (S12-09 Phase 2)", () => {
 		expect(store.rows[0]?.launchEmailSentAt).toBeNull();
 	});
 
-	it("leaves a failed chunk unstamped and resumes it on re-run without double-sending", async () => {
+	it("releases the claim on a failed chunk and resumes it on re-run without double-sending", async () => {
 		mockSendRawEmailBatch
 			.mockResolvedValueOnce(undefined)
-			.mockRejectedValueOnce(new Error("resend 500"))
+			.mockImplementationOnce(async () => {
+				// Claimed before the send: the chunk is stamped while in flight.
+				const inFlight = store.rows.filter((row) => ["w2", "w3"].includes(row.id));
+				expect(inFlight.every((row) => row.launchEmailSentAt instanceof Date)).toBe(true);
+				throw new Error("resend 500");
+			})
 			.mockResolvedValueOnce(undefined);
 
 		const first = await call(sendWaitlistLaunch, CONTENT, ctx);
@@ -206,6 +227,52 @@ describe("sendWaitlistLaunch (S12-09 Phase 2)", () => {
 
 		expect(result).toEqual({ attempted: 3, sent: 3, failedChunks: 0, remaining: 2 });
 		expect(sentEmails()).toEqual(["p0@test.com", "p1@test.com", "p2@test.com"]);
+	});
+
+	it("applies a default cap when maxToSend is omitted", async () => {
+		seed(DEFAULT_LAUNCH_PER_RUN + 3);
+
+		const result = await call(sendWaitlistLaunch, CONTENT, ctx);
+
+		expect(result).toEqual({
+			attempted: DEFAULT_LAUNCH_PER_RUN,
+			sent: DEFAULT_LAUNCH_PER_RUN,
+			failedChunks: 0,
+			remaining: 3,
+		});
+	});
+
+	it("rejects a maxToSend above the per-run ceiling", async () => {
+		await expect(
+			call(sendWaitlistLaunch, { ...CONTENT, maxToSend: 2001 }, ctx),
+		).rejects.toMatchObject({ code: "BAD_REQUEST" });
+		expect(mockSendRawEmailBatch).not.toHaveBeenCalled();
+	});
+
+	it("never double-sends when two runs interleave over the same rows", async () => {
+		// Each send yields to the event loop, so the two runs' claim/send steps
+		// interleave chunk by chunk.
+		mockSendRawEmailBatch.mockImplementation(
+			() => new Promise((resolve) => setTimeout(resolve, 5)),
+		);
+
+		const [a, b] = await Promise.all([
+			call(sendWaitlistLaunch, CONTENT, ctx),
+			call(sendWaitlistLaunch, CONTENT, ctx),
+		]);
+
+		const emails = sentEmails();
+		expect([...emails].sort()).toEqual([
+			"p0@test.com",
+			"p1@test.com",
+			"p2@test.com",
+			"p3@test.com",
+			"p4@test.com",
+		]);
+		expect(new Set(emails).size).toBe(emails.length);
+		expect(a.sent + b.sent).toBe(5);
+		expect(a.remaining).toBe(0);
+		expect(b.remaining).toBe(0);
 	});
 });
 

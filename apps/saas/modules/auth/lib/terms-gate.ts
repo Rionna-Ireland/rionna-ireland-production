@@ -7,9 +7,21 @@ import { getSession } from "./server";
 
 export const ACCEPT_TERMS_PATH = "/accept-terms";
 
-/** Only same-origin absolute paths; anything else falls back to "/". */
+/** Matches /accept-terms itself, with or without a sub-path, query or hash. */
+const ACCEPT_TERMS_TARGET = /^\/accept-terms(?:[/?#]|$)/;
+
+/**
+ * Only same-origin absolute paths; anything else falls back to "/". The accept
+ * page itself is also refused, so accepting can never redirect back to it.
+ */
 export function safeRedirectPath(value: string | null | undefined): string {
-	if (!value || !value.startsWith("/") || value.startsWith("//") || value.startsWith("/\\")) {
+	if (
+		!value ||
+		!value.startsWith("/") ||
+		value.startsWith("//") ||
+		value.startsWith("/\\") ||
+		ACCEPT_TERMS_TARGET.test(value)
+	) {
 		return "/";
 	}
 	return value;
@@ -28,10 +40,7 @@ export async function requireTermsAccepted(returnTo?: string): Promise<void> {
 		return;
 	}
 
-	const { needsAcceptance } = await getTermsStatus({
-		userId: session.user.id,
-		activeOrganizationId: session.session.activeOrganizationId,
-	});
+	const { needsAcceptance } = await getTermsStatus({ userId: session.user.id });
 
 	if (needsAcceptance) {
 		redirect(

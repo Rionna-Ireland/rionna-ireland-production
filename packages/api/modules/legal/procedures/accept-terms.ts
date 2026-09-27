@@ -47,10 +47,7 @@ export const acceptTerms = protectedProcedure
 			throw new ORPCError("BAD_REQUEST", { message: "No organization found" });
 		}
 
-		const acceptedVersion = await getAcceptedTermsVersion({
-			userId: user.id,
-			organizationId,
-		});
+		const acceptedVersion = await getAcceptedTermsVersion({ userId: user.id });
 
 		if (acceptedVersion === CURRENT_TERMS_VERSION) {
 			return { acceptedVersion, created: false };

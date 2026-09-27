@@ -28,10 +28,7 @@ describe("requireTermsAccepted (S12-10 A3)", () => {
 		mockGetTermsStatus.mockResolvedValue({ needsAcceptance: true });
 
 		await expect(requireTermsAccepted()).rejects.toThrow("REDIRECT:/accept-terms");
-		expect(mockGetTermsStatus).toHaveBeenCalledWith({
-			userId: "u1",
-			activeOrganizationId: "org1",
-		});
+		expect(mockGetTermsStatus).toHaveBeenCalledWith({ userId: "u1" });
 	});
 
 	it("carries the return path", async () => {
@@ -58,6 +55,11 @@ describe("safeRedirectPath", () => {
 		["//evil.example", "/"],
 		["/\\evil.example", "/"],
 		["/choose-plan", "/choose-plan"],
+		["/accept-terms", "/"],
+		["/accept-terms?redirectTo=%2Fsubscribe", "/"],
+		["/accept-terms/", "/"],
+		["/accept-terms#top", "/"],
+		["/accept-termsx", "/accept-termsx"],
 	])("%s → %s", (input, expected) => {
 		expect(safeRedirectPath(input)).toBe(expected);
 	});

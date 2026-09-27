@@ -158,8 +158,8 @@
 				"body": "Body",
 				"bodyHint": "Plain text. Leave a blank line between paragraphs.",
 				"ctaUrl": "Button link (optional)",
-				"maxToSend": "Max to send now (optional)",
-				"maxToSendHint": "Use this to stay under the daily email cap. Running the send again continues where it stopped.",
+				"maxToSend": "Max to send this run",
+				"maxToSendHint": "Each run sends up to {defaultCount} emails unless you set a number (max {max}). Run the send again to continue where it stopped — also useful to stay under the daily email cap.",
 				"sendTest": "Send test to me",
 				"testSent": "Test email sent to {email}",
 				"testError": "Couldn't send the test email",
@@ -170,7 +170,7 @@
 				"confirmSubmit": "Send to {count, plural, one {# person} other {# people}}",
 				"cancel": "Cancel",
 				"sending": "Sending…",
-				"result": "Sent {sent} of {attempted}. {remaining} still to send.",
+				"result": "Sent {sent} of {attempted}. {remaining, plural, =0 {Nobody left to send to.} other {# still to send — run the send again to continue.}}",
 				"partialTitle": "Some emails didn't send — run the send again to retry them",
 				"sendError": "Couldn't send the launch email"
 			}
@@ -300,7 +300,13 @@
 				"title": "Partner offers",
 				"new": "New offer",
 				"empty": "No offers yet. Add the first partner offer.",
-				"columns": { "title": "Offer", "partner": "Partner", "category": "Category", "validUntil": "Valid until", "status": "Status" },
+				"columns": {
+					"title": "Offer",
+					"partner": "Partner",
+					"category": "Category",
+					"validUntil": "Valid until",
+					"status": "Status"
+				},
 				"status": { "active": "Active", "inactive": "Hidden", "expired": "Expired" },
 				"actions": { "edit": "Edit", "delete": "Delete" },
 				"confirmDeleteTitle": "Delete this offer?",
@@ -313,7 +319,13 @@
 				"title": "Offer title",
 				"partnerName": "Partner",
 				"category": "Category",
-				"categories": { "restaurant": "Restaurant", "hotel": "Hotel", "lifestyle": "Lifestyle", "racing": "Racing", "other": "Other" },
+				"categories": {
+					"restaurant": "Restaurant",
+					"hotel": "Hotel",
+					"lifestyle": "Lifestyle",
+					"racing": "Racing",
+					"other": "Other"
+				},
 				"description": "Description",
 				"image": "Image",
 				"discountCode": "Discount code",
@@ -326,7 +338,11 @@
 				"active": "Visible to members",
 				"sortOrder": "Sort order",
 				"save": "Save offer",
-				"notifications": { "saved": "Offer saved", "deleted": "Offer deleted", "error": "Something went wrong" }
+				"notifications": {
+					"saved": "Offer saved",
+					"deleted": "Offer deleted",
+					"error": "Something went wrong"
+				}
 			}
 		},
 		"charity": {
@@ -358,7 +374,11 @@
 				"pollHelp": "Pick an open club poll to show as the \"Member vote\" on the Charity screen.",
 				"save": "Save charity",
 				"startNew": "Start new charity",
-				"notifications": { "saved": "Charity saved", "changed": "New charity started", "error": "Something went wrong" }
+				"notifications": {
+					"saved": "Charity saved",
+					"changed": "New charity started",
+					"error": "Something went wrong"
+				}
 			},
 			"computed": {
 				"title": "Computed from Stripe",
@@ -374,7 +394,12 @@
 			"history": {
 				"title": "Previous charities",
 				"empty": "None yet.",
-				"columns": { "name": "Charity", "period": "Period", "percentage": "%", "total": "Total shown" }
+				"columns": {
+					"name": "Charity",
+					"period": "Period",
+					"percentage": "%",
+					"total": "Total shown"
+				}
 			}
 		},
 		"updates": {

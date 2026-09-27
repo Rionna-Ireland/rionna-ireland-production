@@ -7,6 +7,7 @@
  */
 
 import { call } from "@orpc/server";
+import { CURRENT_TERMS_VERSION } from "@repo/utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
@@ -82,7 +83,7 @@ beforeEach(() => {
 	asUser();
 	memberRows({});
 	mockHasPendingInvitation.mockResolvedValue(false);
-	mockLegalFindFirst.mockResolvedValue({ id: "la1" });
+	mockLegalFindFirst.mockResolvedValue({ version: CURRENT_TERMS_VERSION });
 	mockGetOrganizationById.mockResolvedValue({ id: ORG_ID, members: [] });
 	mockCreateCheckoutLinkFn.mockResolvedValue("https://checkout.example/1");
 });
@@ -144,18 +145,23 @@ describe("createCheckoutLink — signup open", () => {
 		expect(mockCreateCheckoutLinkFn).not.toHaveBeenCalled();
 	});
 
-	it("checks the current terms version for the org being checked out", async () => {
+	it("checks the user's latest acceptance regardless of org, like the /accept-terms gate", async () => {
 		await call(createCheckoutLink, INPUT, ctx);
 
 		expect(mockLegalFindFirst).toHaveBeenCalledWith(
 			expect.objectContaining({
-				where: expect.objectContaining({
-					userId: "u1",
-					document: "terms",
-					organizationId: ORG_ID,
-				}),
+				where: { userId: "u1", document: "terms" },
+				orderBy: { acceptedAt: "desc" },
 			}),
 		);
+	});
+
+	it("refuses when the latest acceptance is a stale version", async () => {
+		mockLegalFindFirst.mockResolvedValue({ version: "2000-01-01" });
+
+		await expect(call(createCheckoutLink, INPUT, ctx)).rejects.toMatchObject({
+			code: "PRECONDITION_FAILED",
+		});
 	});
 
 	it("keeps the D29 other-club conflict", async () => {
