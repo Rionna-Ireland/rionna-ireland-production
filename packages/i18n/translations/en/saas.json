@@ -19,7 +19,8 @@
 			"paddock": "Paddock",
 			"offers": "Partner offers",
 			"charity": "Charity",
-			"moderation": "Moderation"
+			"moderation": "Moderation",
+			"waitlist": "Waitlist"
 		},
 		"dashboard": {
 			"health": {
@@ -111,6 +112,67 @@
 				"verifyCircle": "Verify in Circle ↗",
 				"partialNote": "Some steps didn't complete. You can safely run the removal again to finish.",
 				"close": "Close"
+			},
+			"hriExport": {
+				"action": "Export for HRI",
+				"title": "Export members for HRI",
+				"description": "Download a CSV of club members (admins excluded) to forward to Horse Racing Ireland.",
+				"scopeLabel": "Members",
+				"scope": {
+					"active": "Current members (active, trialing, past due)",
+					"all": "All members, including cancelled"
+				},
+				"joinedSinceLabel": "Joined since (optional)",
+				"joinedSinceHint": "Leave empty for the full list, or pick a date to export only members who joined since then.",
+				"download": "Download CSV",
+				"close": "Close",
+				"success": "Exported {count, plural, one {# member} other {# members}}",
+				"downloaded": "Downloaded {filename} ({count, plural, one {# row} other {# rows}}).",
+				"notAccepted": "{count, plural, one {# member hasn't} other {# members haven't}} accepted the current terms.",
+				"error": "Couldn't export the member list"
+			}
+		},
+		"waitlist": {
+			"title": "Launch waitlist",
+			"subtitle": "People who asked to hear when the app launches.",
+			"loading": "Loading waitlist...",
+			"empty": "No signups yet.",
+			"downloadCsv": "Download CSV",
+			"exportError": "Couldn't export the waitlist",
+			"stats": {
+				"subscribed": "Subscribed",
+				"unsubscribed": "Unsubscribed",
+				"launchSent": "Launch email sent",
+				"launchPending": "Still to send"
+			},
+			"bySource": {
+				"title": "By source",
+				"source": "Source",
+				"none": "(no source)"
+			},
+			"launch": {
+				"title": "Send launch email",
+				"subtitle": "{count, plural, =0 {Everyone subscribed has already received the launch email.} one {# subscriber hasn't received the launch email yet.} other {# subscribers haven't received the launch email yet.}} Each email greets them by first name and carries their own unsubscribe link.",
+				"subject": "Subject",
+				"heading": "Heading",
+				"body": "Body",
+				"bodyHint": "Plain text. Leave a blank line between paragraphs.",
+				"ctaUrl": "Button link (optional)",
+				"maxToSend": "Max to send now (optional)",
+				"maxToSendHint": "Use this to stay under the daily email cap. Running the send again continues where it stopped.",
+				"sendTest": "Send test to me",
+				"testSent": "Test email sent to {email}",
+				"testError": "Couldn't send the test email",
+				"send": "Send launch email",
+				"confirmTitle": "Send the launch email?",
+				"confirmDescription": "{count, plural, one {# person} other {# people}} will receive this email now. This can't be undone.",
+				"confirmLabel": "Type {word} to confirm",
+				"confirmSubmit": "Send to {count, plural, one {# person} other {# people}}",
+				"cancel": "Cancel",
+				"sending": "Sending…",
+				"result": "Sent {sent} of {attempted}. {remaining} still to send.",
+				"partialTitle": "Some emails didn't send — run the send again to retry them",
+				"sendError": "Couldn't send the launch email"
 			}
 		},
 		"events": {
@@ -933,6 +995,7 @@
 			"name": "Name",
 			"password": "Password",
 			"signIn": "Sign in",
+			"signupClosed": "Sign-up is by invitation only until launch. Join the waitlist to hear when memberships open.",
 			"submit": "Create account",
 			"title": "Create an account"
 		},
@@ -947,6 +1010,21 @@
 	"choosePlan": {
 		"title": "Choose your plan",
 		"description": "To continue, please select a plan."
+	},
+	"legal": {
+		"termsCheckbox": "I agree to the <terms>Terms & Conditions</terms> and have read the <privacy>Privacy Policy</privacy>",
+		"termsRequired": "Please accept the Terms & Conditions to continue.",
+		"acceptTerms": {
+			"title": "Terms & Conditions",
+			"message": "Please review and accept our Terms & Conditions to continue.",
+			"submit": "Accept and continue",
+			"failed": "We couldn't save your acceptance. Please try again."
+		},
+		"membershipsClosed": {
+			"title": "Memberships open at launch",
+			"message": "We're not taking memberships just yet. Join the waitlist and we'll email you as soon as they open.",
+			"cta": "Join the waitlist"
+		}
 	},
 	"documentation": {
 		"title": "Documentation"

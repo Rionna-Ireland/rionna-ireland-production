@@ -1,8 +1,11 @@
+import { MembershipsClosedNotice } from "@auth/components/MembershipsClosedNotice";
 import { getSession } from "@auth/lib/server";
+import { requireTermsAccepted } from "@auth/lib/terms-gate";
 import { listPurchases } from "@payments/lib/server";
+import { canCheckoutBeforeLaunch } from "@repo/api/modules/payments/lib/checkout-eligibility";
+import { db } from "@repo/database";
 import { config as paymentsConfig } from "@repo/payments/config";
 import { createPurchasesHelper } from "@repo/payments/lib/helper";
-import { db } from "@repo/database";
 import { AuthWrapper } from "@shared/components/AuthWrapper";
 import { redirect } from "next/navigation";
 
@@ -35,6 +38,17 @@ export default async function SubscribePage() {
 		throw new Error("No organization found. Run the seed script first.");
 	}
 
+	await requireTermsAccepted("/subscribe");
+
+	// S12-09 / D39: until launch, only invited users / staff may subscribe.
+	if (!(await canCheckoutBeforeLaunch(session.user, organization.id))) {
+		return (
+			<AuthWrapper>
+				<MembershipsClosedNotice />
+			</AuthWrapper>
+		);
+	}
+
 	// Read price from the payments config
 	const membershipPlan = paymentsConfig.plans.membership;
 	const price =
@@ -43,9 +57,7 @@ export default async function SubscribePage() {
 	return (
 		<AuthWrapper>
 			<div className="text-center">
-				<h1 className="font-bold text-2xl lg:text-3xl">
-					Join {organization.name}
-				</h1>
+				<h1 className="font-bold text-2xl lg:text-3xl">Join {organization.name}</h1>
 				<p className="mt-2 text-muted-foreground">
 					Get access to Our Stables, Pulse dashboard, community, and more.
 				</p>

@@ -12,6 +12,8 @@ import { z } from "zod";
 
 import { localeMiddleware } from "../../../orpc/middleware/locale-middleware";
 import { protectedProcedure } from "../../../orpc/procedures";
+import { hasAcceptedCurrentTerms } from "../../legal/lib/terms";
+import { canCheckoutBeforeLaunch } from "../lib/checkout-eligibility";
 import { resolveSafeRedirectUrl } from "../lib/safe-redirect-url";
 
 export const createCheckoutLink = protectedProcedure
@@ -58,6 +60,22 @@ export const createCheckoutLink = protectedProcedure
 							"This account is already a member of another club. Please use a different email to join a new club.",
 					});
 				}
+			}
+
+			// S12-09 / D39: while public signup is closed, "role-less" accounts (a
+			// public signup that slipped through) can't pay; see checkout-eligibility.
+			if (!(await canCheckoutBeforeLaunch(user, organizationId))) {
+				throw new ORPCError("PRECONDITION_FAILED", {
+					message: "Memberships open at launch. Join the waitlist to hear when they do.",
+				});
+			}
+
+			// S12-10 A3: nobody becomes a member without accepting the current terms,
+			// whether signup is open or closed.
+			if (!(await hasAcceptedCurrentTerms({ userId: user.id, organizationId }))) {
+				throw new ORPCError("PRECONDITION_FAILED", {
+					message: "Please accept the current Terms & Conditions before subscribing.",
+				});
 			}
 
 			// Checkout happens before the webhook creates the Member row, so a

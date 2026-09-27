@@ -18,25 +18,31 @@ import {
 	FormMessage,
 } from "@repo/ui/components/form";
 import { Input } from "@repo/ui/components/input";
-import { passwordSchema } from "@repo/utils";
+import { CURRENT_TERMS_VERSION, passwordSchema } from "@repo/utils";
 import { PasswordInput } from "@shared/components/PasswordInput";
+import { orpcClient } from "@shared/lib/orpc-client";
 import { AlertTriangleIcon, ArrowRightIcon, MailboxIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { withQuery } from "ufo";
 import { z } from "zod";
 
 import { type OAuthProvider, oAuthProviders } from "../constants/oauth-providers";
 import { SocialSigninButton } from "./SocialSigninButton";
+import { TermsCheckbox } from "./TermsCheckbox";
 
-const formSchema = z.object({
-	email: z.email(),
-	name: z.string().min(1),
-	password: passwordSchema,
-});
+function createFormSchema(termsRequiredMessage: string) {
+	return z.object({
+		email: z.email(),
+		name: z.string().min(1),
+		password: passwordSchema,
+		// S12-10 A2: required, unticked by default.
+		acceptTerms: z.literal(true, { error: termsRequiredMessage }),
+	});
+}
 
 export function SignupForm({ prefillEmail }: { prefillEmail?: string }) {
 	const t = useTranslations();
@@ -49,16 +55,19 @@ export function SignupForm({ prefillEmail }: { prefillEmail?: string }) {
 	const email = searchParams.get("email");
 	const redirectTo = searchParams.get("redirectTo");
 
+	const formSchema = useMemo(() => createFormSchema(t("legal.termsRequired")), [t]);
+	const [awaitingVerification, setAwaitingVerification] = useState(false);
+
 	const form = useForm({
 		resolver: zodResolver(formSchema),
 		values: {
 			name: "",
 			email: prefillEmail ?? email ?? "",
 			password: "",
+			// Unticked by default; the literal(true) schema makes it required.
+			acceptTerms: false as unknown as true,
 		},
 	});
-
-	const invitationOnlyMode = !authConfig.enableSignup && invitationId;
 
 	const redirectPath = invitationId
 		? `/organization-invitation/${invitationId}`
@@ -72,7 +81,7 @@ export function SignupForm({ prefillEmail }: { prefillEmail?: string }) {
 
 	const onSubmit = form.handleSubmit(async ({ email, password, name }) => {
 		try {
-			const { error } = await authClient.signUp.email({
+			const { data, error } = await authClient.signUp.email({
 				email,
 				password,
 				name,
@@ -83,7 +92,25 @@ export function SignupForm({ prefillEmail }: { prefillEmail?: string }) {
 				throw error;
 			}
 
-			if (invitationOnlyMode) {
+			// D39: email verification is always required, so sign-up normally leaves
+			// no session: the user verifies, lands on callbackURL (the invitation page
+			// for invitees) and the /accept-terms gate records the acceptance at first
+			// sign-in. If a session does exist, record it now.
+			if (!data?.token) {
+				setAwaitingVerification(true);
+				return;
+			}
+
+			try {
+				await orpcClient.legal.accept({
+					version: CURRENT_TERMS_VERSION,
+					source: "web_signup",
+				});
+			} catch {
+				// Not fatal: the /accept-terms gate asks again.
+			}
+
+			if (invitationId) {
 				const { error } = await authClient.organization.acceptInvitation({
 					invitationId,
 				});
@@ -91,9 +118,9 @@ export function SignupForm({ prefillEmail }: { prefillEmail?: string }) {
 				if (error) {
 					throw error;
 				}
-
-				router.push(config.redirectAfterSignIn);
 			}
+
+			router.push(invitationId ? config.redirectAfterSignIn : redirectPath);
 		} catch (e) {
 			form.setError("root", {
 				message: getAuthErrorMessage(
@@ -108,7 +135,7 @@ export function SignupForm({ prefillEmail }: { prefillEmail?: string }) {
 			<h1 className="font-bold text-xl md:text-2xl">{t("auth.signup.title")}</h1>
 			<p className="mt-1 mb-6 text-foreground/60">{t("auth.signup.message")}</p>
 
-			{form.formState.isSubmitSuccessful && !invitationOnlyMode ? (
+			{awaitingVerification ? (
 				<Alert variant="success">
 					<MailboxIcon />
 					<AlertTitle>{t("auth.signup.hints.verifyEmail")}</AlertTitle>
@@ -177,6 +204,12 @@ export function SignupForm({ prefillEmail }: { prefillEmail?: string }) {
 										<FormMessage />
 									</FormItem>
 								)}
+							/>
+
+							<FormField
+								control={form.control}
+								name="acceptTerms"
+								render={({ field }) => <TermsCheckbox field={field} />}
 							/>
 
 							<Button variant="primary" loading={form.formState.isSubmitting}>

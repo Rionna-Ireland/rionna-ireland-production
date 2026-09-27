@@ -1,6 +1,9 @@
+import { MembershipsClosedNotice } from "@auth/components/MembershipsClosedNotice";
 import { getOrganizationList, getSession } from "@auth/lib/server";
+import { requireTermsAccepted } from "@auth/lib/terms-gate";
 import { PricingTable } from "@payments/components/PricingTable";
 import { listPurchases } from "@payments/lib/server";
+import { canCheckoutBeforeLaunch } from "@repo/api/modules/payments/lib/checkout-eligibility";
 import { config as authConfig } from "@repo/auth/config";
 import { config as paymentsConfig } from "@repo/payments/config";
 import { createPurchasesHelper } from "@repo/payments/lib/helper";
@@ -44,6 +47,17 @@ export default async function ChoosePlanPage() {
 
 	if (activePlan) {
 		redirect("/");
+	}
+
+	await requireTermsAccepted("/choose-plan");
+
+	// S12-09 / D39: until launch, show the waitlist instead of plans.
+	if (!(await canCheckoutBeforeLaunch(session.user, organizationId))) {
+		return (
+			<AuthWrapper>
+				<MembershipsClosedNotice />
+			</AuthWrapper>
+		);
 	}
 
 	return (

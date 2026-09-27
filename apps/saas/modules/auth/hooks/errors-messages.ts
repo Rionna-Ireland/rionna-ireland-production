@@ -33,6 +33,11 @@ export function useAuthErrorMessages() {
 	};
 
 	const getAuthErrorMessage = (errorCode: string | undefined) => {
+		// D39: raised by the sign-up guard in packages/auth/lib/signup-guard.ts.
+		if (errorCode === "SIGNUP_CLOSED") {
+			return t("auth.signup.signupClosed");
+		}
+
 		return (
 			authErrorMessages[errorCode as keyof typeof authErrorMessages] ||
 			t("auth.errors.unknown")

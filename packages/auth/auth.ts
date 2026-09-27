@@ -20,6 +20,7 @@ import { parse as parseCookies } from "cookie";
 
 import { config } from "./config";
 import { updateSeatsInOrganizationSubscription } from "./lib/organization";
+import { assertSignupAllowed } from "./lib/signup-guard";
 
 const getLocaleFromRequest = (request?: Request) => {
 	const cookies = parseCookies(request?.headers.get("cookie") ?? "");
@@ -111,6 +112,13 @@ export const auth = betterAuth({
 			}
 		}),
 		before: createAuthMiddleware(async (ctx) => {
+			// S12-09 / D39: while public signup is closed, only emails with a pending
+			// invitation may sign up. Runs before the endpoint, so nothing is created.
+			if (ctx.path === "/sign-up/email") {
+				await assertSignupAllowed(ctx.body);
+				return;
+			}
+
 			if (
 				ctx.path.startsWith("/delete-user") ||
 				ctx.path.startsWith("/organization/delete")
@@ -148,12 +156,16 @@ export const auth = betterAuth({
 							try {
 								await deleteCircleMember(member.circleMemberId);
 							} catch (error) {
-								logger.error("Failed to delete Circle member during user deletion", {
-									userId,
-									memberId: member.id,
-									circleMemberId: member.circleMemberId,
-									error: error instanceof Error ? error.message : String(error),
-								});
+								logger.error(
+									"Failed to delete Circle member during user deletion",
+									{
+										userId,
+										memberId: member.id,
+										circleMemberId: member.circleMemberId,
+										error:
+											error instanceof Error ? error.message : String(error),
+									},
+								);
 							}
 						}
 					}
@@ -204,10 +216,15 @@ export const auth = betterAuth({
 	},
 	emailAndPassword: {
 		enabled: true,
-		// If signup is disabled, the only way to sign up is via an invitation. So in this case we can auto sign in the user, as the email is already verified by the invitation.
-		// If signup is enabled, we can't auto sign in the user, as the email is not verified yet.
-		autoSignIn: !config.enableSignup,
-		requireEmailVerification: config.enableSignup,
+		// D39: these are deliberately NOT derived from config.enableSignup. With signup
+		// closed, the sign-up endpoint still exists (invited admins use it), so tying
+		// them to the flag would let a direct POST mint an unverified, auto-signed-in
+		// account. Keep the open-signup values: every new account, invited or not,
+		// verifies its email first. Invitees then land on
+		// /organization-invitation/<id> via the verification callbackURL
+		// (autoSignInAfterVerification) and accept the invitation there.
+		autoSignIn: false,
+		requireEmailVerification: true,
 		sendResetPassword: async ({ user, url }, request) => {
 			const locale = getLocaleFromRequest(request);
 			await sendEmail({
@@ -223,7 +240,8 @@ export const auth = betterAuth({
 		minPasswordLength: 8,
 	},
 	emailVerification: {
-		sendOnSignUp: config.enableSignup,
+		// D39: always send, independent of config.enableSignup (see emailAndPassword).
+		sendOnSignUp: true,
 		autoSignInAfterVerification: true,
 		sendVerificationEmail: async ({ user: { email, name }, url }, request) => {
 			const locale = getLocaleFromRequest(request);
@@ -238,8 +256,8 @@ export const auth = betterAuth({
 			});
 		},
 	},
-	// D36: signup is intentionally open (config.enableSignup); the paywall is the
-	// real gate, so no invitation-only signup plugin is wired in here.
+	// D36/D39: signup is open after launch (config.enableSignup); before launch the
+	// hooks.before sign-up guard restricts it to invitees. The paywall is the real gate.
 	plugins: [
 		admin(),
 		magicLink({

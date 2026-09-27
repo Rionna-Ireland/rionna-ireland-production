@@ -1,4 +1,5 @@
 import { getOrganizationList, getSession } from "@auth/lib/server";
+import { requireTermsAccepted } from "@auth/lib/terms-gate";
 import { PlatformImpersonationBanner } from "@platform/components/PlatformImpersonationBanner";
 import { listPurchases } from "@repo/api/modules/payments/procedures/list-purchases";
 import { config as authConfig } from "@repo/auth/config";
@@ -25,6 +26,13 @@ export default async function MainLayout({ children }: PropsWithChildren) {
 	// Unlike platform admins they hold a real Member row, so they still pass the
 	// requireOrganization gate below normally.
 	const isAdmin = isPlatformAdmin || session.user.role === "admin";
+
+	// S12-10 A3: T&C gate first — applies to members and club admins alike.
+	// Platform admins (D28) are exempt: they only visit here while impersonating.
+	// /accept-terms lives outside (main), so this can't loop.
+	if (!isPlatformAdmin) {
+		await requireTermsAccepted();
+	}
 
 	// Subscription check BEFORE onboarding (per D9: subscribe → then onboard)
 	// Billing is user-scoped (billingAttachedTo: "user"), so query by userId not organizationId
