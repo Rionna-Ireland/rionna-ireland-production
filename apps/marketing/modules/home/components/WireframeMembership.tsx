@@ -1,5 +1,6 @@
-import { config } from "@config";
 import { Button } from "@repo/ui/components/button";
+import { JoinCtaLink } from "@shared/components/JoinCtaLink";
+import { getJoinCta } from "@shared/lib/join-url";
 import { ArrowRightIcon } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 
@@ -22,27 +23,26 @@ function PlaceholderBlock({ className }: { className?: string }) {
 export async function WireframeMembership() {
 	const t = await getTranslations("membership.wireframe");
 
-	const signupUrl = config.saasUrl
-		? `${String(config.saasUrl).replace(/\/$/, "")}/signup`
-		: "#";
+	const tRoot = await getTranslations();
+	const joinCta = getJoinCta();
 
 	return (
-		<div className="container py-16 md:py-24">
-			<div className="mb-4 font-mono text-[10px] tracking-[0.2em] uppercase text-foreground/50">
+		<div className="py-16 md:py-24 container">
+			<div className="mb-4 font-mono text-[10px] tracking-[0.2em] text-foreground/50 uppercase">
 				{t("badge")}
 			</div>
 
 			<div className="max-w-3xl">
 				<PlaceholderBar className="h-3 w-24" />
-				<PlaceholderBar className="mt-6 h-12 w-full max-w-lg" />
-				<PlaceholderBar className="mt-4 h-4 w-full max-w-md" />
-				<PlaceholderBar className="mt-2 h-4 w-full max-w-sm" />
+				<PlaceholderBar className="mt-6 h-12 max-w-lg w-full" />
+				<PlaceholderBar className="mt-4 h-4 max-w-md w-full" />
+				<PlaceholderBar className="mt-2 h-4 max-w-sm w-full" />
 			</div>
 
 			<div className="mt-16 gap-10 lg:grid-cols-[1.2fr_1fr] grid">
-				<div className="rounded-3xl border border-dashed border-foreground/20 p-8 md:p-10 bg-muted/30">
+				<div className="p-8 md:p-10 rounded-3xl border border-dashed border-foreground/20 bg-muted/30">
 					<PlaceholderBar className="h-8 w-40" />
-					<div className="mt-6 flex items-baseline gap-3">
+					<div className="mt-6 gap-3 flex items-baseline">
 						<PlaceholderBar className="h-12 w-28" />
 						<PlaceholderBar className="h-3 w-16" />
 					</div>
@@ -50,16 +50,16 @@ export async function WireframeMembership() {
 
 					<div className="mt-8 gap-3 grid">
 						{Array.from({ length: 4 }).map((_, index) => (
-							<PlaceholderBar key={index} className="h-4 w-full max-w-sm" />
+							<PlaceholderBar key={index} className="h-4 max-w-sm w-full" />
 						))}
 					</div>
 
 					<div className="mt-10">
-						<Button size="lg" variant="primary" asChild className="w-full sm:w-auto">
-							<a href={signupUrl}>
-								{t("cta")}
+						<Button size="lg" variant="primary" asChild className="sm:w-auto w-full">
+							<JoinCtaLink cta={joinCta}>
+								{joinCta.labelKey ? tRoot(joinCta.labelKey) : t("cta")}
 								<ArrowRightIcon className="ml-2 size-4" />
-							</a>
+							</JoinCtaLink>
 						</Button>
 					</div>
 				</div>

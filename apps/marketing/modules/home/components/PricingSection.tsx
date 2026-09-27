@@ -1,12 +1,12 @@
 "use client";
 
-import { config } from "@config";
 import { LocaleLink } from "@i18n/routing";
 import { config as paymentsConfig } from "@repo/payments/config";
 import type { PaidPlan } from "@repo/payments/types";
 import { cn } from "@repo/ui";
 import { Button } from "@repo/ui/components/button";
 import { Tabs, TabsList, TabsTrigger } from "@repo/ui/components/tabs";
+import { getJoinCta } from "@shared/lib/join-url";
 import { ArrowRightIcon, BadgePercentIcon, CheckIcon, StarIcon } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
@@ -16,10 +16,9 @@ export function PricingSection() {
 	const format = useFormatter();
 	const [interval, setBillingInterval] = useState<"month" | "year">("month");
 
-	const signupUrl = useMemo(
-		() => config.saasUrl && `${String(config.saasUrl).replace(/\/$/, "")}/signup`,
-		[],
-	);
+	// S12-09 / D39: signup while open, the waitlist while closed.
+	const joinCta = useMemo(() => getJoinCta(), []);
+	const joinLabel = joinCta.labelKey ? t(joinCta.labelKey) : (t("pricing.getStarted") ?? "");
 
 	const plans = useMemo(() => {
 		const result: Array<{
@@ -42,8 +41,8 @@ export function PricingSection() {
 				features: Object.values(
 					(t.raw("pricing.products.free.features") as Record<string, string>) ?? {},
 				),
-				cta: t("pricing.getStarted") ?? "",
-				to: signupUrl ?? "#",
+				cta: joinLabel,
+				to: joinCta.href,
 			});
 		}
 
@@ -58,18 +57,16 @@ export function PricingSection() {
 				features: Object.values(
 					(t.raw(`pricing.products.${planId}.features`) as Record<string, string>) ?? {},
 				),
-				cta: isEnterprise
-					? (t("pricing.contactSales") ?? "")
-					: (t("pricing.getStarted") ?? ""),
+				cta: isEnterprise ? (t("pricing.contactSales") ?? "") : joinLabel,
 				recommended: plan.recommended,
 				isEnterprise,
 				prices,
-				to: signupUrl ?? "#",
+				to: joinCta.href,
 			});
 		}
 
 		return result;
-	}, [t, signupUrl]);
+	}, [t, joinCta, joinLabel]);
 
 	const hasSubscriptions = plans.some((p) =>
 		p.prices?.some((price) => price.type === "subscription"),

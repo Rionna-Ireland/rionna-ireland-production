@@ -11,6 +11,7 @@
 			"@changelog/*": ["./modules/changelog/*"],
 			"@legal/*": ["./modules/legal/*"],
 			"@shared/*": ["./modules/shared/*"],
+			"@waitlist/*": ["./modules/waitlist/*"],
 			"content-collections": ["./.content-collections/generated"]
 		}
 	},

@@ -32,3 +32,54 @@
 		border-color: var(--border);
 	}
 }
+
+/*
+ * S12-09 §2b: "Digital Estate" palette (design/design-system.md), scoped to
+ * the waitlist only. Remaps the shadcn tokens so @repo/ui controls restyle
+ * themselves. The --color-* aliases are re-pointed too: Tailwind's @theme
+ * resolves them on :root, so overriding --background alone would not reach
+ * `bg-background` inside the scope. The design system has no dark palette, so
+ * `.dark .theme-estate` keeps the same light values. Text is never #000.
+ */
+@layer base {
+	.theme-estate,
+	.dark .theme-estate {
+		color-scheme: light;
+
+		--background: #fcf9f2; /* surface */
+		--foreground: #1c1c18; /* on-surface */
+		--card: #ffffff; /* surface-container-lowest */
+		--card-foreground: #1c1c18;
+		--popover: #ffffff;
+		--popover-foreground: #1c1c18;
+		--primary: #391d3a;
+		--primary-foreground: #fcf9f2; /* on-primary */
+		--secondary: #e4d5e2; /* secondary-container */
+		--secondary-foreground: #391d3a;
+		--muted: #f1eee7; /* surface-container */
+		--muted-foreground: #5a544f; /* on-surface-variant */
+		--accent: #f0ddef; /* secondary-fixed */
+		--accent-foreground: #391d3a;
+		--input: #f7f3eb; /* surface-container-low: field fill */
+		--border: rgb(208 195 203 / 0.15); /* outline-variant ghost border */
+		--ring: #391d3a;
+
+		--color-background: var(--background);
+		--color-foreground: var(--foreground);
+		--color-card: var(--card);
+		--color-card-foreground: var(--card-foreground);
+		--color-popover: var(--popover);
+		--color-popover-foreground: var(--popover-foreground);
+		--color-primary: var(--primary);
+		--color-primary-foreground: var(--primary-foreground);
+		--color-secondary: var(--secondary);
+		--color-secondary-foreground: var(--secondary-foreground);
+		--color-muted: var(--muted);
+		--color-muted-foreground: var(--muted-foreground);
+		--color-accent: var(--accent);
+		--color-accent-foreground: var(--accent-foreground);
+		--color-input: var(--input);
+		--color-border: var(--border);
+		--color-ring: var(--ring);
+	}
+}

@@ -1,7 +1,14 @@
 import { config } from "@config";
 import { WireframeMembership } from "@home/components/WireframeMembership";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@repo/ui/components/accordion";
+import {
+	Accordion,
+	AccordionContent,
+	AccordionItem,
+	AccordionTrigger,
+} from "@repo/ui/components/accordion";
 import { Button } from "@repo/ui/components/button";
+import { JoinCtaLink } from "@shared/components/JoinCtaLink";
+import { getJoinCta } from "@shared/lib/join-url";
 import { ArrowRightIcon, CheckIcon } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
@@ -35,34 +42,33 @@ export default async function MembershipPage(props: { params: Promise<{ locale: 
 
 	const t = await getTranslations({ locale, namespace: "membership" });
 
-	const signupUrl = config.saasUrl
-		? `${String(config.saasUrl).replace(/\/$/, "")}/signup`
-		: "#";
+	const tRoot = await getTranslations({ locale });
+	const joinCta = getJoinCta();
 
 	return (
-		<div className="container py-16 md:py-24">
+		<div className="py-16 md:py-24 container">
 			<div className="max-w-3xl">
-				<span className="font-mono text-xs tracking-[0.22em] uppercase text-foreground/70">
+				<span className="text-xs font-mono tracking-[0.22em] text-foreground/70 uppercase">
 					{t("eyebrow")}
 				</span>
-				<h1 className="mt-4 font-display font-medium text-5xl md:text-6xl lg:text-7xl leading-tight">
+				<h1 className="mt-4 font-medium text-5xl md:text-6xl lg:text-7xl leading-tight font-display">
 					{t("title")}
 				</h1>
-				<p className="mt-6 text-lg md:text-xl text-foreground/70 leading-relaxed">
+				<p className="mt-6 text-lg md:text-xl leading-relaxed text-foreground/70">
 					{t("description")}
 				</p>
 			</div>
 
 			<div className="mt-16 gap-10 lg:grid-cols-[1.2fr_1fr] grid">
-				<div className="rounded-3xl p-8 md:p-10 bg-[#EEEADF] dark:bg-[#172741]">
-					<h2 className="font-display font-medium text-3xl md:text-4xl">
+				<div className="p-8 md:p-10 rounded-3xl bg-[#EEEADF] dark:bg-[#172741]">
+					<h2 className="font-medium text-3xl md:text-4xl font-display">
 						{t("plan.title")}
 					</h2>
-					<div className="mt-4 flex items-baseline gap-2">
-						<span className="font-display font-medium text-5xl md:text-6xl">
+					<div className="mt-4 gap-2 flex items-baseline">
+						<span className="font-medium text-5xl md:text-6xl font-display">
 							{t("plan.price")}
 						</span>
-						<span className="font-mono text-xs tracking-[0.2em] uppercase text-foreground/60">
+						<span className="text-xs font-mono tracking-[0.2em] text-foreground/60 uppercase">
 							{t("plan.interval")}
 						</span>
 					</div>
@@ -70,31 +76,33 @@ export default async function MembershipPage(props: { params: Promise<{ locale: 
 
 					<ul className="mt-8 gap-3 grid">
 						{FEATURE_KEYS.map((key) => (
-							<li key={key} className="flex items-start gap-3">
+							<li key={key} className="gap-3 flex items-start">
 								<CheckIcon className="mt-0.5 size-5 shrink-0 text-foreground" />
-								<span className="text-foreground/90">{t(`plan.features.${key}`)}</span>
+								<span className="text-foreground/90">
+									{t(`plan.features.${key}`)}
+								</span>
 							</li>
 						))}
 					</ul>
 
 					<div className="mt-10">
-						<Button size="lg" variant="primary" asChild className="w-full sm:w-auto">
-							<a href={signupUrl}>
-								{t("plan.cta")}
+						<Button size="lg" variant="primary" asChild className="sm:w-auto w-full">
+							<JoinCtaLink cta={joinCta}>
+								{joinCta.labelKey ? tRoot(joinCta.labelKey) : t("plan.cta")}
 								<ArrowRightIcon className="ml-2 size-4" />
-							</a>
+							</JoinCtaLink>
 						</Button>
 					</div>
 				</div>
 
 				<div>
-					<h2 className="font-display font-medium text-3xl md:text-4xl">
+					<h2 className="font-medium text-3xl md:text-4xl font-display">
 						{t("faq.title")}
 					</h2>
 					<Accordion type="single" collapsible className="mt-6">
 						{FAQ_KEYS.map((key) => (
 							<AccordionItem key={key} value={key}>
-								<AccordionTrigger className="text-left font-medium">
+								<AccordionTrigger className="font-medium text-left">
 									{t(`faq.items.${key}.question`)}
 								</AccordionTrigger>
 								<AccordionContent className="text-foreground/70">

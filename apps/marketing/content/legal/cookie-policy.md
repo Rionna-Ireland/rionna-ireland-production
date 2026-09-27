@@ -21,4 +21,4 @@ You can clear cookies at any time from your browser settings. You can also withd
 
 ## Third parties
 
-Some of our infrastructure partners (Stripe for payments, Vercel for hosting, Circle for the community, Supabase for storage) may set their own cookies on pages that use their services. See their policies for details.
+Some of our infrastructure partners (Stripe for payments, Vercel for hosting, Circle for the community, Supabase for storage, Resend for email) may set their own cookies on pages that use their services. See their policies for details.

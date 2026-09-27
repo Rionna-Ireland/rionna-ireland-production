@@ -5,6 +5,8 @@ import { HeroSection } from "@home/components/HeroSection";
 import { HorsePreviewSection } from "@home/components/HorsePreviewSection";
 import { NewsPreviewSection } from "@home/components/NewsPreviewSection";
 import { WireframeHome } from "@home/components/WireframeHome";
+import { isPublicSignupOpen } from "@repo/utils";
+import { WaitlistSection } from "@waitlist/components/WaitlistSection";
 import { setRequestLocale } from "next-intl/server";
 
 export default async function Home({ params }: { params: Promise<{ locale: string }> }) {
@@ -18,6 +20,8 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
 	return (
 		<>
 			<HeroSection />
+			{/* S12-09 / D39: capture emails on the full home while signup is closed. */}
+			{!isPublicSignupOpen() && <WaitlistSection id="waitlist" />}
 			<HorsePreviewSection />
 			<FeaturesSection />
 			<NewsPreviewSection />
