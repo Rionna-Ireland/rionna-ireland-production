@@ -1,4 +1,4 @@
-import { WaitlistSection } from "@waitlist/components/WaitlistSection";
+import { WaitlistLanding } from "@waitlist/components/WaitlistLanding";
 import { sanitizeSource } from "@waitlist/lib/schema";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
@@ -25,5 +25,5 @@ export default async function WaitlistPage(props: {
 	const { src } = await props.searchParams;
 	const source = sanitizeSource(Array.isArray(src) ? src[0] : src) ?? undefined;
 
-	return <WaitlistSection headingLevel="h1" source={source} className="min-h-[80svh]" />;
+	return <WaitlistLanding source={source} />;
 }

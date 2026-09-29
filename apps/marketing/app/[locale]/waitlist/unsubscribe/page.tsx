@@ -26,7 +26,7 @@ export default async function WaitlistUnsubscribePage(props: {
 	const token = (Array.isArray(rawToken) ? rawToken[0] : rawToken)?.trim();
 
 	return (
-		<section className="theme-estate min-h-[80svh] bg-background text-foreground">
+		<section className="theme-estate min-h-svh bg-background text-foreground">
 			<div className="max-w-xl px-6 py-20 md:py-28 mx-auto w-full">
 				<p className="text-xs font-mono tracking-[0.22em] text-muted-foreground uppercase">
 					{t("eyebrow")}

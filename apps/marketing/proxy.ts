@@ -1,10 +1,17 @@
 import { routing } from "@i18n/routing";
+import { isAllowedInWaitlistMode, isWaitlistOnly } from "@shared/lib/waitlist-mode";
 import createMiddleware from "next-intl/middleware";
-import type { NextRequest } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 
 const intlMiddleware = createMiddleware(routing);
 
 export default async function proxy(req: NextRequest) {
+	// S12-09 / D39: one-page site until launch. Temporary (307) so nothing
+	// caches the redirect past the NEXT_PUBLIC_PUBLIC_SIGNUP_OPEN flip.
+	if (isWaitlistOnly() && !isAllowedInWaitlistMode(req.nextUrl.pathname, routing.locales)) {
+		return NextResponse.redirect(new URL("/", req.url), 307);
+	}
+
 	return intlMiddleware(req);
 }
 
