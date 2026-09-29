@@ -5,7 +5,6 @@ import { NewsNotification } from "./NewsNotification";
 import { NewUser } from "./NewUser";
 import { Notification } from "./Notification";
 import { OrganizationInvitation } from "./OrganizationInvitation";
-import { WaitlistLaunch } from "./WaitlistLaunch";
 import { WelcomeMember } from "./WelcomeMember";
 
 export const mailTemplates = {
@@ -17,5 +16,4 @@ export const mailTemplates = {
 	notification: Notification,
 	welcomeMember: WelcomeMember,
 	newsNotification: NewsNotification,
-	waitlistLaunch: WaitlistLaunch,
 } as const;

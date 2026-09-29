@@ -54,12 +54,5 @@
 		"heading": "New from {clubName}",
 		"cta": "Read the full post",
 		"footer": "You're receiving this because you're a member of {clubName}. Manage your email preferences in the app."
-	},
-	"waitlistLaunch": {
-		"subject": "Rionna has launched",
-		"greeting": "Hi {firstName},",
-		"cta": "Find out more",
-		"footer": "You're receiving this because you joined the Rionna launch waitlist.",
-		"unsubscribe": "Unsubscribe"
 	}
 }

@@ -5,16 +5,15 @@ import { z } from "zod";
 import { adminProcedure } from "../../../orpc/procedures";
 
 /**
- * S12-09 §6: waitlist counts for `/admin/waitlist` — subscribed/unsubscribed,
- * a breakdown by `?src=` source, and how many subscribers the launch email
- * would still reach (status subscribed, not yet sent) vs. has already reached.
+ * S12-09 §6: waitlist counts for `/admin/waitlist` — subscribed/unsubscribed
+ * and a breakdown by `?src=` source.
  */
 export const getWaitlistStats = adminProcedure
 	.route({
 		method: "GET",
 		path: "/admin/waitlist/stats",
 		tags: ["Waitlist"],
-		summary: "Waitlist counts (status, source, launch send progress)",
+		summary: "Waitlist counts (status, source)",
 	})
 	.input(z.object({ organizationId: z.string() }))
 	.handler(async ({ input: { organizationId }, context }) => {
@@ -22,20 +21,11 @@ export const getWaitlistStats = adminProcedure
 			throw new ORPCError("FORBIDDEN");
 		}
 
-		const [groups, launchPending, launchSent] = await Promise.all([
-			db.waitlistSignup.groupBy({
-				by: ["status", "source"],
-				where: { organizationId },
-				_count: { _all: true },
-			}),
-			db.waitlistSignup.count({
-				where: { organizationId, status: "subscribed", launchEmailSentAt: null },
-			}),
-			// Everyone stamped, including people who unsubscribed after the send.
-			db.waitlistSignup.count({
-				where: { organizationId, launchEmailSentAt: { not: null } },
-			}),
-		]);
+		const groups = await db.waitlistSignup.groupBy({
+			by: ["status", "source"],
+			where: { organizationId },
+			_count: { _all: true },
+		});
 
 		let subscribed = 0;
 		let unsubscribed = 0;
@@ -56,8 +46,6 @@ export const getWaitlistStats = adminProcedure
 		return {
 			subscribed,
 			unsubscribed,
-			launchPending,
-			launchSent,
 			bySource: [...bySource.entries()]
 				.map(([source, counts]) => ({ source, ...counts }))
 				.sort((a, b) => b.subscribed - a.subscribed),

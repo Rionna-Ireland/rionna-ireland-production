@@ -25,11 +25,6 @@ export interface SendEmailParams {
 	subject: string;
 	text: string;
 	html?: string;
-	/**
-	 * Extra MIME headers, e.g. `List-Unsubscribe` / `List-Unsubscribe-Post`
-	 * (S12-09). Passed through by the Resend provider; other providers ignore it.
-	 */
-	headers?: Record<string, string>;
 }
 
 export type SendEmailHandler = (params: SendEmailParams) => Promise<void>;
@@ -41,11 +36,6 @@ export interface RawEmail {
 	subject: string;
 	text: string;
 	html?: string;
-	/**
-	 * Extra MIME headers, e.g. `List-Unsubscribe` / `List-Unsubscribe-Post`
-	 * (S12-09). Passed through by the Resend provider; other providers ignore it.
-	 */
-	headers?: Record<string, string>;
 }
 
 export type SendEmailBatchHandler = (messages: RawEmail[]) => Promise<void>;
