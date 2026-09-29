@@ -33,7 +33,8 @@ export async function WaitlistLanding({ source }: { source?: string }) {
 
 	return (
 		<div className="theme-estate-night lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] grid min-h-svh bg-background text-foreground">
-			<PatternMosaic className="lg:sticky lg:top-0 lg:h-svh h-[50vw] bg-[#172741]" />
+			{/* Desktop only: on phones the page is just the signup panel. */}
+			<PatternMosaic className="lg:sticky lg:top-0 lg:grid lg:h-svh hidden bg-[#172741]" />
 
 			<section
 				aria-labelledby="waitlist-heading"
