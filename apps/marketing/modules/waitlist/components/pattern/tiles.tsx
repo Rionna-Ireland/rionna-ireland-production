@@ -2,15 +2,18 @@ import type { CSSProperties, ReactNode } from "react";
 
 /**
  * S12-09 "pattern cells": the brand tile system from the design sheet
- * (Pattern cells.svg), rebuilt as 200×200 SVG tiles so the waitlist can deal,
- * flip and animate them. Four archetypes × four colourways, geometry taken
+ * (Pattern cells.svg), rebuilt as 200×200 SVG tiles so the waitlist can
+ * animate them. Four archetypes × colourways (the quilt uses one: QUILT_TILE,
+ * so swapping the pattern is a one-line change), geometry taken
  * from the sheet: 20px pixel cells on a grid offset by half a cell, and the
  * thin eight-point star.
  */
 
 export const COLOURWAYS = {
 	plum: { base: "#3A243C", mid: "#57385A", accent: "#CCA1D0", light: "#F2D6F4" },
+
 	navy: { base: "#172741", mid: "#374B6C", accent: "#B9D8E1", light: "#DAEDF3" },
+	navyLit: { base: "#172741", mid: "#374B6C", accent: "#EEEADF", light: "#DAEDF3" },
 	green: { base: "#043F29", mid: "#A6B999", accent: "#EEEADF", light: "#D4DCCE" },
 	cream: { base: "#EEEADF", mid: "#FFFFFF", accent: "#CCA1D0", light: "#FFFFFF" },
 } as const;
@@ -21,18 +24,13 @@ export type TileKind = "quad" | "gem" | "ring" | "harlequin";
 export interface TileSpec {
 	kind: TileKind;
 	colourway: Colourway;
-	/** Quarter turns, so neighbours never look copy-pasted. */
+	/** Quarter turns (the ring tile is symmetric, so 0 for the quilt). */
 	turn: 0 | 1 | 2 | 3;
 }
 
 // The sheet's star, centred on (0,0), tip-to-tip 54.6 units.
 const STAR_PATH =
 	"M-0.797 -26.812C-0.648 -27.729 0.647 -27.729 0.797 -26.812L3.479 -10.381C3.577 -9.78 4.26 -9.492 4.746 -9.846L18.05 -19.533C18.793 -20.074 19.709 -19.141 19.178 -18.384L9.667 -4.834C9.319 -4.339 9.602 -3.644 10.192 -3.544L26.324 -0.812C27.225 -0.659 27.225 0.659 26.324 0.812L10.192 3.543C9.602 3.643 9.319 4.339 9.667 4.835L19.178 18.384C19.709 19.141 18.793 20.074 18.05 19.533L4.746 9.846C4.26 9.492 3.577 9.78 3.479 10.381L0.797 26.812C0.647 27.729 -0.647 27.729 -0.797 26.812L-3.48 10.381C-3.578 9.78 -4.26 9.492 -4.747 9.846L-18.05 19.533C-18.793 20.074 -19.709 19.141 -19.178 18.384L-9.668 4.835C-9.32 4.339 -9.603 3.643 -10.193 3.543L-26.325 0.812C-27.226 0.66 -27.226 -0.659 -26.325 -0.812L-10.193 -3.544C-9.603 -3.644 -9.32 -4.339 -9.668 -4.834L-19.178 -18.384C-19.71 -19.141 -18.793 -20.074 -18.05 -19.533L-4.747 -9.846C-4.26 -9.492 -3.578 -9.78 -3.48 -10.381L-0.797 -26.812Z";
-
-/** Stepped reveal: each pixel cell blooms out from the tile centre. */
-function cellStyle(step: number): CSSProperties {
-	return { "--step": step } as CSSProperties;
-}
 
 function Star({ x, y, scale = 1, fill }: { x: number; y: number; scale?: number; fill: string }) {
 	return (
@@ -49,17 +47,7 @@ function Star({ x, y, scale = 1, fill }: { x: number; y: number; scale?: number;
 
 /** Cell at grid index k (-5…5 from centre), 20 units, centred like the sheet. */
 function Cell({ kx, ky, fill }: { kx: number; ky: number; fill: string }) {
-	return (
-		<rect
-			x={90 + kx * 20}
-			y={90 + ky * 20}
-			width={20}
-			height={20}
-			fill={fill}
-			className="pc-cell"
-			style={cellStyle(Math.abs(kx) + Math.abs(ky))}
-		/>
-	);
+	return <rect x={90 + kx * 20} y={90 + ky * 20} width={20} height={20} fill={fill} />;
 }
 
 const RANGE = [-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5];
@@ -158,8 +146,6 @@ function Harlequin({ c }: { c: (typeof COLOURWAYS)[Colourway] }) {
 						key={`${ox}:${oy}:${row}:${col}`}
 						d={`M${cx} ${cy - 15}L${cx + 10} ${cy}L${cx} ${cy + 15}L${cx - 10} ${cy}Z`}
 						fill={c.mid}
-						className="pc-cell"
-						style={cellStyle(row + col)}
 					/>,
 				);
 			}
@@ -188,54 +174,8 @@ export function PatternTile({ spec }: { spec: TileSpec }) {
 	);
 }
 
-const KINDS: TileKind[] = ["quad", "gem", "ring", "harlequin"];
-// Plum leads (it is the brand), the others season it.
-const WEIGHTED_COLOURWAYS: Colourway[] = [
-	"plum",
-	"plum",
-	"plum",
-	"plum",
-	"navy",
-	"navy",
-	"green",
-	"cream",
-];
+/** The one pattern the waitlist quilt repeats (dark navy gem): the rings join up. */
+export const QUILT_TILE: TileSpec = { kind: "gem", colourway: "navy", turn: 0 };
 
-/** Small seeded PRNG so the server and client deal the same opening hand. */
-export function mulberry32(seed: number): () => number {
-	let a = seed;
-	return () => {
-		a |= 0;
-		a = (a + 0x6d2b79f5) | 0;
-		let t = Math.imul(a ^ (a >>> 15), 1 | a);
-		t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-		return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-	};
-}
-
-export function dealTile(random: () => number, avoid?: TileSpec): TileSpec {
-	for (;;) {
-		const spec: TileSpec = {
-			kind: KINDS[Math.floor(random() * KINDS.length)] ?? "quad",
-			colourway:
-				WEIGHTED_COLOURWAYS[Math.floor(random() * WEIGHTED_COLOURWAYS.length)] ?? "plum",
-			turn: Math.floor(random() * 4) as TileSpec["turn"],
-		};
-		if (!avoid || spec.kind !== avoid.kind || spec.colourway !== avoid.colourway) {
-			return spec;
-		}
-	}
-}
-
-export function dealBoard(count: number, seed: number): TileSpec[] {
-	const random = mulberry32(seed);
-	const board: TileSpec[] = [];
-	for (let i = 0; i < count; i++) {
-		// Never repeat the tile to the left, so the quilt reads as hand-laid.
-		board.push(dealTile(random, board[i - 1]));
-	}
-	return board;
-}
-
-/** Everyone through the gate: the lilac-star tile the success wave turns to. */
-export const CELEBRATION_TILE: TileSpec = { kind: "ring", colourway: "plum", turn: 0 };
+/** Everyone through the gate: the same tile, its gems lit cream. */
+export const CELEBRATION_TILE: TileSpec = { kind: "gem", colourway: "navyLit", turn: 0 };

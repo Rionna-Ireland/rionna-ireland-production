@@ -136,65 +136,61 @@
 
 /* ── S12-09 pattern-cells quilt ─────────────────────────────────────────── */
 
+/*
+ * Only opacity and transform on whole tiles animate: each tile is one GPU
+ * layer, so nothing inside the SVGs repaints per frame (per-cell SVG
+ * transforms and filters were what made it stutter).
+ */
 .pc-slot {
-	perspective: 900px;
+	perspective: 1200px;
 }
 
-/* A (re-)dealt tile turns over like a card… */
+/* On load (and the join ripple) each tile settles in, diagonal by diagonal. */
 .pc-face {
-	animation: pc-deal 760ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+	animation: pc-deal 1400ms cubic-bezier(0.22, 1, 0.36, 1) both;
 	animation-delay: var(--delay, 0ms);
 	transform-origin: center;
-	backface-visibility: hidden;
+	will-change: transform, opacity;
 }
 
-/* …its pixel cells pop in stepwise, blooming out from the centre… */
-.pc-face .pc-cell {
-	transform-box: fill-box;
-	transform-origin: center;
-	animation: pc-bloom 360ms steps(3, end) both;
-	animation-delay: calc(var(--delay, 0ms) + 160ms + var(--step, 0) * 55ms);
+/*
+ * Hover: the tile lifts gently off the quilt. `scale` (not `transform`) so it
+ * composes with the load animation's transform; the shadow is on one tile only.
+ */
+.pc-slot {
+	position: relative;
 }
 
-/* …and the stars spin up last. Hover gives them a quarter-of-a-point turn. */
+.pc-slot:hover {
+	z-index: 1;
+}
+
+.pc-face {
+	transition:
+		scale 900ms cubic-bezier(0.22, 1, 0.36, 1),
+		box-shadow 900ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.pc-slot:hover .pc-face {
+	scale: 1.05;
+	box-shadow: 0 18px 40px rgb(8 14 26 / 0.45);
+}
+
+/* Stars (other quilt patterns) ease through a half-point turn on hover. */
 .pc-face .pc-star {
 	transform-box: fill-box;
 	transform-origin: center;
-	animation: pc-star 1100ms cubic-bezier(0.16, 1, 0.3, 1) both;
-	animation-delay: calc(var(--delay, 0ms) + 260ms);
-	transition: rotate 700ms cubic-bezier(0.16, 1, 0.3, 1);
+	transition: rotate 1400ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .pc-slot:hover .pc-star {
-	rotate: 45deg;
+	rotate: 22.5deg;
 }
 
 @keyframes pc-deal {
 	from {
-		transform: rotateY(-90deg) scale(0.94);
-		filter: brightness(1.35);
-	}
-	to {
-		transform: none;
-		filter: none;
-	}
-}
-
-@keyframes pc-bloom {
-	from {
 		opacity: 0;
-		transform: scale(0.4);
-	}
-	to {
-		opacity: 1;
-		transform: none;
-	}
-}
-
-@keyframes pc-star {
-	from {
-		opacity: 0;
-		transform: rotate(-135deg) scale(0.2);
+		transform: rotateY(-18deg) scale(0.98);
 	}
 	to {
 		opacity: 1;
@@ -217,11 +213,13 @@
 }
 
 .wl-mark {
-	animation: wl-mark 1600ms cubic-bezier(0.16, 1, 0.3, 1) 200ms both;
+	animation: wl-mark 1800ms cubic-bezier(0.22, 1, 0.36, 1) 200ms both;
+	will-change: transform, opacity;
 }
 
 .wl-rise {
-	animation: wl-rise 1000ms cubic-bezier(0.16, 1, 0.3, 1) both;
+	animation: wl-rise 1200ms cubic-bezier(0.22, 1, 0.36, 1) both;
+	will-change: transform, opacity;
 	animation-delay: calc(var(--d, 0ms) + 250ms);
 }
 
@@ -252,25 +250,22 @@
 @keyframes wl-rise {
 	from {
 		opacity: 0;
-		transform: translate3d(0, 28px, 0);
-		filter: blur(8px);
+		transform: translate3d(0, 20px, 0);
 	}
 	to {
 		opacity: 1;
 		transform: none;
-		filter: none;
 	}
 }
 
 @media (prefers-reduced-motion: reduce) {
 	.pc-face,
-	.pc-face .pc-cell,
-	.pc-face .pc-star,
 	.wl-mark,
 	.wl-rise {
 		animation: none;
 	}
 
+	.pc-face,
 	.pc-face .pc-star,
 	.wl-cta {
 		transition: none;
