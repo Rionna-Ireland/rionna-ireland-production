@@ -68,7 +68,11 @@ export default async function MarketingLayout({
 	const waitlistOnly = isWaitlistOnly();
 
 	return (
-		<html lang={locale} suppressHydrationWarning className={`${ppEiko.variable} ${plusJakarta.variable} ${ibmPlexMono.variable}`}>
+		<html
+			lang={locale}
+			suppressHydrationWarning
+			className={`${ppEiko.variable} ${plusJakarta.variable} ${ibmPlexMono.variable}`}
+		>
 			<body className={cn("min-h-screen bg-background text-foreground antialiased")}>
 				<ConsentProvider initialConsent={consentCookie?.value === "true"}>
 					<NextIntlClientProvider locale={locale} messages={messages}>
@@ -89,7 +93,16 @@ export default async function MarketingLayout({
 
 								{!config.wireframeMode && (
 									<>
-										<ConsentBanner />
+										{/* In waitlist-only mode the banner wears the plum panel's theme. */}
+										<div
+											className={
+												waitlistOnly
+													? "theme-estate-night contents"
+													: "contents"
+											}
+										>
+											<ConsentBanner />
+										</div>
 										<AnalyticsScript />
 									</>
 								)}

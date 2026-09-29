@@ -19,13 +19,15 @@ import { z } from "zod";
 
 import { joinWaitlist } from "../actions/join-waitlist";
 import { createWaitlistFieldsSchema, WAITLIST_HONEYPOT_FIELD } from "../lib/schema";
+import { WAITLIST_JOINED_EVENT } from "./pattern/PatternMosaic";
 
-// Borderless Digital Estate field: surface-container-low fill (--input),
-// 2px focus ring with offset (§2b accessibility guardrail).
+// Night-panel field: translucent cream fill (--input) with a hairline that
+// warms to lilac on focus; 2px focus ring with offset (§2b a11y guardrail).
 const INPUT_CLASS =
-	"h-11 rounded-lg border-transparent bg-input px-4 shadow-none focus-visible:border-transparent focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
+	"h-12 rounded-none border-0 border-b border-foreground/25 bg-input px-4 text-base text-foreground shadow-none transition-colors placeholder:text-foreground/40 hover:border-foreground/50 focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 
-const LABEL_CLASS = "text-sm font-medium text-foreground";
+const LABEL_CLASS =
+	"text-[11px] font-mono font-normal uppercase tracking-[0.2em] text-muted-foreground";
 
 function readSourceFromLocation(): string | undefined {
 	if (typeof window === "undefined") {
@@ -74,6 +76,8 @@ export function WaitlistForm({ source }: { source?: string }) {
 
 			if (result.ok) {
 				setSubmitted(true);
+				// The pattern quilt ripples to lilac (PatternMosaic).
+				window.dispatchEvent(new Event(WAITLIST_JOINED_EVENT));
 				return;
 			}
 
@@ -103,7 +107,7 @@ export function WaitlistForm({ source }: { source?: string }) {
 				<h2
 					ref={successRef}
 					tabIndex={-1}
-					className="font-medium text-4xl leading-tight md:text-5xl font-display text-primary outline-hidden"
+					className="font-medium text-4xl leading-tight md:text-5xl font-display text-foreground outline-hidden"
 				>
 					{t("success.title")}
 				</h2>
@@ -116,8 +120,8 @@ export function WaitlistForm({ source }: { source?: string }) {
 
 	return (
 		<Form {...form}>
-			<form onSubmit={onSubmit} noValidate className="gap-6 relative flex flex-col">
-				<div className="gap-6 sm:grid-cols-2 grid grid-cols-1">
+			<form onSubmit={onSubmit} noValidate className="gap-5 relative flex flex-col">
+				<div className="gap-5 sm:grid-cols-2 grid grid-cols-1">
 					<FormField
 						control={form.control}
 						name="firstName"
@@ -188,7 +192,7 @@ export function WaitlistForm({ source }: { source?: string }) {
 										checked={field.value}
 										onChange={(event) => field.onChange(event.target.checked)}
 										onBlur={field.onBlur}
-										className="mt-0.5 size-5 shrink-0 cursor-pointer accent-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+										className="mt-0.5 size-5 shrink-0 cursor-pointer accent-[#CCA1D0] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
 									/>
 								</FormControl>
 								<FormLabel className="font-normal text-sm leading-relaxed text-muted-foreground">
@@ -196,7 +200,7 @@ export function WaitlistForm({ source }: { source?: string }) {
 										link: (chunks) => (
 											<LocaleLink
 												href="/legal/privacy-policy"
-												className="font-medium text-primary underline underline-offset-4"
+												className="font-medium text-foreground underline decoration-[#CCA1D0] underline-offset-4"
 											>
 												{chunks}
 											</LocaleLink>
@@ -236,7 +240,7 @@ export function WaitlistForm({ source }: { source?: string }) {
 						variant="primary"
 						size="lg"
 						loading={form.formState.isSubmitting}
-						className="px-8 sm:w-auto w-full shadow-[inset_0_1px_0_rgba(252,249,242,0.16),inset_0_-1px_0_rgba(28,28,24,0.3)]"
+						className="wl-cta h-14 px-10 sm:w-auto text-base font-medium w-full rounded-full"
 					>
 						{t("form.submit")}
 					</Button>
