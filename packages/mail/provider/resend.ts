@@ -38,7 +38,6 @@ export const sendRawEmailBatch: SendEmailBatchHandler = async (messages) => {
 			subject: message.subject,
 			html: message.html ?? "",
 			text: message.text,
-			headers: message.headers,
 		})),
 	);
 	if (error) {
@@ -55,7 +54,6 @@ export const send: SendEmailHandler = async ({
 	replyTo,
 	html,
 	text,
-	headers,
 }) => {
 	await getResend().emails.send({
 		from: from ?? config.mailFrom,
@@ -66,6 +64,5 @@ export const send: SendEmailHandler = async ({
 		subject,
 		html,
 		text,
-		headers,
 	});
 };

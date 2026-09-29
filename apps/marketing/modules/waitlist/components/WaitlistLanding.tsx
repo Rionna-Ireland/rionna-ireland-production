@@ -1,4 +1,3 @@
-import { config } from "@config";
 import { LocaleLink } from "@i18n/routing";
 import { getTranslations } from "next-intl/server";
 import type { CSSProperties } from "react";
@@ -25,8 +24,8 @@ function rise(delayMs: number): CSSProperties {
 /**
  * S12-09: the whole site while public signup is closed (and the home page in
  * wireframe mode). A living "pattern cells" quilt beside the plum poster
- * panel. There is no nav or footer in this mode, so the panel carries its own
- * "Sign in" link and the legal links the consent checkbox relies on.
+ * panel. There is no nav or footer in this mode, so the panel carries the legal
+ * links the consent checkbox relies on.
  */
 export async function WaitlistLanding({ source }: { source?: string }) {
 	const t = await getTranslations();
@@ -82,14 +81,6 @@ export async function WaitlistLanding({ source }: { source?: string }) {
 						className="wl-rise gap-x-6 gap-y-3 flex flex-wrap items-center font-mono text-[11px] tracking-[0.16em] text-muted-foreground uppercase"
 						style={rise(600)}
 					>
-						{config.saasUrl && (
-							<a
-								href={config.saasUrl}
-								className="text-foreground underline decoration-[#CCA1D0] underline-offset-4 hover:text-[#CCA1D0]"
-							>
-								{t("waitlist.signInPrompt")} {t("waitlist.signIn")}
-							</a>
-						)}
 						<nav
 							aria-label={t("common.footer.legal")}
 							className="gap-x-6 gap-y-3 flex flex-wrap"

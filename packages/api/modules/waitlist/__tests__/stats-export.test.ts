@@ -5,10 +5,9 @@
 import { call } from "@orpc/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockGetSession, mockGroupBy, mockCount, mockFindMany, mockLogger } = vi.hoisted(() => ({
+const { mockGetSession, mockGroupBy, mockFindMany, mockLogger } = vi.hoisted(() => ({
 	mockGetSession: vi.fn(),
 	mockGroupBy: vi.fn(),
-	mockCount: vi.fn(),
 	mockFindMany: vi.fn(),
 	mockLogger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), log: vi.fn() },
 }));
@@ -17,7 +16,7 @@ vi.mock("@repo/auth", () => ({ auth: { api: { getSession: mockGetSession } } }))
 vi.mock("@repo/logs", () => ({ logger: mockLogger }));
 vi.mock("@repo/database", () => ({
 	db: {
-		waitlistSignup: { groupBy: mockGroupBy, count: mockCount, findMany: mockFindMany },
+		waitlistSignup: { groupBy: mockGroupBy, findMany: mockFindMany },
 	},
 }));
 
@@ -40,34 +39,26 @@ describe("getWaitlistStats", () => {
 		);
 	});
 
-	it("totals by status, breaks down by source, and counts every stamped launch send", async () => {
+	it("totals by status and breaks down by source", async () => {
 		mockGroupBy.mockResolvedValue([
 			{ status: "subscribed", source: "race-day", _count: { _all: 7 } },
 			{ status: "unsubscribed", source: "race-day", _count: { _all: 1 } },
 			{ status: "subscribed", source: null, _count: { _all: 3 } },
 		]);
-		// pending = 4; sent = 7, which includes the one who unsubscribed after
-		// receiving the launch email (so it isn't `subscribed - pending`).
-		mockCount.mockResolvedValueOnce(4).mockResolvedValueOnce(7);
 
 		const result = await call(getWaitlistStats, { organizationId: "org1" }, ctx);
 
 		expect(result).toEqual({
 			subscribed: 10,
 			unsubscribed: 1,
-			launchPending: 4,
-			launchSent: 7,
 			bySource: [
 				{ source: "race-day", subscribed: 7, unsubscribed: 1 },
 				{ source: null, subscribed: 3, unsubscribed: 0 },
 			],
 		});
-		expect(mockCount).toHaveBeenCalledWith({
-			where: { organizationId: "org1", status: "subscribed", launchEmailSentAt: null },
-		});
-		expect(mockCount).toHaveBeenCalledWith({
-			where: { organizationId: "org1", launchEmailSentAt: { not: null } },
-		});
+		expect(mockGroupBy).toHaveBeenCalledWith(
+			expect.objectContaining({ where: { organizationId: "org1" } }),
+		);
 	});
 });
 

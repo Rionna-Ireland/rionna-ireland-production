@@ -10,11 +10,9 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { DownloadIcon, Loader2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { LaunchEmailPanel } from "./LaunchEmailPanel";
-
 /**
- * S12-09 §6 + Phase 2: `/admin/waitlist` — counts by status and source, a CSV
- * of subscribed signups, and the one-off launch email send.
+ * S12-09 §6: `/admin/waitlist` — counts by status and source, and a CSV of
+ * subscribed signups to import into Mailchimp (which sends the launch email).
  */
 export function WaitlistPage() {
 	const t = useTranslations();
@@ -69,7 +67,7 @@ export function WaitlistPage() {
 						</p>
 					) : (
 						<>
-							<div className="gap-4 sm:grid-cols-4 grid grid-cols-2">
+							<div className="gap-4 grid grid-cols-2">
 								<Stat
 									label={t("admin.waitlist.stats.subscribed")}
 									value={stats.subscribed}
@@ -77,14 +75,6 @@ export function WaitlistPage() {
 								<Stat
 									label={t("admin.waitlist.stats.unsubscribed")}
 									value={stats.unsubscribed}
-								/>
-								<Stat
-									label={t("admin.waitlist.stats.launchSent")}
-									value={stats.launchSent}
-								/>
-								<Stat
-									label={t("admin.waitlist.stats.launchPending")}
-									value={stats.launchPending}
 								/>
 							</div>
 
@@ -144,10 +134,6 @@ export function WaitlistPage() {
 					)}
 				</CardContent>
 			</Card>
-
-			{organizationId && stats && (
-				<LaunchEmailPanel organizationId={organizationId} pending={stats.launchPending} />
-			)}
 		</div>
 	);
 }
