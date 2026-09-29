@@ -5,7 +5,7 @@ import { type CSSProperties, useEffect, useState } from "react";
 
 import { CELEBRATION_TILE, PatternTile, QUILT_TILE } from "./tiles";
 
-/** Fired by WaitlistForm on a successful join: the quilt's gems light up. */
+/** Fired by WaitlistForm on a successful join: the quilt's spurs light up. */
 export const WAITLIST_JOINED_EVENT = "rionna:waitlist-joined";
 
 const COLUMNS = 4;
@@ -20,9 +20,9 @@ const SLOTS = Array.from({ length: COLUMNS * ROWS }, (_, index) => ({
 
 /**
  * S12-09: the "pattern cells" quilt beside the waitlist form: one pattern
- * (QUILT_TILE) repeated so the rings join into a lattice. Motion is only the
- * load-in wave, a gentle CSS lift on hover, and, when someone joins, the same
- * wave again as the gems light cream. No ambient motion. Decorative only
+ * (QUILT_TILE) repeated into one continuous surface. Motion is only the
+ * load-in wave, a CSS spur turn on hover, and, when someone joins, the same
+ * wave again as the spurs light ice blue. No ambient motion. Decorative only
  * (aria-hidden); reduced motion is handled in globals.css.
  */
 export function PatternMosaic({ className }: { className?: string }) {

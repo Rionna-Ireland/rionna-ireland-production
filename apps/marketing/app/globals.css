@@ -153,30 +153,7 @@
 	will-change: transform, opacity;
 }
 
-/*
- * Hover: the tile lifts gently off the quilt. `scale` (not `transform`) so it
- * composes with the load animation's transform; the shadow is on one tile only.
- */
-.pc-slot {
-	position: relative;
-}
-
-.pc-slot:hover {
-	z-index: 1;
-}
-
-.pc-face {
-	transition:
-		scale 900ms cubic-bezier(0.22, 1, 0.36, 1),
-		box-shadow 900ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.pc-slot:hover .pc-face {
-	scale: 1.05;
-	box-shadow: 0 18px 40px rgb(8 14 26 / 0.45);
-}
-
-/* Stars (other quilt patterns) ease through a half-point turn on hover. */
+/* Hover: the spurs ease through a half-point turn. */
 .pc-face .pc-star {
 	transform-box: fill-box;
 	transform-origin: center;
@@ -265,7 +242,6 @@
 		animation: none;
 	}
 
-	.pc-face,
 	.pc-face .pc-star,
 	.wl-cta {
 		transition: none;

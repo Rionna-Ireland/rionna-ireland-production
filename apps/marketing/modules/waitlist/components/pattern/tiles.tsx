@@ -10,12 +10,30 @@ import type { CSSProperties, ReactNode } from "react";
  */
 
 export const COLOURWAYS = {
-	plum: { base: "#3A243C", mid: "#57385A", accent: "#CCA1D0", light: "#F2D6F4" },
-
-	navy: { base: "#172741", mid: "#374B6C", accent: "#B9D8E1", light: "#DAEDF3" },
-	navyLit: { base: "#172741", mid: "#374B6C", accent: "#EEEADF", light: "#DAEDF3" },
-	green: { base: "#043F29", mid: "#A6B999", accent: "#EEEADF", light: "#D4DCCE" },
-	cream: { base: "#EEEADF", mid: "#FFFFFF", accent: "#CCA1D0", light: "#FFFFFF" },
+	// `spur`: the harlequin tile's stars (the sheet draws them in `mid`).
+	plum: { base: "#3A243C", mid: "#57385A", accent: "#CCA1D0", light: "#F2D6F4", spur: "#57385A" },
+	navy: { base: "#172741", mid: "#374B6C", accent: "#B9D8E1", light: "#DAEDF3", spur: "#374B6C" },
+	navyLit: {
+		base: "#172741",
+		mid: "#374B6C",
+		accent: "#EEEADF",
+		light: "#DAEDF3",
+		spur: "#B9D8E1",
+	},
+	green: {
+		base: "#043F29",
+		mid: "#A6B999",
+		accent: "#EEEADF",
+		light: "#D4DCCE",
+		spur: "#A6B999",
+	},
+	cream: {
+		base: "#EEEADF",
+		mid: "#FFFFFF",
+		accent: "#CCA1D0",
+		light: "#FFFFFF",
+		spur: "#FFFFFF",
+	},
 } as const;
 
 export type Colourway = keyof typeof COLOURWAYS;
@@ -155,8 +173,8 @@ function Harlequin({ c }: { c: (typeof COLOURWAYS)[Colourway] }) {
 		<>
 			<rect width={200} height={200} fill={c.base} />
 			{lozenges}
-			<Star x={50} y={50} scale={1.25} fill={c.mid} />
-			<Star x={150} y={150} scale={1.25} fill={c.mid} />
+			<Star x={50} y={50} scale={1.25} fill={c.spur} />
+			<Star x={150} y={150} scale={1.25} fill={c.spur} />
 		</>
 	);
 }
@@ -174,8 +192,8 @@ export function PatternTile({ spec }: { spec: TileSpec }) {
 	);
 }
 
-/** The one pattern the waitlist quilt repeats (dark navy gem): the rings join up. */
-export const QUILT_TILE: TileSpec = { kind: "gem", colourway: "navy", turn: 0 };
+/** The one pattern the waitlist quilt repeats: navy diamonds and spurs (harlequin). */
+export const QUILT_TILE: TileSpec = { kind: "harlequin", colourway: "navy", turn: 0 };
 
-/** Everyone through the gate: the same tile, its gems lit cream. */
-export const CELEBRATION_TILE: TileSpec = { kind: "gem", colourway: "navyLit", turn: 0 };
+/** Everyone through the gate: the same tile, its spurs lit ice blue. */
+export const CELEBRATION_TILE: TileSpec = { kind: "harlequin", colourway: "navyLit", turn: 0 };
