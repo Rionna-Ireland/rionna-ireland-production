@@ -1,7 +1,7 @@
 import { config as i18nConfig } from "@i18n/config";
 import { getBaseUrl } from "@shared/lib/base-url";
 import { getUniqueBasePaths } from "@shared/lib/content";
-import { allLegalPages, allPosts } from "content-collections";
+import { allLegalPages } from "content-collections";
 import type { MetadataRoute } from "next";
 
 const baseUrl = getBaseUrl();
@@ -13,22 +13,17 @@ function localePath(locale: string, path: string): string {
 	return `${prefix}${path}`;
 }
 
-const staticMarketingPages = ["", "/blog", "/changelog"];
+// S12-09: /waitlist is the shareable pre-launch page. There are no /blog or
+// /changelog routes any more, so neither they nor blog posts are listed.
+const staticMarketingPages = ["", "/waitlist"];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-	const postPaths = getUniqueBasePaths(allPosts);
 	const legalPaths = getUniqueBasePaths(allLegalPages);
 
 	return [
 		...staticMarketingPages.flatMap((page) =>
 			locales.map((locale) => ({
 				url: new URL(localePath(locale, page), baseUrl).href,
-				lastModified: new Date(),
-			})),
-		),
-		...postPaths.flatMap((path) =>
-			locales.map((locale) => ({
-				url: new URL(localePath(locale, `/blog/${path}`), baseUrl).href,
 				lastModified: new Date(),
 			})),
 		),

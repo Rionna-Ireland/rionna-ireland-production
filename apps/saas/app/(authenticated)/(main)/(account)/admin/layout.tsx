@@ -9,6 +9,7 @@ import {
 	HeartHandshakeIcon,
 	LayoutDashboardIcon,
 	ListIcon,
+	MailIcon,
 	MegaphoneIcon,
 	MessagesSquareIcon,
 	NewspaperIcon,
@@ -58,6 +59,11 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
 								title: t("menu.members"),
 								href: "/admin/members",
 								icon: <UsersIcon className="size-4 opacity-50" />,
+							},
+							{
+								title: t("menu.waitlist"),
+								href: "/admin/waitlist",
+								icon: <MailIcon className="size-4 opacity-50" />,
 							},
 							{
 								title: t("menu.horses"),

@@ -18,6 +18,7 @@ export default defineConfig({
 			"@changelog": path.resolve(import.meta.dirname, "./modules/changelog"),
 			"@legal": path.resolve(import.meta.dirname, "./modules/legal"),
 			"@shared": path.resolve(import.meta.dirname, "./modules/shared"),
+			"@waitlist": path.resolve(import.meta.dirname, "./modules/waitlist"),
 			"content-collections": path.resolve(
 				import.meta.dirname,
 				"./.content-collections/generated",

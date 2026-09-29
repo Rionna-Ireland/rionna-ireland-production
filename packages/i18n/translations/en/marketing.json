@@ -151,11 +151,6 @@
 			"title": "Ownership, made personal.",
 			"description": "One flat membership. All the horses, all the races, all the moments.",
 			"cta": "Become a member"
-		},
-		"wireframe": {
-			"badge": "Preview build",
-			"joinCta": "Become a member",
-			"signInCta": "Sign in"
 		}
 	},
 	"notFound": {
@@ -194,6 +189,56 @@
 			"system": "System",
 			"light": "Light",
 			"dark": "Dark"
+		}
+	},
+	"waitlist": {
+		"joinCta": "Join the waitlist",
+		"meta": {
+			"title": "Join the waitlist",
+			"description": "Rionna is a shared racehorse ownership club. Leave your details and we'll email you when the app launches."
+		},
+		"eyebrow": "Rionna · Coming soon",
+		"headline": "Be first <em>through the gate</em>.",
+		"body": "The Rionna app is nearly ready. Leave your details and we'll email you the day it launches.",
+		"signInPrompt": "Already have an account?",
+		"signIn": "Sign in",
+		"backHome": "Back to the waitlist",
+		"form": {
+			"firstName": "First name",
+			"lastName": "Last name",
+			"email": "Email",
+			"consent": "Email me when the Rionna app launches. Unsubscribe any time. See our <link>Privacy Policy</link>.",
+			"honeypot": "Leave this field empty",
+			"submit": "Join the waitlist",
+			"errors": {
+				"firstNameRequired": "Enter your first name.",
+				"firstNameTooLong": "First name must be 80 characters or fewer.",
+				"lastNameRequired": "Enter your last name.",
+				"lastNameTooLong": "Last name must be 80 characters or fewer.",
+				"emailRequired": "Enter your email address.",
+				"emailInvalid": "Enter a valid email address.",
+				"consentRequired": "Tick the box so we can email you at launch.",
+				"rateLimited": "Too many attempts. Please wait a few minutes and try again.",
+				"generic": "Something went wrong. Please try again."
+			}
+		},
+		"success": {
+			"title": "You're on the list.",
+			"body": "Thanks. We'll email you when the Rionna app launches."
+		},
+		"unsubscribe": {
+			"meta": {
+				"title": "Unsubscribe from the waitlist"
+			},
+			"eyebrow": "Rionna · Waitlist",
+			"title": "Unsubscribe",
+			"body": "Stop receiving the Rionna launch email. You can join again any time.",
+			"confirm": "Unsubscribe",
+			"doneTitle": "You're unsubscribed.",
+			"doneBody": "We won't email you about the launch. Changed your mind? You can join the waitlist again any time.",
+			"missingToken": "This unsubscribe link is incomplete. Use the link from your email, or contact us and we'll remove you.",
+			"error": "Something went wrong. Please try again.",
+			"rejoin": "Join the waitlist again"
 		}
 	}
 }

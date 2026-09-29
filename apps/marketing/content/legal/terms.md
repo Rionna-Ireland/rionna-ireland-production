@@ -1,5 +1,6 @@
 ---
 title: Terms of Service
+version: "2026-09-27"
 ---
 
 _This is placeholder content. Final copy will be supplied by the club's legal counsel before launch._

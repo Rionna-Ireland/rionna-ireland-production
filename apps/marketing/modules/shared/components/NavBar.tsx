@@ -7,6 +7,7 @@ import { Button } from "@repo/ui/components/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@repo/ui/components/sheet";
 import { ColorModeToggle } from "@shared/components/ColorModeToggle";
 import { LocaleSwitch } from "@shared/components/LocaleSwitch";
+import { getJoinCta } from "@shared/lib/join-url";
 import { MenuIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import NextLink from "next/link";
@@ -16,6 +17,9 @@ import { useDebounceCallback } from "usehooks-ts";
 export function NavBar() {
 	const t = useTranslations();
 	const localePathname = useLocalePathname();
+
+	// S12-09 / D39: while signup is closed "Join" goes to the waitlist.
+	const joinCta = getJoinCta();
 
 	const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 	const [isTop, setIsTop] = useState(true);
@@ -184,7 +188,11 @@ export function NavBar() {
 							</Button>
 						)}
 						<Button className="lg:flex hidden" asChild variant="primary">
-							<LocaleLink href="/membership">{t("common.menu.join")}</LocaleLink>
+							{joinCta.mode === "waitlist" ? (
+								<LocaleLink href={joinCta.href}>{t("waitlist.joinCta")}</LocaleLink>
+							) : (
+								<LocaleLink href="/membership">{t("common.menu.join")}</LocaleLink>
+							)}
 						</Button>
 					</div>
 				</div>

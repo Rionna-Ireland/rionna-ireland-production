@@ -1,18 +1,9 @@
+import { ORPCError } from "@orpc/client";
 import { db } from "@repo/database";
 import { z } from "zod";
 
 import { adminProcedure } from "../../../orpc/procedures";
-
-// Priority order — the "best" current standing wins when a member has several
-// purchase rows (e.g. an old canceled sub + a current past_due one).
-const STATUS_PRIORITY = ["active", "trialing", "past_due", "canceled", "expired"] as const;
-
-function pickSubscriptionStatus(statuses: string[]): string {
-	for (const status of STATUS_PRIORITY) {
-		if (statuses.includes(status)) return status;
-	}
-	return statuses[0] ?? "none";
-}
+import { groupStatusesByUser, pickSubscriptionStatus } from "../lib/subscription-status";
 
 /**
  * The unified member roster (S2-09 surface G) — one row per member combining
@@ -27,7 +18,13 @@ export const getClubRoster = adminProcedure
 		summary: "Unified member roster (identity + Stripe + Circle)",
 	})
 	.input(z.object({ organizationId: z.string() }))
-	.handler(async ({ input: { organizationId } }) => {
+	.handler(async ({ input: { organizationId }, context }) => {
+		// Tenant-isolation (S12-10): adminProcedure is a global role check, so an
+		// admin may only read the roster of their own active org.
+		if (context.session.activeOrganizationId !== organizationId) {
+			throw new ORPCError("FORBIDDEN");
+		}
+
 		const members = await db.member.findMany({
 			where: { organizationId },
 			include: {
@@ -41,13 +38,7 @@ export const getClubRoster = adminProcedure
 			select: { userId: true, status: true },
 		});
 
-		const statusesByUser = new Map<string, string[]>();
-		for (const purchase of purchases) {
-			if (!purchase.userId || !purchase.status) continue;
-			const list = statusesByUser.get(purchase.userId) ?? [];
-			list.push(purchase.status);
-			statusesByUser.set(purchase.userId, list);
-		}
+		const statusesByUser = groupStatusesByUser(purchases);
 
 		return members.map((member) => {
 			const userStatuses = statusesByUser.get(member.userId) ?? [];

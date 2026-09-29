@@ -110,4 +110,11 @@ describe("getClubRoster (S2-09 surface G)", () => {
 
 		expect(result[0]?.subscriptionStatus).toBe("none");
 	});
+
+	it("forbids reading another organization's roster (S12-10 tenancy)", async () => {
+		await expect(call(getClubRoster, { organizationId: "org2" }, ctx)).rejects.toMatchObject({
+			code: "FORBIDDEN",
+		});
+		expect(mockMemberFindMany).not.toHaveBeenCalled();
+	});
 });

@@ -19,7 +19,15 @@ import { admin, magicLink, openAPI, organization } from "better-auth/plugins";
 import { parse as parseCookies } from "cookie";
 
 import { config } from "./config";
+import { apiErrorLogFields } from "./lib/api-error-log";
 import { updateSeatsInOrganizationSubscription } from "./lib/organization";
+import { assertSignupAllowed } from "./lib/signup-guard";
+import {
+	assertTermsAccepted,
+	hasAcceptedCurrentTermsInBody,
+	recordSignupTermsAcceptance,
+	SIGNUP_PATH,
+} from "./lib/terms-acceptance";
 
 const getLocaleFromRequest = (request?: Request) => {
 	const cookies = parseCookies(request?.headers.get("cookie") ?? "");
@@ -62,9 +70,20 @@ export const auth = betterAuth({
 		},
 		user: {
 			create: {
-				after: async (createdUser) => {
+				after: async (createdUser, hookContext) => {
 					if (!createdUser?.id) {
 						return;
+					}
+					// S12-10: a real email sign-up (hooks.before already refused any
+					// request without the current terms version) records the acceptance.
+					// Used instead of hooks.after because sign-up with required email
+					// verification returns a synthetic user for duplicate emails and no
+					// session, whereas this hook only fires for a row actually created.
+					if (
+						hookContext?.path === SIGNUP_PATH &&
+						hasAcceptedCurrentTermsInBody(hookContext.body)
+					) {
+						await recordSignupTermsAcceptance(createdUser.id);
 					}
 					try {
 						await createWelcomeNotification(createdUser.id);
@@ -111,6 +130,15 @@ export const auth = betterAuth({
 			}
 		}),
 		before: createAuthMiddleware(async (ctx) => {
+			// S12-09 / D39: while public signup is closed, only emails with a pending
+			// invitation may sign up. Runs before the endpoint, so nothing is created.
+			if (ctx.path === "/sign-up/email") {
+				await assertSignupAllowed(ctx.body);
+				// S12-10: the sign-up form sends acceptedTermsVersion; refuse without it.
+				assertTermsAccepted(ctx.body);
+				return;
+			}
+
 			if (
 				ctx.path.startsWith("/delete-user") ||
 				ctx.path.startsWith("/organization/delete")
@@ -148,12 +176,16 @@ export const auth = betterAuth({
 							try {
 								await deleteCircleMember(member.circleMemberId);
 							} catch (error) {
-								logger.error("Failed to delete Circle member during user deletion", {
-									userId,
-									memberId: member.id,
-									circleMemberId: member.circleMemberId,
-									error: error instanceof Error ? error.message : String(error),
-								});
+								logger.error(
+									"Failed to delete Circle member during user deletion",
+									{
+										userId,
+										memberId: member.id,
+										circleMemberId: member.circleMemberId,
+										error:
+											error instanceof Error ? error.message : String(error),
+									},
+								);
 							}
 						}
 					}
@@ -204,10 +236,15 @@ export const auth = betterAuth({
 	},
 	emailAndPassword: {
 		enabled: true,
-		// If signup is disabled, the only way to sign up is via an invitation. So in this case we can auto sign in the user, as the email is already verified by the invitation.
-		// If signup is enabled, we can't auto sign in the user, as the email is not verified yet.
-		autoSignIn: !config.enableSignup,
-		requireEmailVerification: config.enableSignup,
+		// D39: these are deliberately NOT derived from config.enableSignup. With signup
+		// closed, the sign-up endpoint still exists (invited admins use it), so tying
+		// them to the flag would let a direct POST mint an unverified, auto-signed-in
+		// account. Keep the open-signup values: every new account, invited or not,
+		// verifies its email first. Invitees then land on
+		// /organization-invitation/<id> via the verification callbackURL
+		// (autoSignInAfterVerification) and accept the invitation there.
+		autoSignIn: false,
+		requireEmailVerification: true,
 		sendResetPassword: async ({ user, url }, request) => {
 			const locale = getLocaleFromRequest(request);
 			await sendEmail({
@@ -223,7 +260,8 @@ export const auth = betterAuth({
 		minPasswordLength: 8,
 	},
 	emailVerification: {
-		sendOnSignUp: config.enableSignup,
+		// D39: always send, independent of config.enableSignup (see emailAndPassword).
+		sendOnSignUp: true,
 		autoSignInAfterVerification: true,
 		sendVerificationEmail: async ({ user: { email, name }, url }, request) => {
 			const locale = getLocaleFromRequest(request);
@@ -238,8 +276,8 @@ export const auth = betterAuth({
 			});
 		},
 	},
-	// D36: signup is intentionally open (config.enableSignup); the paywall is the
-	// real gate, so no invitation-only signup plugin is wired in here.
+	// D36/D39: signup is open after launch (config.enableSignup); before launch the
+	// hooks.before sign-up guard restricts it to invitees. The paywall is the real gate.
 	plugins: [
 		admin(),
 		magicLink({
@@ -285,8 +323,10 @@ export const auth = betterAuth({
 		openAPI(),
 	],
 	onAPIError: {
-		onError(error, ctx) {
-			logger.error(error, { ctx });
+		// The second argument is the full AuthContext (secret, options, provider
+		// credentials) — never log it; see apiErrorLogFields.
+		onError(error) {
+			logger.error(error, { event: "better_auth_api_error", ...apiErrorLogFields(error) });
 		},
 	},
 });

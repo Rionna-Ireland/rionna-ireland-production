@@ -32,3 +32,218 @@
 		border-color: var(--border);
 	}
 }
+
+/*
+ * S12-09 §2b: "Digital Estate" palette (design/design-system.md), scoped to
+ * the waitlist only. Remaps the shadcn tokens so @repo/ui controls restyle
+ * themselves. The --color-* aliases are re-pointed too: Tailwind's @theme
+ * resolves them on :root, so overriding --background alone would not reach
+ * `bg-background` inside the scope. The design system has no dark palette, so
+ * `.dark .theme-estate` keeps the same light values. Text is never #000.
+ */
+@layer base {
+	.theme-estate,
+	.dark .theme-estate {
+		color-scheme: light;
+
+		--background: #fcf9f2; /* surface */
+		--foreground: #1c1c18; /* on-surface */
+		--card: #ffffff; /* surface-container-lowest */
+		--card-foreground: #1c1c18;
+		--popover: #ffffff;
+		--popover-foreground: #1c1c18;
+		--primary: #391d3a;
+		--primary-foreground: #fcf9f2; /* on-primary */
+		--secondary: #e4d5e2; /* secondary-container */
+		--secondary-foreground: #391d3a;
+		--muted: #f1eee7; /* surface-container */
+		--muted-foreground: #5a544f; /* on-surface-variant */
+		--accent: #f0ddef; /* secondary-fixed */
+		--accent-foreground: #391d3a;
+		--input: #f7f3eb; /* surface-container-low: field fill */
+		--border: rgb(208 195 203 / 0.15); /* outline-variant ghost border */
+		--ring: #391d3a;
+
+		--color-background: var(--background);
+		--color-foreground: var(--foreground);
+		--color-card: var(--card);
+		--color-card-foreground: var(--card-foreground);
+		--color-popover: var(--popover);
+		--color-popover-foreground: var(--popover-foreground);
+		--color-primary: var(--primary);
+		--color-primary-foreground: var(--primary-foreground);
+		--color-secondary: var(--secondary);
+		--color-secondary-foreground: var(--secondary-foreground);
+		--color-muted: var(--muted);
+		--color-muted-foreground: var(--muted-foreground);
+		--color-accent: var(--accent);
+		--color-accent-foreground: var(--accent-foreground);
+		--color-input: var(--input);
+		--color-border: var(--border);
+		--color-ring: var(--ring);
+	}
+}
+
+/*
+ * S12-09 waitlist "night" theme: the poster's plum panel. Cream text on
+ * #57385A (8.3:1) and #3A243C (11.7:1); lilac #CCA1D0 is 4.5:1+ on both, so it
+ * can carry emphasis and the focus ring here. Scoped like .theme-estate.
+ */
+@layer base {
+	.theme-estate-night,
+	.dark .theme-estate-night {
+		color-scheme: dark;
+
+		--background: #57385a;
+		--foreground: #eeeadf;
+		--card: #3a243c;
+		--card-foreground: #eeeadf;
+		--popover: #3a243c;
+		--popover-foreground: #eeeadf;
+		--primary: #eeeadf;
+		--primary-foreground: #3a243c;
+		--secondary: #3a243c;
+		--secondary-foreground: #eeeadf;
+		--muted: #3a243c;
+		--muted-foreground: #d3c6d2;
+		--accent: #cca1d0;
+		--accent-foreground: #3a243c;
+		--destructive: #ffb4a9;
+		--input: rgb(238 234 223 / 0.06);
+		--border: rgb(238 234 223 / 0.16);
+		--ring: #cca1d0;
+
+		--color-background: var(--background);
+		--color-foreground: var(--foreground);
+		--color-card: var(--card);
+		--color-card-foreground: var(--card-foreground);
+		--color-popover: var(--popover);
+		--color-popover-foreground: var(--popover-foreground);
+		--color-primary: var(--primary);
+		--color-primary-foreground: var(--primary-foreground);
+		--color-secondary: var(--secondary);
+		--color-secondary-foreground: var(--secondary-foreground);
+		--color-muted: var(--muted);
+		--color-muted-foreground: var(--muted-foreground);
+		--color-accent: var(--accent);
+		--color-accent-foreground: var(--accent-foreground);
+		--color-destructive: var(--destructive);
+		--color-input: var(--input);
+		--color-border: var(--border);
+		--color-ring: var(--ring);
+	}
+}
+
+/* ── S12-09 pattern-cells quilt ─────────────────────────────────────────── */
+
+/*
+ * Only opacity and transform on whole tiles animate: each tile is one GPU
+ * layer, so nothing inside the SVGs repaints per frame (per-cell SVG
+ * transforms and filters were what made it stutter).
+ */
+.pc-slot {
+	perspective: 1200px;
+}
+
+/* On load (and the join ripple) each tile settles in, diagonal by diagonal. */
+.pc-face {
+	animation: pc-deal 1400ms cubic-bezier(0.22, 1, 0.36, 1) both;
+	animation-delay: var(--delay, 0ms);
+	transform-origin: center;
+	will-change: transform, opacity;
+}
+
+/* Hover: the spurs ease through a half-point turn. */
+.pc-face .pc-star {
+	transform-box: fill-box;
+	transform-origin: center;
+	transition: rotate 1400ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.pc-slot:hover .pc-star {
+	rotate: 22.5deg;
+}
+
+@keyframes pc-deal {
+	from {
+		opacity: 0;
+		transform: rotateY(-18deg) scale(0.98);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+
+/* ── S12-09 waitlist panel ──────────────────────────────────────────────── */
+
+/* Film-grain over the plum so the flat colour reads as printed paper. */
+.wl-panel::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	z-index: -1;
+	pointer-events: none;
+	opacity: 0.09;
+	mix-blend-mode: overlay;
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.wl-mark {
+	animation: wl-mark 1800ms cubic-bezier(0.22, 1, 0.36, 1) 200ms both;
+	will-change: transform, opacity;
+}
+
+.wl-rise {
+	animation: wl-rise 1200ms cubic-bezier(0.22, 1, 0.36, 1) both;
+	will-change: transform, opacity;
+	animation-delay: calc(var(--d, 0ms) + 250ms);
+}
+
+.wl-cta {
+	transition:
+		background-color 300ms ease,
+		color 300ms ease,
+		transform 300ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.wl-cta:hover {
+	background-color: #cca1d0;
+	color: #3a243c;
+	transform: translateY(-2px);
+}
+
+@keyframes wl-mark {
+	from {
+		opacity: 0;
+		transform: translate3d(-6%, 8%, 0);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+
+@keyframes wl-rise {
+	from {
+		opacity: 0;
+		transform: translate3d(0, 20px, 0);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.pc-face,
+	.wl-mark,
+	.wl-rise {
+		animation: none;
+	}
+
+	.pc-face .pc-star,
+	.wl-cta {
+		transition: none;
+	}
+}

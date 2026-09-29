@@ -1,6 +1,7 @@
-import { config } from "@config";
 import { Button } from "@repo/ui/components/button";
+import { JoinCtaLink } from "@shared/components/JoinCtaLink";
 import { getClubEvents } from "@shared/lib/club";
+import { getJoinCta } from "@shared/lib/join-url";
 import { redirectIfWireframeMode } from "@shared/lib/wireframe-mode";
 import { ArrowRightIcon } from "lucide-react";
 import { getLocale, getTranslations, setRequestLocale } from "next-intl/server";
@@ -25,7 +26,8 @@ export default async function EventsListPage(props: { params: Promise<{ locale: 
 	const activeLocale = await getLocale();
 	const { items } = await getClubEvents({ limit: 24 });
 
-	const joinUrl = config.saasUrl ? `${String(config.saasUrl).replace(/\/$/, "")}/signup` : "#";
+	const tRoot = await getTranslations({ locale });
+	const joinCta = getJoinCta();
 
 	return (
 		<div className="py-16 md:py-24 container">
@@ -85,10 +87,10 @@ export default async function EventsListPage(props: { params: Promise<{ locale: 
 
 			<div className="mt-16">
 				<Button size="lg" variant="primary" asChild>
-					<a href={joinUrl}>
-						{t("joinCta")}
+					<JoinCtaLink cta={joinCta}>
+						{joinCta.labelKey ? tRoot(joinCta.labelKey) : t("joinCta")}
 						<ArrowRightIcon className="ml-2 size-4" />
-					</a>
+					</JoinCtaLink>
 				</Button>
 			</div>
 		</div>

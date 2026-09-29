@@ -1,7 +1,11 @@
+import { isPublicSignupOpen } from "@repo/utils";
+
 import type { AuthConfig } from "./types";
 
 export const config = {
-	enableSignup: true,
+	// D39: public signup is closed until launch (NEXT_PUBLIC_PUBLIC_SIGNUP_OPEN=true
+	// opens it). Invited users can still sign up; see lib/signup-guard.ts.
+	enableSignup: isPublicSignupOpen(),
 	enableMagicLink: true,
 	enableSocialLogin: false,
 	enablePasskeys: false,

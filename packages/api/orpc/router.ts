@@ -7,6 +7,7 @@ import { communityRouter } from "../modules/community/router";
 import { dashboardRouter } from "../modules/dashboard/router";
 import { eventsRouter } from "../modules/events/router";
 import { inboxRouter } from "../modules/inbox/router";
+import { legalRouter } from "../modules/legal/router";
 import { memberPostsRouter } from "../modules/member-posts/router";
 import { membersRouter } from "../modules/members/router";
 import { newsRouter } from "../modules/news/router";
@@ -20,6 +21,7 @@ import { pushRouter } from "../modules/push/router";
 import { horsesPublicRouter } from "../modules/racing/horses/public-router";
 import { settingsRouter } from "../modules/settings/router";
 import { usersRouter } from "../modules/users/router";
+import { waitlistRouter } from "../modules/waitlist/router";
 import { publicProcedure } from "./procedures";
 
 export const router = publicProcedure.router({
@@ -31,6 +33,7 @@ export const router = publicProcedure.router({
 	events: eventsRouter,
 	horses: horsesPublicRouter,
 	inbox: inboxRouter,
+	legal: legalRouter,
 	memberPosts: memberPostsRouter,
 	members: membersRouter,
 	news: newsRouter,
@@ -43,6 +46,7 @@ export const router = publicProcedure.router({
 	push: pushRouter,
 	notifications: notificationsRouter,
 	settings: settingsRouter,
+	waitlist: waitlistRouter,
 });
 
 export type ApiRouterClient = RouterClient<typeof router>;

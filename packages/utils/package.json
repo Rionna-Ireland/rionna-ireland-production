@@ -5,13 +5,19 @@
 	"types": "./**/.tsx",
 	"scripts": {
 		"clean": "git clean -xdf .cache .turbo dist node_modules",
+		"test": "vitest run",
+		"test:watch": "vitest",
 		"type-check": "tsc --noEmit"
 	},
 	"dependencies": {
+		"@repo/logs": "workspace:*",
+		"@upstash/ratelimit": "catalog:",
+		"@upstash/redis": "catalog:",
 		"zod": "catalog:"
 	},
 	"devDependencies": {
 		"@repo/tsconfig": "workspace:*",
-		"@types/node": "catalog:"
+		"@types/node": "catalog:",
+		"vitest": "catalog:"
 	}
 }

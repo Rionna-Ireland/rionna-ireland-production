@@ -7,6 +7,7 @@ import { ConsentBanner } from "@shared/components/ConsentBanner";
 import { ConsentProvider } from "@shared/components/ConsentProvider";
 import { Footer } from "@shared/components/Footer";
 import { NavBar } from "@shared/components/NavBar";
+import { isWaitlistOnly } from "@shared/lib/waitlist-mode";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages, setRequestLocale } from "next-intl/server";
 import { ThemeProvider } from "next-themes";
@@ -63,9 +64,27 @@ export default async function MarketingLayout({
 	const cookieStore = await cookies();
 	const consentCookie = cookieStore.get("consent");
 
+	// S12-09 / D39: one-page waitlist site until launch, so no site chrome.
+	const waitlistOnly = isWaitlistOnly();
+
 	return (
-		<html lang={locale} suppressHydrationWarning className={`${ppEiko.variable} ${plusJakarta.variable} ${ibmPlexMono.variable}`}>
-			<body className={cn("min-h-screen bg-background text-foreground antialiased")}>
+		<html
+			lang={locale}
+			suppressHydrationWarning
+			className={cn(
+				ppEiko.variable,
+				plusJakarta.variable,
+				ibmPlexMono.variable,
+				// S12-09: plum canvas behind the waitlist (overscroll, safe areas).
+				waitlistOnly && "bg-[#57385A]",
+			)}
+		>
+			<body
+				className={cn(
+					"min-h-screen bg-background text-foreground antialiased",
+					waitlistOnly && "theme-estate-night",
+				)}
+			>
 				<ConsentProvider initialConsent={consentCookie?.value === "true"}>
 					<NextIntlClientProvider locale={locale} messages={messages}>
 						<ClientProviders>
@@ -77,11 +96,11 @@ export default async function MarketingLayout({
 								defaultTheme={config.defaultTheme}
 								themes={Array.from(config.enabledThemes)}
 							>
-								<NavBar />
+								{!waitlistOnly && <NavBar />}
 
 								<main className="min-h-screen">{children}</main>
 
-								<Footer />
+								{!waitlistOnly && <Footer />}
 
 								{!config.wireframeMode && (
 									<>
