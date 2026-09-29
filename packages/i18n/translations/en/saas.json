@@ -1021,6 +1021,7 @@
 			"password": "Password",
 			"signIn": "Sign in",
 			"signupClosed": "Sign-up is by invitation only until launch. Join the waitlist to hear when memberships open.",
+			"termsNotAccepted": "Please accept the Terms and Conditions to create your account.",
 			"submit": "Create account",
 			"title": "Create an account"
 		},

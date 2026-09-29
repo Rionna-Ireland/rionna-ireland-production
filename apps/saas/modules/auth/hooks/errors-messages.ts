@@ -38,6 +38,11 @@ export function useAuthErrorMessages() {
 			return t("auth.signup.signupClosed");
 		}
 
+		// S12-10: raised by the terms check in packages/auth/lib/terms-acceptance.ts.
+		if (errorCode === "TERMS_NOT_ACCEPTED") {
+			return t("auth.signup.termsNotAccepted");
+		}
+
 		return (
 			authErrorMessages[errorCode as keyof typeof authErrorMessages] ||
 			t("auth.errors.unknown")

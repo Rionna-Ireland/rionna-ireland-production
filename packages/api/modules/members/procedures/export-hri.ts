@@ -84,8 +84,11 @@ export const exportHri = adminProcedure
 				where: { organizationId, userId: { in: userIds } },
 				select: { userId: true, status: true },
 			}),
+			// Org-agnostic on purpose, like getAcceptedTermsVersion: a signup-time
+			// acceptance may be recorded against the fallback club org, and userIds are
+			// already scoped to this club's members.
 			db.legalAcceptance.findMany({
-				where: { organizationId, document: "terms", userId: { in: userIds } },
+				where: { document: "terms", userId: { in: userIds } },
 				select: { userId: true, version: true, acceptedAt: true },
 				orderBy: { acceptedAt: "desc" },
 			}),

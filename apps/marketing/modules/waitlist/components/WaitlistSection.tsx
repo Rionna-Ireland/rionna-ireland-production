@@ -41,9 +41,9 @@ export async function WaitlistSection({
 					className="mt-6 font-medium text-5xl md:text-6xl font-display leading-[1.02] text-balance text-primary"
 				>
 					{t.rich("headline", {
-						// Inline emphasis (#c39cc0): large display text only (§2b contrast rule).
+						// Inline emphasis (#985c94, 4.65:1 on the #fcf9f2 cream, passes WCAG AA); the lighter #c39cc0 was 2.26:1.
 						em: (chunks) => (
-							<em className="font-light text-[#c39cc0] italic">{chunks}</em>
+							<em className="font-light text-[#985c94] italic">{chunks}</em>
 						),
 					})}
 				</Heading>

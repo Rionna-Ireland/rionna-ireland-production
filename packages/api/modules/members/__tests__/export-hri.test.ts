@@ -104,10 +104,21 @@ describe("exportHri (S12-10)", () => {
 		);
 		expect(mockAcceptanceFindMany).toHaveBeenCalledWith(
 			expect.objectContaining({
-				where: expect.objectContaining({ organizationId: "org1", document: "terms" }),
+				where: expect.objectContaining({ document: "terms" }),
 				orderBy: { acceptedAt: "desc" },
 			}),
 		);
+	});
+
+	it("reads acceptances org-agnostically (an acceptance under another org still counts)", async () => {
+		const result = await call(exportHri, { organizationId: "org1", scope: "active" }, ctx);
+
+		const { where } = mockAcceptanceFindMany.mock.calls[0]?.[0] ?? {};
+		expect(where).not.toHaveProperty("organizationId");
+		expect(where).toEqual({ document: "terms", userId: { in: expect.any(Array) } });
+		// The mocked rows carry no org at all, so a row recorded against any org is
+		// counted; at least one member must read as accepted.
+		expect(parse(result.csv).some((row) => row.terms_accepted === "yes")).toBe(true);
 	});
 
 	it("active scope keeps active/trialing/past_due and drops canceled", async () => {

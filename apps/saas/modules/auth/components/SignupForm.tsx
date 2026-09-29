@@ -20,7 +20,6 @@ import {
 import { Input } from "@repo/ui/components/input";
 import { CURRENT_TERMS_VERSION, passwordSchema } from "@repo/utils";
 import { PasswordInput } from "@shared/components/PasswordInput";
-import { orpcClient } from "@shared/lib/orpc-client";
 import { AlertTriangleIcon, ArrowRightIcon, MailboxIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
@@ -81,37 +80,30 @@ export function SignupForm({ prefillEmail }: { prefillEmail?: string }) {
 
 	const onSubmit = form.handleSubmit(async ({ email, password, name }) => {
 		try {
-			const { data, error } = await authClient.signUp.email({
+			// Extra body field read by the server-side sign-up hook, which rejects
+			// the request without it and records the acceptance. Not in the client's
+			// inferred body type, so build it outside the literal.
+			const body = {
 				email,
 				password,
 				name,
 				callbackURL: redirectPath,
-			});
+				acceptedTermsVersion: CURRENT_TERMS_VERSION,
+			};
+			const { data, error } = await authClient.signUp.email(body);
 
 			if (error) {
 				throw error;
 			}
 
 			// D39: email verification is always required, so sign-up normally leaves
-			// no session: the user verifies, lands on callbackURL (the invitation page
-			// for invitees) and the /accept-terms gate records the acceptance at first
-			// sign-in. If a session does exist, record it now.
+			// no session: the user verifies and lands on callbackURL (the invitation
+			// page for invitees). The terms acceptance was already recorded server
+			// side (source "web_signup") from acceptedTermsVersion in the request;
+			// the /accept-terms gate stays as the backstop.
 			if (!data?.token) {
 				setAwaitingVerification(true);
 				return;
-			}
-
-			// Dormant while email verification is required: sign-up returns no
-			// token, so we return above and never get here. Acceptance is then
-			// captured by the /accept-terms gate as `web_prompt` after verifying.
-			// Kept for when sign-up signs the user straight in.
-			try {
-				await orpcClient.legal.accept({
-					version: CURRENT_TERMS_VERSION,
-					source: "web_signup",
-				});
-			} catch {
-				// Not fatal: the /accept-terms gate asks again.
 			}
 
 			if (invitationId) {

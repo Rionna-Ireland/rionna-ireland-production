@@ -22,6 +22,12 @@ import { config } from "./config";
 import { apiErrorLogFields } from "./lib/api-error-log";
 import { updateSeatsInOrganizationSubscription } from "./lib/organization";
 import { assertSignupAllowed } from "./lib/signup-guard";
+import {
+	assertTermsAccepted,
+	hasAcceptedCurrentTermsInBody,
+	recordSignupTermsAcceptance,
+	SIGNUP_PATH,
+} from "./lib/terms-acceptance";
 
 const getLocaleFromRequest = (request?: Request) => {
 	const cookies = parseCookies(request?.headers.get("cookie") ?? "");
@@ -64,9 +70,20 @@ export const auth = betterAuth({
 		},
 		user: {
 			create: {
-				after: async (createdUser) => {
+				after: async (createdUser, hookContext) => {
 					if (!createdUser?.id) {
 						return;
+					}
+					// S12-10: a real email sign-up (hooks.before already refused any
+					// request without the current terms version) records the acceptance.
+					// Used instead of hooks.after because sign-up with required email
+					// verification returns a synthetic user for duplicate emails and no
+					// session, whereas this hook only fires for a row actually created.
+					if (
+						hookContext?.path === SIGNUP_PATH &&
+						hasAcceptedCurrentTermsInBody(hookContext.body)
+					) {
+						await recordSignupTermsAcceptance(createdUser.id);
 					}
 					try {
 						await createWelcomeNotification(createdUser.id);
@@ -117,6 +134,8 @@ export const auth = betterAuth({
 			// invitation may sign up. Runs before the endpoint, so nothing is created.
 			if (ctx.path === "/sign-up/email") {
 				await assertSignupAllowed(ctx.body);
+				// S12-10: the sign-up form sends acceptedTermsVersion; refuse without it.
+				assertTermsAccepted(ctx.body);
 				return;
 			}
 
