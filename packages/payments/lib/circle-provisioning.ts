@@ -129,6 +129,14 @@ export async function provisionCircleMember(
 	// S9-05: invite-only horses are excluded from the query — auto-follow must
 	// not hand out access that's meant to be admin-invited.
 	try {
+		// A (re-)provisioned Circle member starts with no space memberships,
+		// so any existing join stamps are stale — clear them (regardless of
+		// auto-follow) so the daily reconcile retries every existing follow.
+		await db.horseFollow.updateMany({
+			where: { organizationId: member.organizationId, userId: member.userId },
+			data: { circleJoinedAt: null, circleJoinAttempts: 0 },
+		});
+
 		const metadata = parseOrgMetadata(org.metadata ?? null);
 		const horseAutoFollow = metadata.horseAutoFollow;
 		const horseFollowsEnabled = metadata.features?.horseFollows !== false;
