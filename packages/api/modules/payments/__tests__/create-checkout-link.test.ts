@@ -7,7 +7,7 @@
  */
 
 import { call } from "@orpc/server";
-import { CURRENT_TERMS_VERSION } from "@repo/utils";
+import { CURRENT_AGE_CONFIRMATION_VERSION, CURRENT_TERMS_VERSION } from "@repo/utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
@@ -83,7 +83,11 @@ beforeEach(() => {
 	asUser();
 	memberRows({});
 	mockHasPendingInvitation.mockResolvedValue(false);
-	mockLegalFindFirst.mockResolvedValue({ version: CURRENT_TERMS_VERSION });
+	// Current terms and 18+ confirmation, keyed by document.
+	mockLegalFindFirst.mockImplementation(async ({ where }: { where: { document: string } }) => ({
+		version:
+			where.document === "terms" ? CURRENT_TERMS_VERSION : CURRENT_AGE_CONFIRMATION_VERSION,
+	}));
 	mockGetOrganizationById.mockResolvedValue({ id: ORG_ID, members: [] });
 	mockCreateCheckoutLinkFn.mockResolvedValue("https://checkout.example/1");
 });
@@ -154,6 +158,16 @@ describe("createCheckoutLink — signup open", () => {
 				orderBy: { acceptedAt: "desc" },
 			}),
 		);
+	});
+
+	it("refuses a user who accepted the terms but never confirmed 18+", async () => {
+		mockLegalFindFirst.mockImplementation(async ({ where }: { where: { document: string } }) =>
+			where.document === "terms" ? { version: CURRENT_TERMS_VERSION } : null,
+		);
+
+		await expect(call(createCheckoutLink, INPUT, ctx)).rejects.toMatchObject({
+			code: "PRECONDITION_FAILED",
+		});
 	});
 
 	it("refuses when the latest acceptance is a stale version", async () => {

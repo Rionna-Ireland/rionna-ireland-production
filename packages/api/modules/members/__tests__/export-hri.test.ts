@@ -3,11 +3,12 @@
  *
  * CSV of `role = "member"` rows for Horse Racing Ireland: tenancy-checked,
  * scope "active" = active | trialing | past_due, optional joinedSince delta,
- * and the member's latest terms acceptance (Europe/Dublin timestamps).
+ * and whether the member's latest acceptances are the current terms and 18+
+ * confirmation.
  */
 
 import { call } from "@orpc/server";
-import { CURRENT_TERMS_VERSION } from "@repo/utils";
+import { CURRENT_AGE_CONFIRMATION_VERSION, CURRENT_TERMS_VERSION } from "@repo/utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
@@ -78,13 +79,11 @@ beforeEach(() => {
 	]);
 	// Newest first, as the procedure orders them.
 	mockAcceptanceFindMany.mockResolvedValue([
-		{
-			userId: "u1",
-			version: CURRENT_TERMS_VERSION,
-			acceptedAt: new Date("2026-09-27T12:00:00Z"),
-		},
-		{ userId: "u1", version: "2025-01-01", acceptedAt: new Date("2025-01-02T12:00:00Z") },
-		{ userId: "u4", version: "2025-01-01", acceptedAt: new Date("2026-01-15T09:30:00Z") },
+		{ userId: "u1", document: "terms", version: CURRENT_TERMS_VERSION },
+		{ userId: "u1", document: "age_confirmation", version: CURRENT_AGE_CONFIRMATION_VERSION },
+		{ userId: "u1", document: "terms", version: "2025-01-01" },
+		{ userId: "u2", document: "age_confirmation", version: CURRENT_AGE_CONFIRMATION_VERSION },
+		{ userId: "u4", document: "terms", version: "2025-01-01" },
 	]);
 });
 
@@ -104,7 +103,9 @@ describe("exportHri (S12-10)", () => {
 		);
 		expect(mockAcceptanceFindMany).toHaveBeenCalledWith(
 			expect.objectContaining({
-				where: expect.objectContaining({ document: "terms" }),
+				where: expect.objectContaining({
+					document: { in: ["terms", "age_confirmation"] },
+				}),
 				orderBy: { acceptedAt: "desc" },
 			}),
 		);
@@ -115,7 +116,10 @@ describe("exportHri (S12-10)", () => {
 
 		const { where } = mockAcceptanceFindMany.mock.calls[0]?.[0] ?? {};
 		expect(where).not.toHaveProperty("organizationId");
-		expect(where).toEqual({ document: "terms", userId: { in: expect.any(Array) } });
+		expect(where).toEqual({
+			document: { in: ["terms", "age_confirmation"] },
+			userId: { in: expect.any(Array) },
+		});
 		// The mocked rows carry no org at all, so a row recorded against any org is
 		// counted; at least one member must read as accepted.
 		expect(parse(result.csv).some((row) => row.terms_accepted === "yes")).toBe(true);
@@ -140,32 +144,21 @@ describe("exportHri (S12-10)", () => {
 		expect(result.rowCount).toBe(4);
 	});
 
-	it("writes the latest terms acceptance with a Europe/Dublin timestamp", async () => {
+	it("writes name, email, over_18 and terms_accepted from the latest acceptances", async () => {
 		const result = await call(exportHri, { organizationId: "org1", scope: "active" }, ctx);
 
-		expect(
-			result.csv.startsWith("﻿name,email,terms_accepted,terms_version,terms_accepted_at\r\n"),
-		).toBe(true);
+		expect(result.csv.startsWith("\uFEFFname,email,over_18,terms_accepted\r\n")).toBe(true);
 		const [sean, bob, dan] = parse(result.csv);
 		expect(sean).toEqual({
 			name: "Seán Ó Súilleabháin",
 			email: "u1@test.com",
+			over_18: "yes",
 			terms_accepted: "yes",
-			terms_version: CURRENT_TERMS_VERSION,
-			// IST (UTC+1) in September
-			terms_accepted_at: "2026-09-27T13:00:00+01:00",
 		});
-		expect(bob).toMatchObject({
-			terms_accepted: "no",
-			terms_version: "",
-			terms_accepted_at: "",
-		});
-		// Accepted an older version → not the current terms. GMT in January.
-		expect(dan).toMatchObject({
-			terms_accepted: "no",
-			terms_version: "2025-01-01",
-			terms_accepted_at: "2026-01-15T09:30:00+00:00",
-		});
+		// Confirmed 18+ but never accepted the terms.
+		expect(bob).toMatchObject({ over_18: "yes", terms_accepted: "no" });
+		// Accepted an older terms version and never confirmed 18+.
+		expect(dan).toMatchObject({ over_18: "no", terms_accepted: "no" });
 		expect(result.notAcceptedCount).toBe(2);
 	});
 

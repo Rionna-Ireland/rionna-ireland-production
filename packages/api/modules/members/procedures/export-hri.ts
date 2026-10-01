@@ -1,11 +1,17 @@
 import { ORPCError } from "@orpc/client";
 import { db } from "@repo/database";
 import { logger } from "@repo/logs";
-import { CURRENT_TERMS_VERSION, type CsvColumn, toCsv } from "@repo/utils";
+import {
+	CURRENT_AGE_CONFIRMATION_VERSION,
+	CURRENT_TERMS_VERSION,
+	type CsvColumn,
+	toCsv,
+} from "@repo/utils";
 import { z } from "zod";
 
 import { adminProcedure } from "../../../orpc/procedures";
-import { formatDublinDate, formatDublinIso } from "../lib/dublin-time";
+import { AGE_CONFIRMATION_DOCUMENT, TERMS_DOCUMENT } from "../../legal/lib/terms";
+import { formatDublinDate } from "../lib/dublin-time";
 import {
 	CURRENT_MEMBER_STATUSES,
 	groupStatusesByUser,
@@ -15,28 +21,22 @@ import {
 interface HriRow {
 	name: string;
 	email: string;
-	termsVersion: string | null;
-	termsAcceptedAt: Date | null;
+	over18: boolean;
+	termsAccepted: boolean;
 }
 
-/** True when the member's latest recorded acceptance is of the current terms. */
-function hasAcceptedCurrentTerms(row: HriRow): boolean {
-	return row.termsVersion === CURRENT_TERMS_VERSION;
-}
+const yesNo = (value: boolean) => (value ? "yes" : "no");
 
 /**
- * HRI export columns (S12-10 B1). PLACEHOLDER set until HRI sends its field
- * list — each column is one line here, so swapping them is a local change.
+ * HRI export columns (S12-10 B1): the field list HRI asked for — name, email,
+ * whether the member confirmed they are 18+, and whether they accepted the
+ * current terms.
  */
 const HRI_COLUMNS: CsvColumn<HriRow>[] = [
 	{ header: "name", value: (row) => row.name },
 	{ header: "email", value: (row) => row.email },
-	{ header: "terms_accepted", value: (row) => (hasAcceptedCurrentTerms(row) ? "yes" : "no") },
-	{ header: "terms_version", value: (row) => row.termsVersion },
-	{
-		header: "terms_accepted_at",
-		value: (row) => (row.termsAcceptedAt ? formatDublinIso(row.termsAcceptedAt) : null),
-	},
+	{ header: "over_18", value: (row) => yesNo(row.over18) },
+	{ header: "terms_accepted", value: (row) => yesNo(row.termsAccepted) },
 ];
 
 /**
@@ -88,19 +88,24 @@ export const exportHri = adminProcedure
 			// acceptance may be recorded against the fallback club org, and userIds are
 			// already scoped to this club's members.
 			db.legalAcceptance.findMany({
-				where: { document: "terms", userId: { in: userIds } },
-				select: { userId: true, version: true, acceptedAt: true },
+				where: {
+					document: { in: [TERMS_DOCUMENT, AGE_CONFIRMATION_DOCUMENT] },
+					userId: { in: userIds },
+				},
+				select: { userId: true, document: true, version: true },
 				orderBy: { acceptedAt: "desc" },
 			}),
 		]);
 
 		const statusesByUser = groupStatusesByUser(purchases);
 
-		// Rows arrive newest-first, so the first one seen per user is the latest.
-		const latestAcceptance = new Map<string, { version: string; acceptedAt: Date }>();
-		for (const acceptance of acceptances) {
-			if (!latestAcceptance.has(acceptance.userId)) {
-				latestAcceptance.set(acceptance.userId, acceptance);
+		// Rows arrive newest-first, so the first one seen per user and document is
+		// the latest.
+		const latestVersion = new Map<string, string>();
+		for (const { userId, document, version } of acceptances) {
+			const key = `${userId}:${document}`;
+			if (!latestVersion.has(key)) {
+				latestVersion.set(key, version);
 			}
 		}
 
@@ -110,17 +115,18 @@ export const exportHri = adminProcedure
 				const status = pickSubscriptionStatus(statusesByUser.get(member.userId) ?? []);
 				return CURRENT_MEMBER_STATUSES.includes(status);
 			})
-			.map((member) => {
-				const acceptance = latestAcceptance.get(member.userId);
-				return {
-					name: member.user.name,
-					email: member.user.email,
-					termsVersion: acceptance?.version ?? null,
-					termsAcceptedAt: acceptance?.acceptedAt ?? null,
-				};
-			});
+			.map((member) => ({
+				name: member.user.name,
+				email: member.user.email,
+				over18:
+					latestVersion.get(`${member.userId}:${AGE_CONFIRMATION_DOCUMENT}`) ===
+					CURRENT_AGE_CONFIRMATION_VERSION,
+				termsAccepted:
+					latestVersion.get(`${member.userId}:${TERMS_DOCUMENT}`) ===
+					CURRENT_TERMS_VERSION,
+			}));
 
-		const notAcceptedCount = rows.filter((row) => !hasAcceptedCurrentTerms(row)).length;
+		const notAcceptedCount = rows.filter((row) => !(row.over18 && row.termsAccepted)).length;
 
 		logger.info("Admin exported HRI member list", {
 			event: "admin_hri_export",

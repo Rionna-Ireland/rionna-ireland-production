@@ -128,7 +128,7 @@
 				"close": "Close",
 				"success": "Exported {count, plural, one {# member} other {# members}}",
 				"downloaded": "Downloaded {filename} ({count, plural, one {# row} other {# rows}}).",
-				"notAccepted": "{count, plural, one {# member hasn't} other {# members haven't}} accepted the current terms.",
+				"notAccepted": "{count, plural, one {# member hasn't} other {# members haven't}} yet confirmed they are 18+ and accepted the current terms.",
 				"error": "Couldn't export the member list"
 			}
 		},
@@ -995,7 +995,7 @@
 			"password": "Password",
 			"signIn": "Sign in",
 			"signupClosed": "Sign-up is by invitation only until launch. Join the waitlist to hear when memberships open.",
-			"termsNotAccepted": "Please accept the Terms and Conditions to create your account.",
+			"termsNotAccepted": "Please confirm you are 18 or over and accept the Terms and Conditions to create your account.",
 			"submit": "Create account",
 			"title": "Create an account"
 		},
@@ -1014,9 +1014,11 @@
 	"legal": {
 		"termsCheckbox": "I agree to the <terms>Terms & Conditions</terms> and have read the <privacy>Privacy Policy</privacy>",
 		"termsRequired": "Please accept the Terms & Conditions to continue.",
+		"over18Checkbox": "I confirm I am 18 or over",
+		"over18Required": "You must be 18 or over to be a member.",
 		"acceptTerms": {
 			"title": "Terms & Conditions",
-			"message": "Please review and accept our Terms & Conditions to continue.",
+			"message": "Please confirm you are 18 or over and accept our Terms & Conditions to continue.",
 			"submit": "Accept and continue",
 			"failed": "We couldn't save your acceptance. Please try again."
 		},

@@ -25,7 +25,7 @@ vi.mock("@repo/database", () => ({
 		invitation: { findFirst: mockInvitationFindFirst },
 		user: { create: mockUserCreate, findFirst: vi.fn(async () => null) },
 		organization: { findFirst: mockOrgFindFirst },
-		legalAcceptance: { create: mockAcceptanceCreate },
+		legalAcceptance: { createMany: mockAcceptanceCreate },
 	},
 	getInvitationById: vi.fn(),
 	getPurchasesByOrganizationId: vi.fn(),
@@ -43,11 +43,13 @@ vi.mock("@repo/payments", () => ({
 vi.mock("@repo/logs", () => ({ logger: mockLogger }));
 
 import { auth } from "@repo/auth";
-import { CURRENT_TERMS_VERSION } from "@repo/utils";
+import { CURRENT_AGE_CONFIRMATION_VERSION, CURRENT_TERMS_VERSION } from "@repo/utils";
 
-/** Adds the terms field the sign-up form sends (not in the inferred body type). */
+/** The legal fields the sign-up form sends (not in the inferred body type). */
+const ACCEPTED = { acceptedTermsVersion: CURRENT_TERMS_VERSION, confirmedOver18: true };
+
 function withTerms<T extends object>(body: T) {
-	const withField = { ...body, acceptedTermsVersion: CURRENT_TERMS_VERSION };
+	const withField = { ...body, ...ACCEPTED };
 	return withField;
 }
 
@@ -58,7 +60,7 @@ beforeEach(() => {
 	delete process.env.NEXT_PUBLIC_PUBLIC_SIGNUP_OPEN;
 	mockInvitationFindFirst.mockResolvedValue(null);
 	mockOrgFindFirst.mockResolvedValue({ id: "club-org" });
-	mockAcceptanceCreate.mockResolvedValue({ id: "la1" });
+	mockAcceptanceCreate.mockResolvedValue({ count: 2 });
 });
 
 afterEach(() => {
@@ -91,7 +93,11 @@ describe("auth hooks.before — /sign-up/email while signup is closed", () => {
 		// guard did not refuse it (the endpoint went on to create the user).
 		const outcome = await auth.api
 			.signUpEmail({
-				body: withTerms({ email: "admin@example.com", password: "Password123!", name: "A" }),
+				body: withTerms({
+					email: "admin@example.com",
+					password: "Password123!",
+					name: "A",
+				}),
 			})
 			.then(
 				() => null,
@@ -109,12 +115,10 @@ describe("auth hooks — terms acceptance at sign-up (S12-10)", () => {
 
 	function signUp(extra: Record<string, unknown> = {}) {
 		const body = { email: "new@example.com", password: "Password123!", name: "N", ...extra };
-		return auth.api
-			.signUpEmail({ body })
-			.then(
-				() => null,
-				(error: unknown) => error,
-			);
+		return auth.api.signUpEmail({ body }).then(
+			() => null,
+			(error: unknown) => error,
+		);
 	}
 
 	beforeEach(() => {
@@ -136,8 +140,21 @@ describe("auth hooks — terms acceptance at sign-up (S12-10)", () => {
 		expect(mockAcceptanceCreate).not.toHaveBeenCalled();
 	});
 
+	it("rejects a sign-up without the 18+ confirmation", async () => {
+		for (const confirmedOver18 of [undefined, false, "true"]) {
+			expect(
+				await signUp({ acceptedTermsVersion: CURRENT_TERMS_VERSION, confirmedOver18 }),
+			).toMatchObject({
+				status: "BAD_REQUEST",
+				body: expect.objectContaining({ code: "TERMS_NOT_ACCEPTED" }),
+			});
+		}
+		expect(mockUserCreate).not.toHaveBeenCalled();
+		expect(mockAcceptanceCreate).not.toHaveBeenCalled();
+	});
+
 	it("rejects a stale terms version", async () => {
-		expect(await signUp({ acceptedTermsVersion: "1999-01-01" })).toMatchObject({
+		expect(await signUp({ ...ACCEPTED, acceptedTermsVersion: "1999-01-01" })).toMatchObject({
 			status: "BAD_REQUEST",
 			body: expect.objectContaining({ code: "TERMS_NOT_ACCEPTED" }),
 		});
@@ -145,19 +162,28 @@ describe("auth hooks — terms acceptance at sign-up (S12-10)", () => {
 		expect(mockAcceptanceCreate).not.toHaveBeenCalled();
 	});
 
-	it("records a web_signup acceptance for the created user", async () => {
-		await signUp({ acceptedTermsVersion: CURRENT_TERMS_VERSION });
+	it("records web_signup terms and 18+ acceptances for the created user", async () => {
+		await signUp(ACCEPTED);
 
 		expect(mockUserCreate).toHaveBeenCalled();
 		expect(mockAcceptanceCreate).toHaveBeenCalledTimes(1);
 		expect(mockAcceptanceCreate).toHaveBeenCalledWith({
-			data: {
-				userId: "user-1",
-				organizationId: "club-org",
-				document: "terms",
-				version: CURRENT_TERMS_VERSION,
-				source: "web_signup",
-			},
+			data: [
+				{
+					userId: "user-1",
+					organizationId: "club-org",
+					document: "terms",
+					version: CURRENT_TERMS_VERSION,
+					source: "web_signup",
+				},
+				{
+					userId: "user-1",
+					organizationId: "club-org",
+					document: "age_confirmation",
+					version: CURRENT_AGE_CONFIRMATION_VERSION,
+					source: "web_signup",
+				},
+			],
 		});
 		expect(mockOrgFindFirst).toHaveBeenCalledWith(
 			expect.objectContaining({ orderBy: { createdAt: "asc" } }),
@@ -167,7 +193,7 @@ describe("auth hooks — terms acceptance at sign-up (S12-10)", () => {
 	it("does not fail the sign-up when recording throws, and logs without the email", async () => {
 		mockAcceptanceCreate.mockRejectedValue(new Error("db down"));
 
-		const outcome = await signUp({ acceptedTermsVersion: CURRENT_TERMS_VERSION });
+		const outcome = await signUp(ACCEPTED);
 
 		expect(outcome).not.toMatchObject({ body: { code: "TERMS_NOT_ACCEPTED" } });
 		expect(mockAcceptanceCreate).toHaveBeenCalled();

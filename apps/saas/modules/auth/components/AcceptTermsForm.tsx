@@ -14,24 +14,31 @@ import { useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { Over18Checkbox } from "./Over18Checkbox";
 import { TermsCheckbox } from "./TermsCheckbox";
 
 /**
  * S12-10 A3: the /accept-terms prompt for signed-in users who haven't accepted
- * the current terms version (existing users, invitees, version bumps).
+ * the current terms version or confirmed they are 18+ (existing users,
+ * invitees, version bumps).
  */
 export function AcceptTermsForm({ redirectTo }: { redirectTo: string }) {
 	const t = useTranslations();
 
 	const formSchema = useMemo(
-		() => z.object({ acceptTerms: z.literal(true, { error: t("legal.termsRequired") }) }),
+		() =>
+			z.object({
+				confirmOver18: z.literal(true, { error: t("legal.over18Required") }),
+				acceptTerms: z.literal(true, { error: t("legal.termsRequired") }),
+			}),
 		[t],
 	);
 
 	const form = useForm({
 		resolver: zodResolver(formSchema),
 		defaultValues: {
-			// Unticked by default; the literal(true) schema makes it required.
+			// Unticked by default; the literal(true) schemas make them required.
+			confirmOver18: false as unknown as true,
 			acceptTerms: false as unknown as true,
 		},
 	});
@@ -40,6 +47,7 @@ export function AcceptTermsForm({ redirectTo }: { redirectTo: string }) {
 		try {
 			await orpcClient.legal.accept({
 				version: CURRENT_TERMS_VERSION,
+				over18: true,
 				source: "web_prompt",
 			});
 			// Full navigation so the server-side gate re-evaluates with fresh data.
@@ -77,6 +85,12 @@ export function AcceptTermsForm({ redirectTo }: { redirectTo: string }) {
 							</AlertDescription>
 						</Alert>
 					)}
+
+					<FormField
+						control={form.control}
+						name="confirmOver18"
+						render={({ field }) => <Over18Checkbox field={field} />}
+					/>
 
 					<FormField
 						control={form.control}
