@@ -1,12 +1,13 @@
 /**
- * S8-04 §3 (extended S12-02b Task 6): reconcile-space-memberships cron route tests.
+ * S8-04 §3: reconcile-space-memberships cron route tests. (The S12-02b
+ * auto-join pass moved to /api/cron/reconcile-auto-join.)
  *
  * Cases:
- *   1. Missing authorization header → 401, neither reconcile pass called
- *   2. Wrong bearer token → 401, neither reconcile pass called
- *   3. Correct bearer → 200 with { ok: true, summary: { horseSpaceMemberships, autoJoin } };
- *      both passes called exactly once with no args; both completion logs fire
- *   4. Horse-space reconcile throws → route propagates (Next default 500), auto-join pass never runs
+ *   1. Missing authorization header → 401, reconcile not called
+ *   2. Wrong bearer token → 401, reconcile not called
+ *   3. Correct bearer → 200 with { ok: true, summary: { horseSpaceMemberships } };
+ *      called exactly once with no args; completion log fires; auto-join never runs here
+ *   4. Horse-space reconcile throws → route propagates (Next default 500)
  */
 
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -48,14 +49,6 @@ const HORSE_SPACE_SUMMARY = {
 	visibilityFixed: 0,
 };
 
-const AUTO_JOIN_SUMMARY = {
-	orgs: 1,
-	members: 10,
-	joined: 8,
-	skipped: 2,
-	errors: 0,
-};
-
 describe("POST /api/cron/reconcile-space-memberships", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -91,9 +84,8 @@ describe("POST /api/cron/reconcile-space-memberships", () => {
 		expect(mockReconcileAutoJoinMemberships).not.toHaveBeenCalled();
 	});
 
-	it("runs both reconcile passes and returns both summaries with the correct bearer", async () => {
+	it("runs the horse-space reconcile only and returns its summary with the correct bearer", async () => {
 		mockReconcileSpaceMemberships.mockResolvedValueOnce(HORSE_SPACE_SUMMARY);
-		mockReconcileAutoJoinMemberships.mockResolvedValueOnce(AUTO_JOIN_SUMMARY);
 
 		const request = new Request("http://localhost/api/cron/reconcile-space-memberships", {
 			method: "POST",
@@ -105,25 +97,20 @@ describe("POST /api/cron/reconcile-space-memberships", () => {
 		expect(response.status).toBe(200);
 		expect(await response.json()).toEqual({
 			ok: true,
-			summary: { horseSpaceMemberships: HORSE_SPACE_SUMMARY, autoJoin: AUTO_JOIN_SUMMARY },
+			summary: { horseSpaceMemberships: HORSE_SPACE_SUMMARY },
 		});
 
 		expect(mockReconcileSpaceMemberships).toHaveBeenCalledTimes(1);
 		expect(mockReconcileSpaceMemberships).toHaveBeenCalledWith();
-		expect(mockReconcileAutoJoinMemberships).toHaveBeenCalledTimes(1);
-		expect(mockReconcileAutoJoinMemberships).toHaveBeenCalledWith();
+		expect(mockReconcileAutoJoinMemberships).not.toHaveBeenCalled();
 
 		expect(mockLoggerInfo).toHaveBeenCalledWith(
 			"space_membership.reconcile.cron.complete",
 			HORSE_SPACE_SUMMARY,
 		);
-		expect(mockLoggerInfo).toHaveBeenCalledWith(
-			"community.auto_join.reconcile.cron.complete",
-			AUTO_JOIN_SUMMARY,
-		);
 	});
 
-	it("propagates errors when the horse-space reconcile throws, and never runs the auto-join pass", async () => {
+	it("propagates errors when the horse-space reconcile throws", async () => {
 		mockReconcileSpaceMemberships.mockRejectedValueOnce(new Error("boom"));
 
 		const request = new Request("http://localhost/api/cron/reconcile-space-memberships", {
@@ -132,26 +119,9 @@ describe("POST /api/cron/reconcile-space-memberships", () => {
 		});
 
 		await expect(POST(request)).rejects.toThrow("boom");
-		expect(mockReconcileAutoJoinMemberships).not.toHaveBeenCalled();
 		expect(mockLoggerInfo).not.toHaveBeenCalledWith(
 			"space_membership.reconcile.cron.complete",
 			expect.anything(),
-		);
-	});
-
-	it("propagates errors when the auto-join reconcile throws", async () => {
-		mockReconcileSpaceMemberships.mockResolvedValueOnce(HORSE_SPACE_SUMMARY);
-		mockReconcileAutoJoinMemberships.mockRejectedValueOnce(new Error("boom"));
-
-		const request = new Request("http://localhost/api/cron/reconcile-space-memberships", {
-			method: "POST",
-			headers: { authorization: "Bearer test-secret" },
-		});
-
-		await expect(POST(request)).rejects.toThrow("boom");
-		expect(mockLoggerInfo).toHaveBeenCalledWith(
-			"space_membership.reconcile.cron.complete",
-			HORSE_SPACE_SUMMARY,
 		);
 	});
 });
@@ -181,9 +151,8 @@ describe("GET /api/cron/reconcile-space-memberships (native Vercel Cron)", () =>
 		expect(mockReconcileSpaceMemberships).not.toHaveBeenCalled();
 	});
 
-	it("runs both reconcile passes and returns both summaries with the correct bearer, mirroring Vercel Cron's Authorization header", async () => {
+	it("runs the horse-space reconcile with the correct bearer, mirroring Vercel Cron's Authorization header", async () => {
 		mockReconcileSpaceMemberships.mockResolvedValueOnce(HORSE_SPACE_SUMMARY);
-		mockReconcileAutoJoinMemberships.mockResolvedValueOnce(AUTO_JOIN_SUMMARY);
 
 		const request = new Request("http://localhost/api/cron/reconcile-space-memberships", {
 			method: "GET",
@@ -195,9 +164,9 @@ describe("GET /api/cron/reconcile-space-memberships (native Vercel Cron)", () =>
 		expect(response.status).toBe(200);
 		expect(await response.json()).toEqual({
 			ok: true,
-			summary: { horseSpaceMemberships: HORSE_SPACE_SUMMARY, autoJoin: AUTO_JOIN_SUMMARY },
+			summary: { horseSpaceMemberships: HORSE_SPACE_SUMMARY },
 		});
 		expect(mockReconcileSpaceMemberships).toHaveBeenCalledTimes(1);
-		expect(mockReconcileAutoJoinMemberships).toHaveBeenCalledTimes(1);
+		expect(mockReconcileAutoJoinMemberships).not.toHaveBeenCalled();
 	});
 });

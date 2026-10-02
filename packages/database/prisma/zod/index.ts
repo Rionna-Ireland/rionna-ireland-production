@@ -91,7 +91,7 @@ export type HorseScalarFieldEnum = z.infer<typeof HorseScalarFieldEnumSchema>;
 
 // File: HorseFollowScalarFieldEnum.schema.ts
 
-export const HorseFollowScalarFieldEnumSchema = z.enum(['id', 'organizationId', 'userId', 'horseId', 'createdAt'])
+export const HorseFollowScalarFieldEnumSchema = z.enum(['id', 'organizationId', 'userId', 'horseId', 'createdAt', 'circleJoinedAt', 'circleJoinAttempts'])
 
 export type HorseFollowScalarFieldEnum = z.infer<typeof HorseFollowScalarFieldEnumSchema>;
 
@@ -560,6 +560,8 @@ export const HorseFollowSchema = z.object({
   userId: z.string(),
   horseId: z.string(),
   createdAt: z.date(),
+  circleJoinedAt: z.date().nullish(),
+  circleJoinAttempts: z.number().int(),
 });
 
 export type HorseFollowType = z.infer<typeof HorseFollowSchema>;

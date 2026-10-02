@@ -78,8 +78,8 @@ const CONCURRENCY = 4;
 /**
  * Wall-clock budget for the whole sweep, measured from the start of
  * `reconcileAutoJoinMemberships` (final review I2). Chosen comfortably under
- * the cron route's 300s `maxDuration`, leaving room for the horse-follow
- * pass that shares the same invocation.
+ * the cron route's 300s `maxDuration` (this pass now has its own route,
+ * `/api/cron/reconcile-auto-join`, so the budget could be raised).
  */
 export const AUTO_JOIN_TIME_BUDGET_MS = 180_000;
 

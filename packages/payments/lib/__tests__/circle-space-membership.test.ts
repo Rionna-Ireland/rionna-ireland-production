@@ -13,6 +13,7 @@ const {
 	mockMemberFindFirst,
 	mockHorseFindFirst,
 	mockOrgFindUnique,
+	mockFollowUpdateMany,
 	mockGetMemberToken,
 	mockAddSpaceMember,
 	mockRemoveSpaceMember,
@@ -25,6 +26,7 @@ const {
 	mockMemberFindFirst: vi.fn(),
 	mockHorseFindFirst: vi.fn(),
 	mockOrgFindUnique: vi.fn(),
+	mockFollowUpdateMany: vi.fn(),
 	mockGetMemberToken: vi.fn(),
 	mockAddSpaceMember: vi.fn(),
 	mockRemoveSpaceMember: vi.fn(),
@@ -40,6 +42,7 @@ vi.mock("@repo/database", () => ({
 		member: { findFirst: mockMemberFindFirst },
 		horse: { findFirst: mockHorseFindFirst },
 		organization: { findUnique: mockOrgFindUnique },
+		horseFollow: { updateMany: mockFollowUpdateMany },
 	},
 }));
 
@@ -75,6 +78,7 @@ beforeEach(() => {
 		inviteOnly: false,
 	});
 	mockOrgFindUnique.mockResolvedValue({ slug: "rionna" });
+	mockFollowUpdateMany.mockResolvedValue({ count: 1 });
 	mockGetMemberToken.mockResolvedValue({ ok: true, data: { accessToken: "token-abc" } });
 	mockAddSpaceMember.mockResolvedValue({ ok: true, data: { spaceId: CIRCLE_SPACE_ID, email: MEMBER_EMAIL } });
 	mockRemoveSpaceMember.mockResolvedValue({ ok: true, data: { spaceId: CIRCLE_SPACE_ID, email: MEMBER_EMAIL } });
@@ -313,5 +317,93 @@ describe("syncCircleSpaceMembership", () => {
 		);
 		expect(mockAddSpaceMember).not.toHaveBeenCalled();
 		expect(result).toEqual({ ok: true });
+	});
+});
+
+describe("circleJoinedAt stamp (S8-04 incremental reconcile)", () => {
+	const STAMP = {
+		where: { userId: USER_ID, horseId: HORSE_ID },
+		data: { circleJoinedAt: expect.any(Date), circleJoinAttempts: 0 },
+	};
+
+	it("stamps the follow after a successful self-join", async () => {
+		mockGetCircleHeadlessApiBaseUrl.mockReturnValue("https://circle.test/api/headless/v1");
+		mockFetch.mockResolvedValue(new Response(null, { status: 200 }));
+
+		const result = await syncCircleSpaceMembership({
+			organizationId: ORG_ID,
+			userId: USER_ID,
+			horseId: HORSE_ID,
+			action: "join",
+		});
+
+		expect(result).toEqual({ ok: true });
+		expect(mockFollowUpdateMany).toHaveBeenCalledWith(STAMP);
+	});
+
+	it("stamps the follow after a successful admin-API add (invite-only horse)", async () => {
+		mockHorseFindFirst.mockResolvedValue({
+			circleSpaceId: CIRCLE_SPACE_ID,
+			circleSpaceStatus: "active",
+			inviteOnly: true,
+		});
+
+		const result = await syncCircleSpaceMembership({
+			organizationId: ORG_ID,
+			userId: USER_ID,
+			horseId: HORSE_ID,
+			action: "join",
+		});
+
+		expect(result).toEqual({ ok: true });
+		expect(mockFollowUpdateMany).toHaveBeenCalledWith(STAMP);
+	});
+
+	it("does not stamp on a failed join", async () => {
+		mockGetCircleHeadlessApiBaseUrl.mockReturnValue("https://circle.test/api/headless/v1");
+		mockFetch.mockResolvedValue(new Response(null, { status: 500 }));
+
+		const result = await syncCircleSpaceMembership({
+			organizationId: ORG_ID,
+			userId: USER_ID,
+			horseId: HORSE_ID,
+			action: "join",
+		});
+
+		expect(result).toEqual({ ok: false });
+		expect(mockFollowUpdateMany).not.toHaveBeenCalled();
+	});
+
+	it("does not stamp on a successful leave", async () => {
+		mockGetCircleHeadlessApiBaseUrl.mockReturnValue("https://circle.test/api/headless/v1");
+		mockFetch.mockResolvedValue(new Response(null, { status: 200 }));
+
+		await syncCircleSpaceMembership({
+			organizationId: ORG_ID,
+			userId: USER_ID,
+			horseId: HORSE_ID,
+			action: "leave",
+		});
+
+		expect(mockFollowUpdateMany).not.toHaveBeenCalled();
+	});
+
+	it("still returns ok when the stamp write fails, and warns", async () => {
+		mockGetCircleHeadlessApiBaseUrl.mockReturnValue("https://circle.test/api/headless/v1");
+		mockFetch.mockResolvedValue(new Response(null, { status: 200 }));
+		mockFollowUpdateMany.mockRejectedValue(new Error("db down"));
+
+		const result = await syncCircleSpaceMembership({
+			organizationId: ORG_ID,
+			userId: USER_ID,
+			horseId: HORSE_ID,
+			action: "join",
+		});
+
+		expect(result).toEqual({ ok: true });
+		expect(mockLoggerWarn).toHaveBeenCalledWith(
+			"[Circle] Space membership sync: failed to stamp circleJoinedAt",
+			expect.objectContaining({ error: "db down" }),
+		);
 	});
 });
