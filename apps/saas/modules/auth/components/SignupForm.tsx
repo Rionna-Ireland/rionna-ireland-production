@@ -30,15 +30,17 @@ import { withQuery } from "ufo";
 import { z } from "zod";
 
 import { type OAuthProvider, oAuthProviders } from "../constants/oauth-providers";
+import { Over18Checkbox } from "./Over18Checkbox";
 import { SocialSigninButton } from "./SocialSigninButton";
 import { TermsCheckbox } from "./TermsCheckbox";
 
-function createFormSchema(termsRequiredMessage: string) {
+function createFormSchema(termsRequiredMessage: string, over18RequiredMessage: string) {
 	return z.object({
 		email: z.email(),
 		name: z.string().min(1),
 		password: passwordSchema,
 		// S12-10 A2: required, unticked by default.
+		confirmOver18: z.literal(true, { error: over18RequiredMessage }),
 		acceptTerms: z.literal(true, { error: termsRequiredMessage }),
 	});
 }
@@ -54,7 +56,10 @@ export function SignupForm({ prefillEmail }: { prefillEmail?: string }) {
 	const email = searchParams.get("email");
 	const redirectTo = searchParams.get("redirectTo");
 
-	const formSchema = useMemo(() => createFormSchema(t("legal.termsRequired")), [t]);
+	const formSchema = useMemo(
+		() => createFormSchema(t("legal.termsRequired"), t("legal.over18Required")),
+		[t],
+	);
 	const [awaitingVerification, setAwaitingVerification] = useState(false);
 
 	const form = useForm({
@@ -63,7 +68,8 @@ export function SignupForm({ prefillEmail }: { prefillEmail?: string }) {
 			name: "",
 			email: prefillEmail ?? email ?? "",
 			password: "",
-			// Unticked by default; the literal(true) schema makes it required.
+			// Unticked by default; the literal(true) schemas make them required.
+			confirmOver18: false as unknown as true,
 			acceptTerms: false as unknown as true,
 		},
 	});
@@ -89,6 +95,7 @@ export function SignupForm({ prefillEmail }: { prefillEmail?: string }) {
 				name,
 				callbackURL: redirectPath,
 				acceptedTermsVersion: CURRENT_TERMS_VERSION,
+				confirmedOver18: true,
 			};
 			const { data, error } = await authClient.signUp.email(body);
 
@@ -200,6 +207,12 @@ export function SignupForm({ prefillEmail }: { prefillEmail?: string }) {
 										<FormMessage />
 									</FormItem>
 								)}
+							/>
+
+							<FormField
+								control={form.control}
+								name="confirmOver18"
+								render={({ field }) => <Over18Checkbox field={field} />}
 							/>
 
 							<FormField
