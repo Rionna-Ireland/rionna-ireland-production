@@ -37,7 +37,6 @@ import { z } from "zod";
 
 import { PhotoGallery } from "./PhotoGallery";
 import { ProviderHorseSearch } from "./ProviderHorseSearch";
-import { ResultsReplayLinks } from "./ResultsReplayLinks";
 import { TrainerModal } from "./TrainerModal";
 
 const horseFormSchema = z.object({
@@ -818,7 +817,8 @@ export function HorseForm({ horseId }: HorseFormProps) {
 				</CardContent>
 			</Card>
 
-			{isEdit && horseId && <ResultsReplayLinks horseId={horseId} />}
+			{/* Replays hidden for v1 (S13-16); re-enable by restoring:
+			    {isEdit && horseId && <ResultsReplayLinks horseId={horseId} />} */}
 
 			<TrainerModal
 				organizationId={organizationId}
