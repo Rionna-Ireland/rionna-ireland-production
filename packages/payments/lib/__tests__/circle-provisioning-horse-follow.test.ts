@@ -16,6 +16,7 @@ const {
 	mockMemberUpdate,
 	mockHorseFindMany,
 	mockHorseFollowCreateMany,
+	mockHorseFollowUpdateMany,
 	mockParseOrgMetadata,
 	mockListAutoJoinSpaceIds,
 	mockCreateMember,
@@ -30,6 +31,7 @@ const {
 	mockMemberUpdate: vi.fn(),
 	mockHorseFindMany: vi.fn(),
 	mockHorseFollowCreateMany: vi.fn(),
+	mockHorseFollowUpdateMany: vi.fn(),
 	mockParseOrgMetadata: vi.fn(),
 	mockListAutoJoinSpaceIds: vi.fn(),
 	mockCreateMember: vi.fn(),
@@ -46,7 +48,10 @@ vi.mock("@repo/database", () => ({
 		user: { findUnique: mockUserFindUnique },
 		member: { update: mockMemberUpdate },
 		horse: { findMany: mockHorseFindMany },
-		horseFollow: { createMany: mockHorseFollowCreateMany },
+		horseFollow: {
+			createMany: mockHorseFollowCreateMany,
+			updateMany: mockHorseFollowUpdateMany,
+		},
 	},
 	parseOrgMetadata: mockParseOrgMetadata,
 	listAutoJoinSpaceIds: mockListAutoJoinSpaceIds,
@@ -80,6 +85,7 @@ describe("provisionCircleMember — horse auto-follow (S6-07 Surface D)", () => 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mockOrgFindUnique.mockResolvedValue(ORG);
+		mockHorseFollowUpdateMany.mockResolvedValue({ count: 0 });
 		mockUserFindUnique.mockResolvedValue(USER);
 		mockMemberUpdate.mockResolvedValue({});
 		mockCreateMember.mockResolvedValue({
@@ -282,5 +288,16 @@ describe("provisionCircleMember — horse auto-follow (S6-07 Surface D)", () => 
 				skipDuplicates: true,
 			});
 		});
+	});
+	it("clears existing join stamps for the member (even with auto-follow off) so the reconcile retries them", async () => {
+		mockParseOrgMetadata.mockReturnValue({ horseAutoFollow: false });
+
+		await provisionCircleMember(MEMBER, "idem-key");
+
+		expect(mockHorseFollowUpdateMany).toHaveBeenCalledWith({
+			where: { organizationId: ORG_ID, userId: "u1" },
+			data: { circleJoinedAt: null, circleJoinAttempts: 0 },
+		});
+		expect(mockHorseFollowCreateMany).not.toHaveBeenCalled();
 	});
 });

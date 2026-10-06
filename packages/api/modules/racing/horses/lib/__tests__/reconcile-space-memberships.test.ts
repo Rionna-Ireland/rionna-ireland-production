@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
 	mockOrgFindMany,
 	mockFollowFindMany,
+	mockFollowUpdateMany,
 	mockMemberFindMany,
 	mockHorseFindMany,
 	mockHorseUpdate,
@@ -14,6 +15,7 @@ const {
 } = vi.hoisted(() => ({
 	mockOrgFindMany: vi.fn(),
 	mockFollowFindMany: vi.fn(),
+	mockFollowUpdateMany: vi.fn(),
 	mockMemberFindMany: vi.fn(),
 	mockHorseFindMany: vi.fn(),
 	mockHorseUpdate: vi.fn(),
@@ -27,7 +29,7 @@ const {
 vi.mock("@repo/database", () => ({
 	db: {
 		organization: { findMany: mockOrgFindMany },
-		horseFollow: { findMany: mockFollowFindMany },
+		horseFollow: { findMany: mockFollowFindMany, updateMany: mockFollowUpdateMany },
 		member: { findMany: mockMemberFindMany },
 		horse: { findMany: mockHorseFindMany, update: mockHorseUpdate },
 	},
@@ -46,7 +48,7 @@ vi.mock("@repo/logs", () => ({
 	logger: { info: mockLoggerInfo, warn: mockLoggerWarn, error: vi.fn() },
 }));
 
-import { reconcileSpaceMemberships } from "../reconcile-space-memberships";
+import { MAX_JOIN_ATTEMPTS, reconcileSpaceMemberships } from "../reconcile-space-memberships";
 
 /** A member/horse pair that clears the pre-filter — join is attempted. */
 const PROVISIONED_MEMBER = (userId: string) => ({ userId, circleMemberId: `cm-${userId}` });
@@ -55,6 +57,7 @@ const ACTIVE_HORSE = (id: string) => ({ id, circleSpaceId: `space-${id}`, circle
 beforeEach(() => {
 	vi.clearAllMocks();
 	mockSyncCircleSpaceMembership.mockResolvedValue({ ok: true });
+	mockFollowUpdateMany.mockResolvedValue({ count: 1 });
 	// Default: every follow's member + horse clears the pre-filter, matching
 	// the pre-existing tests' assumption that follows are attempted. These
 	// fixture horses carry no inviteOnly/circleSpaceVisibility, so the S9-05
@@ -130,7 +133,7 @@ describe("reconcileSpaceMemberships", () => {
 		expect(summary.joined).toBe(1);
 	});
 
-	it("no DB writes — only findMany reads are used", async () => {
+	it("no DB writes when every join succeeds — the helper stamps successes itself", async () => {
 		mockOrgFindMany.mockResolvedValue([{ id: "org-1", metadata: null, slug: "rionna" }]);
 		mockFollowFindMany.mockResolvedValue([{ userId: "u-1", horseId: "h-1" }]);
 
@@ -138,6 +141,78 @@ describe("reconcileSpaceMemberships", () => {
 
 		expect(mockOrgFindMany).toHaveBeenCalledTimes(1);
 		expect(mockFollowFindMany).toHaveBeenCalledTimes(1);
+		expect(mockFollowUpdateMany).not.toHaveBeenCalled();
+	});
+
+	describe("incremental reconcile", () => {
+		it("only loads follows with no successful join stamped and retry budget left", async () => {
+			mockOrgFindMany.mockResolvedValue([{ id: "org-1", metadata: null, slug: "rionna" }]);
+			mockFollowFindMany.mockResolvedValue([]);
+
+			await reconcileSpaceMemberships();
+
+			expect(mockFollowFindMany).toHaveBeenCalledWith({
+				where: {
+					organizationId: "org-1",
+					circleJoinedAt: null,
+					circleJoinAttempts: { lt: MAX_JOIN_ATTEMPTS },
+				},
+				select: { userId: true, horseId: true },
+			});
+			expect(mockSyncCircleSpaceMembership).not.toHaveBeenCalled();
+		});
+
+		it("increments circleJoinAttempts for a failed join", async () => {
+			mockOrgFindMany.mockResolvedValue([{ id: "org-1", metadata: null, slug: "rionna" }]);
+			mockFollowFindMany.mockResolvedValue([{ userId: "u-1", horseId: "h-1" }]);
+			mockSyncCircleSpaceMembership.mockResolvedValue({ ok: false });
+
+			await reconcileSpaceMemberships();
+
+			expect(mockFollowUpdateMany).toHaveBeenCalledWith({
+				where: { userId: "u-1", horseId: "h-1" },
+				data: { circleJoinAttempts: { increment: 1 } },
+			});
+		});
+
+		it("increments circleJoinAttempts for a thrown join", async () => {
+			mockOrgFindMany.mockResolvedValue([{ id: "org-1", metadata: null, slug: "rionna" }]);
+			mockFollowFindMany.mockResolvedValue([{ userId: "u-1", horseId: "h-1" }]);
+			mockSyncCircleSpaceMembership.mockRejectedValue(new Error("boom"));
+
+			const summary = await reconcileSpaceMemberships();
+
+			expect(summary.failed).toBe(1);
+			expect(mockFollowUpdateMany).toHaveBeenCalledTimes(1);
+		});
+
+		it("does not count skipped (structurally ineligible) follows as attempts", async () => {
+			mockOrgFindMany.mockResolvedValue([{ id: "org-1", metadata: null, slug: "rionna" }]);
+			mockFollowFindMany.mockResolvedValue([{ userId: "u-1", horseId: "h-1" }]);
+			mockMemberFindMany.mockResolvedValue([{ userId: "u-1", circleMemberId: null }]);
+
+			await reconcileSpaceMemberships();
+
+			expect(mockFollowUpdateMany).not.toHaveBeenCalled();
+		});
+
+		it("keeps going when recording a failed attempt throws", async () => {
+			mockOrgFindMany.mockResolvedValue([{ id: "org-1", metadata: null, slug: "rionna" }]);
+			mockFollowFindMany.mockResolvedValue([
+				{ userId: "u-1", horseId: "h-1" },
+				{ userId: "u-2", horseId: "h-1" },
+			]);
+			mockSyncCircleSpaceMembership.mockResolvedValue({ ok: false });
+			mockFollowUpdateMany.mockRejectedValue(new Error("db down"));
+
+			const summary = await reconcileSpaceMemberships();
+
+			expect(summary.failed).toBe(2);
+			expect(mockLoggerWarn).toHaveBeenCalledWith(
+				"[Circle] Space membership reconcile: failed to record join attempt",
+				expect.objectContaining({ error: "db down" }),
+			);
+		});
 	});
 
 	describe("S8-04 §5 kill-switch", () => {
@@ -176,7 +251,9 @@ describe("reconcileSpaceMemberships", () => {
 
 			expect(mockFollowFindMany).toHaveBeenCalledTimes(1);
 			expect(mockFollowFindMany).toHaveBeenCalledWith(
-				expect.objectContaining({ where: { organizationId: "org-enabled" } }),
+				expect.objectContaining({
+					where: expect.objectContaining({ organizationId: "org-enabled" }),
+				}),
 			);
 			expect(summary.orgsProcessed).toBe(1);
 			expect(summary.orgsSkippedDisabled).toBe(1);

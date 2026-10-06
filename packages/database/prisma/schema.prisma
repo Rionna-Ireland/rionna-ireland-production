@@ -382,6 +382,12 @@ model HorseFollow {
   userId         String
   horseId        String
   createdAt      DateTime @default(now())
+  /// Set when a Circle space `join` for this follow last succeeded. The daily
+  /// reconcile only retries follows where this is null (S8-04 incremental).
+  circleJoinedAt     DateTime?
+  /// Failed reconcile join attempts since the last success; capped so a
+  /// permanently failing follow can't be retried forever.
+  circleJoinAttempts Int       @default(0)
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
