@@ -607,9 +607,63 @@
 					"unpublished": "Horses unpublished successfully."
 				}
 			},
+			"facts": {
+				"title": "Horse facts",
+				"hint": "Colour, sex and foaled date are pulled from The Racing API when you press Sync Now (or when the horse is on a racecard). Sync only fills a field while it is empty, so anything you type here is kept as an override. Clear a field and press Sync to pull the provider value again.",
+				"colour": "Colour",
+				"sex": "Sex",
+				"foaledOn": "Foaled",
+				"foaledPlace": "Foaled place",
+				"syncedHint": "Synced from The Racing API while empty. Edit to override.",
+				"adminOnlyHint": "Admin-only (the API has no place). Country from the provider: {country}.",
+				"sexes": {
+					"FILLY": "Filly",
+					"COLT": "Colt",
+					"MARE": "Mare",
+					"GELDING": "Gelding",
+					"STALLION": "Stallion"
+				},
+				"trainerLocation": "Trainer location",
+				"trainerLocationHint": "Synced from the racecard while empty. Edit to override; applies to every horse with this trainer.",
+				"trainerLocationSave": "Save location",
+				"trainerLocationSaved": "Trainer location saved.",
+				"trainerLocationError": "Could not save the trainer location."
+			},
+			"wellbeing": {
+				"title": "Wellbeing",
+				"description": "At-a-glance rows shown above the updates on the member horse page.",
+				"vetCheck": "Vet check",
+				"vetCheckedAt": "Vet checked on",
+				"trainingLoad": "Training load",
+				"vetStatuses": {
+					"ALL_CLEAR": "All clear",
+					"MONITORING": "Monitoring",
+					"TREATMENT": "Treatment"
+				},
+				"trainingLoads": {
+					"RESTING": "Resting",
+					"LIGHT": "Light",
+					"BUILDING": "Building",
+					"FULL": "Full"
+				},
+				"save": "Save wellbeing",
+				"saved": "Wellbeing saved.",
+				"error": "Could not save wellbeing."
+			},
+			"fieldSize": {
+				"title": "Field size",
+				"description": "Number of runners in each race (shown as \"3rd of 11\"). Filled automatically from results; set it here for manual entries.",
+				"empty": "No race entries yet.",
+				"placeholder": "Runners",
+				"save": "Save",
+				"saved": "Field size saved.",
+				"invalid": "Enter a whole number between 1 and 60.",
+				"error": "Could not save the field size."
+			},
 			"trainerModal": {
 				"title": "Add Trainer",
 				"name": "Trainer name",
+				"location": "Base (e.g. Kildare)",
 				"save": "Save",
 				"cancel": "Cancel",
 				"notifications": {
