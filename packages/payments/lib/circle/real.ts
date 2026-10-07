@@ -902,6 +902,13 @@ export class RealCircleService implements CircleService {
 					space_group_id: Number(params.spaceGroupId),
 					space_type: params.spaceType ?? "basic",
 					is_private: params.isPrivate ?? true,
+					// Members never see Circle's UI (D10); our app sends its own pushes,
+					// so Circle's emails/in-app/mobile notifications stay off by default.
+					default_notification_setting: "never",
+					default_in_app_notification_setting: "never",
+					default_mobile_notification_setting: "never",
+					default_mention_in_app_notification_setting: "never",
+					default_mention_mobile_notification_setting: "never",
 				}),
 			});
 		} catch (err) {

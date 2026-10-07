@@ -119,3 +119,22 @@ describe("deleteSpace", () => {
 		expect(fetchMock.mock.calls[0][1].method).toBe("DELETE");
 	});
 });
+
+describe("createSpace", () => {
+	it("turns every Circle-side notification default off (members never see Circle)", async () => {
+		const fetchMock = vi.fn().mockResolvedValueOnce(res(200, { space: { id: 99 } }));
+		vi.stubGlobal("fetch", fetchMock);
+		const service = makeService();
+		await service.createSpace({ name: "Hawthorn Ridge", spaceGroupId: "5", isPrivate: false });
+		const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+		for (const key of [
+			"default_notification_setting",
+			"default_in_app_notification_setting",
+			"default_mobile_notification_setting",
+			"default_mention_in_app_notification_setting",
+			"default_mention_mobile_notification_setting",
+		]) {
+			expect(body[key]).toBe("never");
+		}
+	});
+});
