@@ -55,6 +55,7 @@ model User {
   pollVotes           PollVote[]
   inboxItems          InboxItem[]
   legalAcceptances    LegalAcceptance[]
+  trainer             Trainer?
 
   @@unique([email])
   @@unique([username])
@@ -179,6 +180,8 @@ model Organization {
   // Pre-launch waitlist (S12-09) + legal acceptance evidence (S12-10)
   waitlistSignups  WaitlistSignup[]
   legalAcceptances LegalAcceptance[]
+  clubEventMetas   ClubEventMeta[]
+  postAttributions PostAttribution[]
 
   @@unique([slug])
   @@map("organization")
@@ -541,18 +544,22 @@ model CharityConfig {
 }
 
 model Trainer {
-  id               String       @id @default(cuid())
+  id               String            @id @default(cuid())
   organizationId   String
-  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   providerEntityId String?
   name             String
   // S13-10: "Kildare". Synced from the provider only while null (admin wins).
   location         String?
   meta             Json?
+  /// S13-11: linked app account; posts/comments by this user carry authorRole "trainer".
+  userId           String?           @unique
+  user             User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
   horses           Horse[]
   entries          RaceEntry[]
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
+  attributions     PostAttribution[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
 
   @@unique([organizationId, providerEntityId])
   @@index([organizationId, name])
@@ -986,4 +993,42 @@ model LegalAcceptance {
 
   @@index([organizationId, document, userId, acceptedAt])
   @@map("legal_acceptance")
+}
+
+/// S13-11: event category. Events live only in Circle, so the type is a sidecar row.
+enum EventType {
+  RACE_DAY
+  STABLE_VISIT
+  SOCIAL
+  QA
+  OTHER
+}
+
+/// S13-11: sidecar for a Circle event (no local event table). Missing row means OTHER.
+model ClubEventMeta {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  circleEventId  String       @unique
+  type           EventType    @default(OTHER)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([organizationId, type])
+  @@map("club_event_meta")
+}
+
+/// S13-11: a Circle post made by the admin account but presented as a trainer's.
+model PostAttribution {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  circlePostId   String       @unique
+  trainerId      String
+  trainer        Trainer      @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+
+  @@index([organizationId])
+  @@index([trainerId])
+  @@map("post_attribution")
 }

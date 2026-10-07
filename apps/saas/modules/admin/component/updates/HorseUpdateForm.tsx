@@ -1,6 +1,7 @@
 "use client";
 
 import { NovelEditor } from "@admin/component/novel-editor";
+import { POST_AS_CLUB, PostAsPicker } from "@admin/component/updates/PostAsPicker";
 import { useAdminOrganization } from "@admin/hooks/use-admin-organization";
 import { useCircleVideoUpload } from "@admin/lib/circle-video-upload";
 import { getAdminPath } from "@admin/lib/links";
@@ -80,6 +81,7 @@ export function HorseUpdateForm({ memberPostId }: HorseUpdateFormProps) {
 	const [isUploading, setIsUploading] = useState(false);
 	const [fallback, setFallback] = useState(false);
 	const [notifyFollowers, setNotifyFollowers] = useState(true);
+	const [postAs, setPostAs] = useState(POST_AS_CLUB);
 
 	const isEdit = !!memberPostId;
 
@@ -216,6 +218,7 @@ export function HorseUpdateForm({ memberPostId }: HorseUpdateFormProps) {
 			const outcome = await publishMutation.mutateAsync({
 				memberPostId: id,
 				notifyFollowers,
+				postAsTrainerId: postAs === POST_AS_CLUB ? null : postAs,
 			});
 			const resolution = resolvePublishOutcome(outcome);
 			await queryClient.invalidateQueries({ queryKey: orpc.memberPosts.admin.list.key() });
@@ -400,6 +403,14 @@ export function HorseUpdateForm({ memberPostId }: HorseUpdateFormProps) {
 									</div>
 								) : null}
 							</div>
+
+							{!isPublished && (
+								<PostAsPicker
+									value={postAs}
+									onChange={setPostAs}
+									i18nPrefix="admin.updates.form"
+								/>
+							)}
 
 							{/* Any update type: opt in to a push for this horse's followers */}
 							{!isPublished && (

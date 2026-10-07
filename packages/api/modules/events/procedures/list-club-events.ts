@@ -5,12 +5,14 @@ import type { ClubEventSummary } from "@repo/payments/lib/circle";
 import { z } from "zod";
 
 import { adminProcedure } from "../../../orpc/procedures";
+import { getEventTypes, typeFields } from "../lib/event-meta";
+import type { EventTypeFields } from "../lib/event-meta";
 
 /** Hard cap on pages fetched per request — bounds worst-case latency/load. */
 const MAX_PAGES = 5;
 
 export type ListClubEventsResult =
-	| { ok: true; configured: boolean; events: ClubEventSummary[] }
+	| { ok: true; configured: boolean; events: Array<ClubEventSummary & EventTypeFields> }
 	| { ok: false; reason: string };
 
 export const listClubEvents = adminProcedure
@@ -55,5 +57,16 @@ export const listClubEvents = adminProcedure
 				maxPages: MAX_PAGES,
 			});
 		}
-		return { ok: true, configured: true, events };
+		const types = await getEventTypes(
+			input.organizationId,
+			events.map((e) => e.circleEventId),
+		);
+		return {
+			ok: true,
+			configured: true,
+			events: events.map((e) => ({
+				...e,
+				...typeFields(types.get(e.circleEventId) ?? "OTHER"),
+			})),
+		};
 	});

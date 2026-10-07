@@ -127,7 +127,7 @@ export type CharityConfigScalarFieldEnum = z.infer<typeof CharityConfigScalarFie
 
 // File: TrainerScalarFieldEnum.schema.ts
 
-export const TrainerScalarFieldEnumSchema = z.enum(['id', 'organizationId', 'providerEntityId', 'name', 'location', 'meta', 'createdAt', 'updatedAt'])
+export const TrainerScalarFieldEnumSchema = z.enum(['id', 'organizationId', 'providerEntityId', 'name', 'location', 'meta', 'userId', 'createdAt', 'updatedAt'])
 
 export type TrainerScalarFieldEnum = z.infer<typeof TrainerScalarFieldEnumSchema>;
 
@@ -226,6 +226,18 @@ export type WaitlistSignupScalarFieldEnum = z.infer<typeof WaitlistSignupScalarF
 export const LegalAcceptanceScalarFieldEnumSchema = z.enum(['id', 'userId', 'organizationId', 'document', 'version', 'source', 'acceptedAt'])
 
 export type LegalAcceptanceScalarFieldEnum = z.infer<typeof LegalAcceptanceScalarFieldEnumSchema>;
+
+// File: ClubEventMetaScalarFieldEnum.schema.ts
+
+export const ClubEventMetaScalarFieldEnumSchema = z.enum(['id', 'organizationId', 'circleEventId', 'type', 'createdAt', 'updatedAt'])
+
+export type ClubEventMetaScalarFieldEnum = z.infer<typeof ClubEventMetaScalarFieldEnumSchema>;
+
+// File: PostAttributionScalarFieldEnum.schema.ts
+
+export const PostAttributionScalarFieldEnumSchema = z.enum(['id', 'organizationId', 'circlePostId', 'trainerId', 'createdAt'])
+
+export type PostAttributionScalarFieldEnum = z.infer<typeof PostAttributionScalarFieldEnumSchema>;
 
 // File: SortOrder.schema.ts
 
@@ -328,6 +340,12 @@ export type PushTriggerType = z.infer<typeof PushTriggerTypeSchema>;
 export const PushStatusSchema = z.enum(['QUEUED', 'SENT', 'FAILED'])
 
 export type PushStatus = z.infer<typeof PushStatusSchema>;
+
+// File: EventType.schema.ts
+
+export const EventTypeSchema = z.enum(['RACE_DAY', 'STABLE_VISIT', 'SOCIAL', 'QA', 'OTHER'])
+
+export type EventType = z.infer<typeof EventTypeSchema>;
 
 // File: User.schema.ts
 
@@ -701,6 +719,7 @@ export const TrainerSchema = z.object({
   name: z.string(),
   location: z.string().nullish(),
   meta: z.unknown().refine((val) => { const getDepth = (obj: unknown, depth: number = 0): number => { if (depth > 10) return depth; if (obj === null || typeof obj !== 'object') return depth; const values = Object.values(obj as Record<string, unknown>); if (values.length === 0) return depth; return Math.max(...values.map(v => getDepth(v, depth + 1))); }; return getDepth(val) <= 10; }, "JSON nesting depth exceeds maximum of 10").nullish(),
+  userId: z.string().nullish(),
   createdAt: z.date(),
   updatedAt: z.date(),
 });
@@ -1019,4 +1038,31 @@ export const LegalAcceptanceSchema = z.object({
 });
 
 export type LegalAcceptanceType = z.infer<typeof LegalAcceptanceSchema>;
+
+
+// File: ClubEventMeta.schema.ts
+
+export const ClubEventMetaSchema = z.object({
+  id: z.string(),
+  organizationId: z.string(),
+  circleEventId: z.string(),
+  type: EventTypeSchema.default("OTHER"),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
+export type ClubEventMetaType = z.infer<typeof ClubEventMetaSchema>;
+
+
+// File: PostAttribution.schema.ts
+
+export const PostAttributionSchema = z.object({
+  id: z.string(),
+  organizationId: z.string(),
+  circlePostId: z.string(),
+  trainerId: z.string(),
+  createdAt: z.date(),
+});
+
+export type PostAttributionType = z.infer<typeof PostAttributionSchema>;
 

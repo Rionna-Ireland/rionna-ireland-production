@@ -5,6 +5,7 @@ import { createCircleService, getCircleHeadlessApiBaseUrl } from "@repo/payments
 import { z } from "zod";
 
 import { protectedProcedure } from "../../../orpc/procedures";
+import { loadAuthorRoles } from "../lib/author-identity";
 import { extractComments, type PostComment } from "../lib/parse-comment";
 import { objectValue } from "../lib/parse-post";
 
@@ -102,9 +103,21 @@ export const getPostComments = protectedProcedure
 		}
 		const envelope = objectValue(payload);
 		const count = envelope?.count;
+		const comments = extractComments(payload);
+		// S13-11: one batched role lookup across every comment + reply.
+		const everyComment = comments.flatMap((c) => [c, ...c.replies]);
+		const roles = await loadAuthorRoles(
+			input.organizationId,
+			everyComment.map((c) => c.authorCircleMemberId),
+		);
+		for (const comment of everyComment) {
+			comment.authorRole = comment.authorCircleMemberId
+				? (roles.get(comment.authorCircleMemberId) ?? null)
+				: null;
+		}
 		return {
 			ok: true,
-			comments: extractComments(payload),
+			comments,
 			hasNextPage: envelope?.has_next_page === true,
 			totalCount: typeof count === "number" && Number.isFinite(count) ? count : null,
 		};
