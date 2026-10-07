@@ -58,7 +58,17 @@ describe("trainerAvatarUrl", () => {
 });
 
 describe("enrichPosts", () => {
-	const post = (over: Record<string, unknown>) => ({
+	interface TestPost {
+		id: string;
+		kind: string;
+		spaceId: string | null;
+		authorName: string | null;
+		authorAvatarUrl: string | null;
+		authorCircleMemberId: string | null;
+		isAnnouncement?: boolean;
+		authorRole?: "trainer" | "staff" | null;
+	}
+	const post = (over: Partial<TestPost>): TestPost => ({
 		id: "p1",
 		kind: "post",
 		spaceId: "s1",
@@ -72,7 +82,7 @@ describe("enrichPosts", () => {
 		mockMemberFindMany.mockResolvedValue([{ circleMemberId: "c2", userId: "u2", role: "admin" }]);
 		const [a, b] = await enrichPosts("org1", [post({}), post({ id: "p2", spaceId: "s9" })], {
 			announcementSpaceId: 1,
-		}).then((r) => r);
+		});
 		expect(a).toMatchObject({ isAnnouncement: false, authorRole: "staff" });
 		const [c] = await enrichPosts("org1", [post({ spaceId: "7" })], { announcementSpaceId: 7 });
 		expect(c?.isAnnouncement).toBe(true);
