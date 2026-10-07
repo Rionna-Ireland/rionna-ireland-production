@@ -37,6 +37,8 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { EVENT_TYPES, type EventTypeValue } from "@repo/api/modules/events/lib/event-types";
+
 const LOCATION_TYPES = ["tbd", "virtual", "in_person"] as const;
 
 const formSchema = z.object({
@@ -47,6 +49,7 @@ const formSchema = z.object({
 	locationType: z.enum(LOCATION_TYPES),
 	inPersonLocation: z.string().optional(),
 	virtualLocationUrl: z.string().optional(),
+	type: z.enum(EVENT_TYPES).default("OTHER"),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -113,6 +116,7 @@ export function EventForm({ eventId }: EventFormProps) {
 			locationType: "tbd",
 			inPersonLocation: "",
 			virtualLocationUrl: "",
+			type: "OTHER",
 		},
 	});
 	useHydrateOnce(existingEvent?.circleEventId, form.formState.isDirty, () => {
@@ -133,6 +137,7 @@ export function EventForm({ eventId }: EventFormProps) {
 					(existingEvent.locationType as (typeof LOCATION_TYPES)[number] | null) ?? "tbd",
 				inPersonLocation: existingEvent.inPersonLocation ?? "",
 				virtualLocationUrl: existingEvent.virtualLocationUrl ?? "",
+				type: (existingEvent.eventType as EventTypeValue | undefined) ?? "OTHER",
 			});
 			if (existingEvent.coverImageUrl) {
 				setCoverPreviewUrl(existingEvent.coverImageUrl);
@@ -181,6 +186,7 @@ export function EventForm({ eventId }: EventFormProps) {
 					startsAt: new Date(values.startsAt).toISOString(),
 					durationMinutes: values.durationMinutes,
 					locationType: values.locationType,
+					type: values.type,
 					...(values.locationType === "in_person"
 						? { inPersonLocation: values.inPersonLocation }
 						: {}),
@@ -206,6 +212,7 @@ export function EventForm({ eventId }: EventFormProps) {
 				startsAt: new Date(values.startsAt).toISOString(),
 				durationMinutes: values.durationMinutes,
 				locationType: values.locationType,
+				type: values.type,
 				...(values.locationType === "in_person"
 					? { inPersonLocation: values.inPersonLocation }
 					: {}),
@@ -358,6 +365,31 @@ export function EventForm({ eventId }: EventFormProps) {
 										)}
 									/>
 								</div>
+
+								<FormField
+									control={form.control}
+									name="type"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>{t("admin.events.form.type")}</FormLabel>
+											<Select value={field.value} onValueChange={field.onChange}>
+												<FormControl>
+													<SelectTrigger>
+														<SelectValue />
+													</SelectTrigger>
+												</FormControl>
+												<SelectContent>
+													{EVENT_TYPES.map((type) => (
+														<SelectItem key={type} value={type}>
+															{t(`admin.events.eventTypes.${type}`)}
+														</SelectItem>
+													))}
+												</SelectContent>
+											</Select>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
 
 								{locationType === "in_person" && (
 									<FormField

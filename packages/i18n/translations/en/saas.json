@@ -7,6 +7,7 @@
 			"dashboard": "Overview",
 			"members": "Members",
 			"horses": "Horses",
+			"trainers": "Trainers",
 			"horseUpdates": "Horse updates",
 			"news": "Public news",
 			"events": "Events",
@@ -170,6 +171,13 @@
 			"editTitle": "Edit event",
 			"notFound": "This event couldn't be found. It may have been deleted in Circle.",
 			"backToList": "Back to events",
+			"eventTypes": {
+				"RACE_DAY": "Race day",
+				"STABLE_VISIT": "Stable visit",
+				"SOCIAL": "Social",
+				"QA": "Live Q&A",
+				"OTHER": "Other"
+			},
 			"locationTypes": {
 				"tbd": "To be decided",
 				"virtual": "Online",
@@ -194,6 +202,7 @@
 				"inPersonLocation": "Address / venue",
 				"virtualLocationUrl": "Meeting link",
 				"cover": "Cover image",
+				"type": "Event type",
 				"notifyMembers": "Notify members",
 				"notifyMembersHint": "Send a push notification to all members.",
 				"create": "Create event",
@@ -393,6 +402,9 @@
 				"createTitle": "Post a community announcement",
 				"editTitle": "Edit community announcement",
 				"audience": "Everyone in the club",
+				"postAs": "Post as",
+				"postAsHint": "Show a trainer as the author in the app. The post is still made by the club account.",
+				"postAsClub": "Rionna",
 				"notifyMembers": "Notify members",
 				"notifyMembersHint": "Send a push notification to all members.",
 				"publish": "Post to all members",
@@ -426,6 +438,9 @@
 				"videoUrlPlaceholder": "Paste a YouTube/Vimeo link to embed",
 				"notifyFollowers": "Notify followers",
 				"notifyFollowersHint": "Send a push notification to this horse's followers.",
+				"postAs": "Post as",
+				"postAsHint": "Show a trainer as the author in the app. The post is still made by the club account.",
+				"postAsClub": "Rionna",
 				"saveDraft": "Save draft",
 				"publish": "Publish to members",
 				"publishTo": "Post to Members · {horse}",
@@ -514,6 +529,22 @@
 				"extraBlockedWordsPlaceholder": "One word or phrase per line",
 				"extraBlockedWordsHint": "Matched alongside the platform's base blocked-word list when members post or comment."
 			}
+		},
+		"trainers": {
+			"title": "Trainers",
+			"subtitle": "Link a trainer to an app account so their posts and comments show a trainer badge, and set the avatar used when posting as them.",
+			"empty": "No trainers yet. Add one from a horse's form.",
+			"columns": {
+				"name": "Trainer",
+				"account": "Linked account",
+				"avatar": "Avatar URL"
+			},
+			"noAccount": "Not linked",
+			"save": "Save",
+			"saved": "Trainer updated.",
+			"error": "Could not update the trainer.",
+			"notAMember": "That account is not a member of this club.",
+			"alreadyLinked": "That account is already linked to another trainer."
 		},
 		"horses": {
 			"title": "Manage horses",
@@ -718,6 +749,9 @@
 			},
 			"actions": {
 				"openPost": "Open post",
+				"attributeToTrainer": "Attribute to trainer",
+				"attributeNone": "No attribution",
+				"attributed": "Post attribution updated.",
 				"dismiss": "Dismiss",
 				"delete": "Delete",
 				"dismissed": "Report dismissed.",
