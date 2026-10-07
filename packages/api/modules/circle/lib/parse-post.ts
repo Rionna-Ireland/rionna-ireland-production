@@ -19,7 +19,12 @@ export interface MemberFeedItem {
 	url: string | null;
 	/** Author avatar (Circle). Swapped to the trainer's for attributed posts (S13-11). */
 	authorAvatarUrl?: string | null;
-	/** Circle community-member id of the real author; drives `authorRole`. */
+	/**
+	 * Circle community-member id of the REAL author. For trainer-attributed posts
+	 * this stays the admin who actually posted (used server-side for `isOwn` and
+	 * `authorRole`); `authorName`/`authorAvatarUrl` show the trainer. Clients must
+	 * not display or key identity off this field.
+	 */
 	authorCircleMemberId?: string | null;
 	/** S13-11: post lives in the Official Announcements space. */
 	isAnnouncement?: boolean;
@@ -46,7 +51,12 @@ export interface CirclePostDetail {
 	inlineAttachments: Array<Record<string, unknown>>;
 	authorName: string | null;
 	authorAvatarUrl: string | null;
-	/** `post.author.community_member_id` — used by the procedure to derive `isOwn`. */
+	/**
+	 * Circle community-member id of the REAL author. For trainer-attributed posts
+	 * this stays the admin who actually posted (used server-side for `isOwn` and
+	 * `authorRole`); `authorName`/`authorAvatarUrl` show the trainer. Clients must
+	 * not display or key identity off this field.
+	 */
 	authorCircleMemberId: string | null;
 	spaceName: string | null;
 	createdAt: string | null;

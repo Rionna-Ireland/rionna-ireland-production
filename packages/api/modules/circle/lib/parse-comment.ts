@@ -8,7 +8,12 @@ export interface PostComment {
 	tiptapDoc: Record<string, unknown> | null;
 	authorName: string | null;
 	authorAvatarUrl: string | null;
-	/** Circle community-member id of the author; drives `authorRole`. */
+	/**
+	 * Circle community-member id of the REAL author. For trainer-attributed posts
+	 * this stays the admin who actually posted (used server-side for `isOwn` and
+	 * `authorRole`); `authorName`/`authorAvatarUrl` show the trainer. Clients must
+	 * not display or key identity off this field.
+	 */
 	authorCircleMemberId: string | null;
 	/** S13-11: club role badge. Filled by the procedure's batched lookup. */
 	authorRole?: "trainer" | "staff" | null;

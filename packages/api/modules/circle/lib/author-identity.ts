@@ -108,6 +108,12 @@ interface PostLike {
 	spaceId: string | null;
 	authorName: string | null;
 	authorAvatarUrl?: string | null;
+	/**
+	 * Circle community-member id of the REAL author. For trainer-attributed posts
+	 * this stays the admin who actually posted (used server-side for `isOwn` and
+	 * `authorRole`); `authorName`/`authorAvatarUrl` show the trainer. Clients must
+	 * not display or key identity off this field.
+	 */
 	authorCircleMemberId?: string | null;
 	isAnnouncement?: boolean;
 	authorRole?: AuthorRole | null;
