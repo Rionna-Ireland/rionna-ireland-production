@@ -628,6 +628,9 @@ export class RealCircleService implements CircleService {
 		if (params.authorEmail) {
 			body.user_email = params.authorEmail;
 		}
+		if (params.skipNotifications) {
+			body.skip_notifications = true;
+		}
 
 		let response: Response;
 		try {
@@ -1475,6 +1478,157 @@ export class RealCircleService implements CircleService {
 			return { ok: false, reason, retriable, raw };
 		}
 		logger.info("[Circle] Deleted event", { circleEventId: params.eventId });
+		return { ok: true, data: undefined };
+	}
+
+	// --- Showcase seeding surface (S13-17) ----------------------------------
+
+	/** Map a non-2xx response to a failed outcome, carrying `Retry-After` on 429. */
+	private async failedOutcome(
+		response: Response,
+		label: string,
+		ctx: Record<string, unknown>,
+	): Promise<CircleCallOutcome<never>> {
+		const raw = await response.text().catch(() => undefined);
+		const { reason, retriable } = classifyStatus(response.status);
+		logger.warn(`[Circle] ${label} failed`, { status: response.status, reason, ...ctx });
+		return {
+			ok: false,
+			reason,
+			retriable,
+			raw,
+			...(response.status === 429
+				? { retryAfterMs: parseRetryAfterMs(response.headers?.get?.("Retry-After")) }
+				: {}),
+		};
+	}
+
+	async createComment(params: {
+		circlePostId: string;
+		circleMemberId: string;
+		body: string;
+	}): Promise<CircleCallOutcome<{ circleCommentId: string }>> {
+		const tokenOutcome = await this.getMemberToken(params.circleMemberId);
+		if (!tokenOutcome.ok) return tokenOutcome;
+		let response: Response;
+		try {
+			response = await fetch(
+				`${CIRCLE_HEADLESS_BASE}/posts/${encodeURIComponent(params.circlePostId)}/comments`,
+				{
+					method: "POST",
+					headers: {
+						Authorization: `Bearer ${tokenOutcome.data.accessToken}`,
+						"Content-Type": "application/json",
+					},
+					// The `{ comment: {...} }` wrapper is mandatory on this route.
+					body: JSON.stringify({
+						comment: {
+							body: params.body,
+							tiptap_body: {
+								body: {
+									type: "doc",
+									content: [{ type: "paragraph", content: [{ type: "text", text: params.body }] }],
+								},
+							},
+						},
+					}),
+				},
+			);
+		} catch (err) {
+			return { ok: false, reason: "network", retriable: true, raw: err };
+		}
+		if (!response.ok) {
+			return this.failedOutcome(response, "Create comment", { circlePostId: params.circlePostId });
+		}
+		let data: { id?: number; comment?: { id?: number } };
+		try {
+			data = (await response.json()) as typeof data;
+		} catch (err) {
+			return { ok: false, reason: "server_error", retriable: true, raw: err };
+		}
+		const id = data.comment?.id ?? data.id;
+		if (id === undefined) {
+			return { ok: false, reason: "server_error", retriable: false, raw: JSON.stringify(data).slice(0, 500) };
+		}
+		return { ok: true, data: { circleCommentId: String(id) } };
+	}
+
+	async likePost(params: {
+		circlePostId: string;
+		circleMemberId: string;
+	}): Promise<CircleCallOutcome<void>> {
+		const tokenOutcome = await this.getMemberToken(params.circleMemberId);
+		if (!tokenOutcome.ok) return tokenOutcome;
+		let response: Response;
+		try {
+			response = await fetch(
+				`${CIRCLE_HEADLESS_BASE}/posts/${encodeURIComponent(params.circlePostId)}/user_likes`,
+				{
+					method: "POST",
+					headers: { Authorization: `Bearer ${tokenOutcome.data.accessToken}` },
+				},
+			);
+		} catch (err) {
+			return { ok: false, reason: "network", retriable: true, raw: err };
+		}
+		// Liking an already-liked post comes back as a non-auth 4xx: desired state met.
+		if (
+			!response.ok &&
+			response.status >= 400 &&
+			response.status < 500 &&
+			response.status !== 401 &&
+			response.status !== 403 &&
+			response.status !== 429
+		) {
+			return { ok: true, data: undefined };
+		}
+		if (!response.ok) {
+			return this.failedOutcome(response, "Like post", { circlePostId: params.circlePostId });
+		}
+		return { ok: true, data: undefined };
+	}
+
+	async rsvpEvent(params: {
+		eventId: string;
+		circleMemberId: string;
+	}): Promise<CircleCallOutcome<void>> {
+		const tokenOutcome = await this.getMemberToken(params.circleMemberId);
+		if (!tokenOutcome.ok) return tokenOutcome;
+		let response: Response;
+		try {
+			response = await fetch(
+				`${CIRCLE_HEADLESS_BASE}/events/${encodeURIComponent(params.eventId)}/event_attendees`,
+				{
+					method: "POST",
+					headers: { Authorization: `Bearer ${tokenOutcome.data.accessToken}` },
+				},
+			);
+		} catch (err) {
+			return { ok: false, reason: "network", retriable: true, raw: err };
+		}
+		if (response.status === 409 || response.status === 422) {
+			return { ok: true, data: undefined };
+		}
+		if (!response.ok) {
+			return this.failedOutcome(response, "RSVP event", { eventId: params.eventId });
+		}
+		return { ok: true, data: undefined };
+	}
+
+	async deleteSpace(spaceId: string): Promise<CircleCallOutcome<void>> {
+		let response: Response;
+		try {
+			response = await fetch(`${CIRCLE_ADMIN_BASE}/spaces/${encodeURIComponent(spaceId)}`, {
+				method: "DELETE",
+				headers: this.adminHeaders(),
+			});
+		} catch (err) {
+			return { ok: false, reason: "network", retriable: true, raw: err };
+		}
+		if (!response.ok && response.status !== 404) {
+			return this.failedOutcome(response, "Delete space", { spaceId });
+		}
+		logger.info("[Circle] Deleted space", { spaceId });
 		return { ok: true, data: undefined };
 	}
 }

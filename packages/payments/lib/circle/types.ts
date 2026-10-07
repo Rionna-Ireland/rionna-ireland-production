@@ -154,6 +154,12 @@ export interface CreatePostParams {
 	 * for the resulting post as normal.
 	 */
 	authorEmail?: string;
+	/**
+	 * Ask Circle not to notify members about the new post (Admin v2
+	 * `skip_notifications`). Used by the showcase seed so seeded content never
+	 * triggers Circle emails/pushes. Only sent when true.
+	 */
+	skipNotifications?: boolean;
 }
 
 export interface CreatePostResult {
@@ -491,6 +497,31 @@ export interface CircleService {
 		spaceId: string;
 		email: string;
 	}): Promise<CircleCallOutcome<{ spaceId: string; email: string }>>;
+
+	// --- Showcase seeding surface (S13-17) ----------------------------------
+	// Member-token writes (comment / like / RSVP) and space deletion, so the
+	// staging showcase script can seed and fully wipe Circle content through
+	// the same service as everything else. Rate-limited responses carry
+	// `retryAfterMs` so callers can pause instead of failing.
+
+	/** Comment on a post AS the given member (headless Member API, member token). */
+	createComment(params: {
+		circlePostId: string;
+		circleMemberId: string;
+		body: string;
+	}): Promise<CircleCallOutcome<{ circleCommentId: string }>>;
+	/** Like a post AS the given member. An already-liked post is success. */
+	likePost(params: {
+		circlePostId: string;
+		circleMemberId: string;
+	}): Promise<CircleCallOutcome<void>>;
+	/** RSVP the given member to an event (headless Member API). Already-going is success. */
+	rsvpEvent(params: {
+		eventId: string;
+		circleMemberId: string;
+	}): Promise<CircleCallOutcome<void>>;
+	/** Delete a space (Admin v2). 404 = already gone = success. Removes the space's posts too. */
+	deleteSpace(spaceId: string): Promise<CircleCallOutcome<void>>;
 }
 
 export class CircleApiError extends Error {
