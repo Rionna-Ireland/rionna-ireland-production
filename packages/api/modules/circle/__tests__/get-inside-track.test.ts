@@ -9,12 +9,14 @@ const {
 	mockMemberFindFirst,
 	mockGetMemberToken,
 	mockParseOrgMetadata,
+	mockMetaFindMany,
 } = vi.hoisted(() => ({
 	mockGetSession: vi.fn(),
 	mockOrgFindUnique: vi.fn(),
 	mockOrgUpdate: vi.fn(),
 	mockMemberFindFirst: vi.fn(),
 	mockGetMemberToken: vi.fn(),
+	mockMetaFindMany: vi.fn(),
 	mockParseOrgMetadata: vi.fn(
 		(_raw: string | null): OrganizationMetadata => ({
 			circle: { communityDomain: "community.rionna.com" },
@@ -30,6 +32,7 @@ vi.mock("@repo/database", () => ({
 	db: {
 		organization: { findUnique: mockOrgFindUnique, update: mockOrgUpdate },
 		member: { findFirst: mockMemberFindFirst },
+		insideTrackMeta: { findMany: mockMetaFindMany },
 	},
 	parseOrgMetadata: mockParseOrgMetadata,
 }));
@@ -44,6 +47,7 @@ vi.mock("@repo/payments/lib/circle", () => ({
 	buildCircleCommunityTargetUrl: vi.fn(() => "https://community.rionna.com/c/x/y"),
 }));
 
+import { uploadedVideoNode } from "./fixtures/video-post";
 import { clearInsideTrackCache } from "../lib/inside-track-cache";
 import { getInsideTrack } from "../procedures/get-inside-track";
 
@@ -136,6 +140,7 @@ describe("getInsideTrack", () => {
 		mockMemberFindFirst.mockResolvedValue({ circleMemberId: "82236270" });
 		mockGetMemberToken.mockResolvedValue({ ok: true, data: { accessToken: "jwt" } });
 		mockOrgUpdate.mockResolvedValue({});
+		mockMetaFindMany.mockResolvedValue([]);
 		mockParseOrgMetadata.mockReturnValue({
 			circle: { communityDomain: "community.rionna.com" },
 		});
@@ -459,6 +464,76 @@ describe("getInsideTrack", () => {
 
 			expect(second.ok).toBe(true);
 			expect(fetchSpy).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe("video duration (S13-13)", () => {
+		const videoPost = (id: string, duration: number | null) => ({
+			id,
+			name: `Video ${id}`,
+			body_plain_text: "x",
+			created_at: "2026-07-05T08:00:00Z",
+			tiptap_body: {
+				body: { type: "doc", content: duration === null ? [] : [uploadedVideoNode(duration)] },
+			},
+		});
+
+		beforeEach(() => {
+			mockParseOrgMetadata.mockReturnValue({
+				circle: { communityDomain: "community.rionna.com", insideTrack: { spaceId: SPACE_ID } },
+			});
+		});
+
+		it("returns the parsed duration for uploaded videos and omits it otherwise", async () => {
+			vi.stubGlobal(
+				"fetch",
+				routeFetch({
+					postsResp: { ok: true, status: 200, records: [videoPost("v1", 239.2), videoPost("v2", null)] },
+				}),
+			);
+			const res = await call(getInsideTrack, { organizationId: ORG_ID }, ctx);
+			const byId = new Map(res.latest.map((i) => [i.id, i]));
+			expect(byId.get("v1")?.videoDurationSeconds).toBe(240);
+			expect("videoDurationSeconds" in (byId.get("v2") ?? {})).toBe(false);
+		});
+
+		it("lets the admin value override the parsed one, in one batched query", async () => {
+			mockParseOrgMetadata.mockReturnValue({
+				circle: { communityDomain: "community.rionna.com", insideTrack: { spaceId: SPACE_ID, pinnedPostIds: ["v1"] } },
+			});
+			mockMetaFindMany.mockResolvedValue([
+				{ circlePostId: "v1", videoDurationSeconds: 600 },
+				{ circlePostId: "v2", videoDurationSeconds: 245 },
+				{ circlePostId: "v3", videoDurationSeconds: null },
+			]);
+			vi.stubGlobal(
+				"fetch",
+				routeFetch({
+					postsResp: {
+						ok: true,
+						status: 200,
+						records: [videoPost("v1", 5), videoPost("v2", null), videoPost("v3", 90)],
+					},
+				}),
+			);
+			const res = await call(getInsideTrack, { organizationId: ORG_ID }, ctx);
+			expect(res.pinned[0]?.videoDurationSeconds).toBe(600);
+			const byId = new Map(res.latest.map((i) => [i.id, i]));
+			expect(byId.get("v2")?.videoDurationSeconds).toBe(245);
+			// null override row falls back to the parsed value
+			expect(byId.get("v3")?.videoDurationSeconds).toBe(90);
+			expect(mockMetaFindMany).toHaveBeenCalledTimes(1);
+		});
+
+		it("fails open when the meta lookup throws", async () => {
+			mockMetaFindMany.mockRejectedValue(new Error("db down"));
+			vi.stubGlobal(
+				"fetch",
+				routeFetch({ postsResp: { ok: true, status: 200, records: [videoPost("v1", 61)] } }),
+			);
+			const res = await call(getInsideTrack, { organizationId: ORG_ID }, ctx);
+			expect(res.ok).toBe(true);
+			expect(res.latest[0]?.videoDurationSeconds).toBe(61);
 		});
 	});
 });

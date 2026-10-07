@@ -5,6 +5,7 @@ import { createCircleService, getCircleHeadlessApiBaseUrl } from "@repo/payments
 import { z } from "zod";
 
 import { protectedProcedure } from "../../../orpc/procedures";
+import { loadInsideTrackDurations, applyVideoDurations } from "../lib/inside-track-meta";
 import { readInsideTrackCache, writeInsideTrackCache } from "../lib/inside-track-cache";
 import { type MemberFeedItem, extractPosts, objectValue, toFeedItem } from "../lib/parse-post";
 
@@ -243,11 +244,19 @@ export const getInsideTrack = protectedProcedure
 			}
 		}
 
-		const pinned = pinnedIds
+		const pinnedRaw = pinnedIds
 			.map((id) => byId.get(String(id)) ?? resolvedMissing.get(String(id)))
 			.filter((item): item is MemberFeedItem => Boolean(item));
-		const pinnedIdSet = new Set(pinned.map((item) => String(item.id)));
-		const latest = items.filter((item) => !pinnedIdSet.has(String(item.id)));
+		const pinnedIdSet = new Set(pinnedRaw.map((item) => String(item.id)));
+		const latestRaw = items.filter((item) => !pinnedIdSet.has(String(item.id)));
+
+		// S13-13: admin video-length overrides (one batched query, fails open).
+		const durationOverrides = await loadInsideTrackDurations(
+			input.organizationId,
+			[...pinnedRaw, ...latestRaw].map((item) => item.id),
+		);
+		const pinned = applyVideoDurations(pinnedRaw, durationOverrides);
+		const latest = applyVideoDurations(latestRaw, durationOverrides);
 
 		// Lazy prune: only confirmed-404 ids, re-reading fresh metadata at write
 		// time (Finding B2). Fire-and-forget; last-write-wins is fine single-club.
