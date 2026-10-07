@@ -52,6 +52,7 @@ export const getClubRoster = adminProcedure
 				circleStatus: member.circleStatus,
 				circleMemberId: member.circleMemberId,
 				joinedAt: member.createdAt,
+				foundingMember: member.foundingMember,
 			};
 		});
 	});
