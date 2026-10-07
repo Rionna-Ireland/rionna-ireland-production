@@ -182,6 +182,7 @@ model Organization {
   legalAcceptances LegalAcceptance[]
   clubEventMetas   ClubEventMeta[]
   postAttributions PostAttribution[]
+  insideTrackMetas InsideTrackMeta[]
 
   @@unique([slug])
   @@map("organization")
@@ -1034,4 +1035,19 @@ model PostAttribution {
   @@index([organizationId])
   @@index([trainerId])
   @@map("post_attribution")
+}
+
+/// S13-13: admin-entered video length for an Inside Track post (linked videos expose none).
+/// Overrides the duration parsed from an uploaded video.
+model InsideTrackMeta {
+  id                   String       @id @default(cuid())
+  organizationId       String
+  organization         Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  circlePostId         String       @unique
+  videoDurationSeconds Int?
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+
+  @@index([organizationId])
+  @@map("inside_track_meta")
 }

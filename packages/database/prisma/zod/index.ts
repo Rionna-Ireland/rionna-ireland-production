@@ -239,6 +239,12 @@ export const PostAttributionScalarFieldEnumSchema = z.enum(['id', 'organizationI
 
 export type PostAttributionScalarFieldEnum = z.infer<typeof PostAttributionScalarFieldEnumSchema>;
 
+// File: InsideTrackMetaScalarFieldEnum.schema.ts
+
+export const InsideTrackMetaScalarFieldEnumSchema = z.enum(['id', 'organizationId', 'circlePostId', 'videoDurationSeconds', 'createdAt', 'updatedAt'])
+
+export type InsideTrackMetaScalarFieldEnum = z.infer<typeof InsideTrackMetaScalarFieldEnumSchema>;
+
 // File: SortOrder.schema.ts
 
 export const SortOrderSchema = z.enum(['asc', 'desc'])
@@ -1066,4 +1072,18 @@ export const PostAttributionSchema = z.object({
 });
 
 export type PostAttributionType = z.infer<typeof PostAttributionSchema>;
+
+
+// File: InsideTrackMeta.schema.ts
+
+export const InsideTrackMetaSchema = z.object({
+  id: z.string(),
+  organizationId: z.string(),
+  circlePostId: z.string(),
+  videoDurationSeconds: z.number().int().nullish(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
+export type InsideTrackMetaType = z.infer<typeof InsideTrackMetaSchema>;
 
