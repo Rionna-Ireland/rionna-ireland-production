@@ -8,6 +8,7 @@ import {
 	reactivateCircleMember,
 } from "../../lib/circle-provisioning";
 import { setCustomerIdToEntity } from "../../lib/customer";
+import { assignFoundingMemberIfEligible } from "../../lib/founding-member";
 import { getPlanIdByProviderPriceId } from "../../lib/provider-price-ids";
 import { sendWelcomeEmail } from "../../lib/send-welcome-email";
 import { clearEventDedup, isEventDuplicate } from "../../lib/stripe-dedup";
@@ -148,6 +149,12 @@ class D29ViolationError extends Error {
 	}
 }
 
+const FOUNDING_ACTIVATION_STATUSES = new Set(["active", "trialing"]);
+
+function isPaidActive(status: string | undefined): boolean {
+	return !!status && FOUNDING_ACTIVATION_STATUSES.has(status);
+}
+
 export async function handleSubscriptionCreated(event: Stripe.Event) {
 	const subscription = event.data.object as Stripe.Subscription;
 	const { metadata, customer, items, id } = subscription;
@@ -279,6 +286,12 @@ export async function handleSubscriptionCreated(event: Stripe.Event) {
 		throw error;
 	}
 
+	// 2b. Founding member (S13-12): the first 25 non-staff members get flagged when
+	// their first paid membership activates. Race-safe + never throws.
+	if (member && isPaidActive(subscription.status)) {
+		await assignFoundingMemberIfEligible(member.id);
+	}
+
 	// 3. Provision Circle member (Layer 3: pre-call existence check)
 	if (member && !member.circleMemberId && userId && organizationId) {
 		await provisionCircleMember({ id: member.id, userId, organizationId }, event.id);
@@ -304,6 +317,27 @@ export async function handleSubscriptionUpdated(event: Stripe.Event) {
 			status: subscription.status,
 			...(priceId ? { priceId } : {}),
 		});
+	}
+
+	// S13-12: subscription just became active (e.g. incomplete -> active): this is
+	// the activation moment for founding-member assignment (idempotent).
+	const prevStatus = (event.data as unknown as { previous_attributes?: { status?: string } })
+		.previous_attributes?.status;
+	if (
+		existingPurchase?.userId &&
+		existingPurchase.organizationId &&
+		isPaidActive(subscription.status) &&
+		prevStatus &&
+		!isPaidActive(prevStatus)
+	) {
+		const foundingCandidate = await db.member.findFirst({
+			where: {
+				userId: existingPurchase.userId,
+				organizationId: existingPurchase.organizationId,
+			},
+			select: { id: true },
+		});
+		if (foundingCandidate) await assignFoundingMemberIfEligible(foundingCandidate.id);
 	}
 
 	// If transitioning from canceled to active, reactivate Circle member
