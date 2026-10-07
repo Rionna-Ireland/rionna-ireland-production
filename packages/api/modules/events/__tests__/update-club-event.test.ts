@@ -16,6 +16,7 @@ const {
 	mockUpdateEvent,
 	mockLoggerInfo,
 	mockLoggerWarn,
+	mockMetaUpsert,
 } = vi.hoisted(() => ({
 	mockGetSession: vi.fn(),
 	mockOrgFindUnique: vi.fn(),
@@ -24,12 +25,16 @@ const {
 	mockUpdateEvent: vi.fn(),
 	mockLoggerInfo: vi.fn(),
 	mockLoggerWarn: vi.fn(),
+	mockMetaUpsert: vi.fn(),
 }));
 
 vi.mock("@repo/auth", () => ({ auth: { api: { getSession: mockGetSession } } }));
 
 vi.mock("@repo/database", () => ({
-	db: { organization: { findUnique: mockOrgFindUnique } },
+	db: {
+		organization: { findUnique: mockOrgFindUnique },
+		clubEventMeta: { upsert: mockMetaUpsert },
+	},
 	parseOrgMetadata: mockParseOrgMetadata,
 }));
 
@@ -102,6 +107,23 @@ describe("updateClubEvent (S11-02)", () => {
 			coverImageSignedId: undefined,
 		});
 		expect(result).toEqual({ ok: true, circleEventId: "555" });
+	});
+
+	it("mirrors a changed startsAt (and type) into the sidecar", async () => {
+		await call(
+			updateClubEvent,
+			{ organizationId: "org1", eventId: "555", startsAt: "2026-12-01T10:00:00.000Z" },
+			ctx,
+		);
+		expect(mockMetaUpsert).toHaveBeenCalledWith({
+			where: { circleEventId: "555" },
+			create: {
+				organizationId: "org1",
+				circleEventId: "555",
+				startsAt: new Date("2026-12-01T10:00:00.000Z"),
+			},
+			update: { startsAt: new Date("2026-12-01T10:00:00.000Z") },
+		});
 	});
 
 	it("audit-logs the update with the acting user", async () => {

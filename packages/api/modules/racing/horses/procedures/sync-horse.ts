@@ -6,6 +6,7 @@ import { z } from "zod";
 import { adminProcedure } from "../../../../orpc/procedures";
 import { backfillHorseHistory } from "../../ingest/backfill-horse-history";
 import { ingestHorse } from "../../ingest/ingest-horse";
+import { syncHorseFacts } from "../../ingest/sync-facts";
 import { createRacingProvider } from "../../provider/index";
 
 export const syncHorse = adminProcedure
@@ -46,6 +47,14 @@ export const syncHorse = adminProcedure
 		const provider = createRacingProvider(metadata.racing?.provider ?? "manual");
 		const profile = await provider.getHorseProfile(horse.providerEntityId);
 
+		// S13-10: fill colour/sex/foaled facts from the profile (fill-only-while-null,
+		// so admin overrides survive). Never allowed to fail the sync.
+		try {
+			await syncHorseFacts(horse.id, profile.facts);
+		} catch (error) {
+			logger.warn(`Horse facts sync failed for horse ${horse.id}`, { error });
+		}
+
 		const updated = await db.horse.update({
 			where: { id: horse.id },
 			data: {
@@ -58,7 +67,7 @@ export const syncHorse = adminProcedure
 			},
 			include: {
 				trainer: {
-					select: { id: true, name: true },
+					select: { id: true, name: true, location: true },
 				},
 			},
 		});

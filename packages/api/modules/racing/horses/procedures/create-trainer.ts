@@ -15,11 +15,13 @@ export const createTrainer = adminProcedure
 		z.object({
 			organizationId: z.string(),
 			name: z.string().min(1),
+			location: z.string().trim().min(1).optional(),
 		}),
 	)
 	.handler(async ({ input }) => {
 		return createTrainerQuery({
 			organizationId: input.organizationId,
 			name: input.name,
+			location: input.location,
 		});
 	});

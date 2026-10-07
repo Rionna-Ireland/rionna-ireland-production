@@ -17,6 +17,25 @@ export interface MemberFeedItem {
 	isLiked: boolean;
 	imageUrl: string | null;
 	url: string | null;
+	/** Author avatar (Circle). Swapped to the trainer's for attributed posts (S13-11). */
+	authorAvatarUrl?: string | null;
+	/**
+	 * Circle community-member id of the REAL author. For trainer-attributed posts
+	 * this stays the admin who actually posted (used server-side for `isOwn` and
+	 * `authorRole`); `authorName`/`authorAvatarUrl` show the trainer. Clients must
+	 * not display or key identity off this field.
+	 */
+	authorCircleMemberId?: string | null;
+	/** S13-11: post lives in the Official Announcements space. */
+	isAnnouncement?: boolean;
+	/** S13-11: club role badge for the author. */
+	authorRole?: "trainer" | "staff" | null;
+	/**
+	 * S13-13: length of the post's video in whole seconds (rounded up). Parsed from
+	 * the first uploaded video, or an admin override (`InsideTrackMeta`). Omitted
+	 * for linked (YouTube/Vimeo) videos and posts without video.
+	 */
+	videoDurationSeconds?: number;
 	/** Present only when kind === "poll" (S12-01a). */
 	poll?: PollCardData;
 	/** Present only when kind === "story" (S12-02b): our NewsPost rows (news + charity). */
@@ -38,7 +57,12 @@ export interface CirclePostDetail {
 	inlineAttachments: Array<Record<string, unknown>>;
 	authorName: string | null;
 	authorAvatarUrl: string | null;
-	/** `post.author.community_member_id` — used by the procedure to derive `isOwn`. */
+	/**
+	 * Circle community-member id of the REAL author. For trainer-attributed posts
+	 * this stays the admin who actually posted (used server-side for `isOwn` and
+	 * `authorRole`); `authorName`/`authorAvatarUrl` show the trainer. Clients must
+	 * not display or key identity off this field.
+	 */
 	authorCircleMemberId: string | null;
 	spaceName: string | null;
 	createdAt: string | null;
@@ -49,6 +73,10 @@ export interface CirclePostDetail {
 	url: string | null;
 	/** Whether the authenticated member authored this post (set by the procedure, not the parser). */
 	isOwn?: boolean;
+	/** S13-11: club role badge for the author (trainer when the post is attributed). */
+	authorRole?: "trainer" | "staff" | null;
+	/** S13-11: post lives in the Official Announcements space. */
+	isAnnouncement?: boolean;
 }
 
 export function textValue(value: unknown): string | null {
@@ -121,6 +149,32 @@ function extractTiptapText(value: unknown): string | null {
 		? node.content.map(extractTiptapText).filter(Boolean).join(" ")
 		: null;
 	return cleanTextValue([nodeText, children].filter(Boolean).join(" "));
+}
+
+function findUploadedVideoDuration(node: unknown): number | null {
+	const obj = objectValue(node);
+	if (!obj) return null;
+	if (obj.type === "file" && textValue(obj.content_type)?.startsWith("video/")) {
+		const duration = objectValue(obj.metadata)?.duration;
+		if (typeof duration === "number" && Number.isFinite(duration) && duration > 0) {
+			return Math.ceil(duration);
+		}
+	}
+	if (Array.isArray(obj.content)) {
+		for (const child of obj.content) {
+			const found = findUploadedVideoDuration(child);
+			if (found !== null) return found;
+		}
+	}
+	return null;
+}
+
+/**
+ * S13-13: whole-second length of the first uploaded video in a post's
+ * `tiptap_body`, or null (linked iframely videos carry no duration).
+ */
+export function extractVideoDurationSeconds(post: Record<string, unknown>): number | null {
+	return findUploadedVideoDuration(objectValue(objectValue(post.tiptap_body)?.body));
 }
 
 export function extractPostText(post: Record<string, unknown>): string | null {
@@ -308,6 +362,7 @@ export function toFeedItem(post: Record<string, unknown>, opts: ParseOpts = {}):
 		slug: textValue(post.slug),
 		spaceSlug: extractSpaceSlug(post),
 	});
+	const videoDurationSeconds = extractVideoDurationSeconds(post);
 	return {
 		id,
 		spaceId: extractSpaceId(post),
@@ -317,6 +372,8 @@ export function toFeedItem(post: Record<string, unknown>, opts: ParseOpts = {}):
 		createdAt: textValue(post.created_at) ?? textValue(post.createdAt),
 		spaceName,
 		authorName: extractAuthorName(post),
+		authorAvatarUrl: extractAuthorAvatar(post),
+		authorCircleMemberId: extractAuthorCircleMemberId(post),
 		commentCount: numberValue(post.comment_count ?? post.comments_count ?? post.commentsCount),
 		likeCount: numberValue(
 			post.user_likes_count ?? post.likes_count ?? post.likesCount ?? post.like_count,
@@ -328,6 +385,7 @@ export function toFeedItem(post: Record<string, unknown>, opts: ParseOpts = {}):
 			textValue(post.web_url) ??
 			textValue(post.action_web_url) ??
 			fallbackUrl,
+		...(videoDurationSeconds === null ? {} : { videoDurationSeconds }),
 	};
 }
 

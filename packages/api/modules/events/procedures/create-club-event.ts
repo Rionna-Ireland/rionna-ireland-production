@@ -6,6 +6,8 @@ import { z } from "zod";
 import { adminProcedure } from "../../../orpc/procedures";
 import { clearEventsCache } from "../../circle/lib/events-cache";
 import { descriptionToTiptap } from "../lib/description-to-tiptap";
+import { parseStartsAt, setEventMeta } from "../lib/event-meta";
+import { EVENT_TYPES } from "../lib/event-types";
 import { notifyEventPublished } from "../lib/notify-event-published";
 
 /**
@@ -33,6 +35,7 @@ export const createClubEvent = adminProcedure
 			virtualLocationUrl: z.string().optional(),
 			coverImageSignedId: z.string().optional(),
 			notifyMembers: z.boolean().default(true),
+			type: z.enum(EVENT_TYPES).default("OTHER"),
 		}),
 	)
 	.handler(async ({ input }) => {
@@ -77,6 +80,20 @@ export const createClubEvent = adminProcedure
 			organizationId: input.organizationId,
 			circleEventId: outcome.data.circleEventId,
 		});
+
+		// S13-11: the type sidecar. The event is already committed in Circle, so
+		// a failure here must not fail the create — it falls back to OTHER.
+		try {
+			await setEventMeta(input.organizationId, outcome.data.circleEventId, {
+				type: input.type,
+				startsAt: parseStartsAt(input.startsAt),
+			});
+		} catch (error) {
+			logger.error("[Events] event type write failed", {
+				circleEventId: outcome.data.circleEventId,
+				error,
+			});
+		}
 
 		// A member polling their feed within the 60s TTL, or tapping the
 		// EVENT_PUBLISHED push, must see the new event — never a stale cache.

@@ -15,18 +15,23 @@ const {
 	mockParseOrgMetadata,
 	mockCreateCircleService,
 	mockListEvents,
+	mockMetaFindMany,
 } = vi.hoisted(() => ({
 	mockGetSession: vi.fn(),
 	mockOrgFindUnique: vi.fn(),
 	mockParseOrgMetadata: vi.fn(),
 	mockCreateCircleService: vi.fn(),
 	mockListEvents: vi.fn(),
+	mockMetaFindMany: vi.fn(),
 }));
 
 vi.mock("@repo/auth", () => ({ auth: { api: { getSession: mockGetSession } } }));
 
 vi.mock("@repo/database", () => ({
-	db: { organization: { findUnique: mockOrgFindUnique } },
+	db: {
+		organization: { findUnique: mockOrgFindUnique },
+		clubEventMeta: { findMany: mockMetaFindMany },
+	},
 	parseOrgMetadata: mockParseOrgMetadata,
 }));
 
@@ -44,6 +49,7 @@ const ADMIN = { id: "u1", role: "admin", name: "Emma" };
 const SESSION = { id: "s1", activeOrganizationId: "org1" };
 const ctx = { context: { headers: new Headers() } };
 
+const OTHER = { type: "Other", eventType: "OTHER" };
 const INPUT = { organizationId: "org1" };
 
 const EVENT_SUMMARY = {
@@ -66,6 +72,7 @@ beforeEach(() => {
 	mockOrgFindUnique.mockResolvedValue({ id: "org1", slug: "rionna", metadata: "{}" });
 	mockParseOrgMetadata.mockReturnValue({ circle: { eventsSpaceId: "2682536" } });
 	mockCreateCircleService.mockReturnValue({ listEvents: mockListEvents });
+	mockMetaFindMany.mockResolvedValue([]);
 	mockListEvents.mockResolvedValue({
 		ok: true,
 		data: { events: [EVENT_SUMMARY], hasNextPage: false },
@@ -73,6 +80,16 @@ beforeEach(() => {
 });
 
 describe("listClubEvents (S11-02)", () => {
+	it("attaches the sidecar event type (S13-11)", async () => {
+		mockMetaFindMany.mockResolvedValue([{ circleEventId: "555", type: "QA" }]);
+		const result = await call(listClubEvents, INPUT, ctx);
+		expect(result).toEqual({
+			ok: true,
+			configured: true,
+			events: [{ ...EVENT_SUMMARY, type: "Q&A", eventType: "QA" }],
+		});
+	});
+
 	it("returns configured: false and no events when no eventsSpaceId is set", async () => {
 		mockParseOrgMetadata.mockReturnValue({ circle: {} });
 
@@ -93,7 +110,7 @@ describe("listClubEvents (S11-02)", () => {
 			includeRsvpCounts: true,
 		});
 		expect(mockListEvents).toHaveBeenCalledTimes(1);
-		expect(result).toEqual({ ok: true, configured: true, events: [EVENT_SUMMARY] });
+		expect(result).toEqual({ ok: true, configured: true, events: [{ ...EVENT_SUMMARY, ...OTHER }] });
 	});
 
 	it("aggregates across pages while hasNextPage is true, capped at 5 pages", async () => {
@@ -126,7 +143,10 @@ describe("listClubEvents (S11-02)", () => {
 		expect(result).toEqual({
 			ok: true,
 			configured: true,
-			events: [EVENT_SUMMARY, pageTwoEvent],
+			events: [
+				{ ...EVENT_SUMMARY, ...OTHER },
+				{ ...pageTwoEvent, ...OTHER },
+			],
 		});
 	});
 
@@ -142,7 +162,7 @@ describe("listClubEvents (S11-02)", () => {
 		expect(result).toEqual({
 			ok: true,
 			configured: true,
-			events: new Array(5).fill(EVENT_SUMMARY),
+			events: new Array(5).fill({ ...EVENT_SUMMARY, ...OTHER }),
 		});
 	});
 

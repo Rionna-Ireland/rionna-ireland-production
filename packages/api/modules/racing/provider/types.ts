@@ -43,11 +43,31 @@ export interface ProviderEntry {
     providerJockeyId?: string;
     trainerName?: string;
     providerTrainerId?: string;
+    /** S13-10: trainer base ("Kildare"), from the racecard runner. */
+    trainerLocation?: string;
+    /** S13-10: horse facts carried on the racecard runner. */
+    horseFacts?: ProviderHorseFacts;
+    /** S13-10: runner count (results/history only). */
+    fieldSize?: number;
   };
 }
 
+/** S13-10: normalised horse facts (colour as a word, sex as the enum value). */
+export interface ProviderHorseFacts {
+  colour?: string;
+  sex?: HorseSexValue;
+  /** Calendar date, "YYYY-MM-DD". */
+  foaledOn?: string;
+  /** Country/region code, e.g. "FR". */
+  foaledCountry?: string;
+}
+
+export type HorseSexValue = "FILLY" | "COLT" | "MARE" | "GELDING" | "STALLION";
+
 export interface ProviderResult {
   providerRaceId: string;
+  /** S13-10: count of runners in the results payload. */
+  fieldSize?: number;
   entries: Array<{
     providerEntryId: string;
     finishingPosition?: number;
@@ -80,6 +100,8 @@ export interface ProviderHorse {
   age?: number;
   colour?: string;
   sex?: string;
+  /** S13-10: normalised facts (from `/pro` when available). */
+  facts?: ProviderHorseFacts;
 }
 
 export interface RacingDataProvider {

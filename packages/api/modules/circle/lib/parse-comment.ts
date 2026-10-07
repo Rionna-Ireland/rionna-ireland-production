@@ -8,6 +8,15 @@ export interface PostComment {
 	tiptapDoc: Record<string, unknown> | null;
 	authorName: string | null;
 	authorAvatarUrl: string | null;
+	/**
+	 * Circle community-member id of the REAL author. For trainer-attributed posts
+	 * this stays the admin who actually posted (used server-side for `isOwn` and
+	 * `authorRole`); `authorName`/`authorAvatarUrl` show the trainer. Clients must
+	 * not display or key identity off this field.
+	 */
+	authorCircleMemberId: string | null;
+	/** S13-11: club role badge. Filled by the procedure's batched lookup. */
+	authorRole?: "trainer" | "staff" | null;
 	createdAt: string | null;
 	likeCount: number;
 	/** Whether the authenticated member has liked this comment (`is_liked`). */
@@ -43,6 +52,10 @@ export function toPostComment(record: Record<string, unknown>): PostComment | nu
 		tiptapDoc: objectValue(tiptap?.body),
 		authorName: textValue(author?.name) ?? textValue(author?.display_name),
 		authorAvatarUrl: textValue(author?.avatar_url) ?? textValue(author?.avatar),
+		authorCircleMemberId:
+			author?.community_member_id === undefined || author.community_member_id === null
+				? null
+				: String(author.community_member_id),
 		createdAt: textValue(record.created_at),
 		likeCount: typeof likeCount === "number" && Number.isFinite(likeCount) ? likeCount : 0,
 		isLiked: record.is_liked === true,

@@ -1,6 +1,7 @@
 "use client";
 
 import { NovelEditor } from "@admin/component/novel-editor";
+import { POST_AS_CLUB, PostAsPicker } from "@admin/component/updates/PostAsPicker";
 import { useCircleVideoUpload } from "@admin/lib/circle-video-upload";
 import {
 	canPublishAnnouncement,
@@ -59,6 +60,7 @@ export function CommunityAnnouncementForm({ memberPostId }: CommunityAnnouncemen
 	const [isUploading, setIsUploading] = useState(false);
 	const [fallback, setFallback] = useState(false);
 	const [notifyMembers, setNotifyMembers] = useState(true);
+	const [postAs, setPostAs] = useState(POST_AS_CLUB);
 
 	const isEdit = !!memberPostId;
 
@@ -158,6 +160,7 @@ export function CommunityAnnouncementForm({ memberPostId }: CommunityAnnouncemen
 			const outcome = await publishMutation.mutateAsync({
 				memberPostId: id,
 				notifyMembers,
+				postAsTrainerId: postAs === POST_AS_CLUB ? null : postAs,
 			});
 			const resolution = resolvePublishOutcome(outcome);
 			await queryClient.invalidateQueries({ queryKey: orpc.memberPosts.admin.list.key() });
@@ -247,6 +250,14 @@ export function CommunityAnnouncementForm({ memberPostId }: CommunityAnnouncemen
 									/>
 								</div>
 							</div>
+
+							{!isPublished && (
+								<PostAsPicker
+									value={postAs}
+									onChange={setPostAs}
+									i18nPrefix="admin.updates.community"
+								/>
+							)}
 
 							{!isPublished && (
 								<label className="gap-2 text-sm flex items-center">

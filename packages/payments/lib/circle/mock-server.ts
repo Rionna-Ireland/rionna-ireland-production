@@ -1140,4 +1140,43 @@ export class MockServerCircleService implements CircleService {
 		}
 		return { ok: true, data: undefined };
 	}
+
+	// --- Showcase seeding surface (S13-17) ----------------------------------
+	// circle-mock does not model member-token comments/likes/RSVPs or space
+	// deletion; the showcase script is only meant for the real Circle.
+
+	private unsupportedShowcaseCall<T>(): CircleCallOutcome<T> {
+		return {
+			ok: false,
+			reason: "invalid_input",
+			retriable: false,
+			raw: "Not supported by circle-mock (showcase seeding targets real Circle)",
+		};
+	}
+
+	async createComment(_params: {
+		circlePostId: string;
+		circleMemberId: string;
+		body: string;
+	}): Promise<CircleCallOutcome<{ circleCommentId: string }>> {
+		return this.unsupportedShowcaseCall();
+	}
+
+	async likePost(_params: {
+		circlePostId: string;
+		circleMemberId: string;
+	}): Promise<CircleCallOutcome<void>> {
+		return this.unsupportedShowcaseCall();
+	}
+
+	async rsvpEvent(_params: {
+		eventId: string;
+		circleMemberId: string;
+	}): Promise<CircleCallOutcome<void>> {
+		return this.unsupportedShowcaseCall();
+	}
+
+	async deleteSpace(_spaceId: string): Promise<CircleCallOutcome<void>> {
+		return this.unsupportedShowcaseCall();
+	}
 }
