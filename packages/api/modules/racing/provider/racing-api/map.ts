@@ -7,7 +7,14 @@
  *   providerEntryId   = `${race_id}_${horse_id}`
  */
 
-import type { ProviderEntry, ProviderHistoricalRun, ProviderHorse, ProviderResult } from "../types";
+import type {
+	HorseSexValue,
+	ProviderEntry,
+	ProviderHistoricalRun,
+	ProviderHorse,
+	ProviderHorseFacts,
+	ProviderResult,
+} from "../types";
 
 export interface ApiSearchHorse {
 	id: string;
@@ -15,6 +22,12 @@ export interface ApiSearchHorse {
 	sire?: string | null;
 	dam?: string | null;
 	damsire?: string | null;
+	// `/pro` only (S13-10)
+	colour?: string | null;
+	sex?: string | null;
+	sex_code?: string | null;
+	dob?: string | null;
+	region?: string | null;
 }
 
 export interface ApiRunner {
@@ -27,6 +40,12 @@ export interface ApiRunner {
 	jockey_id?: string;
 	trainer?: string;
 	trainer_id?: string;
+	trainer_location?: string;
+	colour?: string;
+	sex?: string;
+	sex_code?: string;
+	dob?: string;
+	region?: string;
 }
 
 export interface ApiRacecard {
@@ -55,6 +74,65 @@ export interface ApiResultRunner {
 export interface ApiResult {
 	race_id: string;
 	runners?: ApiResultRunner[] | null;
+}
+
+const COLOUR_WORDS: Record<string, string> = {
+	b: "Bay",
+	gr: "Grey",
+	ch: "Chestnut",
+	br: "Brown",
+	bl: "Black",
+	"b/br": "Bay/Brown",
+	ro: "Roan",
+};
+
+/** "b" -> "Bay". Unknown codes fall back to the capitalised raw value. */
+export function mapColour(raw: string | null | undefined): string | undefined {
+	const code = raw?.trim().toLowerCase();
+	if (!code) return undefined;
+	return COLOUR_WORDS[code] ?? code.charAt(0).toUpperCase() + code.slice(1);
+}
+
+const SEX_WORDS: Record<string, HorseSexValue> = {
+	filly: "FILLY",
+	f: "FILLY",
+	colt: "COLT",
+	c: "COLT",
+	mare: "MARE",
+	m: "MARE",
+	gelding: "GELDING",
+	g: "GELDING",
+	h: "STALLION",
+	horse: "STALLION",
+	stallion: "STALLION",
+	rig: "STALLION",
+	r: "STALLION",
+};
+
+/** "colt" / "C" -> "COLT". Unknown -> undefined (stored as null). */
+export function mapSex(...raws: Array<string | null | undefined>): HorseSexValue | undefined {
+	for (const raw of raws) {
+		const v = raw?.trim().toLowerCase();
+		if (v && SEX_WORDS[v]) return SEX_WORDS[v];
+	}
+	return undefined;
+}
+
+export function mapHorseFacts(r: {
+	colour?: string | null;
+	sex?: string | null;
+	sex_code?: string | null;
+	dob?: string | null;
+	region?: string | null;
+}): ProviderHorseFacts | undefined {
+	const dob = r.dob?.trim();
+	const facts: ProviderHorseFacts = {
+		colour: mapColour(r.colour),
+		sex: mapSex(r.sex, r.sex_code),
+		foaledOn: dob && /^\d{4}-\d{2}-\d{2}$/.test(dob) ? dob : undefined,
+		foaledCountry: r.region?.trim() || undefined,
+	};
+	return Object.values(facts).some((v) => v !== undefined) ? facts : undefined;
 }
 
 export function num(v: string | undefined | null): number | undefined {
@@ -97,6 +175,7 @@ export function mapSearchHorse(h: ApiSearchHorse): ProviderHorse {
 		sire: h.sire ?? undefined,
 		dam: h.dam ?? undefined,
 		damsire: h.damsire ?? undefined,
+		facts: mapHorseFacts(h),
 	};
 }
 
@@ -140,6 +219,8 @@ export function mapRacecardToEntries(
 				providerJockeyId: r.jockey_id,
 				trainerName: r.trainer,
 				providerTrainerId: r.trainer_id,
+				trainerLocation: r.trainer_location?.trim() || undefined,
+				horseFacts: mapHorseFacts(r),
 			},
 		}));
 }
@@ -189,6 +270,11 @@ export interface ApiHorseHistory {
 	results?: ApiHistoryRace[] | null;
 }
 
+/** Field size = number of runners listed (non-runners live elsewhere). */
+export function fieldSizeOf(runners: unknown[] | null | undefined): number | undefined {
+	return runners && runners.length > 0 ? runners.length : undefined;
+}
+
 export function mapHorseHistory(
 	data: ApiHorseHistory,
 	providerHorseId: string,
@@ -225,6 +311,7 @@ export function mapHorseHistory(
 				providerJockeyId: runner.jockey_id,
 				trainerName: runner.trainer,
 				providerTrainerId: runner.trainer_id,
+				fieldSize: fieldSizeOf(race.runners),
 			},
 			result: {
 				finishingPosition: num(runner.position),
@@ -241,6 +328,7 @@ export function mapHorseHistory(
 export function mapResult(res: ApiResult): ProviderResult {
 	return {
 		providerRaceId: res.race_id,
+		fieldSize: fieldSizeOf(res.runners),
 		entries: (res.runners ?? []).map((r) => ({
 			providerEntryId: entryId(res.race_id, r.horse_id),
 			finishingPosition: num(r.position),

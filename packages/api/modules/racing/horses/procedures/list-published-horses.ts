@@ -2,6 +2,7 @@ import { getPublishedHorses } from "@repo/database";
 import { z } from "zod";
 
 import { protectedProcedure } from "../../../../orpc/procedures";
+import { withHorseFacts } from "../lib/horse-facts";
 import { getFollowedHorseIds } from "../lib/horse-follows";
 
 export const listPublishedHorses = protectedProcedure
@@ -29,5 +30,5 @@ export const listPublishedHorses = protectedProcedure
 		// already fetched above — no extra query needed.
 		return horses
 			.filter((horse) => !horse.inviteOnly || followed.has(horse.id))
-			.map((horse) => ({ ...horse, isFollowing: followed.has(horse.id) }));
+			.map((horse) => ({ ...withHorseFacts(horse), isFollowing: followed.has(horse.id) }));
 	});

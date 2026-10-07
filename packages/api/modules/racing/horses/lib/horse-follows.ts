@@ -202,7 +202,7 @@ export async function getFollowedHorseIds(params: {
 export async function listFollowedHorses(params: { organizationId: string; userId: string }) {
 	return db.horseFollow.findMany({
 		where: { organizationId: params.organizationId, userId: params.userId },
-		include: { horse: { include: { trainer: { select: { id: true, name: true } } } } },
+		include: { horse: { include: { trainer: { select: { id: true, name: true, location: true } } } } },
 		orderBy: { createdAt: "desc" },
 	});
 }

@@ -133,6 +133,27 @@ describe("TheRacingApiProvider", () => {
 		expect(runs).toEqual([]);
 	});
 
+	it("getHorseProfile prefers /pro and returns normalised facts", async () => {
+		const http = fakeHttp({
+			"/v1/horses/hrs_A/pro": {
+				id: "hrs_A",
+				name: "Alpha",
+				colour: "gr",
+				sex: "filly",
+				dob: "2022-04-02",
+				region: "IRE",
+			},
+		});
+		const provider = new TheRacingApiProvider(http as never);
+		const profile = await provider.getHorseProfile("hrs_A");
+		expect(profile.facts).toEqual({
+			colour: "Grey",
+			sex: "FILLY",
+			foaledOn: "2022-04-02",
+			foaledCountry: "IRE",
+		});
+	});
+
 	it("getHorseProfile maps /v1/horses/{id}/standard", async () => {
 		const http = fakeHttp({
 			"/v1/horses/hrs_A/standard": {

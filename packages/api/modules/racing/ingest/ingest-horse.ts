@@ -12,6 +12,7 @@ import { db } from "@repo/database";
 import { logger } from "@repo/logs";
 
 import type { RacingDataProvider } from "../provider/types";
+import { syncHorseFacts, syncTrainerLocation } from "./sync-facts";
 import { handleStatusTransition } from "./transitions";
 import { upsertCourse, upsertMeeting, upsertRace, upsertJockey, upsertRaceEntry } from "./upserts";
 
@@ -32,6 +33,18 @@ export async function ingestHorse(
 	const entries = await provider.getEntriesForHorse(horse.providerEntityId!, {
 		lookAheadDays: 7,
 	});
+
+	// S13-10: the racecard runner carries the horse facts + trainer location.
+	// Fill-only-while-null (see sync-facts.ts), once per tick, never fatal.
+	const withFacts = entries.find((e) => e.entry.horseFacts || e.entry.trainerLocation);
+	if (withFacts) {
+		try {
+			await syncHorseFacts(horse.id, withFacts.entry.horseFacts);
+			await syncTrainerLocation(horse.trainerId, withFacts.entry);
+		} catch (error) {
+			logger.warn(`Horse facts sync failed for ${horse.name} (${horse.id})`, { error });
+		}
+	}
 
 	for (const entry of entries) {
 		try {
