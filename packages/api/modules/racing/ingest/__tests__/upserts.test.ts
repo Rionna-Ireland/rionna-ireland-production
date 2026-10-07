@@ -91,6 +91,17 @@ describe("upsertRaceEntry", () => {
     );
   }
 
+  it("S13-10: stores fieldSize when given and never nulls a stored one when absent", async () => {
+    mockRaceEntryFindFirst.mockResolvedValue(null);
+    mockUpsertEcho();
+    await upsertRaceEntry("org-1", "h", "r", undefined, null, { ...baseEntry, fieldSize: 9 });
+    expect(mockRaceEntryUpsert.mock.calls[0][0].create.fieldSize).toBe(9);
+    expect(mockRaceEntryUpsert.mock.calls[0][0].update.fieldSize).toBe(9);
+
+    await upsertRaceEntry("org-1", "h", "r", undefined, null, baseEntry);
+    expect(mockRaceEntryUpsert.mock.calls[1][0].update).not.toHaveProperty("fieldSize");
+  });
+
   it("keeps status RAN when a stale DECLARED entry arrives for a RAN entry", async () => {
     mockRaceEntryFindFirst.mockResolvedValue({
       id: "entry-1",

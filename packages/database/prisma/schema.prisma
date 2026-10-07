@@ -311,6 +311,28 @@ enum HorseStatus {
   SOLD
 }
 
+enum HorseSex {
+  FILLY
+  COLT
+  MARE
+  GELDING
+  STALLION
+}
+
+// S13-10 Phase B: structured wellbeing at-a-glance rows.
+enum VetCheckStatus {
+  ALL_CLEAR
+  MONITORING
+  TREATMENT
+}
+
+enum TrainingLoad {
+  RESTING
+  LIGHT
+  BUILDING
+  FULL
+}
+
 model Horse {
   id             String       @id @default(cuid())
   organizationId String
@@ -333,6 +355,16 @@ model Horse {
   photos         Json    @default("[]")
   pedigree       Json?
   ownershipBlurb String?
+
+  // S13-10 horse facts. colour/sex/foaledOn/foaledCountry are synced from The
+  // Racing API ONLY while null (sync never overwrites a stored value, so an
+  // admin edit always wins; clear the field + Sync to re-pull). foaledPlace is
+  // admin-only free text ("Co. Meath").
+  colour        String?
+  sex           HorseSex?
+  foaledOn      DateTime? @db.Date
+  foaledPlace   String?
+  foaledCountry String?
 
   // A horse IS a Circle space (S2-09). Auto-provisioned on create; mirrors the
   // Member Circle lifecycle. "active" | "provisioning_failed" (cron retries).
@@ -365,6 +397,7 @@ model Horse {
   entries     RaceEntry[]
   memberPosts MemberPost[]
   followers   HorseFollow[]
+  wellbeing   HorseWellbeing?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -510,6 +543,8 @@ model Trainer {
   organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   providerEntityId String?
   name             String
+  // S13-10: "Kildare". Synced from the provider only while null (admin wins).
+  location         String?
   meta             Json?
   horses           Horse[]
   entries          RaceEntry[]
@@ -631,6 +666,9 @@ model RaceEntry {
   timeformComment   String?  @db.Text
   performanceRating Int?
   starRating        Int?
+  // S13-10: number of runners in the race (count of the results runners array).
+  // Deliberately no starting price / odds (S8-02 "not a betting app").
+  fieldSize         Int?
 
   // Replay link (S8-01 §5/§6) — admin-set link to race footage, surfaced on
   // the member Horse Profile's declarations/results section.
@@ -646,6 +684,20 @@ model RaceEntry {
   @@index([horseId, status])
   @@index([raceId])
   @@map("race_entry")
+}
+
+// S13-10 Phase B: one row per horse, admin-authored.
+model HorseWellbeing {
+  id             String          @id @default(cuid())
+  horseId        String          @unique
+  horse          Horse           @relation(fields: [horseId], references: [id], onDelete: Cascade)
+  vetCheckStatus VetCheckStatus?
+  vetCheckedAt   DateTime?
+  trainingLoad   TrainingLoad?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@map("horse_wellbeing")
 }
 
 // ──────────────────────────────────────────────
