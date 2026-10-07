@@ -112,7 +112,8 @@ export const getMemberFeed = protectedProcedure
 		}
 
 		const announcementSpaceId = orgMetadata.circle?.communitySpaceId;
-		const featured = input.spaceId
+		// Only the first page carries the featured card (it sits above the list).
+		const featured = input.spaceId || input.page > 1
 			? null
 			: await getFeaturedQa({
 					organizationId: input.organizationId,

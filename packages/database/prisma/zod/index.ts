@@ -229,7 +229,7 @@ export type LegalAcceptanceScalarFieldEnum = z.infer<typeof LegalAcceptanceScala
 
 // File: ClubEventMetaScalarFieldEnum.schema.ts
 
-export const ClubEventMetaScalarFieldEnumSchema = z.enum(['id', 'organizationId', 'circleEventId', 'type', 'createdAt', 'updatedAt'])
+export const ClubEventMetaScalarFieldEnumSchema = z.enum(['id', 'organizationId', 'circleEventId', 'type', 'startsAt', 'createdAt', 'updatedAt'])
 
 export type ClubEventMetaScalarFieldEnum = z.infer<typeof ClubEventMetaScalarFieldEnumSchema>;
 
@@ -1047,6 +1047,7 @@ export const ClubEventMetaSchema = z.object({
   organizationId: z.string(),
   circleEventId: z.string(),
   type: EventTypeSchema.default("OTHER"),
+  startsAt: z.date().nullish(),
   createdAt: z.date(),
   updatedAt: z.date(),
 });

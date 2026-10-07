@@ -10,6 +10,7 @@ CREATE TABLE "club_event_meta" (
   "organizationId" TEXT NOT NULL,
   "circleEventId" TEXT NOT NULL,
   "type" "EventType" NOT NULL DEFAULT 'OTHER',
+  "startsAt" TIMESTAMP(3),
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedAt" TIMESTAMP(3) NOT NULL,
   CONSTRAINT "club_event_meta_pkey" PRIMARY KEY ("id")

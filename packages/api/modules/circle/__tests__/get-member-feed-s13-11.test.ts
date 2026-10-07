@@ -149,6 +149,14 @@ describe("getMemberFeed S13-11 additions", () => {
 		expect(res.featured).toEqual(featured);
 	});
 
+	it("only computes the featured card on page 1", async () => {
+		mockGetFeatured.mockResolvedValue({ kind: "qa", eventId: "77" });
+		mockGetFeatured.mockClear();
+		const res = await call(getMemberFeed, { organizationId: "org1", page: 2 }, ctx);
+		expect(mockGetFeatured).not.toHaveBeenCalled();
+		expect(res.featured).toBeNull();
+	});
+
 	it("serves roles even if the identity lookups fail", async () => {
 		mockMemberFindMany.mockRejectedValue(new Error("db"));
 		const res = await call(getMemberFeed, { organizationId: "org1" }, ctx);

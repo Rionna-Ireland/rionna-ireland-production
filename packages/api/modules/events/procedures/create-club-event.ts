@@ -6,7 +6,7 @@ import { z } from "zod";
 import { adminProcedure } from "../../../orpc/procedures";
 import { clearEventsCache } from "../../circle/lib/events-cache";
 import { descriptionToTiptap } from "../lib/description-to-tiptap";
-import { setEventType } from "../lib/event-meta";
+import { parseStartsAt, setEventMeta } from "../lib/event-meta";
 import { EVENT_TYPES } from "../lib/event-types";
 import { notifyEventPublished } from "../lib/notify-event-published";
 
@@ -84,7 +84,10 @@ export const createClubEvent = adminProcedure
 		// S13-11: the type sidecar. The event is already committed in Circle, so
 		// a failure here must not fail the create — it falls back to OTHER.
 		try {
-			await setEventType(input.organizationId, outcome.data.circleEventId, input.type);
+			await setEventMeta(input.organizationId, outcome.data.circleEventId, {
+				type: input.type,
+				startsAt: parseStartsAt(input.startsAt),
+			});
 		} catch (error) {
 			logger.error("[Events] event type write failed", {
 				circleEventId: outcome.data.circleEventId,

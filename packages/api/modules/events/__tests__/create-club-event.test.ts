@@ -90,12 +90,17 @@ describe("createClubEvent (S2-09 surface E)", () => {
 		await call(createClubEvent, INPUT, ctx);
 		expect(mockMetaUpsert).toHaveBeenCalledWith({
 			where: { circleEventId: "555" },
-			create: { organizationId: "org1", circleEventId: "555", type: "OTHER" },
-			update: { type: "OTHER" },
+			create: {
+				organizationId: "org1",
+				circleEventId: "555",
+				type: "OTHER",
+				startsAt: new Date(INPUT.startsAt),
+			},
+			update: { type: "OTHER", startsAt: new Date(INPUT.startsAt) },
 		});
 		await call(createClubEvent, { ...INPUT, type: "QA" }, ctx);
 		expect(mockMetaUpsert).toHaveBeenLastCalledWith(
-			expect.objectContaining({ update: { type: "QA" } }),
+			expect.objectContaining({ update: { type: "QA", startsAt: new Date(INPUT.startsAt) } }),
 		);
 	});
 

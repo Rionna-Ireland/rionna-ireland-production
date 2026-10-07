@@ -53,14 +53,33 @@ export async function withEventTypes<T extends { id: string }>(
 	return events.map((e) => ({ ...e, ...typeFields(types.get(e.id) ?? "OTHER") }));
 }
 
+/** Parse a Circle/admin ISO start into a Date; unparseable → undefined (leave as-is). */
+export function parseStartsAt(startsAt: string | undefined): Date | undefined {
+	if (!startsAt) return undefined;
+	const date = new Date(startsAt);
+	return Number.isNaN(date.getTime()) ? undefined : date;
+}
+
+/**
+ * Upsert the sidecar. `startsAt` mirrors the Circle start so the featured-Q&A
+ * pre-check can ignore past events; fields left undefined are not touched.
+ */
+export async function setEventMeta(
+	organizationId: string,
+	circleEventId: string,
+	fields: { type?: EventTypeValue; startsAt?: Date },
+): Promise<void> {
+	await db.clubEventMeta.upsert({
+		where: { circleEventId },
+		create: { organizationId, circleEventId, ...fields },
+		update: { ...fields },
+	});
+}
+
 export async function setEventType(
 	organizationId: string,
 	circleEventId: string,
 	type: EventTypeValue,
 ): Promise<void> {
-	await db.clubEventMeta.upsert({
-		where: { circleEventId },
-		create: { organizationId, circleEventId, type },
-		update: { type },
-	});
+	await setEventMeta(organizationId, circleEventId, { type });
 }

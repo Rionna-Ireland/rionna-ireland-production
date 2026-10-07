@@ -33,6 +33,15 @@ describe("getFeaturedQa", () => {
 		expect(mockLoad).not.toHaveBeenCalled();
 	});
 
+	it("pre-check only counts QA rows that are not in the past (null startsAt counts)", async () => {
+		mockMetaFindMany.mockResolvedValue([]);
+		await getFeaturedQa(input);
+		const where = mockMetaFindMany.mock.calls[0]?.[0].where;
+		expect(where).toMatchObject({ organizationId: "org1", type: "QA" });
+		expect(where.OR).toEqual([{ startsAt: null }, { startsAt: { gte: expect.any(Date) } }]);
+		expect(mockLoad).not.toHaveBeenCalled();
+	});
+
 	it("picks the soonest upcoming QA event (events arrive soonest-first)", async () => {
 		mockLoad.mockResolvedValue({
 			ok: true,

@@ -6,7 +6,7 @@ import { z } from "zod";
 import { adminProcedure } from "../../../orpc/procedures";
 import { clearEventsCache } from "../../circle/lib/events-cache";
 import { descriptionToTiptap } from "../lib/description-to-tiptap";
-import { setEventType } from "../lib/event-meta";
+import { parseStartsAt, setEventMeta } from "../lib/event-meta";
 import { EVENT_TYPES } from "../lib/event-types";
 
 export const updateClubEvent = adminProcedure
@@ -67,9 +67,13 @@ export const updateClubEvent = adminProcedure
 			});
 			return { ok: false as const, reason: outcome.reason };
 		}
-		if (input.type) {
+		const startsAt = parseStartsAt(input.startsAt);
+		if (input.type || startsAt) {
 			try {
-				await setEventType(input.organizationId, input.eventId, input.type);
+				await setEventMeta(input.organizationId, input.eventId, {
+					...(input.type ? { type: input.type } : {}),
+					...(startsAt ? { startsAt } : {}),
+				});
 			} catch (error) {
 				logger.error("[Events] event type write failed", { eventId: input.eventId, error });
 			}

@@ -16,7 +16,7 @@ export interface FeaturedCard {
 
 /**
  * Soonest upcoming event typed QA, or null. Cheap when the club has no QA
- * events (one indexed sidecar query, no Circle call). Never throws: the featured
+ * events, or only past ones (one indexed sidecar query, no Circle call). Never throws: the featured
  * card is optional chrome and must not take the feed down.
  */
 export async function getFeaturedQa(input: {
@@ -29,7 +29,12 @@ export async function getFeaturedQa(input: {
 	if (!input.eventsSpaceId) return null;
 	try {
 		const qaRows = await db.clubEventMeta.findMany({
-			where: { organizationId: input.organizationId, type: "QA" },
+			where: {
+				organizationId: input.organizationId,
+				type: "QA",
+				// Past events can't be featured; null = legacy row with unknown start.
+				OR: [{ startsAt: null }, { startsAt: { gte: new Date() } }],
+			},
 			select: { circleEventId: true },
 		});
 		if (qaRows.length === 0) return null;
