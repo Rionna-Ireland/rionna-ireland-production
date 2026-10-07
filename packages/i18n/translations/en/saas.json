@@ -476,6 +476,12 @@
 			"unpin": "Unpin",
 			"moveUp": "Move up",
 			"moveDown": "Move down",
+			"videoLength": {
+				"label": "Video length (minutes)",
+				"save": "Save",
+				"saved": "Video length saved.",
+				"invalid": "Enter a length in minutes (e.g. 4 or 4.5), or leave blank to clear."
+			},
 			"notConfigured": "No Inside Track Circle space is configured yet — set metadata.circle.insideTrack.spaceId.",
 			"list": {
 				"title": "Inside Track pieces",
