@@ -239,6 +239,12 @@ export const PostAttributionScalarFieldEnumSchema = z.enum(['id', 'organizationI
 
 export type PostAttributionScalarFieldEnum = z.infer<typeof PostAttributionScalarFieldEnumSchema>;
 
+// File: SeedLedgerScalarFieldEnum.schema.ts
+
+export const SeedLedgerScalarFieldEnumSchema = z.enum(['id', 'kind', 'externalId', 'meta', 'createdAt'])
+
+export type SeedLedgerScalarFieldEnum = z.infer<typeof SeedLedgerScalarFieldEnumSchema>;
+
 // File: SortOrder.schema.ts
 
 export const SortOrderSchema = z.enum(['asc', 'desc'])
@@ -1066,4 +1072,17 @@ export const PostAttributionSchema = z.object({
 });
 
 export type PostAttributionType = z.infer<typeof PostAttributionSchema>;
+
+
+// File: SeedLedger.schema.ts
+
+export const SeedLedgerSchema = z.object({
+  id: z.string(),
+  kind: z.string(),
+  externalId: z.string(),
+  meta: z.unknown().refine((val) => { const getDepth = (obj: unknown, depth: number = 0): number => { if (depth > 10) return depth; if (obj === null || typeof obj !== 'object') return depth; const values = Object.values(obj as Record<string, unknown>); if (values.length === 0) return depth; return Math.max(...values.map(v => getDepth(v, depth + 1))); }; return getDepth(val) <= 10; }, "JSON nesting depth exceeds maximum of 10").nullish(),
+  createdAt: z.date(),
+});
+
+export type SeedLedgerType = z.infer<typeof SeedLedgerSchema>;
 
