@@ -179,7 +179,7 @@ describe("runSeed: content coverage", () => {
 		expect(writes.filter((w) => w.model === "partnerOffer").length).toBeGreaterThanOrEqual(6);
 		expect(writes.filter((w) => w.model === "charityConfig")).toHaveLength(1);
 		const member = writes.find((w) => w.model === "member");
-		expect(member?.args.data.foundingMember).toBe(true);
+		expect(member?.args.data).not.toHaveProperty("foundingMember");
 	});
 
 	it("skips Tom-specific content when no --tom-email is given", async () => {

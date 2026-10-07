@@ -21,7 +21,6 @@ function fullLedger() {
 			entry(kind, `${kind}-1`, {
 				spaceId: "E1",
 				memberId: "tom-member",
-				previousFoundingMember: false,
 				previousInboxUnseenCount: 2,
 				pinned: ["p1"],
 			}),
@@ -77,7 +76,6 @@ describe("runWipe ordering", () => {
 		const ledger = memoryLedger([
 			entry("member_state", "tom-member", {
 				memberId: "tom-member",
-				previousFoundingMember: false,
 				previousInboxUnseenCount: 2,
 			}),
 			entry("inside_track_pins", "org1", { pinned: ["ours"] }),
@@ -96,7 +94,7 @@ describe("runWipe ordering", () => {
 		});
 		await runWipe(ctx);
 		const memberWrite = writes.find((w) => w.model === "member");
-		expect(memberWrite?.args.data).toEqual({ foundingMember: false, inboxUnseenCount: 2 });
+		expect(memberWrite?.args.data).toEqual({ inboxUnseenCount: 2 });
 		const orgWrite = writes.find((w) => w.model === "organization");
 		expect(JSON.parse(orgWrite!.args.data.metadata).circle.insideTrack.pinnedPostIds).toEqual([
 			"real",

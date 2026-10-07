@@ -74,7 +74,6 @@ export const WIPE_STEPS: WipeStep[] = [
 				await ctx.db.member.updateMany({
 					where: { id: memberId },
 					data: {
-						foundingMember: Boolean(e.meta.previousFoundingMember),
 						inboxUnseenCount: Number(e.meta.previousInboxUnseenCount ?? 0),
 					},
 				});

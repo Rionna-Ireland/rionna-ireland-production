@@ -915,13 +915,13 @@ async function seedNews(ctx: ShowcaseCtx, st: SeedState) {
 }
 
 // ---------------------------------------------------------------------------
-// Tom's account: inbox (every kind), founding flag
+// Tom's account: inbox (every kind)
 // ---------------------------------------------------------------------------
 
 async function seedTom(ctx: ShowcaseCtx, st: SeedState) {
 	if (!st.tom) {
 		ctx.log(
-			"  (no --tom-email: skipping inbox, founding flag, follows, RSVPs and votes for a personal account)",
+			"  (no --tom-email: skipping inbox, follows, RSVPs and votes for a personal account)",
 		);
 		return;
 	}
@@ -1078,10 +1078,11 @@ async function seedTom(ctx: ShowcaseCtx, st: SeedState) {
 		);
 	}
 
-	// Founding-member flag + unseen badge; previous values are recorded for wipe.
+	// Unseen inbox badge; the previous value is recorded for wipe. The founding
+	// flag is never touched: founding members are real paying members only.
 	const member = await ctx.db.member.findUnique({
 		where: { id: tom.memberId },
-		select: { foundingMember: true, inboxUnseenCount: true },
+		select: { inboxUnseenCount: true },
 	});
 	await ensureDb(
 		ctx,
@@ -1091,14 +1092,12 @@ async function seedTom(ctx: ShowcaseCtx, st: SeedState) {
 			await ctx.db.member.update({
 				where: { id: tom.memberId },
 				data: {
-					foundingMember: true,
 					inboxUnseenCount: (member?.inboxUnseenCount ?? 0) + unread,
 				},
 			});
 		},
 		{
 			memberId: tom.memberId,
-			previousFoundingMember: member?.foundingMember ?? false,
 			previousInboxUnseenCount: member?.inboxUnseenCount ?? 0,
 			addedUnseen: unread,
 		},
