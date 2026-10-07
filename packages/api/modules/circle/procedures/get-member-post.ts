@@ -5,6 +5,7 @@ import { createCircleService, getCircleHeadlessApiBaseUrl } from "@repo/payments
 import { z } from "zod";
 
 import { protectedProcedure } from "../../../orpc/procedures";
+import { enrichPosts } from "../lib/author-identity";
 import { type CirclePostDetail, objectValue, toPostDetail } from "../lib/parse-post";
 
 export const getMemberPost = protectedProcedure
@@ -64,8 +65,11 @@ export const getMemberPost = protectedProcedure
 		const post = objectValue(envelope?.post) ?? objectValue(envelope?.record) ?? envelope;
 		if (!post) return null;
 		const detail = toPostDetail(post, { communityDomain: metadata.circle?.communityDomain });
+		const [enriched] = await enrichPosts(input.organizationId, [detail], {
+			announcementSpaceId: metadata.circle?.communitySpaceId,
+		});
 		return {
-			...detail,
+			...(enriched ?? detail),
 			isOwn: detail.authorCircleMemberId !== null && detail.authorCircleMemberId === memberCircleId,
 		};
 	});

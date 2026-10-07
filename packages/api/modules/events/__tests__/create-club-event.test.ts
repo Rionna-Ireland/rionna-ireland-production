@@ -18,6 +18,7 @@ const {
 	mockCreateEvent,
 	mockNotifyEventPublished,
 	mockLoggerInfo,
+	mockMetaUpsert,
 } = vi.hoisted(() => ({
 	mockGetSession: vi.fn(),
 	mockOrgFindUnique: vi.fn(),
@@ -26,12 +27,16 @@ const {
 	mockCreateEvent: vi.fn(),
 	mockNotifyEventPublished: vi.fn(),
 	mockLoggerInfo: vi.fn(),
+	mockMetaUpsert: vi.fn(),
 }));
 
 vi.mock("@repo/auth", () => ({ auth: { api: { getSession: mockGetSession } } }));
 
 vi.mock("@repo/database", () => ({
-	db: { organization: { findUnique: mockOrgFindUnique } },
+	db: {
+		organization: { findUnique: mockOrgFindUnique },
+		clubEventMeta: { upsert: mockMetaUpsert },
+	},
 	parseOrgMetadata: mockParseOrgMetadata,
 }));
 
@@ -81,6 +86,25 @@ beforeEach(() => {
 });
 
 describe("createClubEvent (S2-09 surface E)", () => {
+	it("writes the type sidecar, defaulting to OTHER (S13-11)", async () => {
+		await call(createClubEvent, INPUT, ctx);
+		expect(mockMetaUpsert).toHaveBeenCalledWith({
+			where: { circleEventId: "555" },
+			create: { organizationId: "org1", circleEventId: "555", type: "OTHER" },
+			update: { type: "OTHER" },
+		});
+		await call(createClubEvent, { ...INPUT, type: "QA" }, ctx);
+		expect(mockMetaUpsert).toHaveBeenLastCalledWith(
+			expect.objectContaining({ update: { type: "QA" } }),
+		);
+	});
+
+	it("still succeeds when the type sidecar write fails (S13-11)", async () => {
+		mockMetaUpsert.mockRejectedValue(new Error("db down"));
+		const result = await call(createClubEvent, { ...INPUT, type: "RACE_DAY" }, ctx);
+		expect(result).toMatchObject({ ok: true, circleEventId: "555" });
+	});
+
 	it("creates a Circle event in the events space and returns its id", async () => {
 		const result = await call(createClubEvent, INPUT, ctx);
 

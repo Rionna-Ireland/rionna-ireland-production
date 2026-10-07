@@ -27,6 +27,8 @@ const {
 	mockNotifyCommunityMembers,
 	mockNotifyInsideTrackMembers,
 	mockInvalidateInsideTrackCache,
+	mockTrainerFindFirst,
+	mockAttrUpsert,
 } = vi.hoisted(() => ({
 	mockGetSession: vi.fn(),
 	mockGetMemberPostById: vi.fn(),
@@ -40,6 +42,8 @@ const {
 	mockNotifyCommunityMembers: vi.fn(),
 	mockNotifyInsideTrackMembers: vi.fn(),
 	mockInvalidateInsideTrackCache: vi.fn(),
+	mockTrainerFindFirst: vi.fn(),
+	mockAttrUpsert: vi.fn(),
 }));
 
 vi.mock("@repo/auth", () => ({
@@ -50,7 +54,11 @@ vi.mock("@repo/database", () => ({
 	getMemberPostById: mockGetMemberPostById,
 	updateMemberPost: mockUpdateMemberPost,
 	parseOrgMetadata: mockParseOrgMetadata,
-	db: { organization: { findUnique: mockOrgFindUnique } },
+	db: {
+		organization: { findUnique: mockOrgFindUnique },
+		trainer: { findFirst: mockTrainerFindFirst },
+		postAttribution: { upsert: mockAttrUpsert },
+	},
 }));
 
 vi.mock("@repo/logs", () => ({
@@ -147,6 +155,47 @@ describe("publishMemberPost (S2-09)", () => {
 			publishedAt: expect.any(Date),
 			publishError: null,
 		});
+	});
+
+	it("records a trainer attribution when 'Post as' is set (S13-11)", async () => {
+		mockGetMemberPostById.mockResolvedValue(draftPost());
+		mockTrainerFindFirst.mockResolvedValue({ id: "t1" });
+
+		const result = await call(
+			publishMemberPost,
+			{ memberPostId: "mp1", postAsTrainerId: "t1" },
+			ctx,
+		);
+
+		expect(result).toMatchObject({ ok: true, circlePostId: "5001" });
+		expect(mockTrainerFindFirst).toHaveBeenCalledWith({
+			where: { id: "t1", organizationId: "org1" },
+			select: { id: true },
+		});
+		expect(mockAttrUpsert).toHaveBeenCalledWith({
+			where: { circlePostId: "5001" },
+			create: { organizationId: "org1", circlePostId: "5001", trainerId: "t1" },
+			update: { trainerId: "t1" },
+		});
+	});
+
+	it("does not fail the publish when the attribution write throws (S13-11)", async () => {
+		mockGetMemberPostById.mockResolvedValue(draftPost());
+		mockTrainerFindFirst.mockResolvedValue({ id: "t1" });
+		mockAttrUpsert.mockRejectedValue(new Error("db"));
+
+		const result = await call(
+			publishMemberPost,
+			{ memberPostId: "mp1", postAsTrainerId: "t1" },
+			ctx,
+		);
+		expect(result).toMatchObject({ ok: true, circlePostId: "5001" });
+	});
+
+	it("never attributes when 'Post as' is Rionna (S13-11)", async () => {
+		mockGetMemberPostById.mockResolvedValue(draftPost());
+		await call(publishMemberPost, { memberPostId: "mp1", postAsTrainerId: null }, ctx);
+		expect(mockAttrUpsert).not.toHaveBeenCalled();
 	});
 
 	it("fails safe (no throw) when serialization fails", async () => {

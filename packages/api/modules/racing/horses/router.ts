@@ -18,6 +18,7 @@ import { searchProvider } from "./procedures/search-provider";
 import { setHorseSpaceVisibility } from "./procedures/set-horse-space-visibility";
 import { syncHorse } from "./procedures/sync-horse";
 import { updateHorse } from "./procedures/update-horse";
+import { updateTrainer } from "./procedures/update-trainer";
 import { updateRaceEntryReplayUrl } from "./procedures/update-race-entry-replay-url";
 
 export const horsesAdminRouter = {
@@ -41,5 +42,6 @@ export const horsesAdminRouter = {
 	trainers: {
 		list: listTrainers,
 		create: createTrainer,
+		update: updateTrainer,
 	},
 };

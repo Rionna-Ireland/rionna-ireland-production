@@ -10,7 +10,9 @@ import { getSpacePollFeedItems } from "../../polls/lib/merge-space-polls";
 import { CLOSED_POLL_VISIBLE_MS } from "../../polls/lib/poll-view";
 import { toPollFeedItem } from "../../polls/lib/to-feed-item";
 import { getFollowedHorseIds } from "../../racing/horses/lib/horse-follows";
+import { enrichPosts } from "../lib/author-identity";
 import { type FeedFilterInput, applyFeedFilter } from "../lib/feed-filter";
+import { type FeaturedCard, getFeaturedQa } from "../lib/featured-qa";
 import { readMemberFeedBuffer, writeMemberFeedBuffer } from "../lib/member-feed-cache";
 import { POST_SPACE_TYPES } from "../lib/space-types";
 import { getStoryFeedItems } from "../lib/story-feed-items";
@@ -27,6 +29,8 @@ export interface MemberFeedResult {
 	items: MemberFeedItem[];
 	page: number;
 	hasNextPage: boolean;
+	/** S13-11: soonest upcoming Q&A event, or null. */
+	featured: FeaturedCard | null;
 }
 
 // How many recent posts to pull per space, and how many spaces to scan, per load.
@@ -77,12 +81,14 @@ export const getMemberFeed = protectedProcedure
 			items: [],
 			page: input.page,
 			hasNextPage: false,
+			featured: null,
 		});
 		const empty = (): MemberFeedResult => ({
 			ok: true,
 			items: [],
 			page: input.page,
 			hasNextPage: false,
+			featured: null,
 		});
 
 		const org = await db.organization.findUnique({ where: { id: input.organizationId } });
@@ -105,6 +111,17 @@ export const getMemberFeed = protectedProcedure
 			return empty();
 		}
 
+		const announcementSpaceId = orgMetadata.circle?.communitySpaceId;
+		const featured = input.spaceId
+			? null
+			: await getFeaturedQa({
+					organizationId: input.organizationId,
+					orgSlug: org.slug,
+					eventsSpaceId: orgMetadata.circle?.eventsSpaceId,
+					userId: user.id,
+					circleMemberId: member.circleMemberId,
+				});
+
 		// Serve pages from the short-lived merged buffer when we have one
 		// (FABLE_AUDIT P4): "load more" then costs zero Circle calls, and the
 		// buffer can't shift under the pagination within the TTL (C8).
@@ -121,6 +138,7 @@ export const getMemberFeed = protectedProcedure
 				items: visible.slice(start, start + input.perPage),
 				page: input.page,
 				hasNextPage: visible.length > start + input.perPage,
+				featured,
 			};
 		};
 		const cachedBuffer = input.spaceId
@@ -218,6 +236,10 @@ export const getMemberFeed = protectedProcedure
 				// before the poll prepend below so the (unpaginated) poll cards
 				// never skew hasNextPage.
 				const hasNextPage = items.length === input.perPage;
+				const enriched = await enrichPosts(input.organizationId, items, {
+					announcementSpaceId,
+				});
+				items.splice(0, items.length, ...enriched);
 
 				// 3b. Space-scope polls (S12-01a follow-up): only on page 1, prepended
 				// above the Circle posts so an open vote sits at the top of the space
@@ -250,6 +272,7 @@ export const getMemberFeed = protectedProcedure
 					items,
 					page: input.page,
 					hasNextPage,
+					featured: null,
 				};
 			} catch (error) {
 				logger.warn("[Circle] Member feed: space posts fetch threw", {
@@ -471,6 +494,13 @@ export const getMemberFeed = protectedProcedure
 				});
 			}
 		}
+
+		// S13-11: announcement flag, author role, trainer attribution — batched,
+		// and applied before the buffer is cached.
+		const enrichedMerged = await enrichPosts(input.organizationId, merged, {
+			announcementSpaceId,
+		});
+		merged.splice(0, merged.length, ...enrichedMerged);
 
 		merged.sort((a, b) => {
 			const ta = a.createdAt ? Date.parse(a.createdAt) : 0;

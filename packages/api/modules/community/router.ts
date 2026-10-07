@@ -1,3 +1,4 @@
+import { attributePost } from "./procedures/admin/attribute-post";
 import { listModeration } from "./procedures/admin/list-moderation";
 import { listModerationAttention } from "./procedures/admin/list-moderation-attention";
 import { listSpaces } from "./procedures/admin/list-spaces";
@@ -14,6 +15,7 @@ import { reportContent } from "./procedures/report-content";
 export const communityAdminRouter = {
 	overview: getCommunityOverview,
 	listSpaces,
+	attributePost,
 	setSpaceSettings,
 	moderation: {
 		list: listModeration,

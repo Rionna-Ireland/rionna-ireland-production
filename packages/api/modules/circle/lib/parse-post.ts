@@ -17,6 +17,14 @@ export interface MemberFeedItem {
 	isLiked: boolean;
 	imageUrl: string | null;
 	url: string | null;
+	/** Author avatar (Circle). Swapped to the trainer's for attributed posts (S13-11). */
+	authorAvatarUrl?: string | null;
+	/** Circle community-member id of the real author; drives `authorRole`. */
+	authorCircleMemberId?: string | null;
+	/** S13-11: post lives in the Official Announcements space. */
+	isAnnouncement?: boolean;
+	/** S13-11: club role badge for the author. */
+	authorRole?: "trainer" | "staff" | null;
 	/** Present only when kind === "poll" (S12-01a). */
 	poll?: PollCardData;
 	/** Present only when kind === "story" (S12-02b): our NewsPost rows (news + charity). */
@@ -49,6 +57,10 @@ export interface CirclePostDetail {
 	url: string | null;
 	/** Whether the authenticated member authored this post (set by the procedure, not the parser). */
 	isOwn?: boolean;
+	/** S13-11: club role badge for the author (trainer when the post is attributed). */
+	authorRole?: "trainer" | "staff" | null;
+	/** S13-11: post lives in the Official Announcements space. */
+	isAnnouncement?: boolean;
 }
 
 export function textValue(value: unknown): string | null {
@@ -317,6 +329,8 @@ export function toFeedItem(post: Record<string, unknown>, opts: ParseOpts = {}):
 		createdAt: textValue(post.created_at) ?? textValue(post.createdAt),
 		spaceName,
 		authorName: extractAuthorName(post),
+		authorAvatarUrl: extractAuthorAvatar(post),
+		authorCircleMemberId: extractAuthorCircleMemberId(post),
 		commentCount: numberValue(post.comment_count ?? post.comments_count ?? post.commentsCount),
 		likeCount: numberValue(
 			post.user_likes_count ?? post.likes_count ?? post.likesCount ?? post.like_count,
