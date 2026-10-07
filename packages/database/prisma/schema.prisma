@@ -1051,3 +1051,21 @@ model InsideTrackMeta {
   @@index([organizationId])
   @@map("inside_track_meta")
 }
+
+/// S13-17: ledger of everything the staging showcase seed created (DB rows and
+/// Circle objects). `wipe` deletes from this table alone, never by name match.
+/// RLS on, no policies: only the service role (Prisma) touches it.
+model SeedLedger {
+  id         String   @id @default(cuid())
+  /// e.g. "horse", "circle_post", "circle_member".
+  kind       String
+  /// DB row id, or the Circle object id (stringified).
+  externalId String
+  /// `{ key }` = stable fixture key used for idempotent re-runs; plus per-kind extras.
+  meta       Json?
+  createdAt  DateTime @default(now())
+
+  @@unique([kind, externalId])
+  @@index([kind])
+  @@map("seed_ledger")
+}

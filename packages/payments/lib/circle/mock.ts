@@ -669,4 +669,42 @@ export class MockCircleService implements CircleService {
 			})),
 		);
 	}
+
+	// --- Showcase seeding surface (S13-17) ----------------------------------
+
+	private nextShowcaseId = 9000;
+	readonly showcaseComments: { id: string; circlePostId: string; circleMemberId: string; body: string }[] = [];
+	readonly showcaseLikes = new Set<string>();
+	readonly showcaseRsvps = new Set<string>();
+
+	async createComment(params: {
+		circlePostId: string;
+		circleMemberId: string;
+		body: string;
+	}): Promise<CircleCallOutcome<{ circleCommentId: string }>> {
+		const id = String(this.nextShowcaseId++);
+		this.showcaseComments.push({ id, ...params });
+		return { ok: true, data: { circleCommentId: id } };
+	}
+
+	async likePost(params: {
+		circlePostId: string;
+		circleMemberId: string;
+	}): Promise<CircleCallOutcome<void>> {
+		this.showcaseLikes.add(`${params.circlePostId}:${params.circleMemberId}`);
+		return { ok: true, data: undefined };
+	}
+
+	async rsvpEvent(params: {
+		eventId: string;
+		circleMemberId: string;
+	}): Promise<CircleCallOutcome<void>> {
+		this.showcaseRsvps.add(`${params.eventId}:${params.circleMemberId}`);
+		return { ok: true, data: undefined };
+	}
+
+	async deleteSpace(spaceId: string): Promise<CircleCallOutcome<void>> {
+		logger.info("[MockCircle] Deleted space", { spaceId });
+		return { ok: true, data: undefined };
+	}
 }

@@ -236,6 +236,11 @@ describe("RealCircleService — publishing surface (S2-09)", () => {
 				space_group_id: 1081220,
 				space_type: "basic",
 				is_private: true,
+				default_notification_setting: "never",
+				default_in_app_notification_setting: "never",
+				default_mobile_notification_setting: "never",
+				default_mention_in_app_notification_setting: "never",
+				default_mention_mobile_notification_setting: "never",
 			});
 		});
 	});
