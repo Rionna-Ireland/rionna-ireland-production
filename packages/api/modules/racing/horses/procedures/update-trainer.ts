@@ -1,6 +1,7 @@
 import { ORPCError } from "@orpc/server";
 import { db } from "@repo/database";
 import type { Prisma } from "@repo/database";
+import { logger } from "@repo/logs";
 import { z } from "zod";
 
 import { adminProcedure } from "../../../../orpc/procedures";
@@ -75,5 +76,14 @@ export const updateTrainer = adminProcedure
 		}
 
 		const updated = await db.trainer.update({ where: { id: trainer.id }, data });
+		logger.info("Admin updated trainer", {
+			event: "admin_trainer_updated",
+			actorUserId: context.user.id,
+			organizationId,
+			trainerId: trainer.id,
+			changedFields: (["location", "userId", "avatarUrl"] as const).filter(
+				(field) => input[field] !== undefined,
+			),
+		});
 		return { ok: true as const, trainer: updated };
 	});

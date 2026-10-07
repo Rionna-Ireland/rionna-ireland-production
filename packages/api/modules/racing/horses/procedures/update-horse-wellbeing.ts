@@ -1,5 +1,6 @@
 import { ORPCError } from "@orpc/client";
 import { getHorseById, upsertHorseWellbeing } from "@repo/database";
+import { logger } from "@repo/logs";
 import { z } from "zod";
 
 import { adminProcedure } from "../../../../orpc/procedures";
@@ -28,9 +29,17 @@ export const updateHorseWellbeing = adminProcedure
 			throw new ORPCError("NOT_FOUND", { message: "Horse not found" });
 		}
 
-		return upsertHorseWellbeing(input.horseId, {
+		const result = await upsertHorseWellbeing(input.horseId, {
 			vetCheckStatus: input.vetCheckStatus,
 			vetCheckedAt: input.vetCheckedAt,
 			trainingLoad: input.trainingLoad,
 		});
+		logger.info("Admin updated horse wellbeing", {
+			event: "admin_horse_wellbeing_updated",
+			actorUserId: context.user.id,
+			organizationId: horse.organizationId,
+			horseId: input.horseId,
+			changedFields: ["vetCheckStatus", "vetCheckedAt", "trainingLoad"],
+		});
+		return result;
 	});

@@ -1,5 +1,6 @@
 import { ORPCError } from "@orpc/client";
 import { getRaceEntryById, updateRaceEntryFieldSize as updateFieldSizeQuery } from "@repo/database";
+import { logger } from "@repo/logs";
 import { z } from "zod";
 
 import { adminProcedure } from "../../../../orpc/procedures";
@@ -29,5 +30,14 @@ export const updateRaceEntryFieldSize = adminProcedure
 			throw new ORPCError("NOT_FOUND", { message: "Race entry not found" });
 		}
 
-		return updateFieldSizeQuery(input.entryId, input.fieldSize);
+		const result = await updateFieldSizeQuery(input.entryId, input.fieldSize);
+		logger.info("Admin updated race entry field size", {
+			event: "admin_race_entry_field_size_updated",
+			actorUserId: context.user.id,
+			organizationId: entry.organizationId,
+			entryId: input.entryId,
+			changedFields: ["fieldSize"],
+			fieldSize: input.fieldSize,
+		});
+		return result;
 	});

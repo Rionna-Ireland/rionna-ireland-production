@@ -1,5 +1,6 @@
 import { ORPCError } from "@orpc/client";
 import { db } from "@repo/database";
+import { logger } from "@repo/logs";
 import { z } from "zod";
 
 import { adminProcedure } from "../../../../orpc/procedures";
@@ -53,5 +54,13 @@ export const attributePost = adminProcedure
 		}
 		// Per-member feed buffers embed the author; drop them so it shows now.
 		clearMemberFeedCache();
+		logger.info("Admin attributed Circle post", {
+			event: "admin_post_attributed",
+			actorUserId: context.user.id,
+			organizationId: input.organizationId,
+			circlePostId: input.circlePostId,
+			trainerId: input.trainerId,
+			changedFields: ["trainerId"],
+		});
 		return { ok: true as const };
 	});

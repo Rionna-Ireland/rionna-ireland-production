@@ -1,5 +1,6 @@
 import { ORPCError } from "@orpc/client";
 import { db } from "@repo/database";
+import { logger } from "@repo/logs";
 import { z } from "zod";
 
 import { adminProcedure } from "../../../orpc/procedures";
@@ -36,5 +37,13 @@ export const setFoundingMember = adminProcedure
 		}
 
 		await db.member.update({ where: { id: memberId }, data: { foundingMember } });
+		logger.info("Admin set founding member flag", {
+			event: "admin_founding_member_set",
+			actorUserId: context.user.id,
+			organizationId,
+			memberId,
+			changedFields: ["foundingMember"],
+			foundingMember,
+		});
 		return { memberId, foundingMember };
 	});
