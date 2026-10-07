@@ -1,5 +1,6 @@
 import { db } from "@repo/database";
 import { logger } from "@repo/logs";
+import { STAFF_MEMBER_ROLES, STAFF_USER_ROLES } from "@repo/payments/lib/founding-member";
 
 import { objectValue } from "./parse-post";
 
@@ -11,11 +12,13 @@ export interface PostAttributionView {
 	avatarUrl: string | null;
 }
 
-const STAFF_ROLES = new Set(["owner", "admin"]);
+const STAFF_MEMBER_ROLE_SET = new Set(STAFF_MEMBER_ROLES);
+const STAFF_USER_ROLE_SET = new Set(STAFF_USER_ROLES);
 
 /**
  * Map Circle community-member ids → club role, in two batched queries (never
- * per author). A linked trainer wins over staff. Any lookup failure degrades to
+ * per author). A linked trainer wins over staff; staff = org owner/admin or a
+ * global admin/platformAdmin user. Any lookup failure degrades to
  * "no badges" — role is decoration and must never fail a feed or thread.
  */
 export async function loadAuthorRoles(
@@ -28,7 +31,7 @@ export async function loadAuthorRoles(
 	try {
 		const members = await db.member.findMany({
 			where: { organizationId, circleMemberId: { in: ids } },
-			select: { circleMemberId: true, userId: true, role: true },
+			select: { circleMemberId: true, userId: true, role: true, user: { select: { role: true } } },
 		});
 		if (members.length === 0) return roles;
 		const trainers = await db.trainer.findMany({
@@ -40,7 +43,10 @@ export async function loadAuthorRoles(
 			if (!member.circleMemberId) continue;
 			if (trainerUserIds.has(member.userId)) {
 				roles.set(member.circleMemberId, "trainer");
-			} else if (STAFF_ROLES.has(member.role)) {
+			} else if (
+				STAFF_MEMBER_ROLE_SET.has(member.role) ||
+				(member.user?.role != null && STAFF_USER_ROLE_SET.has(member.user.role))
+			) {
 				roles.set(member.circleMemberId, "staff");
 			}
 		}

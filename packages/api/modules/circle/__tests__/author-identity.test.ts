@@ -41,6 +41,18 @@ describe("loadAuthorRoles", () => {
 		expect(mockTrainerFindMany).toHaveBeenCalledTimes(1);
 	});
 
+	it("treats Member.role=member + User.role=admin/platformAdmin as staff; trainer still wins", async () => {
+		mockMemberFindMany.mockResolvedValue([
+			{ circleMemberId: "c1", userId: "u1", role: "member", user: { role: "admin" } },
+			{ circleMemberId: "c2", userId: "u2", role: "member", user: { role: "platformAdmin" } },
+			{ circleMemberId: "c3", userId: "u3", role: "member", user: { role: "admin" } },
+			{ circleMemberId: "c4", userId: "u4", role: "member", user: { role: null } },
+		]);
+		mockTrainerFindMany.mockResolvedValue([{ userId: "u3" }]);
+		const roles = await loadAuthorRoles("org1", ["c1", "c2", "c3", "c4"]);
+		expect(Object.fromEntries(roles)).toEqual({ c1: "staff", c2: "staff", c3: "trainer" });
+	});
+
 	it("skips the DB entirely with no ids and fails open on errors", async () => {
 		expect((await loadAuthorRoles("org1", [null])).size).toBe(0);
 		expect(mockMemberFindMany).not.toHaveBeenCalled();

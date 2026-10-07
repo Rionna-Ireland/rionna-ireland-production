@@ -75,7 +75,11 @@ describe("deriveMembershipStatus", () => {
 		[["past_due"], "past_due"],
 		[["canceled", "past_due"], "past_due"],
 		[["canceled"], "cancelled"],
-		[["expired", "rejected_d29"], "cancelled"],
+		[["unpaid"], "cancelled"],
+		[["incomplete"], "none"],
+		[["incomplete_expired"], "none"],
+		[["rejected_d29"], "none"],
+		[["incomplete_expired", "canceled"], "cancelled"],
 		[[], "none"],
 	])("%j -> %s", (statuses, expected) => {
 		expect(deriveMembershipStatus(statuses)).toBe(expected);

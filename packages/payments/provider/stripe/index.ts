@@ -321,6 +321,9 @@ export async function handleSubscriptionUpdated(event: Stripe.Event) {
 
 	// S13-12: subscription just became active (e.g. incomplete -> active): this is
 	// the activation moment for founding-member assignment (idempotent).
+	// Note: past_due -> active also triggers this when past_due is not "paid
+	// active"; that is harmless (the first-membership guard rejects it, and a
+	// repeat is idempotent via `already_flagged`).
 	const prevStatus = (event.data as unknown as { previous_attributes?: { status?: string } })
 		.previous_attributes?.status;
 	if (
