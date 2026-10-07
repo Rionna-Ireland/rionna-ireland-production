@@ -30,6 +30,12 @@ export interface MemberFeedItem {
 	isAnnouncement?: boolean;
 	/** S13-11: club role badge for the author. */
 	authorRole?: "trainer" | "staff" | null;
+	/**
+	 * S13-13: length of the post's video in whole seconds (rounded up). Parsed from
+	 * the first uploaded video, or an admin override (`InsideTrackMeta`). Omitted
+	 * for linked (YouTube/Vimeo) videos and posts without video.
+	 */
+	videoDurationSeconds?: number;
 	/** Present only when kind === "poll" (S12-01a). */
 	poll?: PollCardData;
 	/** Present only when kind === "story" (S12-02b): our NewsPost rows (news + charity). */
@@ -143,6 +149,32 @@ function extractTiptapText(value: unknown): string | null {
 		? node.content.map(extractTiptapText).filter(Boolean).join(" ")
 		: null;
 	return cleanTextValue([nodeText, children].filter(Boolean).join(" "));
+}
+
+function findUploadedVideoDuration(node: unknown): number | null {
+	const obj = objectValue(node);
+	if (!obj) return null;
+	if (obj.type === "file" && textValue(obj.content_type)?.startsWith("video/")) {
+		const duration = objectValue(obj.metadata)?.duration;
+		if (typeof duration === "number" && Number.isFinite(duration) && duration > 0) {
+			return Math.ceil(duration);
+		}
+	}
+	if (Array.isArray(obj.content)) {
+		for (const child of obj.content) {
+			const found = findUploadedVideoDuration(child);
+			if (found !== null) return found;
+		}
+	}
+	return null;
+}
+
+/**
+ * S13-13: whole-second length of the first uploaded video in a post's
+ * `tiptap_body`, or null (linked iframely videos carry no duration).
+ */
+export function extractVideoDurationSeconds(post: Record<string, unknown>): number | null {
+	return findUploadedVideoDuration(objectValue(objectValue(post.tiptap_body)?.body));
 }
 
 export function extractPostText(post: Record<string, unknown>): string | null {
@@ -330,6 +362,7 @@ export function toFeedItem(post: Record<string, unknown>, opts: ParseOpts = {}):
 		slug: textValue(post.slug),
 		spaceSlug: extractSpaceSlug(post),
 	});
+	const videoDurationSeconds = extractVideoDurationSeconds(post);
 	return {
 		id,
 		spaceId: extractSpaceId(post),
@@ -352,6 +385,7 @@ export function toFeedItem(post: Record<string, unknown>, opts: ParseOpts = {}):
 			textValue(post.web_url) ??
 			textValue(post.action_web_url) ??
 			fallbackUrl,
+		...(videoDurationSeconds === null ? {} : { videoDurationSeconds }),
 	};
 }
 
