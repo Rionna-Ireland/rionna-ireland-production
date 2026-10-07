@@ -3,9 +3,11 @@ import { createMemberPostDraft } from "./procedures/create-member-post-draft";
 import { createMemberPostImageUploadUrl } from "./procedures/create-member-post-image-upload-url";
 import { getLatestTrainerUpdatesProcedure } from "./procedures/get-latest-trainer-updates";
 import { getMemberPost } from "./procedures/get-member-post";
+import { listInsideTrackVideoDurations } from "./procedures/list-inside-track-video-durations";
 import { listMemberPosts } from "./procedures/list-member-posts";
 import { publishMemberPost } from "./procedures/publish-member-post";
 import { setInsideTrackPins } from "./procedures/set-inside-track-pins";
+import { setInsideTrackVideoDuration } from "./procedures/set-inside-track-video-duration";
 import { updateMemberPostDraft } from "./procedures/update-member-post-draft";
 
 export const memberPostsRouter = {
@@ -16,6 +18,8 @@ export const memberPostsRouter = {
 		update: updateMemberPostDraft,
 		publish: publishMemberPost,
 		setInsideTrackPins,
+		setInsideTrackVideoDuration,
+		listInsideTrackVideoDurations,
 		createImageUploadUrl: createMemberPostImageUploadUrl,
 		createVideoUpload: createCircleVideoUpload,
 	},
