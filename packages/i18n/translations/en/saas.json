@@ -64,7 +64,12 @@
 				"role": "Role",
 				"subscription": "Subscription",
 				"circle": "Community",
+				"founding": "Founding member",
 				"actions": "Actions"
+			},
+			"founding": {
+				"toggleLabel": "Founding member: {name}",
+				"errorTitle": "Couldn't update founding member"
 			},
 			"role": {
 				"owner": "Owner",

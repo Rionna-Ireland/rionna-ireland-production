@@ -214,6 +214,9 @@ model Member {
   // Notification centre unseen badge (S12-06a)
   inboxUnseenCount Int @default(0)
 
+  // Founding member flag (S13-12) — first 25 non-staff paying members
+  foundingMember Boolean @default(false)
+
   @@unique([organizationId, userId])
   @@index([organizationId])
   @@index([userId])

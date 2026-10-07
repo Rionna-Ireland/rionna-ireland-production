@@ -55,7 +55,7 @@ export type OrganizationScalarFieldEnum = z.infer<typeof OrganizationScalarField
 
 // File: MemberScalarFieldEnum.schema.ts
 
-export const MemberScalarFieldEnumSchema = z.enum(['id', 'organizationId', 'userId', 'role', 'createdAt', 'circleMemberId', 'circleProvisionedAt', 'circleStatus', 'circleRefreshToken', 'circleProfileConfirmedAt', 'circleAccessToken', 'circleAccessTokenExpiresAt', 'circleLastSeenNotificationId', 'circleLastPolledAt', 'inboxUnseenCount'])
+export const MemberScalarFieldEnumSchema = z.enum(['id', 'organizationId', 'userId', 'role', 'createdAt', 'circleMemberId', 'circleProvisionedAt', 'circleStatus', 'circleRefreshToken', 'circleProfileConfirmedAt', 'circleAccessToken', 'circleAccessTokenExpiresAt', 'circleLastSeenNotificationId', 'circleLastPolledAt', 'inboxUnseenCount', 'foundingMember'])
 
 export type MemberScalarFieldEnum = z.infer<typeof MemberScalarFieldEnumSchema>;
 
@@ -476,6 +476,7 @@ export const MemberSchema = z.object({
   circleLastSeenNotificationId: z.string().nullish(),
   circleLastPolledAt: z.date().nullish(),
   inboxUnseenCount: z.number().int(),
+  foundingMember: z.boolean(),
 });
 
 export type MemberType = z.infer<typeof MemberSchema>;
