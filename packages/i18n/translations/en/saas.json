@@ -208,6 +208,8 @@
 				"virtualLocationUrl": "Meeting link",
 				"cover": "Cover image",
 				"type": "Event type",
+				"questionsReady": "Questions thread created. Members submit questions as comments on it.",
+				"questionsPending": "A questions thread will be created in Announcements when you save.",
 				"notifyMembers": "Notify members",
 				"notifyMembersHint": "Send a push notification to all members.",
 				"create": "Create event",

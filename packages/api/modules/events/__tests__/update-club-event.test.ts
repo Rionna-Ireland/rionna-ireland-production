@@ -17,6 +17,8 @@ const {
 	mockLoggerInfo,
 	mockLoggerWarn,
 	mockMetaUpsert,
+	mockMetaUpdate,
+	mockMetaFindUnique,
 } = vi.hoisted(() => ({
 	mockGetSession: vi.fn(),
 	mockOrgFindUnique: vi.fn(),
@@ -26,6 +28,8 @@ const {
 	mockLoggerInfo: vi.fn(),
 	mockLoggerWarn: vi.fn(),
 	mockMetaUpsert: vi.fn(),
+	mockMetaUpdate: vi.fn(),
+	mockMetaFindUnique: vi.fn(),
 }));
 
 vi.mock("@repo/auth", () => ({ auth: { api: { getSession: mockGetSession } } }));
@@ -33,7 +37,11 @@ vi.mock("@repo/auth", () => ({ auth: { api: { getSession: mockGetSession } } }))
 vi.mock("@repo/database", () => ({
 	db: {
 		organization: { findUnique: mockOrgFindUnique },
-		clubEventMeta: { upsert: mockMetaUpsert },
+		clubEventMeta: {
+			upsert: mockMetaUpsert,
+			update: mockMetaUpdate,
+			findUnique: mockMetaFindUnique,
+		},
 	},
 	parseOrgMetadata: mockParseOrgMetadata,
 }));
@@ -203,5 +211,28 @@ describe("updateClubEvent (S11-02)", () => {
 		);
 
 		expect(clearEventsCache).not.toHaveBeenCalled();
+	});
+});
+
+describe("updateClubEvent questions thread", () => {
+	it("creates the questions post for an existing QA event that has none", async () => {
+		const createPost = vi.fn().mockResolvedValue({ ok: true, data: { circlePostId: "900" } });
+		mockCreateCircleService.mockReturnValue({ updateEvent: mockUpdateEvent, createPost });
+		mockParseOrgMetadata.mockReturnValue({
+			circle: { eventsSpaceId: "2682536", communitySpaceId: "12" },
+		});
+		mockMetaFindUnique.mockResolvedValue({ type: "QA", questionsPostId: null });
+		await call(
+			updateClubEvent,
+			{ organizationId: "org1", eventId: "555", name: "Ask the trainer" },
+			ctx,
+		);
+		expect(createPost).toHaveBeenCalledWith(
+			expect.objectContaining({ name: "Questions for the Live Q&A: Ask the trainer" }),
+		);
+		expect(mockMetaUpdate).toHaveBeenCalledWith({
+			where: { circleEventId: "555" },
+			data: { questionsPostId: "900", questionsSpaceId: "12" },
+		});
 	});
 });

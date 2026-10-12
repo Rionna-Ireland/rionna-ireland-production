@@ -68,8 +68,8 @@ export async function setEventMeta(
 	organizationId: string,
 	circleEventId: string,
 	fields: { type?: EventTypeValue; startsAt?: Date },
-): Promise<void> {
-	await db.clubEventMeta.upsert({
+): Promise<{ type: string; questionsPostId: string | null }> {
+	return db.clubEventMeta.upsert({
 		where: { circleEventId },
 		create: { organizationId, circleEventId, ...fields },
 		update: { ...fields },

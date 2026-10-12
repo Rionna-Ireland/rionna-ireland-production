@@ -1015,6 +1015,9 @@ model ClubEventMeta {
   /// Mirror of the Circle event start, so the featured-Q&A pre-check can skip
   /// past events without a Circle call. Null = unknown (legacy rows).
   startsAt       DateTime?
+  /// QA events: the companion Circle post members comment their questions on.
+  questionsPostId  String?
+  questionsSpaceId String?
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 

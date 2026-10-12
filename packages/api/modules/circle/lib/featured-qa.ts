@@ -12,6 +12,9 @@ export interface FeaturedCard {
 	title: string;
 	startsAt: string;
 	cta: string;
+	/** Companion Circle post members comment their questions on (absent for legacy events). */
+	questionsPostId?: string;
+	questionsSpaceId?: string;
 }
 
 /**
@@ -35,7 +38,7 @@ export async function getFeaturedQa(input: {
 				// Past events can't be featured; null = legacy row with unknown start.
 				OR: [{ startsAt: null }, { startsAt: { gte: new Date() } }],
 			},
-			select: { circleEventId: true },
+			select: { circleEventId: true, questionsPostId: true, questionsSpaceId: true },
 		});
 		if (qaRows.length === 0) return null;
 		const result = await loadMemberEvents({
@@ -48,12 +51,16 @@ export async function getFeaturedQa(input: {
 		});
 		const next = result.events.find((e) => e.eventType === "QA" && e.startsAt !== null);
 		if (!next?.startsAt) return null;
+		const row = qaRows.find((r) => r.circleEventId === next.id);
 		return {
 			kind: "qa",
 			eventId: next.id,
 			title: next.title,
 			startsAt: next.startsAt,
 			cta: FEATURED_QA_CTA,
+			...(row?.questionsPostId && row.questionsSpaceId
+				? { questionsPostId: row.questionsPostId, questionsSpaceId: row.questionsSpaceId }
+				: {}),
 		};
 	} catch (error) {
 		logger.warn("[Circle] featured Q&A lookup failed", {

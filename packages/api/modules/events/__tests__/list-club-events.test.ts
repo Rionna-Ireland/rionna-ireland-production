@@ -80,6 +80,20 @@ beforeEach(() => {
 });
 
 describe("listClubEvents (S11-02)", () => {
+	it("exposes the questions thread id when the sidecar has one", async () => {
+		mockMetaFindMany.mockResolvedValue([
+			{ circleEventId: "555", type: "QA", questionsPostId: "900" },
+		]);
+		mockCreateCircleService.mockReturnValue({
+			listEvents: vi.fn().mockResolvedValue({
+				ok: true,
+				data: { events: [EVENT_SUMMARY], hasNextPage: false },
+			}),
+		});
+		const result = await call(listClubEvents, INPUT, ctx);
+		expect(result).toMatchObject({ events: [{ questionsPostId: "900" }] });
+	});
+
 	it("attaches the sidecar event type (S13-11)", async () => {
 		mockMetaFindMany.mockResolvedValue([{ circleEventId: "555", type: "QA" }]);
 		const result = await call(listClubEvents, INPUT, ctx);

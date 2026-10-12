@@ -386,6 +386,13 @@ export function EventForm({ eventId }: EventFormProps) {
 													))}
 												</SelectContent>
 											</Select>
+											{isEdit && field.value === "QA" && (
+												<p className="text-muted-foreground text-sm">
+													{existingEvent?.questionsPostId
+														? t("admin.events.form.questionsReady")
+														: t("admin.events.form.questionsPending")}
+												</p>
+											)}
 											<FormMessage />
 										</FormItem>
 									)}

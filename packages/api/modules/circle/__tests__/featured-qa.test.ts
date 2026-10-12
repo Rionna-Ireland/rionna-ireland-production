@@ -62,6 +62,21 @@ describe("getFeaturedQa", () => {
 		expect(mockLoad).toHaveBeenCalledWith(expect.objectContaining({ scope: "upcoming" }));
 	});
 
+	it("includes the questions thread when the sidecar has one", async () => {
+		mockMetaFindMany.mockResolvedValue([
+			{ circleEventId: "77", questionsPostId: "900", questionsSpaceId: "12" },
+		]);
+		mockLoad.mockResolvedValue({
+			ok: true,
+			configured: true,
+			events: [{ id: "77", title: "Ask", startsAt: "2026-10-09T19:00:00Z", eventType: "QA" }],
+		});
+		expect(await getFeaturedQa(input)).toMatchObject({
+			questionsPostId: "900",
+			questionsSpaceId: "12",
+		});
+	});
+
 	it("returns null when no upcoming event is typed QA, or on failure", async () => {
 		mockLoad.mockResolvedValue({ ok: true, configured: true, events: [] });
 		expect(await getFeaturedQa(input)).toBeNull();
