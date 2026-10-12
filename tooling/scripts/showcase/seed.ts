@@ -260,6 +260,13 @@ async function seedPersonas(ctx: ShowcaseCtx, st: SeedState) {
 			},
 			{ email, name: p.name },
 		);
+		// Member-token calls (RSVP, comment, like) 401 until the headless profile is
+		// confirmed, as circle-provisioning does. Idempotent (409 = already done).
+		if (!ctx.dry) {
+			await callCircle(ctx, `confirmProfile ${p.key}`, () =>
+				ctx.circle.confirmMemberProfile(circleMemberId, p.name),
+			);
+		}
 		st.personas.set(p.key, { name: p.name, email, userId, circleMemberId });
 	}
 }

@@ -59,7 +59,8 @@ export function parseFlags(argv: string[]): ShowcaseFlags {
 				if (inline === undefined) i += 1;
 				break;
 			default:
-				if (arg.startsWith("--")) throw new Error(`Unknown flag ${arg}`);
+				// pnpm forwards the bare `--` separator; it is not a flag.
+				if (arg !== "--" && arg.startsWith("--")) throw new Error(`Unknown flag ${arg}`);
 		}
 	}
 	return flags;

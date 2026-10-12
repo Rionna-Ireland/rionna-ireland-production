@@ -15,6 +15,7 @@ export type ShowcaseDb = typeof Db;
 export type ShowcaseCircle = Pick<
 	CircleService,
 	| "createMember"
+	| "confirmMemberProfile"
 	| "deleteMember"
 	| "createSpace"
 	| "deleteSpace"

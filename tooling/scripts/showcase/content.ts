@@ -154,7 +154,7 @@ export interface HorseFixture {
 	sire: string;
 	dam: string;
 	damsire: string;
-	status: "IN_TRAINING" | "REHAB" | "PRE_TRAINING";
+	status: "IN_TRAINING" | "REHAB" | "PRE_TRAINING" | "RETIRED";
 	bio: string;
 	story: string;
 	trainerNotes: string;
@@ -598,7 +598,7 @@ export const HORSES: HorseFixture[] = [
 		sire: "Rathcoole",
 		dam: "Narrow Road",
 		damsire: "Carrigeen",
-		status: "IN_TRAINING",
+		status: "RETIRED",
 		bio: "The yard's elder statesman. A dark bay gelding who has won at four tracks and knows exactly what he is doing.",
 		story: "Every yard needs one: the horse who leads the youngsters up the gallops, teaches the new arrivals manners, and still shows up on a Saturday to win a handicap chase. Old Boreen has done it all, and at nine he is not done. He will run at Galway again in the spring if the ground is right.",
 		trainerNotes: "Likes a trip and a sound surface. Keep him fresh.",
@@ -699,7 +699,7 @@ export const HORSES: HorseFixture[] = [
 		sire: "Tidewater",
 		dam: "Dancing Gull",
 		damsire: "Seabreeze Prince",
-		status: "IN_TRAINING",
+		status: "REHAB",
 		bio: "A big, rangy grey gelding who is learning his job over fences. All heart, occasionally all legs.",
 		story: "Saltmarsh Dancer has been a project, and a rewarding one. He is a big horse who took his time to grow into himself, but this season he has finally put it together and won a novice hurdle at Limerick. He was due to run again this week but has been taken out with a slight setback; the team will give him the time he needs.",
 		trainerNotes: "Big horse, needs time. Do not rush.",
@@ -811,7 +811,7 @@ export const HORSES: HorseFixture[] = [
 		sire: "Lough Mask",
 		dam: "Silent Pier",
 		damsire: "Cashel Boy",
-		status: "IN_TRAINING",
+		status: "PRE_TRAINING",
 		bio: "A well-made bay mare from the west with a lovely temperament. Just arrived at the yard, with our founding members getting the first look.",
 		story: "Corrib Whisper is the newest face in the yard and we are bringing her along quietly, with the founding members getting the first look. She has three runs behind her from her previous yard and is learning Cormac's routine, with a first run for the club pencilled in for the new year.",
 		trainerNotes: "Early days. Quiet, willing, a pleasure to deal with.",

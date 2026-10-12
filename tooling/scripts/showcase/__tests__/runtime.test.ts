@@ -151,6 +151,7 @@ describe("cli", () => {
 			orgSlug: "rionna",
 		});
 		expect(() => parseFlags(["--wat"])).toThrow(/Unknown flag/);
+		expect(parseFlags(["--", "--dry-run"]).dryRun).toBe(true);
 		expect(() => parseFlags(["--base-email"])).toThrow(/needs a value/);
 	});
 

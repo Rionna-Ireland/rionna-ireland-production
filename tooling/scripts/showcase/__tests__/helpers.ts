@@ -79,6 +79,7 @@ export function makeFakeCircle() {
 	const required = [...Object.values(COMMUNITY_SPACES).map((s) => s.id), "E1", "IT1"];
 	const circle = {
 		createMember: vi.fn((a) => ok("createMember", a, { circleMemberId: String(n++) })),
+		confirmMemberProfile: vi.fn((id, name) => ok("confirmMemberProfile", { id, name }, undefined)),
 		deleteMember: vi.fn((a) => ok("deleteMember", a, undefined)),
 		createSpace: vi.fn((a) => ok("createSpace", a, { circleSpaceId: String(n++) })),
 		deleteSpace: vi.fn((a) => ok("deleteSpace", a, undefined)),
