@@ -71,6 +71,8 @@ export async function checkForResults(
 							timeformComment: entryResult.timeformComment ?? null,
 							performanceRating: entryResult.performanceRating ?? null,
 							starRating: entryResult.starRating ?? null,
+							// S13-10: runner count; keep any existing value if absent.
+							...(result.fieldSize != null ? { fieldSize: result.fieldSize } : {}),
 						},
 					});
 

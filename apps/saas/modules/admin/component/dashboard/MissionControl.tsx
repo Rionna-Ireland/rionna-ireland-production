@@ -8,11 +8,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@repo/ui/components/ca
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useQuery } from "@tanstack/react-query";
 import {
+	BookOpenIcon,
 	CalendarPlusIcon,
 	CreditCardIcon,
 	ExternalLinkIcon,
+	FlagIcon,
+	HeartHandshakeIcon,
+	HeartIcon,
 	MegaphoneIcon,
 	NewspaperIcon,
+	TagIcon,
 	TriangleAlertIcon,
 	UsersIcon,
 	VoteIcon,
@@ -65,36 +70,43 @@ export function MissionControl() {
 		},
 	];
 
-	const quickActions = [
+	const members = "members" as const;
+	const quickGroups = [
 		{
-			key: "horseUpdate",
-			audience: "members" as const,
-			href: getAdminPath("/updates/new"),
-			icon: MegaphoneIcon,
+			key: "post",
+			actions: [
+				{ key: "horseUpdate", audience: members, href: "/updates/new", icon: MegaphoneIcon },
+				{ key: "announcement", audience: members, href: "/announcements/new", icon: UsersIcon },
+				{
+					key: "charityStory",
+					audience: members,
+					href: "/announcements/new?audience=charity",
+					icon: HeartHandshakeIcon,
+				},
+				{ key: "insideTrack", audience: members, href: "/inside-track/new", icon: BookOpenIcon },
+				{ key: "news", audience: "public" as const, href: "/news/new", icon: NewspaperIcon },
+			],
 		},
 		{
-			key: "news",
-			audience: "public" as const,
-			href: getAdminPath("/news/new"),
-			icon: NewspaperIcon,
+			key: "plan",
+			actions: [
+				{ key: "event", audience: members, href: "/events/new", icon: CalendarPlusIcon },
+				{ key: "poll", audience: members, href: "/polls/new", icon: VoteIcon },
+			],
 		},
 		{
-			key: "announcement",
-			audience: "members" as const,
-			href: getAdminPath("/announcements/new"),
-			icon: UsersIcon,
-		},
-		{
-			key: "event",
-			audience: "members" as const,
-			href: getAdminPath("/events"),
-			icon: CalendarPlusIcon,
-		},
-		{
-			key: "poll",
-			audience: "members" as const,
-			href: getAdminPath("/polls/new"),
-			icon: VoteIcon,
+			key: "care",
+			actions: [
+				{
+					key: "reports",
+					href: "/moderation",
+					icon: FlagIcon,
+					badge: health?.openReportCount,
+				},
+				{ key: "offer", href: "/offers/new", icon: TagIcon },
+				{ key: "charityTotal", href: "/charity", icon: HeartIcon },
+				{ key: "members", href: "/members", icon: UsersIcon },
+			],
 		},
 	];
 
@@ -133,28 +145,39 @@ export function MissionControl() {
 				<CardHeader>
 					<CardTitle>{t("admin.dashboard.actions.title")}</CardTitle>
 				</CardHeader>
-				<CardContent className="gap-3 sm:grid-cols-2 lg:grid-cols-3 grid grid-cols-1">
-					{quickActions.map((action) => {
-						const label = t(`admin.dashboard.actions.${action.key}`);
-						const inner = (
-							<span className="gap-2 flex w-full items-center">
-								<action.icon className="size-4 shrink-0" />
-								<span className="flex-1 text-left text-foreground">{label}</span>
-								<AudienceTag audience={action.audience} />
-							</span>
-						);
-
-						return (
-							<Button
-								key={action.key}
-								asChild
-								variant="outline"
-								className="py-3 h-auto"
-							>
-								<Link href={action.href}>{inner}</Link>
-							</Button>
-						);
-					})}
+				<CardContent className="gap-5 grid grid-cols-1">
+					{quickGroups.map((group) => (
+						<section key={group.key} className="gap-2 grid grid-cols-1">
+							<p className="font-medium text-xs tracking-wide text-foreground uppercase">
+								{t(`admin.dashboard.actions.groups.${group.key}`)}
+							</p>
+							<div className="gap-3 sm:grid-cols-2 lg:grid-cols-3 grid grid-cols-1">
+								{group.actions.map((action) => (
+									<Button
+										key={action.key}
+										asChild
+										variant="outline"
+										className="py-3 h-auto"
+									>
+										<Link href={getAdminPath(action.href)}>
+											<span className="gap-2 flex w-full items-center">
+												<action.icon className="size-4 shrink-0" />
+												<span className="flex-1 text-left text-foreground">
+													{t(`admin.dashboard.actions.${action.key}`)}
+												</span>
+												{"audience" in action && (
+													<AudienceTag audience={action.audience} />
+												)}
+												{"badge" in action && !!action.badge && (
+													<Badge status="warning">{action.badge}</Badge>
+												)}
+											</span>
+										</Link>
+									</Button>
+								))}
+							</div>
+						</section>
+					))}
 				</CardContent>
 			</Card>
 

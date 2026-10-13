@@ -176,4 +176,16 @@ describe("member-post draft CRUD (S2-09)", () => {
 			}),
 		);
 	});
+
+	it("accepts several audiences so announcements can list charity stories too", async () => {
+		mockList.mockResolvedValue([]);
+		await call(
+			listMemberPosts,
+			{ organizationId: "org1", audienceType: ["community", "charity"] },
+			ctx,
+		);
+		expect(mockList).toHaveBeenCalledWith(
+			expect.objectContaining({ audienceType: ["community", "charity"] }),
+		);
+	});
 });

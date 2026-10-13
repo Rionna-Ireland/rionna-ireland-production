@@ -14,6 +14,7 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 
 import { pinAdd, pinMove, pinRemove } from "./pin-list";
+import { VideoLengthInput } from "./VideoLengthInput";
 
 type Status = "draft" | "published" | "publish_failed";
 
@@ -47,6 +48,13 @@ export function InsideTrackList() {
 		enabled: !!organizationId,
 	});
 	const posts = data ?? [];
+
+	const { data: videoDurations } = useQuery({
+		...orpc.memberPosts.admin.listInsideTrackVideoDurations.queryOptions({
+			input: { organizationId },
+		}),
+		enabled: !!organizationId,
+	});
 
 	const pinsMutation = useMutation(orpc.memberPosts.admin.setInsideTrackPins.mutationOptions());
 
@@ -200,6 +208,14 @@ export function InsideTrackList() {
 											</p>
 										</Link>
 										<div className="gap-2 flex shrink-0 items-center">
+											{post.status === "published" && post.circlePostId && (
+												<VideoLengthInput
+													key={`${post.circlePostId}-${videoDurations?.[post.circlePostId] ?? ""}`}
+													organizationId={organizationId}
+													circlePostId={post.circlePostId}
+													seconds={videoDurations?.[post.circlePostId]}
+												/>
+											)}
 											{isPinnable && (
 												<Button
 													type="button"

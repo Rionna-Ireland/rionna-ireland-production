@@ -27,6 +27,10 @@ export interface OrganizationMetadata {
 		trainerUpdatesSpaceId?: string;
 		/** Space id for community-wide announcements (S2-09 surface C). */
 		communitySpaceId?: string;
+		/** S13-18: Q&A space; questions threads go here (falls back to communitySpaceId). */
+		qaSpaceId?: string;
+		/** S13-18: Charity Impact space; the Charity chip also shows its posts. */
+		charitySpaceId?: string;
 		/** Space group the per-horse spaces are created under (S2-09 surface F). */
 		spaceGroupId?: string;
 		/** Event-type space new events are created in (S2-09 surface E). */

@@ -64,6 +64,7 @@ const {
 	mockSetCustomerIdToEntity,
 	mockGetPlanIdByProviderPriceId,
 	mockTransaction,
+	mockAssignFoundingMember,
 } = vi.hoisted(() => {
 	const mockMemberFindFirst = vi.fn();
 	const mockMemberCreate = vi.fn();
@@ -93,6 +94,7 @@ const {
 		mockSetCustomerIdToEntity: vi.fn(),
 		mockGetPlanIdByProviderPriceId: vi.fn(),
 		mockTransaction,
+		mockAssignFoundingMember: vi.fn(),
 	};
 });
 
@@ -138,6 +140,10 @@ vi.mock("@repo/payments/lib/circle-provisioning", () => ({
 		mockReactivateCircleMember(...args),
 	deleteCircleMember: (...args: unknown[]) =>
 		mockDeleteCircleMember(...args),
+}));
+
+vi.mock("@repo/payments/lib/founding-member", () => ({
+	assignFoundingMemberIfEligible: (...args: unknown[]) => mockAssignFoundingMember(...args),
 }));
 
 vi.mock("@repo/payments/lib/customer", () => ({
@@ -319,6 +325,38 @@ describe("handleSubscriptionCreated", () => {
 			return cb(tx);
 		});
 	}
+
+	it("attempts founding-member assignment for an active subscription (S13-12)", async () => {
+		setupTransaction(null);
+		mockPurchaseUpsert.mockResolvedValue({ id: "purchase_1" });
+		mockSetCustomerIdToEntity.mockResolvedValue(undefined);
+		mockProvisionCircleMember.mockResolvedValue(undefined);
+
+		await handleSubscriptionCreated(
+			makeStripeEvent({
+				type: "customer.subscription.created",
+				data: { object: makeSubscriptionObject({ status: "active" }) },
+			}),
+		);
+
+		expect(mockAssignFoundingMember).toHaveBeenCalledWith("member_1");
+	});
+
+	it("does not assign founding member for an incomplete subscription (S13-12)", async () => {
+		setupTransaction(null);
+		mockPurchaseUpsert.mockResolvedValue({ id: "purchase_1" });
+		mockSetCustomerIdToEntity.mockResolvedValue(undefined);
+		mockProvisionCircleMember.mockResolvedValue(undefined);
+
+		await handleSubscriptionCreated(
+			makeStripeEvent({
+				type: "customer.subscription.created",
+				data: { object: makeSubscriptionObject({ status: "incomplete" }) },
+			}),
+		);
+
+		expect(mockAssignFoundingMember).not.toHaveBeenCalled();
+	});
 
 	it("creates a Purchase row via transaction with correct fields", async () => {
 		setupTransaction(null);

@@ -6,6 +6,9 @@ import { z } from "zod";
 import { adminProcedure } from "../../../orpc/procedures";
 import { clearEventsCache } from "../../circle/lib/events-cache";
 import { descriptionToTiptap } from "../lib/description-to-tiptap";
+import { ensureQuestionsPost } from "../lib/ensure-questions-post";
+import { parseStartsAt, setEventMeta } from "../lib/event-meta";
+import { EVENT_TYPES } from "../lib/event-types";
 
 export const updateClubEvent = adminProcedure
 	.route({
@@ -26,6 +29,7 @@ export const updateClubEvent = adminProcedure
 			inPersonLocation: z.string().optional(),
 			virtualLocationUrl: z.string().optional(),
 			coverImageSignedId: z.string().optional(),
+			type: z.enum(EVENT_TYPES).optional(),
 		}),
 	)
 	.handler(async ({ input, context }) => {
@@ -64,6 +68,28 @@ export const updateClubEvent = adminProcedure
 			});
 			return { ok: false as const, reason: outcome.reason };
 		}
+		const startsAt = parseStartsAt(input.startsAt);
+		let meta: Awaited<ReturnType<typeof setEventMeta>> | undefined;
+		if (input.type || startsAt) {
+			try {
+				meta = await setEventMeta(input.organizationId, input.eventId, {
+					...(input.type ? { type: input.type } : {}),
+					...(startsAt ? { startsAt } : {}),
+				});
+			} catch (error) {
+				logger.error("[Events] event type write failed", { eventId: input.eventId, error });
+			}
+		}
+		await ensureQuestionsPost({
+			organizationId: input.organizationId,
+			circleEventId: input.eventId,
+			eventName: input.name ?? "Live Q&A",
+			startsAt: input.startsAt,
+			circle,
+			meta,
+			communitySpaceId: parseOrgMetadata(org.metadata).circle?.communitySpaceId,
+			qaSpaceId: parseOrgMetadata(org.metadata).circle?.qaSpaceId,
+		});
 		logger.info("[Events] Updated event", {
 			event: "admin_events_updated",
 			organizationId: input.organizationId,

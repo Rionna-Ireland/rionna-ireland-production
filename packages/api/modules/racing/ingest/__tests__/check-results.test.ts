@@ -169,6 +169,42 @@ describe("checkForResults", () => {
 
 	// ── FABLE_AUDIT P6: stop re-polling resultless races forever ──────────
 
+	it("S13-10: stores the result's runner count as fieldSize", async () => {
+		mockRaceFindMany.mockResolvedValue([
+			{
+				id: "race-1",
+				providerEntityId: "provider-race-1",
+				name: "Race 1",
+				postTime: new Date("2026-04-13T10:00:00Z"),
+				meeting: { course: { name: "Leopardstown" } },
+				entries: [
+					{
+						id: "entry-1",
+						providerEntityId: "provider-entry-1",
+						status: "DECLARED",
+						horse: { id: "horse-1", name: "Pink Jasmine" },
+						notifiedStates: [],
+					},
+				],
+			},
+		]);
+		mockRaceEntryUpdate.mockResolvedValue({ id: "entry-1", status: "RAN", notifiedStates: [] });
+		mockHorseFindUnique.mockResolvedValue({ nextEntryId: null, latestEntryId: null });
+
+		await checkForResults("org-1", {
+			getRaceResult: vi.fn().mockResolvedValue({
+				providerRaceId: "provider-race-1",
+				fieldSize: 11,
+				entries: [{ providerEntryId: "provider-entry-1", finishingPosition: 3 }],
+			}),
+		} as never);
+
+		expect(mockRaceEntryUpdate).toHaveBeenNthCalledWith(
+			1,
+			expect.objectContaining({ data: expect.objectContaining({ fieldSize: 11 }) }),
+		);
+	});
+
 	it("only polls races past post time within the 48h give-up window", async () => {
 		mockRaceFindMany.mockResolvedValue([]);
 

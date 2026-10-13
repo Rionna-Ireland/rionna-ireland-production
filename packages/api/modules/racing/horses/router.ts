@@ -18,6 +18,9 @@ import { searchProvider } from "./procedures/search-provider";
 import { setHorseSpaceVisibility } from "./procedures/set-horse-space-visibility";
 import { syncHorse } from "./procedures/sync-horse";
 import { updateHorse } from "./procedures/update-horse";
+import { updateHorseWellbeing } from "./procedures/update-horse-wellbeing";
+import { updateRaceEntryFieldSize } from "./procedures/update-race-entry-field-size";
+import { updateTrainer } from "./procedures/update-trainer";
 import { updateRaceEntryReplayUrl } from "./procedures/update-race-entry-replay-url";
 
 export const horsesAdminRouter = {
@@ -38,8 +41,11 @@ export const horsesAdminRouter = {
 	followAllMembers: followAllMembersProcedure,
 	listEntries: listHorseEntries,
 	updateEntryReplayUrl: updateRaceEntryReplayUrl,
+	updateEntryFieldSize: updateRaceEntryFieldSize,
+	updateWellbeing: updateHorseWellbeing,
 	trainers: {
 		list: listTrainers,
 		create: createTrainer,
+		update: updateTrainer,
 	},
 };

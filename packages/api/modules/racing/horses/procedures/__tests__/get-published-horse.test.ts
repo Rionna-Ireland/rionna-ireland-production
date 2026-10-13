@@ -108,4 +108,36 @@ describe("getPublishedHorse (S9-05 invite-only gating)", () => {
 
 		expect(mockGetFollowedHorseIds).toHaveBeenCalledTimes(1);
 	});
+
+	it("S13-10: adds ageYears + profileLine and a null wellbeing when absent", async () => {
+		mockGetPublishedHorseById.mockResolvedValue({
+			id: "h-1",
+			organizationId: "org-1",
+			inviteOnly: false,
+			colour: "Bay",
+			sex: "FILLY",
+			foaledOn: new Date("2023-02-21T00:00:00Z"),
+		});
+		mockGetFollowedHorseIds.mockResolvedValue(new Set());
+
+		const res = await call(getPublishedHorse, { horseId: "h-1" }, ctx);
+
+		expect(res.profileLine).toMatch(/^Bay filly, \d+ years old$/);
+		expect(res.ageYears).toBe(new Date().getUTCFullYear() - 2023);
+		expect(res.wellbeing).toBeNull();
+	});
+
+	it("S13-10: returns the wellbeing row when present", async () => {
+		const wellbeing = { vetCheckStatus: "ALL_CLEAR", vetCheckedAt: null, trainingLoad: "LIGHT", updatedAt: new Date() };
+		mockGetPublishedHorseById.mockResolvedValue({
+			id: "h-1",
+			organizationId: "org-1",
+			inviteOnly: false,
+			wellbeing,
+		});
+		mockGetFollowedHorseIds.mockResolvedValue(new Set());
+
+		const res = await call(getPublishedHorse, { horseId: "h-1" }, ctx);
+		expect(res.wellbeing).toEqual(wellbeing);
+	});
 });

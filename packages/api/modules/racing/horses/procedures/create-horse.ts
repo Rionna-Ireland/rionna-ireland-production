@@ -45,6 +45,10 @@ export const createHorse = adminProcedure
 			publishedAt: z.date().nullable().optional(),
 			publicProfileAt: z.date().nullable().optional(),
 			providerEntityId: z.string().optional(),
+			colour: z.string().trim().optional(),
+			sex: z.enum(["FILLY", "COLT", "MARE", "GELDING", "STALLION"]).optional(),
+			foaledOn: z.date().optional(),
+			foaledPlace: z.string().trim().optional(),
 		}),
 	)
 	.handler(async ({ input }) => {
@@ -90,6 +94,10 @@ export const createHorse = adminProcedure
 			publicProfileAt: input.publicProfileAt,
 			providerEntityId: input.providerEntityId,
 			inviteOnly: input.inviteOnly,
+			colour: input.colour,
+			sex: input.sex,
+			foaledOn: input.foaledOn,
+			foaledPlace: input.foaledPlace,
 		});
 
 		// "A horse IS a Circle space" — auto-provision unless an existing space was

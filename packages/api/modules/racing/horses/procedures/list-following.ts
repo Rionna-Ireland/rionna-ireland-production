@@ -1,6 +1,7 @@
 import { ORPCError } from "@orpc/client";
 
 import { protectedProcedure } from "../../../../orpc/procedures";
+import { withHorseFacts } from "../lib/horse-facts";
 import { listFollowedHorses } from "../lib/horse-follows";
 
 export const listFollowingProcedure = protectedProcedure
@@ -15,8 +16,9 @@ export const listFollowingProcedure = protectedProcedure
 			throw new ORPCError("BAD_REQUEST", { message: "No active organization" });
 		}
 
-		return listFollowedHorses({
+		const follows = await listFollowedHorses({
 			organizationId: context.session.activeOrganizationId,
 			userId: context.user.id,
 		});
+		return follows.map((follow) => ({ ...follow, horse: withHorseFacts(follow.horse) }));
 	});

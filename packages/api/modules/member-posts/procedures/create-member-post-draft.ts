@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { adminProcedure } from "../../../orpc/procedures";
 
-const audienceType = z.enum(["horse", "community", "insideTrack"]);
+const audienceType = z.enum(["horse", "community", "insideTrack", "charity"]);
 const updateType = z.enum(["trainer", "wellbeing", "general", "race"]);
 
 /**

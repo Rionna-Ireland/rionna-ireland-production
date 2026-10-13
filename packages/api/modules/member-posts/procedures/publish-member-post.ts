@@ -6,6 +6,7 @@ import type { NovelDoc } from "@repo/payments/lib/circle";
 import { z } from "zod";
 
 import { adminProcedure } from "../../../orpc/procedures";
+import { clearMemberFeedCache } from "../../circle/lib/member-feed-cache";
 import { invalidateInsideTrackCache } from "../../circle/lib/inside-track-cache";
 import { fetchImageBytes } from "../lib/fetch-image-bytes";
 import { notifyCommunityMembers } from "../lib/notify-community-members";
@@ -31,6 +32,8 @@ export const publishMemberPost = adminProcedure
 			memberPostId: z.string(),
 			notifyFollowers: z.boolean().optional(),
 			notifyMembers: z.boolean().optional(),
+			/** S13-11: present the post as this trainer's ("Post as"). */
+			postAsTrainerId: z.string().nullable().optional(),
 		}),
 	)
 	.handler(async ({ input }) => {
@@ -106,6 +109,35 @@ export const publishMemberPost = adminProcedure
 			publishError: null,
 		});
 
+		// S13-11: sidecar attribution. The post is already live in Circle, so a
+		// failure here must not fail the publish — admins can attribute it later
+		// from moderation.
+		if (input.postAsTrainerId) {
+			try {
+				const trainer = await db.trainer.findFirst({
+					where: { id: input.postAsTrainerId, organizationId: post.organizationId },
+					select: { id: true },
+				});
+				if (trainer) {
+					await db.postAttribution.upsert({
+						where: { circlePostId: created.data.circlePostId },
+						create: {
+							organizationId: post.organizationId,
+							circlePostId: created.data.circlePostId,
+							trainerId: trainer.id,
+						},
+						update: { trainerId: trainer.id },
+					});
+					clearMemberFeedCache();
+				}
+			} catch (error) {
+				logger.error("[MemberPost] attribution write failed", {
+					memberPostId: post.id,
+					error: String(error),
+				});
+			}
+		}
+
 		logger.info("[MemberPost] Published", {
 			memberPostId: post.id,
 			circlePostId: created.data.circlePostId,
@@ -175,6 +207,9 @@ function resolveCircleSpaceId(
 	if (post.audienceType === "insideTrack") {
 		return parseOrgMetadata(orgMetadata).circle?.insideTrack?.spaceId ?? null;
 	}
+	if (post.audienceType === "charity") {
+		return parseOrgMetadata(orgMetadata).circle?.charitySpaceId ?? null;
+	}
 	// community → org-level community space id (slice 5 wires the composer).
 	return parseOrgMetadata(orgMetadata).circle?.communitySpaceId ?? null;
 }
@@ -185,6 +220,9 @@ function noCircleSpaceMessage(audienceType: string): string {
 	}
 	if (audienceType === "insideTrack") {
 		return "No Inside Track Circle space is configured. Post directly in Circle.";
+	}
+	if (audienceType === "charity") {
+		return "No charity Circle space is configured. Post directly in Circle.";
 	}
 	return "No community Circle space is configured. Post directly in Circle.";
 }

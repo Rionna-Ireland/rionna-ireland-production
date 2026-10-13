@@ -46,10 +46,20 @@ export class TheRacingApiProvider implements RacingDataProvider {
 	}
 
 	async getHorseProfile(providerHorseId: string): Promise<ProviderHorse> {
-		const data = await this.http.getJson<ApiSearchHorse>(
-			`/v1/horses/${encodeURIComponent(providerHorseId)}/standard`,
-		);
-		return mapSearchHorse(data);
+		// S13-10: `/pro` also carries colour/sex/dob on our key, so Sync can fill
+		// facts for a horse that isn't on today's racecard. Fall back to
+		// `/standard` (pedigree only) if the plan/endpoint rejects it.
+		const id = encodeURIComponent(providerHorseId);
+		try {
+			return mapSearchHorse(await this.http.getJson<ApiSearchHorse>(`/v1/horses/${id}/pro`));
+		} catch (error) {
+			logger.warn(`Racing API /pro profile failed for ${providerHorseId}; using /standard`, {
+				error,
+			});
+			return mapSearchHorse(
+				await this.http.getJson<ApiSearchHorse>(`/v1/horses/${id}/standard`),
+			);
+		}
 	}
 
 	async getEntriesForHorse(

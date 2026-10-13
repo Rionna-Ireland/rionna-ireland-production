@@ -55,6 +55,9 @@ model User {
   pollVotes           PollVote[]
   inboxItems          InboxItem[]
   legalAcceptances    LegalAcceptance[]
+  trainer             Trainer?
+  /// S13-19: free-text expert tag ("vet", "jockey"); non-null makes the user an expert.
+  expertLabel         String?
 
   @@unique([email])
   @@unique([username])
@@ -179,6 +182,11 @@ model Organization {
   // Pre-launch waitlist (S12-09) + legal acceptance evidence (S12-10)
   waitlistSignups  WaitlistSignup[]
   legalAcceptances LegalAcceptance[]
+  clubEventMetas   ClubEventMeta[]
+  postAttributions PostAttribution[]
+  commentAttributions CommentAttribution[]
+  pinnedAnswers    PinnedAnswer[]
+  insideTrackMetas InsideTrackMeta[]
 
   @@unique([slug])
   @@map("organization")
@@ -213,6 +221,9 @@ model Member {
 
   // Notification centre unseen badge (S12-06a)
   inboxUnseenCount Int @default(0)
+
+  // Founding member flag (S13-12) — first 25 non-staff paying members
+  foundingMember Boolean @default(false)
 
   @@unique([organizationId, userId])
   @@index([organizationId])
@@ -270,6 +281,7 @@ enum NotificationTarget {
 enum NotificationType {
   WELCOME
   APP_UPDATE
+  EXPERT_ANSWER
 }
 
 model Notification {
@@ -311,6 +323,28 @@ enum HorseStatus {
   SOLD
 }
 
+enum HorseSex {
+  FILLY
+  COLT
+  MARE
+  GELDING
+  STALLION
+}
+
+// S13-10 Phase B: structured wellbeing at-a-glance rows.
+enum VetCheckStatus {
+  ALL_CLEAR
+  MONITORING
+  TREATMENT
+}
+
+enum TrainingLoad {
+  RESTING
+  LIGHT
+  BUILDING
+  FULL
+}
+
 model Horse {
   id             String       @id @default(cuid())
   organizationId String
@@ -333,6 +367,16 @@ model Horse {
   photos         Json    @default("[]")
   pedigree       Json?
   ownershipBlurb String?
+
+  // S13-10 horse facts. colour/sex/foaledOn/foaledCountry are synced from The
+  // Racing API ONLY while null (sync never overwrites a stored value, so an
+  // admin edit always wins; clear the field + Sync to re-pull). foaledPlace is
+  // admin-only free text ("Co. Meath").
+  colour        String?
+  sex           HorseSex?
+  foaledOn      DateTime? @db.Date
+  foaledPlace   String?
+  foaledCountry String?
 
   // A horse IS a Circle space (S2-09). Auto-provisioned on create; mirrors the
   // Member Circle lifecycle. "active" | "provisioning_failed" (cron retries).
@@ -365,6 +409,7 @@ model Horse {
   entries     RaceEntry[]
   memberPosts MemberPost[]
   followers   HorseFollow[]
+  wellbeing   HorseWellbeing?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -505,16 +550,23 @@ model CharityConfig {
 }
 
 model Trainer {
-  id               String       @id @default(cuid())
+  id               String            @id @default(cuid())
   organizationId   String
-  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   providerEntityId String?
   name             String
+  // S13-10: "Kildare". Synced from the provider only while null (admin wins).
+  location         String?
   meta             Json?
+  /// S13-11: linked app account; posts/comments by this user carry authorRole "trainer".
+  userId           String?           @unique
+  user             User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
   horses           Horse[]
   entries          RaceEntry[]
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
+  attributions     PostAttribution[]
+  commentAttributions CommentAttribution[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
 
   @@unique([organizationId, providerEntityId])
   @@index([organizationId, name])
@@ -631,6 +683,9 @@ model RaceEntry {
   timeformComment   String?  @db.Text
   performanceRating Int?
   starRating        Int?
+  // S13-10: number of runners in the race (count of the results runners array).
+  // Deliberately no starting price / odds (S8-02 "not a betting app").
+  fieldSize         Int?
 
   // Replay link (S8-01 §5/§6) — admin-set link to race footage, surfaced on
   // the member Horse Profile's declarations/results section.
@@ -646,6 +701,20 @@ model RaceEntry {
   @@index([horseId, status])
   @@index([raceId])
   @@map("race_entry")
+}
+
+// S13-10 Phase B: one row per horse, admin-authored.
+model HorseWellbeing {
+  id             String          @id @default(cuid())
+  horseId        String          @unique
+  horse          Horse           @relation(fields: [horseId], references: [id], onDelete: Cascade)
+  vetCheckStatus VetCheckStatus?
+  vetCheckedAt   DateTime?
+  trainingLoad   TrainingLoad?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@map("horse_wellbeing")
 }
 
 // ──────────────────────────────────────────────
@@ -695,7 +764,7 @@ model MemberPost {
   author       User?   @relation(fields: [authorUserId], references: [id], onDelete: SetNull)
 
   // Audience: "horse" posts to a horse's space; "community" posts community-wide.
-  audienceType String // "horse" | "community"
+  audienceType String // "horse" | "community" | "insideTrack" | "charity"
   horseId      String?
   horse        Horse?  @relation(fields: [horseId], references: [id], onDelete: SetNull)
   updateType   String? // "trainer" | "wellbeing" | "general" | "race" (horse updates only)
@@ -931,4 +1000,110 @@ model LegalAcceptance {
 
   @@index([organizationId, document, userId, acceptedAt])
   @@map("legal_acceptance")
+}
+
+/// S13-11: event category. Events live only in Circle, so the type is a sidecar row.
+enum EventType {
+  RACE_DAY
+  STABLE_VISIT
+  SOCIAL
+  QA
+  OTHER
+}
+
+/// S13-11: sidecar for a Circle event (no local event table). Missing row means OTHER.
+model ClubEventMeta {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  circleEventId  String       @unique
+  type           EventType    @default(OTHER)
+  /// Mirror of the Circle event start, so the featured-Q&A pre-check can skip
+  /// past events without a Circle call. Null = unknown (legacy rows).
+  startsAt       DateTime?
+  /// QA events: the companion Circle post members comment their questions on.
+  questionsPostId  String?
+  questionsSpaceId String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([organizationId, type])
+  @@map("club_event_meta")
+}
+
+/// S13-11: a Circle post made by the admin account but presented as a trainer's.
+model PostAttribution {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  circlePostId   String       @unique
+  trainerId      String
+  trainer        Trainer      @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+
+  @@index([organizationId])
+  @@index([trainerId])
+  @@map("post_attribution")
+}
+
+/// S13-19: "answer as trainer" on a comment; mirrors PostAttribution.
+model CommentAttribution {
+  id              String       @id @default(cuid())
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  circleCommentId String       @unique
+  trainerId       String
+  trainer         Trainer      @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+  createdAt       DateTime     @default(now())
+
+  @@index([organizationId])
+  @@index([trainerId])
+  @@map("comment_attribution")
+}
+
+/// S13-19: the one pinned expert answer per thread (Circle has no comment pinning).
+model PinnedAnswer {
+  id              String       @id @default(cuid())
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  circlePostId    String       @unique
+  circleCommentId String
+  pinnedByUserId  String
+  pinnedAt        DateTime     @default(now())
+
+  @@index([organizationId])
+  @@map("pinned_answer")
+}
+
+/// S13-13: admin-entered video length for an Inside Track post (linked videos expose none).
+/// Overrides the duration parsed from an uploaded video.
+model InsideTrackMeta {
+  id                   String       @id @default(cuid())
+  organizationId       String
+  organization         Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  circlePostId         String       @unique
+  videoDurationSeconds Int?
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+
+  @@index([organizationId])
+  @@map("inside_track_meta")
+}
+
+/// S13-17: ledger of everything the staging showcase seed created (DB rows and
+/// Circle objects). `wipe` deletes from this table alone, never by name match.
+/// RLS on, no policies: only the service role (Prisma) touches it.
+model SeedLedger {
+  id         String   @id @default(cuid())
+  /// e.g. "horse", "circle_post", "circle_member".
+  kind       String
+  /// DB row id, or the Circle object id (stringified).
+  externalId String
+  /// `{ key }` = stable fixture key used for idempotent re-runs; plus per-kind extras.
+  meta       Json?
+  createdAt  DateTime @default(now())
+
+  @@unique([kind, externalId])
+  @@index([kind])
+  @@map("seed_ledger")
 }

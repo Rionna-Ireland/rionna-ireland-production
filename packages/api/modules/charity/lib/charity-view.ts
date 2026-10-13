@@ -1,6 +1,10 @@
 export interface CharityStoryTeaser {
 	id: string;
-	slug: string;
+	/** S13-18: "news" stories open /news/{slug}; "circle" stories open the post thread. */
+	source: "news" | "circle";
+	slug: string | null;
+	spaceId: string | null;
+	postId: string | null;
 	title: string;
 	subtitle: string | null;
 	featuredImageUrl: string | null;

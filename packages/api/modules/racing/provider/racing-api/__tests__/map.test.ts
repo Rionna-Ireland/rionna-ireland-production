@@ -1,6 +1,9 @@
 import { describe, it, expect } from "vitest";
 
 import {
+	mapColour,
+	mapHorseFacts,
+	mapSex,
 	mapSearchHorse,
 	mapRacecardToEntries,
 	mapResult,
@@ -209,6 +212,12 @@ describe("mapHorseHistory", () => {
 		expect(run).not.toHaveProperty("sp");
 		expect(run).not.toHaveProperty("bsp");
 		expect(run.race).not.toHaveProperty("prizeMoney");
+		// S13-10: field size is a runner count, never a price/odds/prize.
+		for (const key of ["startingPrice", "sp", "sp_dec", "bsp", "prize", "odds"]) {
+			expect(run).not.toHaveProperty(key);
+			expect(run.entry).not.toHaveProperty(key);
+			expect(run.result).not.toHaveProperty(key);
+		}
 	});
 
 	it("returns [] when the horse has no runs for that race", () => {
@@ -257,5 +266,98 @@ describe("mapResult", () => {
 		expect(
 			result.entries.find((e) => e.providerEntryId === "rac_9_h2")?.finishingPosition,
 		).toBe(2);
+	});
+});
+
+describe("S13-10 horse facts mapping", () => {
+	it.each([
+		["b", "Bay"],
+		["gr", "Grey"],
+		["ch", "Chestnut"],
+		["br", "Brown"],
+		["bl", "Black"],
+		["b/br", "Bay/Brown"],
+		["ro", "Roan"],
+		[" B ", "Bay"],
+		["dkb", "Dkb"],
+		["", undefined],
+		[null, undefined],
+	])("mapColour(%o) === %o", (input, expected) => {
+		expect(mapColour(input)).toBe(expected);
+	});
+
+	it.each([
+		["colt", undefined, "COLT"],
+		["Filly", undefined, "FILLY"],
+		["mare", undefined, "MARE"],
+		["gelding", undefined, "GELDING"],
+		["horse", undefined, "STALLION"],
+		[undefined, "C", "COLT"],
+		["weird", "G", "GELDING"],
+		["weird", undefined, undefined],
+		[undefined, undefined, undefined],
+	])("mapSex(%o, %o) === %o", (sex, code, expected) => {
+		expect(mapSex(sex, code)).toBe(expected);
+	});
+
+	it("mapHorseFacts normalises a racecard runner and drops bad dobs", () => {
+		expect(
+			mapHorseFacts({ colour: "b", sex: "colt", sex_code: "C", dob: "2023-02-21", region: "FR" }),
+		).toEqual({ colour: "Bay", sex: "COLT", foaledOn: "2023-02-21", foaledCountry: "FR" });
+		expect(mapHorseFacts({ dob: "21/02/2023" })).toBeUndefined();
+		expect(mapHorseFacts({})).toBeUndefined();
+	});
+
+	it("maps runner facts and trainer location from a racecard", () => {
+		const [e] = mapRacecardToEntries(
+			{
+				race_id: "r",
+				course: "c",
+				course_id: "cid",
+				date: "2026-07-01",
+				off_dt: "2026-07-01T14:30:00+00:00",
+				runners: [
+					{
+						horse_id: "h1",
+						colour: "b",
+						sex: "colt",
+						sex_code: "C",
+						dob: "2023-02-21",
+						region: "FR",
+						trainer_location: "France",
+					},
+				],
+			},
+			new Set(["h1"]),
+		);
+		expect(e.entry.trainerLocation).toBe("France");
+		expect(e.entry.horseFacts).toMatchObject({ colour: "Bay", sex: "COLT" });
+		expect(e.entry).not.toHaveProperty("fieldSize");
+	});
+
+	it("field size = runners length for results and history", () => {
+		const res = mapResult({
+			race_id: "rac_1",
+			runners: [{ horse_id: "a" }, { horse_id: "b" }, { horse_id: "c" }],
+		});
+		expect(res.fieldSize).toBe(3);
+		expect(mapResult({ race_id: "rac_2", runners: [] }).fieldSize).toBeUndefined();
+
+		const [run] = mapHorseHistory(
+			{
+				results: [
+					{
+						race_id: "r1",
+						date: "2025-05-10",
+						course: "Ascot",
+						course_id: "c1",
+						off_dt: "2025-05-10T18:20:00+00:00",
+						runners: [{ horse_id: "me" }, { horse_id: "x" }, { horse_id: "y" }, { horse_id: "z" }],
+					},
+				],
+			},
+			"me",
+		);
+		expect(run.entry.fieldSize).toBe(4);
 	});
 });

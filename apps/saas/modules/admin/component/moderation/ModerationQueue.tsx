@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import { AttentionTab } from "./AttentionTab";
 import { BlockedTab } from "./BlockedTab";
 import { ReportsTab } from "./ReportsTab";
+import { ThreadsTab } from "./ThreadsTab";
 
 /**
  * S12-02a Task 10: `/admin/moderation` — member reports (actionable) and the
@@ -14,7 +15,9 @@ import { ReportsTab } from "./ReportsTab";
  * S12-08 adds the "Needs attention" tab (members repeatedly tripping
  * moderation) as the default view.
  */
-export function ModerationQueue() {
+const TABS = ["attention", "reported", "blocked", "threads"];
+
+export function ModerationQueue({ tab = "" }: { tab?: string }) {
 	const t = useTranslations();
 
 	return (
@@ -23,7 +26,7 @@ export function ModerationQueue() {
 				<CardTitle>{t("admin.moderation.title")}</CardTitle>
 			</CardHeader>
 			<CardContent>
-				<Tabs defaultValue="attention">
+				<Tabs defaultValue={TABS.includes(tab) ? tab : "attention"}>
 					<TabsList>
 						<TabsTrigger value="attention">
 							{t("admin.moderation.tabs.attention")}
@@ -34,6 +37,9 @@ export function ModerationQueue() {
 						<TabsTrigger value="blocked">
 							{t("admin.moderation.tabs.blocked")}
 						</TabsTrigger>
+						<TabsTrigger value="threads">
+							{t("admin.moderation.tabs.threads")}
+						</TabsTrigger>
 					</TabsList>
 					<TabsContent value="attention">
 						<AttentionTab />
@@ -43,6 +49,9 @@ export function ModerationQueue() {
 					</TabsContent>
 					<TabsContent value="blocked">
 						<BlockedTab />
+					</TabsContent>
+					<TabsContent value="threads">
+						<ThreadsTab />
 					</TabsContent>
 				</Tabs>
 			</CardContent>

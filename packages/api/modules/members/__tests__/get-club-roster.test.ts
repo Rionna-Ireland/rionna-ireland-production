@@ -42,6 +42,7 @@ beforeEach(() => {
 			createdAt: new Date("2026-01-01"),
 			circleStatus: "active",
 			circleMemberId: "c1",
+			foundingMember: true,
 			user: { id: "u1", name: "Alice", email: "alice@test.com", role: null },
 		},
 		{
@@ -51,6 +52,7 @@ beforeEach(() => {
 			createdAt: new Date("2026-02-01"),
 			circleStatus: "provisioning_failed",
 			circleMemberId: null,
+			foundingMember: false,
 			user: { id: "u2", name: "Bob", email: "bob@test.com", role: null },
 		},
 	]);
@@ -76,6 +78,7 @@ describe("getClubRoster (S2-09 surface G)", () => {
 				circleStatus: "active",
 				circleMemberId: "c1",
 				joinedAt: new Date("2026-01-01"),
+				foundingMember: true,
 			},
 			{
 				memberId: "m2",
@@ -88,6 +91,7 @@ describe("getClubRoster (S2-09 surface G)", () => {
 				circleStatus: "provisioning_failed",
 				circleMemberId: null,
 				joinedAt: new Date("2026-02-01"),
+				foundingMember: false,
 			},
 		]);
 	});

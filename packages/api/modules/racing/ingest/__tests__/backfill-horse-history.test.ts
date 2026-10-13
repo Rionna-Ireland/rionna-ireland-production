@@ -136,6 +136,31 @@ describe("backfillHorseHistory", () => {
 		});
 	});
 
+	it("stores fieldSize on a created entry and back-fills it on an existing RAN entry", async () => {
+		const run = makeRun();
+		(run.entry as Record<string, unknown>).fieldSize = 11;
+		const provider = { getHorseHistory: vi.fn().mockResolvedValue([run]) };
+
+		mockRaceEntryFindFirst.mockResolvedValue(null);
+		await backfillHorseHistory("org-1", horse, provider as never);
+		expect(mockRaceEntryCreate.mock.calls[0][0].data.fieldSize).toBe(11);
+
+		mockRaceEntryFindFirst.mockResolvedValue({
+			id: "e1",
+			status: "RAN",
+			finishingPosition: 1,
+			beatenLengths: 0,
+			ratingAchieved: 75,
+			timeformComment: "x",
+			fieldSize: null,
+		});
+		await backfillHorseHistory("org-1", horse, provider as never);
+		expect(mockRaceEntryUpdate).toHaveBeenCalledWith({
+			where: { id: "e1" },
+			data: { fieldSize: 11 },
+		});
+	});
+
 	it("is idempotent: running twice against the same run does not create a duplicate", async () => {
 		const provider = { getHorseHistory: vi.fn().mockResolvedValue([makeRun()]) };
 		mockRaceEntryFindFirst.mockResolvedValue({

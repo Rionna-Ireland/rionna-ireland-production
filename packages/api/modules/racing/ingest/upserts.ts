@@ -174,6 +174,7 @@ export async function upsertRaceEntry(
       weightLbs: entry.weightLbs ?? null,
       jockeyId: jockeyId ?? null,
       trainerId: trainerId ?? null,
+      ...(entry.fieldSize != null ? { fieldSize: entry.fieldSize } : {}),
       notifiedStates: [],
     },
     update: {
@@ -182,6 +183,8 @@ export async function upsertRaceEntry(
       weightLbs: entry.weightLbs ?? null,
       jockeyId: jockeyId ?? null,
       trainerId: trainerId ?? null,
+      // S13-10: racecards carry no field size; never null out a stored one.
+      ...(entry.fieldSize != null ? { fieldSize: entry.fieldSize } : {}),
     },
   });
 

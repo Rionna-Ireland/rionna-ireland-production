@@ -1,9 +1,14 @@
 import { ModerationQueue } from "@admin/component/moderation/ModerationQueue";
 
-export default function AdminModerationPage() {
+export default async function AdminModerationPage({
+	searchParams,
+}: {
+	searchParams: Promise<{ tab?: string }>;
+}) {
+	const { tab } = await searchParams;
 	return (
 		<div>
-			<ModerationQueue />
+			<ModerationQueue tab={tab} />
 		</div>
 	);
 }

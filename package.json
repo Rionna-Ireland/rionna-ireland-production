@@ -13,7 +13,9 @@
 		"clean": "turbo clean",
 		"test": "dotenv -c -- turbo test",
 		"format": "oxfmt .",
-		"format:check": "oxfmt --check ."
+		"format:check": "oxfmt --check .",
+		"showcase:seed:staging": "pnpm --filter @repo/scripts showcase:seed:staging",
+		"showcase:wipe:staging": "pnpm --filter @repo/scripts showcase:wipe:staging"
 	},
 	"dependencies": {
 		"oxlint-tsgolint": "^0.20.0"

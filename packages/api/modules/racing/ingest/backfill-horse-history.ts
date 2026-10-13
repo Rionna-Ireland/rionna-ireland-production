@@ -98,6 +98,10 @@ export async function backfillHorseHistory(
           fill.timeformComment = run.result.timeformComment;
         }
 
+        if (existing.fieldSize == null && run.entry.fieldSize != null) {
+          fill.fieldSize = run.entry.fieldSize;
+        }
+
         if (Object.keys(fill).length > 0) {
           await db.raceEntry.update({ where: { id: existing.id }, data: fill });
         }
@@ -116,6 +120,7 @@ export async function backfillHorseHistory(
           weightLbs: run.entry.weightLbs ?? null,
           jockeyId: jockeyId ?? null,
           trainerId: horse.trainerId,
+          ...(run.entry.fieldSize != null ? { fieldSize: run.entry.fieldSize } : {}),
           finishingPosition: run.result.finishingPosition ?? null,
           beatenLengths: run.result.beatenLengths ?? null,
           ratingAchieved: run.result.ratingAchieved ?? null,

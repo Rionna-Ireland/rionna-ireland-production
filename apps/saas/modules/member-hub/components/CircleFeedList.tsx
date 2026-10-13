@@ -1,5 +1,6 @@
 "use client";
 
+import type { MemberFeedResult } from "@repo/api/modules/circle/procedures/get-member-feed";
 import { orpcClient } from "@shared/lib/orpc-client";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useQuery } from "@tanstack/react-query";
@@ -35,9 +36,11 @@ export function CircleFeedList({
 		}),
 		initialData: {
 			ok: true,
-			items: initialItems,
+			// Server-rendered from the same procedure; the card only reads a subset.
+			items: initialItems as unknown as MemberFeedResult["items"],
 			page: initialPage,
 			hasNextPage: initialHasNextPage,
+			featured: null,
 		},
 		// The server component just fetched page 1 — without this, TanStack
 		// treats initialData as stale and refetches on mount (Kimi L6). Matches

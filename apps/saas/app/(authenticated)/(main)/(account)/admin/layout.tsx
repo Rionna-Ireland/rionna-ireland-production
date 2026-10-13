@@ -15,6 +15,7 @@ import {
 	NewspaperIcon,
 	SettingsIcon,
 	ShieldAlertIcon,
+	UserCheckIcon,
 	UsersIcon,
 	VoteIcon,
 } from "lucide-react";
@@ -69,6 +70,11 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
 								title: t("menu.horses"),
 								href: "/admin/horses",
 								icon: <ListIcon className="size-4 opacity-50" />,
+							},
+							{
+								title: t("menu.trainers"),
+								href: "/admin/trainers",
+								icon: <UserCheckIcon className="size-4 opacity-50" />,
 							},
 							{
 								title: t("menu.community"),

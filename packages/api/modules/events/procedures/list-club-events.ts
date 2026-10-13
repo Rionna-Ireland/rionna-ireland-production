@@ -5,12 +5,14 @@ import type { ClubEventSummary } from "@repo/payments/lib/circle";
 import { z } from "zod";
 
 import { adminProcedure } from "../../../orpc/procedures";
+import { getEventTypes, typeFields } from "../lib/event-meta";
+import type { EventTypeFields } from "../lib/event-meta";
 
 /** Hard cap on pages fetched per request — bounds worst-case latency/load. */
 const MAX_PAGES = 5;
 
 export type ListClubEventsResult =
-	| { ok: true; configured: boolean; events: ClubEventSummary[] }
+	| { ok: true; configured: boolean; events: Array<ClubEventSummary & EventTypeFields & { questionsPostId?: string }> }
 	| { ok: false; reason: string };
 
 export const listClubEvents = adminProcedure
@@ -55,5 +57,34 @@ export const listClubEvents = adminProcedure
 				maxPages: MAX_PAGES,
 			});
 		}
-		return { ok: true, configured: true, events };
+		const types = await getEventTypes(
+			input.organizationId,
+			events.map((e) => e.circleEventId),
+		);
+		// QA events' companion questions thread (admin form shows a read-only status).
+		const questionPosts = new Map<string, string>();
+		try {
+			const rows = await db.clubEventMeta.findMany({
+				where: {
+					organizationId: input.organizationId,
+					circleEventId: { in: events.map((e) => e.circleEventId) },
+					questionsPostId: { not: null },
+				},
+				select: { circleEventId: true, questionsPostId: true },
+			});
+			for (const r of rows) if (r.questionsPostId) questionPosts.set(r.circleEventId, r.questionsPostId);
+		} catch (error) {
+			logger.warn("[Events] questions post lookup failed", { error: String(error) });
+		}
+		return {
+			ok: true,
+			configured: true,
+			events: events.map((e) => ({
+				...e,
+				...typeFields(types.get(e.circleEventId) ?? "OTHER"),
+				...(questionPosts.has(e.circleEventId)
+					? { questionsPostId: questionPosts.get(e.circleEventId) }
+					: {}),
+			})),
+		};
 	});

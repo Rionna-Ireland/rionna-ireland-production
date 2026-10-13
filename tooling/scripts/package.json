@@ -6,18 +6,23 @@
 		"clean": "git clean -xdf .cache .turbo dist node_modules",
 		"create:user": "dotenv -c -e ../../.env -- tsx ./src/create-user.ts",
 		"circle:spike": "dotenv -c -e ../../.env.staging -- tsx ./src/circle-content-spike.ts",
-		"type-check": "tsc --noEmit"
+		"type-check": "tsc --noEmit",
+		"showcase:seed:staging": "dotenv -e ../../.env.staging -- tsx ./showcase/seed.ts",
+		"showcase:wipe:staging": "dotenv -e ../../.env.staging -- tsx ./showcase/wipe.ts",
+		"test": "vitest run"
 	},
 	"dependencies": {
 		"@repo/auth": "workspace:*",
 		"@repo/database": "workspace:*",
 		"@repo/logs": "workspace:*",
-		"@repo/utils": "workspace:*"
+		"@repo/utils": "workspace:*",
+		"@repo/payments": "workspace:*"
 	},
 	"devDependencies": {
 		"@repo/tsconfig": "workspace:*",
 		"@types/node": "catalog:",
 		"nanoid": "catalog:",
-		"tsx": "catalog:"
+		"tsx": "catalog:",
+		"vitest": "catalog:"
 	}
 }

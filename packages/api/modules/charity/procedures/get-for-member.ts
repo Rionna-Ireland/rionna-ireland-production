@@ -2,6 +2,7 @@ import { db, getCurrentCharityConfig, getPollForOrg, getPublishedCharityStories,
 import { z } from "zod";
 
 import { protectedProcedure } from "../../../orpc/procedures";
+import { getCircleStoryTeasers } from "../lib/circle-story-teasers";
 import { type CharityStoryTeaser, type CharityView, toCharityView } from "../lib/charity-view";
 
 export interface CharityForMemberResult {
@@ -32,22 +33,38 @@ export const getForMember = protectedProcedure
 		if (!org || parseOrgMetadata(org.metadata).features?.paddock === false) return empty;
 		const member = await db.member.findFirst({
 			where: { userId: user.id, organizationId: input.organizationId },
-			select: { id: true },
+			select: { id: true, circleMemberId: true },
 		});
 		if (!member) return empty;
+		const metadata = parseOrgMetadata(org.metadata);
 		const config = await getCurrentCharityConfig({ organizationId: input.organizationId });
 		if (!config) return empty;
-		const [storyRows, pollId] = await Promise.all([
+		const [storyRows, pollId, circleStories] = await Promise.all([
 			getPublishedCharityStories({ organizationId: input.organizationId, limit: STORY_LIMIT }),
 			resolveLinkedPollId({ organizationId: input.organizationId, pollId: config.pollId }),
+			getCircleStoryTeasers({
+				organizationId: input.organizationId,
+				orgSlug: org.slug ?? "",
+				userId: user.id,
+				circleMemberId: member.circleMemberId,
+				spaceId: metadata.circle?.charitySpaceId,
+				communityDomain: metadata.circle?.communityDomain,
+				limit: STORY_LIMIT,
+			}),
 		]);
-		const stories: CharityStoryTeaser[] = storyRows.map((s) => ({
+		const newsStories: CharityStoryTeaser[] = storyRows.map((s) => ({
 			id: s.id,
+			source: "news" as const,
 			slug: s.slug,
+			spaceId: null,
+			postId: null,
 			title: s.title,
 			subtitle: s.subtitle,
 			featuredImageUrl: s.featuredImageUrl,
 			publishedAt: (s.publishedAt ?? new Date(0)).toISOString(),
 		}));
+		const stories = [...newsStories, ...circleStories]
+			.sort((a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt))
+			.slice(0, STORY_LIMIT);
 		return { ok: true, charity: toCharityView({ config, stories, pollId }) };
 	});

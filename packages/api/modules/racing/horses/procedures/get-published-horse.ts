@@ -3,6 +3,7 @@ import { getPublishedHorseById } from "@repo/database";
 import { z } from "zod";
 
 import { protectedProcedure } from "../../../../orpc/procedures";
+import { withHorseFacts } from "../lib/horse-facts";
 import { getFollowedHorseIds } from "../lib/horse-follows";
 
 export const getPublishedHorse = protectedProcedure
@@ -41,5 +42,10 @@ export const getPublishedHorse = protectedProcedure
 			throw new ORPCError("NOT_FOUND", { message: "Horse not found" });
 		}
 
-		return { ...horse, isFollowing: followed.has(horse.id) };
+		// S13-10: `wellbeing` is null when absent; ageYears/profileLine derived.
+		return {
+			...withHorseFacts(horse),
+			wellbeing: horse.wellbeing ?? null,
+			isFollowing: followed.has(horse.id),
+		};
 	});

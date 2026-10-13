@@ -48,6 +48,13 @@ export const updateHorse = adminProcedure
 			publishedAt: z.date().nullable().optional(),
 			publicProfileAt: z.date().nullable().optional(),
 			providerEntityId: z.string().nullable().optional(),
+			// S13-10 facts. Anything set here is an admin override: provider sync
+			// only fills these while null, so it never clobbers a value written here.
+			colour: z.string().trim().nullable().optional(),
+			sex: z.enum(["FILLY", "COLT", "MARE", "GELDING", "STALLION"]).nullable().optional(),
+			foaledOn: z.date().nullable().optional(),
+			foaledPlace: z.string().trim().nullable().optional(),
+			foaledCountry: z.string().trim().nullable().optional(),
 		}),
 	)
 	.handler(async ({ input }) => {

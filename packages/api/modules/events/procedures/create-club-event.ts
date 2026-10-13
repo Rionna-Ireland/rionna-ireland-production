@@ -6,6 +6,9 @@ import { z } from "zod";
 import { adminProcedure } from "../../../orpc/procedures";
 import { clearEventsCache } from "../../circle/lib/events-cache";
 import { descriptionToTiptap } from "../lib/description-to-tiptap";
+import { ensureQuestionsPost } from "../lib/ensure-questions-post";
+import { parseStartsAt, setEventMeta } from "../lib/event-meta";
+import { EVENT_TYPES } from "../lib/event-types";
 import { notifyEventPublished } from "../lib/notify-event-published";
 
 /**
@@ -33,6 +36,7 @@ export const createClubEvent = adminProcedure
 			virtualLocationUrl: z.string().optional(),
 			coverImageSignedId: z.string().optional(),
 			notifyMembers: z.boolean().default(true),
+			type: z.enum(EVENT_TYPES).default("OTHER"),
 		}),
 	)
 	.handler(async ({ input }) => {
@@ -76,6 +80,32 @@ export const createClubEvent = adminProcedure
 			event: "admin_events_created",
 			organizationId: input.organizationId,
 			circleEventId: outcome.data.circleEventId,
+		});
+
+		// S13-11: the type sidecar. The event is already committed in Circle, so
+		// a failure here must not fail the create — it falls back to OTHER.
+		let meta: Awaited<ReturnType<typeof setEventMeta>> | undefined;
+		try {
+			meta = await setEventMeta(input.organizationId, outcome.data.circleEventId, {
+				type: input.type,
+				startsAt: parseStartsAt(input.startsAt),
+			});
+		} catch (error) {
+			logger.error("[Events] event type write failed", {
+				circleEventId: outcome.data.circleEventId,
+				error,
+			});
+		}
+
+		await ensureQuestionsPost({
+			organizationId: input.organizationId,
+			circleEventId: outcome.data.circleEventId,
+			eventName: input.name,
+			startsAt: input.startsAt,
+			circle,
+			meta,
+			communitySpaceId: parseOrgMetadata(org.metadata).circle?.communitySpaceId,
+			qaSpaceId: parseOrgMetadata(org.metadata).circle?.qaSpaceId,
 		});
 
 		// A member polling their feed within the 60s TTL, or tapping the

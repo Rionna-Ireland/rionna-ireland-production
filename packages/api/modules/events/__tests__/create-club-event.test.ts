@@ -18,6 +18,8 @@ const {
 	mockCreateEvent,
 	mockNotifyEventPublished,
 	mockLoggerInfo,
+	mockMetaUpsert,
+	mockMetaUpdate,
 } = vi.hoisted(() => ({
 	mockGetSession: vi.fn(),
 	mockOrgFindUnique: vi.fn(),
@@ -26,12 +28,17 @@ const {
 	mockCreateEvent: vi.fn(),
 	mockNotifyEventPublished: vi.fn(),
 	mockLoggerInfo: vi.fn(),
+	mockMetaUpsert: vi.fn(),
+	mockMetaUpdate: vi.fn(),
 }));
 
 vi.mock("@repo/auth", () => ({ auth: { api: { getSession: mockGetSession } } }));
 
 vi.mock("@repo/database", () => ({
-	db: { organization: { findUnique: mockOrgFindUnique } },
+	db: {
+		organization: { findUnique: mockOrgFindUnique },
+		clubEventMeta: { upsert: mockMetaUpsert, update: mockMetaUpdate },
+	},
 	parseOrgMetadata: mockParseOrgMetadata,
 }));
 
@@ -81,6 +88,30 @@ beforeEach(() => {
 });
 
 describe("createClubEvent (S2-09 surface E)", () => {
+	it("writes the type sidecar, defaulting to OTHER (S13-11)", async () => {
+		await call(createClubEvent, INPUT, ctx);
+		expect(mockMetaUpsert).toHaveBeenCalledWith({
+			where: { circleEventId: "555" },
+			create: {
+				organizationId: "org1",
+				circleEventId: "555",
+				type: "OTHER",
+				startsAt: new Date(INPUT.startsAt),
+			},
+			update: { type: "OTHER", startsAt: new Date(INPUT.startsAt) },
+		});
+		await call(createClubEvent, { ...INPUT, type: "QA" }, ctx);
+		expect(mockMetaUpsert).toHaveBeenLastCalledWith(
+			expect.objectContaining({ update: { type: "QA", startsAt: new Date(INPUT.startsAt) } }),
+		);
+	});
+
+	it("still succeeds when the type sidecar write fails (S13-11)", async () => {
+		mockMetaUpsert.mockRejectedValue(new Error("db down"));
+		const result = await call(createClubEvent, { ...INPUT, type: "RACE_DAY" }, ctx);
+		expect(result).toMatchObject({ ok: true, circleEventId: "555" });
+	});
+
 	it("creates a Circle event in the events space and returns its id", async () => {
 		const result = await call(createClubEvent, INPUT, ctx);
 
@@ -214,5 +245,52 @@ describe("createClubEvent (S2-09 surface E)", () => {
 		await call(createClubEvent, INPUT, ctx);
 
 		expect(clearEventsCache).not.toHaveBeenCalled();
+	});
+});
+
+describe("createClubEvent questions thread", () => {
+	it("creates a questions post for a QA event and stores its id", async () => {
+		const createPost = vi.fn().mockResolvedValue({ ok: true, data: { circlePostId: "900" } });
+		mockCreateCircleService.mockReturnValue({ createEvent: mockCreateEvent, createPost });
+		mockParseOrgMetadata.mockReturnValue({
+			circle: { eventsSpaceId: "2682536", communitySpaceId: "12" },
+		});
+		mockMetaUpsert.mockResolvedValue({ type: "QA", questionsPostId: null });
+		mockMetaUpdate.mockResolvedValue({});
+		await call(createClubEvent, { ...INPUT, name: "Ask the trainer", type: "QA" }, ctx);
+		expect(createPost).toHaveBeenCalledWith(
+			expect.objectContaining({
+				spaceId: "12",
+				name: "Questions for the Live Q&A: Ask the trainer",
+				skipNotifications: true,
+			}),
+		);
+		expect(mockMetaUpdate).toHaveBeenCalledWith({
+			where: { circleEventId: "555" },
+			data: { questionsPostId: "900", questionsSpaceId: "12" },
+		});
+	});
+
+	it("skips non-QA events and survives a Circle failure", async () => {
+		const createPost = vi.fn().mockResolvedValue({ ok: false, reason: "network" });
+		mockCreateCircleService.mockReturnValue({ createEvent: mockCreateEvent, createPost });
+		mockParseOrgMetadata.mockReturnValue({
+			circle: { eventsSpaceId: "2682536", communitySpaceId: "12" },
+		});
+		mockMetaUpsert.mockResolvedValue({ type: "OTHER", questionsPostId: null });
+		await call(createClubEvent, INPUT, ctx);
+		expect(createPost).not.toHaveBeenCalled();
+		mockMetaUpsert.mockResolvedValue({ type: "QA", questionsPostId: null });
+		const result = await call(createClubEvent, { ...INPUT, type: "QA" }, ctx);
+		expect(result).toMatchObject({ ok: true });
+		expect(mockMetaUpdate).not.toHaveBeenCalled();
+	});
+
+	it("does not create a second thread when one exists", async () => {
+		const createPost = vi.fn();
+		mockCreateCircleService.mockReturnValue({ createEvent: mockCreateEvent, createPost });
+		mockMetaUpsert.mockResolvedValue({ type: "QA", questionsPostId: "900" });
+		await call(createClubEvent, { ...INPUT, type: "QA" }, ctx);
+		expect(createPost).not.toHaveBeenCalled();
 	});
 });

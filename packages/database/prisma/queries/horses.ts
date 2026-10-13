@@ -1,5 +1,5 @@
 import { db } from "../client";
-import type { HorseStatus, Prisma } from "../generated/client";
+import type { HorseSex, HorseStatus, Prisma, TrainingLoad, VetCheckStatus } from "../generated/client";
 
 export async function getHorses({
 	organizationId,
@@ -31,7 +31,7 @@ export async function getHorses({
 			where,
 			include: {
 				trainer: {
-					select: { id: true, name: true },
+					select: { id: true, name: true, location: true },
 				},
 			},
 			orderBy,
@@ -49,8 +49,9 @@ export async function getHorseById(horseId: string) {
 		where: { id: horseId },
 		include: {
 			trainer: {
-				select: { id: true, name: true },
+				select: { id: true, name: true, location: true },
 			},
+			wellbeing: true,
 		},
 	});
 }
@@ -82,12 +83,17 @@ export async function createHorse(data: {
 	publicProfileAt?: Date | null;
 	providerEntityId?: string;
 	inviteOnly?: boolean;
+	colour?: string | null;
+	sex?: HorseSex | null;
+	foaledOn?: Date | null;
+	foaledPlace?: string | null;
+	foaledCountry?: string | null;
 }) {
 	return db.horse.create({
 		data,
 		include: {
 			trainer: {
-				select: { id: true, name: true },
+				select: { id: true, name: true, location: true },
 			},
 		},
 	});
@@ -99,7 +105,7 @@ export async function updateHorse(horseId: string, data: Prisma.HorseUncheckedUp
 		data,
 		include: {
 			trainer: {
-				select: { id: true, name: true },
+				select: { id: true, name: true, location: true },
 			},
 		},
 	});
@@ -153,7 +159,7 @@ export async function getPublishedHorses(organizationId: string) {
 		},
 		include: {
 			trainer: {
-				select: { id: true, name: true },
+				select: { id: true, name: true, location: true },
 			},
 			entries: RECENT_RESULTS_INCLUDE,
 		},
@@ -175,7 +181,7 @@ export async function getPublicHorses(organizationId: string) {
 		},
 		include: {
 			trainer: {
-				select: { id: true, name: true },
+				select: { id: true, name: true, location: true },
 			},
 		},
 		orderBy: { sortOrder: "asc" },
@@ -190,8 +196,9 @@ export async function getPublishedHorseById(horseId: string) {
 		},
 		include: {
 			trainer: {
-				select: { id: true, name: true },
+				select: { id: true, name: true, location: true },
 			},
+			wellbeing: true,
 			entries: {
 				take: 10,
 				orderBy: { createdAt: "desc" },
@@ -282,5 +289,28 @@ export async function getLatestResults(
 		},
 		orderBy: { race: { postTime: "desc" } },
 		take: limit,
+	});
+}
+
+/** S13-10 Phase B: upsert the one-per-horse wellbeing row. */
+export async function upsertHorseWellbeing(
+	horseId: string,
+	data: {
+		vetCheckStatus: VetCheckStatus | null;
+		vetCheckedAt: Date | null;
+		trainingLoad: TrainingLoad | null;
+	},
+) {
+	return db.horseWellbeing.upsert({
+		where: { horseId },
+		create: { horseId, ...data },
+		update: data,
+	});
+}
+
+export async function updateRaceEntryFieldSize(entryId: string, fieldSize: number | null) {
+	return db.raceEntry.update({
+		where: { id: entryId },
+		data: { fieldSize },
 	});
 }

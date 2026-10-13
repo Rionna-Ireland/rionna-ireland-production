@@ -27,6 +27,7 @@ import { z } from "zod";
 
 const trainerFormSchema = z.object({
 	name: z.string().min(1),
+	location: z.string().optional(),
 });
 
 interface TrainerModalProps {
@@ -48,6 +49,7 @@ export function TrainerModal({
 		resolver: zodResolver(trainerFormSchema),
 		defaultValues: {
 			name: "",
+			location: "",
 		},
 	});
 
@@ -60,6 +62,7 @@ export function TrainerModal({
 			const trainer = await createMutation.mutateAsync({
 				organizationId,
 				name: values.name,
+				location: values.location?.trim() || undefined,
 			});
 			toastSuccess(t("admin.horses.trainerModal.notifications.created"));
 			form.reset();
@@ -88,6 +91,19 @@ export function TrainerModal({
 									</FormLabel>
 									<FormControl>
 										<Input {...field} />
+									</FormControl>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
+						<FormField
+							control={form.control}
+							name="location"
+							render={({ field }) => (
+								<FormItem>
+									<FormLabel>{t("admin.horses.trainerModal.location")}</FormLabel>
+									<FormControl>
+										<Input placeholder="Kildare" {...field} />
 									</FormControl>
 									<FormMessage />
 								</FormItem>

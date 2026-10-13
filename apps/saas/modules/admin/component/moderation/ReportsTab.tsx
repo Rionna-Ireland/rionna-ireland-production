@@ -23,7 +23,7 @@ import {
 import { toastError, toastSuccess } from "@repo/ui/components/toast";
 import { useConfirmationAlert } from "@shared/components/ConfirmationAlertProvider";
 import { orpc } from "@shared/lib/orpc-query-utils";
-import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -108,6 +108,23 @@ export function ReportsTab() {
 	}
 
 	const resolve = useMutation(orpc.admin.community.moderation.resolve.mutationOptions());
+
+	// S13-11: "Attribute to trainer" for posts made directly in Circle.
+	const trainersQuery = useQuery({
+		...orpc.admin.horses.trainers.list.queryOptions({ input: { organizationId } }),
+		enabled: !!organizationId,
+	});
+	const attribute = useMutation(orpc.admin.community.attributePost.mutationOptions());
+
+	function onAttribute(circlePostId: string, value: string) {
+		attribute.mutate(
+			{ organizationId, circlePostId, trainerId: value === "none" ? null : value },
+			{
+				onSuccess: () => toastSuccess(t("admin.moderation.actions.attributed")),
+				onError: () => toastError(t("admin.moderation.actions.error")),
+			},
+		);
+	}
 
 	function invalidateAll() {
 		void queryClient.invalidateQueries({
@@ -243,6 +260,32 @@ export function ReportsTab() {
 															{t("admin.moderation.actions.openPost")}
 														</Link>
 													</Button>
+												)}
+												{row.targetPostId && (trainersQuery.data?.length ?? 0) > 0 && (
+													<Select
+														onValueChange={(value) =>
+															onAttribute(row.targetPostId as string, value)
+														}
+														disabled={attribute.isPending}
+													>
+														<SelectTrigger className="w-44">
+															<SelectValue
+																placeholder={t(
+																	"admin.moderation.actions.attributeToTrainer",
+																)}
+															/>
+														</SelectTrigger>
+														<SelectContent>
+															<SelectItem value="none">
+																{t("admin.moderation.actions.attributeNone")}
+															</SelectItem>
+															{trainersQuery.data?.map((trainer) => (
+																<SelectItem key={trainer.id} value={trainer.id}>
+																	{trainer.name}
+																</SelectItem>
+															))}
+														</SelectContent>
+													</Select>
 												)}
 												{row.status === "open" ? (
 													<>

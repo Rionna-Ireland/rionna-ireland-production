@@ -1,6 +1,7 @@
 "use client";
 
 import { NovelEditor } from "@admin/component/novel-editor";
+import { POST_AS_CLUB, PostAsPicker } from "@admin/component/updates/PostAsPicker";
 import { useCircleVideoUpload } from "@admin/lib/circle-video-upload";
 import {
 	canPublishAnnouncement,
@@ -43,9 +44,14 @@ type FormValues = z.infer<typeof formSchema>;
 
 interface CommunityAnnouncementFormProps {
 	memberPostId?: string;
+	/** `?audience=charity` on the new page; edits take it from the saved post. */
+	audience?: "community" | "charity";
 }
 
-export function CommunityAnnouncementForm({ memberPostId }: CommunityAnnouncementFormProps) {
+export function CommunityAnnouncementForm({
+	memberPostId,
+	audience = "community",
+}: CommunityAnnouncementFormProps) {
 	const t = useTranslations();
 	const router = useRouter();
 	const queryClient = useQueryClient();
@@ -59,6 +65,7 @@ export function CommunityAnnouncementForm({ memberPostId }: CommunityAnnouncemen
 	const [isUploading, setIsUploading] = useState(false);
 	const [fallback, setFallback] = useState(false);
 	const [notifyMembers, setNotifyMembers] = useState(true);
+	const [postAs, setPostAs] = useState(POST_AS_CLUB);
 
 	const isEdit = !!memberPostId;
 
@@ -69,6 +76,9 @@ export function CommunityAnnouncementForm({ memberPostId }: CommunityAnnouncemen
 		enabled: isEdit,
 	});
 	const isPublished = existingPost?.status === "published";
+	const audienceType = existingPost?.audienceType === "charity" ? "charity" : audience;
+	// Charity stories reuse this composer; only the headline strings differ.
+	const copy = `admin.updates.${audienceType === "charity" ? "charity" : "community"}` as const;
 
 	const form = useForm<FormValues>({
 		resolver: zodResolver(formSchema),
@@ -132,7 +142,7 @@ export function CommunityAnnouncementForm({ memberPostId }: CommunityAnnouncemen
 		}
 		const created = await createMutation.mutateAsync({
 			organizationId,
-			audienceType: "community",
+			audienceType,
 			title: values.title,
 			bodyJson: contentJsonRef.current,
 			bodyHtml: contentHtmlRef.current || undefined,
@@ -158,13 +168,14 @@ export function CommunityAnnouncementForm({ memberPostId }: CommunityAnnouncemen
 			const outcome = await publishMutation.mutateAsync({
 				memberPostId: id,
 				notifyMembers,
+				postAsTrainerId: postAs === POST_AS_CLUB ? null : postAs,
 			});
 			const resolution = resolvePublishOutcome(outcome);
 			await queryClient.invalidateQueries({ queryKey: orpc.memberPosts.admin.list.key() });
 			await queryClient.invalidateQueries({ queryKey: orpc.memberPosts.admin.find.key() });
 
 			if (resolution.kind === "success") {
-				toastSuccess(t("admin.updates.community.published"));
+				toastSuccess(t(`${copy}.published`));
 				router.replace(getAdminPath("/updates"));
 			} else {
 				setFallback(true);
@@ -193,8 +204,8 @@ export function CommunityAnnouncementForm({ memberPostId }: CommunityAnnouncemen
 				<CardHeader className="gap-2 flex flex-row items-center justify-between">
 					<CardTitle>
 						{isEdit
-							? t("admin.updates.community.editTitle")
-							: t("admin.updates.community.createTitle")}
+							? t(`${copy}.editTitle`)
+							: t(`${copy}.createTitle`)}
 					</CardTitle>
 					{isPublished && (
 						<Badge status="success">{t("admin.updates.form.publishedBadge")}</Badge>
@@ -210,7 +221,7 @@ export function CommunityAnnouncementForm({ memberPostId }: CommunityAnnouncemen
 									<span className="font-semibold tracking-wide uppercase">
 										{t("admin.updates.form.audienceMembers")}
 									</span>{" "}
-									— {t("admin.updates.community.audience")}
+									— {t(`${copy}.audience`)}
 								</div>
 							</div>
 
@@ -247,6 +258,14 @@ export function CommunityAnnouncementForm({ memberPostId }: CommunityAnnouncemen
 									/>
 								</div>
 							</div>
+
+							{!isPublished && (
+								<PostAsPicker
+									value={postAs}
+									onChange={setPostAs}
+									i18nPrefix="admin.updates.community"
+								/>
+							)}
 
 							{!isPublished && (
 								<label className="gap-2 text-sm flex items-center">
@@ -289,7 +308,7 @@ export function CommunityAnnouncementForm({ memberPostId }: CommunityAnnouncemen
 										loading={isPending}
 										disabled={isUploading || !publishReady}
 									>
-										{t("admin.updates.community.publish")}
+										{t(`${copy}.publish`)}
 									</Button>
 								</div>
 							)}

@@ -8,11 +8,13 @@ const {
 	mockMemberFindFirst,
 	mockGetMemberToken,
 	mockParseOrgMetadata,
+	mockMetaFindMany,
 } = vi.hoisted(() => ({
 	mockGetSession: vi.fn(),
 	mockOrgFindUnique: vi.fn(),
 	mockMemberFindFirst: vi.fn(),
 	mockGetMemberToken: vi.fn(),
+	mockMetaFindMany: vi.fn(),
 	mockParseOrgMetadata: vi.fn(
 		(_raw: string | null): OrganizationMetadata => ({
 			circle: { communityDomain: "community.rionna.com" },
@@ -28,6 +30,7 @@ vi.mock("@repo/database", () => ({
 	db: {
 		organization: { findUnique: mockOrgFindUnique },
 		member: { findFirst: mockMemberFindFirst },
+		clubEventMeta: { findMany: mockMetaFindMany },
 	},
 	parseOrgMetadata: mockParseOrgMetadata,
 }));
@@ -92,6 +95,7 @@ describe("getEvents", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		clearEventsCache();
+		mockMetaFindMany.mockResolvedValue([]);
 		mockGetSession.mockResolvedValue({ user: USER, session: SESSION });
 		mockOrgFindUnique.mockResolvedValue({ id: ORG_ID, slug: "rionna", metadata: null });
 		mockMemberFindFirst.mockResolvedValue({ circleMemberId: "82236270" });
@@ -99,6 +103,26 @@ describe("getEvents", () => {
 		mockParseOrgMetadata.mockReturnValue({
 			circle: { communityDomain: "community.rionna.com", eventsSpaceId: EVENTS_SPACE_ID },
 		});
+	});
+
+	it("attaches the sidecar type; untyped events default to OTHER (S13-11)", async () => {
+		mockMetaFindMany.mockResolvedValue([{ circleEventId: "1", type: "RACE_DAY" }]);
+		vi.stubGlobal(
+			"fetch",
+			routeFetch({
+				records: [
+					{ id: 1, name: "Naas", space: { id: EVENTS_SPACE_ID }, event_setting_attributes: baseSettings() },
+					{ id: 2, name: "Brunch", space: { id: EVENTS_SPACE_ID }, event_setting_attributes: baseSettings({ starts_at: "2026-09-02T10:00:00Z" }) },
+				],
+			}),
+		);
+		const res = await call(getEvents, { organizationId: ORG_ID, scope: "upcoming" }, ctx);
+		expect(res.events.map((e) => [e.id, e.type, e.eventType])).toEqual([
+			["1", "Race Day", "RACE_DAY"],
+			["2", "Other", "OTHER"],
+		]);
+		// one batched lookup, not per event
+		expect(mockMetaFindMany).toHaveBeenCalledTimes(1);
 	});
 
 	it("returns configured:false when no eventsSpaceId is set, without fetching", async () => {

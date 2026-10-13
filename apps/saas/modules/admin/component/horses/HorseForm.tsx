@@ -37,6 +37,9 @@ import { z } from "zod";
 
 import { PhotoGallery } from "./PhotoGallery";
 import { ProviderHorseSearch } from "./ProviderHorseSearch";
+import { HorseWellbeingCard } from "./HorseWellbeingCard";
+import { ResultsFieldSize } from "./ResultsFieldSize";
+import { TrainerLocationField } from "./TrainerLocationField";
 import { TrainerModal } from "./TrainerModal";
 
 const horseFormSchema = z.object({
@@ -57,7 +60,25 @@ const horseFormSchema = z.object({
 	published: z.boolean().default(false),
 	publicProfile: z.boolean().default(false),
 	inviteOnly: z.boolean().default(false),
+	// S13-10 facts. colour/sex/foaledOn are synced from The Racing API only
+	// while empty; anything saved here is an admin override.
+	colour: z.string().optional(),
+	sex: z.enum(["", "FILLY", "COLT", "MARE", "GELDING", "STALLION"]).default(""),
+	foaledOn: z.string().optional(),
+	foaledPlace: z.string().optional(),
 });
+
+const COLOUR_SUGGESTIONS = ["Bay", "Brown", "Chestnut", "Grey", "Black", "Bay/Brown", "Roan"];
+
+function toDateInput(value: Date | string | null | undefined): string {
+	if (!value) return "";
+	const d = typeof value === "string" ? new Date(value) : value;
+	return Number.isNaN(d.getTime()) ? "" : d.toISOString().slice(0, 10);
+}
+
+function fromDateInput(value: string | undefined): Date | null {
+	return value ? new Date(`${value}T00:00:00.000Z`) : null;
+}
 
 type HorseFormValues = z.infer<typeof horseFormSchema>;
 
@@ -136,6 +157,10 @@ export function HorseForm({ horseId }: HorseFormProps) {
 			published: false,
 			publicProfile: false,
 			inviteOnly: false,
+			colour: "",
+			sex: "",
+			foaledOn: "",
+			foaledPlace: "",
 		},
 	});
 
@@ -172,6 +197,10 @@ export function HorseForm({ horseId }: HorseFormProps) {
 				published: !!horse.publishedAt,
 				publicProfile: !!horse.publicProfileAt,
 				inviteOnly: !!horse.inviteOnly,
+				colour: horse.colour ?? "",
+				sex: horse.sex ?? "",
+				foaledOn: toDateInput(horse.foaledOn),
+				foaledPlace: horse.foaledPlace ?? "",
 			});
 			setPhotos(
 				Array.isArray(horse.photos)
@@ -209,6 +238,10 @@ export function HorseForm({ horseId }: HorseFormProps) {
 						? (horse?.publicProfileAt ?? new Date())
 						: null,
 					inviteOnly: values.inviteOnly,
+					colour: values.colour?.trim() || null,
+					sex: values.sex || null,
+					foaledOn: fromDateInput(values.foaledOn),
+					foaledPlace: values.foaledPlace?.trim() || null,
 				});
 
 				await queryClient.invalidateQueries({
@@ -234,6 +267,10 @@ export function HorseForm({ horseId }: HorseFormProps) {
 					publishedAt: values.published ? new Date() : null,
 					publicProfileAt: values.publicProfile ? new Date() : null,
 					inviteOnly: values.inviteOnly,
+					colour: values.colour?.trim() || undefined,
+					sex: values.sex || undefined,
+					foaledOn: fromDateInput(values.foaledOn) ?? undefined,
+					foaledPlace: values.foaledPlace?.trim() || undefined,
 				});
 
 				toastSuccess(t("admin.horses.form.notifications.created"));
@@ -523,6 +560,13 @@ export function HorseForm({ horseId }: HorseFormProps) {
 									)}
 								/>
 
+								{/* S13-10: trainer location (synced while empty, editable) */}
+								<TrainerLocationField
+									trainerId={form.watch("trainerId") || null}
+									trainers={trainers}
+									onSaved={() => void refetchTrainers()}
+								/>
+
 								<FormField
 									control={form.control}
 									name="sortOrder"
@@ -717,6 +761,106 @@ export function HorseForm({ horseId }: HorseFormProps) {
 								</div>
 							</div>
 
+							{/* S13-10: Horse facts (profile line, foaled) */}
+							<div>
+								<h3 className="mb-1 font-medium">{t("admin.horses.facts.title")}</h3>
+								<p className="mb-3 text-sm text-muted-foreground">
+									{t("admin.horses.facts.hint")}
+								</p>
+								<div className="gap-4 md:grid-cols-2 grid grid-cols-1">
+									<FormField
+										control={form.control}
+										name="colour"
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel>{t("admin.horses.facts.colour")}</FormLabel>
+												<FormControl>
+													<Input list="horse-colour-options" {...field} />
+												</FormControl>
+												<datalist id="horse-colour-options">
+													{COLOUR_SUGGESTIONS.map((c) => (
+														<option key={c} value={c} />
+													))}
+												</datalist>
+												<FormDescription>
+													{t("admin.horses.facts.syncedHint")}
+												</FormDescription>
+												<FormMessage />
+											</FormItem>
+										)}
+									/>
+									<FormField
+										control={form.control}
+										name="sex"
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel>{t("admin.horses.facts.sex")}</FormLabel>
+												<Select
+													value={field.value || "none"}
+													onValueChange={(value) =>
+														field.onChange(value === "none" ? "" : value)
+													}
+												>
+													<FormControl>
+														<SelectTrigger>
+															<SelectValue />
+														</SelectTrigger>
+													</FormControl>
+													<SelectContent>
+														<SelectItem value="none">-</SelectItem>
+														{(["FILLY", "COLT", "MARE", "GELDING", "STALLION"] as const).map(
+															(sex) => (
+																<SelectItem key={sex} value={sex}>
+																	{t(`admin.horses.facts.sexes.${sex}`)}
+																</SelectItem>
+															),
+														)}
+													</SelectContent>
+												</Select>
+												<FormDescription>
+													{t("admin.horses.facts.syncedHint")}
+												</FormDescription>
+												<FormMessage />
+											</FormItem>
+										)}
+									/>
+									<FormField
+										control={form.control}
+										name="foaledOn"
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel>{t("admin.horses.facts.foaledOn")}</FormLabel>
+												<FormControl>
+													<Input type="date" {...field} />
+												</FormControl>
+												<FormDescription>
+													{t("admin.horses.facts.syncedHint")}
+												</FormDescription>
+												<FormMessage />
+											</FormItem>
+										)}
+									/>
+									<FormField
+										control={form.control}
+										name="foaledPlace"
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel>{t("admin.horses.facts.foaledPlace")}</FormLabel>
+												<FormControl>
+													<Input placeholder="Co. Meath" {...field} />
+												</FormControl>
+												<FormDescription>
+													{t("admin.horses.facts.adminOnlyHint", {
+														country: horse?.foaledCountry ?? "-",
+													})}
+												</FormDescription>
+												<FormMessage />
+											</FormItem>
+										)}
+									/>
+								</div>
+							</div>
+
 							{/* Photo Gallery */}
 							<div>
 								<h3 className="mb-3 font-medium">
@@ -816,6 +960,10 @@ export function HorseForm({ horseId }: HorseFormProps) {
 					</Form>
 				</CardContent>
 			</Card>
+
+			{isEdit && horseId && <HorseWellbeingCard horseId={horseId} wellbeing={horse?.wellbeing ?? null} />}
+
+			{isEdit && horseId && <ResultsFieldSize horseId={horseId} />}
 
 			{/* Replays hidden for v1 (S13-16); re-enable by restoring:
 			    {isEdit && horseId && <ResultsReplayLinks horseId={horseId} />} */}
