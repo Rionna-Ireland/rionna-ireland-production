@@ -49,7 +49,6 @@ describe("MissionControl quick actions", () => {
 		"/admin/events/new",
 		"/admin/polls/new",
 		"/admin/moderation",
-		"/admin/moderation?tab=threads",
 		"/admin/offers/new",
 		"/admin/charity",
 		"/admin/members",
