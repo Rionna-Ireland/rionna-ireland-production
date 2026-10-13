@@ -29,7 +29,7 @@ export function PostAsPicker({
 }: {
 	value: string;
 	onChange: (value: string) => void;
-	i18nPrefix: "admin.updates.form" | "admin.updates.community";
+	i18nPrefix: "admin.updates.form" | "admin.updates.community" | "admin.moderation.threads";
 	disabled?: boolean;
 }) {
 	const t = useTranslations();

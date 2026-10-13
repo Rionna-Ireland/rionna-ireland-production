@@ -13,7 +13,7 @@ export type TransactionIsolationLevel = z.infer<typeof TransactionIsolationLevel
 
 // File: UserScalarFieldEnum.schema.ts
 
-export const UserScalarFieldEnumSchema = z.enum(['id', 'name', 'email', 'emailVerified', 'image', 'createdAt', 'updatedAt', 'username', 'role', 'banned', 'banReason', 'banExpires', 'onboardingComplete', 'paymentsCustomerId', 'locale', 'displayUsername', 'twoFactorEnabled', 'lastActiveOrganizationId', 'pushEnabled', 'pushPreferences', 'emailPreferences'])
+export const UserScalarFieldEnumSchema = z.enum(['id', 'name', 'email', 'emailVerified', 'image', 'createdAt', 'updatedAt', 'username', 'role', 'banned', 'banReason', 'banExpires', 'onboardingComplete', 'paymentsCustomerId', 'locale', 'displayUsername', 'twoFactorEnabled', 'lastActiveOrganizationId', 'pushEnabled', 'pushPreferences', 'emailPreferences', 'expertLabel'])
 
 export type UserScalarFieldEnum = z.infer<typeof UserScalarFieldEnumSchema>;
 
@@ -239,6 +239,18 @@ export const PostAttributionScalarFieldEnumSchema = z.enum(['id', 'organizationI
 
 export type PostAttributionScalarFieldEnum = z.infer<typeof PostAttributionScalarFieldEnumSchema>;
 
+// File: CommentAttributionScalarFieldEnum.schema.ts
+
+export const CommentAttributionScalarFieldEnumSchema = z.enum(['id', 'organizationId', 'circleCommentId', 'trainerId', 'createdAt'])
+
+export type CommentAttributionScalarFieldEnum = z.infer<typeof CommentAttributionScalarFieldEnumSchema>;
+
+// File: PinnedAnswerScalarFieldEnum.schema.ts
+
+export const PinnedAnswerScalarFieldEnumSchema = z.enum(['id', 'organizationId', 'circlePostId', 'circleCommentId', 'pinnedByUserId', 'pinnedAt'])
+
+export type PinnedAnswerScalarFieldEnum = z.infer<typeof PinnedAnswerScalarFieldEnumSchema>;
+
 // File: InsideTrackMetaScalarFieldEnum.schema.ts
 
 export const InsideTrackMetaScalarFieldEnumSchema = z.enum(['id', 'organizationId', 'circlePostId', 'videoDurationSeconds', 'createdAt', 'updatedAt'])
@@ -295,7 +307,7 @@ export type PurchaseType = z.infer<typeof PurchaseTypeSchema>;
 
 // File: NotificationType.schema.ts
 
-export const NotificationTypeSchema = z.enum(['WELCOME', 'APP_UPDATE'])
+export const NotificationTypeSchema = z.enum(['WELCOME', 'APP_UPDATE', 'EXPERT_ANSWER'])
 
 export type NotificationType = z.infer<typeof NotificationTypeSchema>;
 
@@ -383,6 +395,7 @@ export const UserSchema = z.object({
   pushEnabled: z.boolean().default(true),
   pushPreferences: z.unknown().refine((val) => { const getDepth = (obj: unknown, depth: number = 0): number => { if (depth > 10) return depth; if (obj === null || typeof obj !== 'object') return depth; const values = Object.values(obj as Record<string, unknown>); if (values.length === 0) return depth; return Math.max(...values.map(v => getDepth(v, depth + 1))); }; return getDepth(val) <= 10; }, "JSON nesting depth exceeds maximum of 10").default("{}"),
   emailPreferences: z.unknown().refine((val) => { const getDepth = (obj: unknown, depth: number = 0): number => { if (depth > 10) return depth; if (obj === null || typeof obj !== 'object') return depth; const values = Object.values(obj as Record<string, unknown>); if (values.length === 0) return depth; return Math.max(...values.map(v => getDepth(v, depth + 1))); }; return getDepth(val) <= 10; }, "JSON nesting depth exceeds maximum of 10").default("{}"),
+  expertLabel: z.string().nullish(),
 });
 
 export type UserType = z.infer<typeof UserSchema>;
@@ -1080,6 +1093,33 @@ export const PostAttributionSchema = z.object({
 });
 
 export type PostAttributionType = z.infer<typeof PostAttributionSchema>;
+
+
+// File: CommentAttribution.schema.ts
+
+export const CommentAttributionSchema = z.object({
+  id: z.string(),
+  organizationId: z.string(),
+  circleCommentId: z.string(),
+  trainerId: z.string(),
+  createdAt: z.date(),
+});
+
+export type CommentAttributionType = z.infer<typeof CommentAttributionSchema>;
+
+
+// File: PinnedAnswer.schema.ts
+
+export const PinnedAnswerSchema = z.object({
+  id: z.string(),
+  organizationId: z.string(),
+  circlePostId: z.string(),
+  circleCommentId: z.string(),
+  pinnedByUserId: z.string(),
+  pinnedAt: z.date(),
+});
+
+export type PinnedAnswerType = z.infer<typeof PinnedAnswerSchema>;
 
 
 // File: InsideTrackMeta.schema.ts

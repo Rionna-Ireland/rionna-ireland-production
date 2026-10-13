@@ -29,7 +29,8 @@ export interface MemberFeedItem {
 	/** S13-11: post lives in the Official Announcements space. */
 	isAnnouncement?: boolean;
 	/** S13-11: club role badge for the author. */
-	authorRole?: "trainer" | "staff" | null;
+	authorRole?: "trainer" | "expert" | "staff" | null;
+	authorRoleLabel?: string | null;
 	/**
 	 * S13-13: length of the post's video in whole seconds (rounded up). Parsed from
 	 * the first uploaded video, or an admin override (`InsideTrackMeta`). Omitted
@@ -74,7 +75,8 @@ export interface CirclePostDetail {
 	/** Whether the authenticated member authored this post (set by the procedure, not the parser). */
 	isOwn?: boolean;
 	/** S13-11: club role badge for the author (trainer when the post is attributed). */
-	authorRole?: "trainer" | "staff" | null;
+	authorRole?: "trainer" | "expert" | "staff" | null;
+	authorRoleLabel?: string | null;
 	/** S13-11: post lives in the Official Announcements space. */
 	isAnnouncement?: boolean;
 }

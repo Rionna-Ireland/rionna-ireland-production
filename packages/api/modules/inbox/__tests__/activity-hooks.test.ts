@@ -165,3 +165,48 @@ it("hooks never throw", async () => {
 	await expect(onPostLiked({ organizationId: "org1", circlePostId: "p1", actor })).resolves.toBeUndefined();
 	expect(mockLoggerError).toHaveBeenCalledWith("inbox.hook.failed", expect.objectContaining({ hook: "onPostLiked" }));
 });
+
+describe("onAnswerPinned (S13-19)", () => {
+	it("records an expert_answer for the post author and pushes under the comment preference", async () => {
+		mockRecordActivity.mockResolvedValue({ unseenCount: 2, shouldPush: true, pushedAt: PUSHED_AT });
+		const { onAnswerPinned } = await import("../activity-hooks");
+		await onAnswerPinned({
+			organizationId: "org1",
+			circlePostId: "p1",
+			pinner: { userId: "pinner" },
+			answererName: "Ger Byrne",
+			answerBody: "Declared means running.",
+		});
+		expect(mockRecordActivity).toHaveBeenCalledWith(
+			expect.objectContaining({
+				recipientUserId: "author",
+				actor: { userId: "pinner", name: "Ger Byrne" },
+				item: expect.objectContaining({
+					kind: "expert_answer",
+					groupKey: "expert_answer:p1",
+					data: { screen: "post", spaceId: "s1", postId: "p1" },
+				}),
+			}),
+		);
+		expect(mockSendPush).toHaveBeenCalledWith(
+			expect.objectContaining({
+				triggerType: "COMMUNITY_COMMENT",
+				targetUserId: "author",
+				title: "Ger Byrne answered your question",
+			}),
+		);
+	});
+
+	it("does nothing for club posts (no author row)", async () => {
+		mockPostFindFirst.mockResolvedValueOnce(null);
+		const { onAnswerPinned } = await import("../activity-hooks");
+		await onAnswerPinned({
+			organizationId: "org1",
+			circlePostId: "p1",
+			pinner: { userId: "pinner" },
+			answererName: "Ger",
+			answerBody: "x",
+		});
+		expect(mockRecordActivity).not.toHaveBeenCalled();
+	});
+});

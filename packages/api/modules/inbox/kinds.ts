@@ -19,6 +19,7 @@ export const INBOX_KINDS = [
 	"post_comment",
 	"horse_posts",
 	"post_removed",
+	"expert_answer",
 ] as const;
 
 export type InboxKind = (typeof INBOX_KINDS)[number];
@@ -52,6 +53,7 @@ export const KIND_META: Record<InboxKind, { icon: InboxIcon; bumpOnRegroup: bool
 	post_comment: { icon: "actor", bumpOnRegroup: true },
 	horse_posts: { icon: "horse", bumpOnRegroup: false },
 	post_removed: { icon: "club", bumpOnRegroup: false },
+	expert_answer: { icon: "actor", bumpOnRegroup: true },
 };
 
 export function isInboxKind(value: string): value is InboxKind {
@@ -79,6 +81,8 @@ export function presentInboxItem(row: {
 			return { title: `${who} liked your post`, body: row.body };
 		case "post_comment":
 			return { title: `${who} commented on your post`, body: row.body };
+		case "expert_answer":
+			return { title: `${row.actorName?.trim() || "An expert"} answered your question`, body: row.body };
 		case "horse_posts":
 			return { title: row.title, body: `${who} posted` };
 		default:

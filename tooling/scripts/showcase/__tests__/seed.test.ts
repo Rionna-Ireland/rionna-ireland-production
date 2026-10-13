@@ -175,6 +175,9 @@ describe("runSeed: content coverage", () => {
 		expect(entries.filter((e) => e.status === "RAN").every((e) => e.fieldSize > 0)).toBe(true);
 
 		expect(writes.filter((w) => w.model === "postAttribution").length).toBeGreaterThan(3);
+		const pins = writes.filter((w) => w.model === "pinnedAnswer");
+		expect(pins).toHaveLength(1);
+		expect(pins[0]?.args.data.circleCommentId).toBeTruthy();
 		expect(writes.filter((w) => w.model === "poll")).toHaveLength(4);
 		expect(writes.filter((w) => w.model === "partnerOffer").length).toBeGreaterThanOrEqual(6);
 		expect(writes.filter((w) => w.model === "charityConfig")).toHaveLength(1);

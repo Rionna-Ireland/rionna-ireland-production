@@ -28,7 +28,7 @@ export const getClubRoster = adminProcedure
 		const members = await db.member.findMany({
 			where: { organizationId },
 			include: {
-				user: { select: { id: true, name: true, email: true, role: true } },
+				user: { select: { id: true, name: true, email: true, role: true, expertLabel: true } },
 			},
 			orderBy: { createdAt: "asc" },
 		});
@@ -53,6 +53,7 @@ export const getClubRoster = adminProcedure
 				circleMemberId: member.circleMemberId,
 				joinedAt: member.createdAt,
 				foundingMember: member.foundingMember,
+				expertLabel: member.user.expertLabel,
 			};
 		});
 	});

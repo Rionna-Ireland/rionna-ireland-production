@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import { AttentionTab } from "./AttentionTab";
 import { BlockedTab } from "./BlockedTab";
 import { ReportsTab } from "./ReportsTab";
+import { ThreadsTab } from "./ThreadsTab";
 
 /**
  * S12-02a Task 10: `/admin/moderation` — member reports (actionable) and the
@@ -34,6 +35,9 @@ export function ModerationQueue() {
 						<TabsTrigger value="blocked">
 							{t("admin.moderation.tabs.blocked")}
 						</TabsTrigger>
+						<TabsTrigger value="threads">
+							{t("admin.moderation.tabs.threads")}
+						</TabsTrigger>
 					</TabsList>
 					<TabsContent value="attention">
 						<AttentionTab />
@@ -43,6 +47,9 @@ export function ModerationQueue() {
 					</TabsContent>
 					<TabsContent value="blocked">
 						<BlockedTab />
+					</TabsContent>
+					<TabsContent value="threads">
+						<ThreadsTab />
 					</TabsContent>
 				</Tabs>
 			</CardContent>

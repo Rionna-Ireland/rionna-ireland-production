@@ -5,6 +5,7 @@ import { useSession } from "@auth/hooks/use-session";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@repo/ui/components/card";
+import { Input } from "@repo/ui/components/input";
 import { Switch } from "@repo/ui/components/switch";
 import { toastError } from "@repo/ui/components/toast";
 import { orpc } from "@shared/lib/orpc-query-utils";
@@ -81,6 +82,20 @@ export function MembersRoster({ openHriExport = false }: { openHriExport?: boole
 		);
 	}
 
+	// S13-19: expert tag, saved when the field loses focus with a changed value.
+	const expertMutation = useMutation(orpc.members.admin.setExpertLabel.mutationOptions());
+	function saveExpertLabel(memberId: string, current: string | null, next: string) {
+		if (next.trim() === (current ?? "")) return;
+		expertMutation.mutate(
+			{ organizationId, memberId, expertLabel: next.trim() || null },
+			{
+				onSuccess: () =>
+					queryClient.invalidateQueries({ queryKey: orpc.members.admin.roster.key() }),
+				onError: (error) => toastError(t("admin.members.expert.errorTitle"), error.message),
+			},
+		);
+	}
+
 	return (
 		<Card>
 			<CardHeader className="gap-4 flex flex-row flex-wrap items-start justify-between">
@@ -122,6 +137,9 @@ export function MembersRoster({ openHriExport = false }: { openHriExport?: boole
 									</th>
 									<th className="py-2 pr-4 font-medium">
 										{t("admin.members.columns.founding")}
+									</th>
+									<th className="py-2 pr-4 font-medium">
+										{t("admin.members.columns.expert")}
 									</th>
 									<th className="py-2 font-medium">
 										{t("admin.members.columns.actions")}
@@ -169,6 +187,25 @@ export function MembersRoster({ openHriExport = false }: { openHriExport?: boole
 												})}
 												onCheckedChange={(checked) =>
 													toggleFounding(row.memberId, checked)
+												}
+											/>
+										</td>
+										<td className="py-3 pr-4">
+											<Input
+												key={`${row.memberId}:${row.expertLabel ?? ""}`}
+												className="h-8 w-32"
+												defaultValue={row.expertLabel ?? ""}
+												maxLength={40}
+												placeholder={t("admin.members.expert.placeholder")}
+												aria-label={t("admin.members.expert.label", {
+													name: row.name || row.email,
+												})}
+												onBlur={(event) =>
+													saveExpertLabel(
+														row.memberId,
+														row.expertLabel,
+														event.target.value,
+													)
 												}
 											/>
 										</td>

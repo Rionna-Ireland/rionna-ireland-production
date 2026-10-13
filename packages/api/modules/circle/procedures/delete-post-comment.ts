@@ -87,6 +87,14 @@ export const deletePostComment = protectedProcedure
 			return { ok: false };
 		}
 
+		// S13-19: a deleted comment can't stay pinned (best effort; reads also self-heal).
+		try {
+			await db.pinnedAnswer.deleteMany({
+				where: { organizationId: input.organizationId, circleCommentId: input.commentId },
+			});
+		} catch {
+			// reads self-heal a stale pin
+		}
 		invalidateMemberFeedCache(user.id, input.organizationId);
 		return { ok: true };
 	});

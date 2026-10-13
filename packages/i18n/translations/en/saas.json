@@ -66,7 +66,8 @@
 				"subscription": "Subscription",
 				"circle": "Community",
 				"founding": "Founding member",
-				"actions": "Actions"
+				"actions": "Actions",
+				"expert": "Expert tag"
 			},
 			"founding": {
 				"toggleLabel": "Founding member: {name}",
@@ -136,6 +137,12 @@
 				"downloaded": "Downloaded {filename} ({count, plural, one {# row} other {# rows}}).",
 				"notAccepted": "{count, plural, one {# member hasn't} other {# members haven't}} yet confirmed they are 18+ and accepted the current terms.",
 				"error": "Couldn't export the member list"
+			},
+			"expert": {
+				"placeholder": "e.g. vet",
+				"label": "Expert tag: {name}",
+				"saved": "Expert tag saved.",
+				"errorTitle": "Couldn't save expert tag"
 			}
 		},
 		"waitlist": {
@@ -297,8 +304,15 @@
 					"validUntil": "Valid until",
 					"status": "Status"
 				},
-				"status": { "active": "Active", "inactive": "Hidden", "expired": "Expired" },
-				"actions": { "edit": "Edit", "delete": "Delete" },
+				"status": {
+					"active": "Active",
+					"inactive": "Hidden",
+					"expired": "Expired"
+				},
+				"actions": {
+					"edit": "Edit",
+					"delete": "Delete"
+				},
 				"confirmDeleteTitle": "Delete this offer?",
 				"confirmDelete": "Members will no longer see it. This cannot be undone."
 			},
@@ -786,7 +800,8 @@
 			"tabs": {
 				"reported": "Reports",
 				"blocked": "Blocked",
-				"attention": "Needs attention"
+				"attention": "Needs attention",
+				"threads": "Threads"
 			},
 			"filter": {
 				"open": "Open",
@@ -839,6 +854,23 @@
 				"dismiss": "Dismiss",
 				"dismissed": "Dismissed. Their count starts again from zero.",
 				"error": "Couldn't dismiss. Try again."
+			},
+			"threads": {
+				"intro": "Answer a thread as a trainer, or unpin its expert answer. Paste the Circle post id from the post link.",
+				"postId": "Circle post id",
+				"load": "Look up",
+				"postAs": "Reply as",
+				"postAsHint": "Show a trainer as the author in the app. The reply is still made by the club account.",
+				"postAsClub": "Rionna",
+				"body": "Your reply",
+				"send": "Post reply",
+				"sent": "Reply posted.",
+				"pinnedTitle": "Pinned expert answer",
+				"noPin": "No pinned answer on this thread.",
+				"pinnedMeta": "Comment {commentId}, pinned by {name} on {date}",
+				"unpin": "Unpin",
+				"unpinned": "Pinned answer cleared.",
+				"error": "Couldn't complete that action. Try again."
 			}
 		},
 		"organizations": {
@@ -1488,6 +1520,9 @@
 			"types": {
 				"APP_UPDATE": {
 					"label": "App updates"
+				},
+				"EXPERT_ANSWER": {
+					"label": "Expert answers to your questions"
 				}
 			},
 			"columns": {

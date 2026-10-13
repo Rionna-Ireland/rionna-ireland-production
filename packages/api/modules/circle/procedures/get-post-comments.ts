@@ -5,15 +5,20 @@ import { createCircleService, getCircleHeadlessApiBaseUrl } from "@repo/payments
 import { z } from "zod";
 
 import { protectedProcedure } from "../../../orpc/procedures";
-import { loadAuthorRoles } from "../lib/author-identity";
+import { enrichComments } from "../lib/author-identity";
 import { extractComments, type PostComment } from "../lib/parse-comment";
 import { objectValue } from "../lib/parse-post";
+import { canPinAnswers, fetchPostComment, splitPinnedComment } from "../lib/pinned-answer";
 
 export interface GetPostCommentsResult {
 	ok: boolean;
 	comments: PostComment[];
 	hasNextPage: boolean;
 	totalCount: number | null;
+	/** S13-19: the thread's pinned expert answer (removed from `comments`), or null. */
+	pinnedAnswer: PostComment | null;
+	/** S13-19: whether the viewer may pin/unpin answers. */
+	canPin: boolean;
 }
 
 /**
@@ -41,6 +46,8 @@ export const getPostComments = protectedProcedure
 			comments: [],
 			hasNextPage: false,
 			totalCount: null,
+			pinnedAnswer: null,
+			canPin: false,
 		});
 
 		const org = await db.organization.findUnique({ where: { id: input.organizationId } });
@@ -103,22 +110,50 @@ export const getPostComments = protectedProcedure
 		}
 		const envelope = objectValue(payload);
 		const count = envelope?.count;
-		const comments = extractComments(payload);
-		// S13-11: one batched role lookup across every comment + reply.
-		const everyComment = comments.flatMap((c) => [c, ...c.replies]);
-		const roles = await loadAuthorRoles(
-			input.organizationId,
-			everyComment.map((c) => c.authorCircleMemberId),
-		);
-		for (const comment of everyComment) {
-			comment.authorRole = comment.authorCircleMemberId
-				? (roles.get(comment.authorCircleMemberId) ?? null)
-				: null;
+		let comments = extractComments(payload);
+
+		// S13-19: split the pinned answer out of the list. Fail open on any
+		// lookup problem — a missing pin must never break the thread.
+		let pinnedAnswer: PostComment | null = null;
+		try {
+			const pin = await db.pinnedAnswer.findUnique({ where: { circlePostId: input.postId } });
+			if (pin && pin.organizationId === input.organizationId) {
+				const split = splitPinnedComment(comments, pin.circleCommentId);
+				comments = split.comments;
+				pinnedAnswer = split.pinned;
+				// Not on this page: fetch it directly (page 1 carries the card).
+				if (!pinnedAnswer && input.page === 1) {
+					const fetched = await fetchPostComment({
+						orgSlug: org.slug,
+						circleMemberId: member.circleMemberId,
+						postId: input.postId,
+						commentId: pin.circleCommentId,
+					});
+					if (fetched.status === "ok") {
+						pinnedAnswer = fetched.comment;
+					} else if (fetched.status === "not_found") {
+						// Deleted in Circle: drop the stale pin lazily.
+						await db.pinnedAnswer.deleteMany({ where: { id: pin.id } });
+					}
+				}
+			}
+		} catch (error) {
+			logger.warn("[Circle] Post comments: pinned answer lookup failed", {
+				surface: "circle.post_comments",
+				postId: input.postId,
+				error: String(error),
+			});
 		}
+
+		// S13-11/S13-19: one batched role + attribution lookup across everything shown.
+		await enrichComments(input.organizationId, pinnedAnswer ? [...comments, pinnedAnswer] : comments);
+		const canPin = await canPinAnswers(input.organizationId, user.id);
 		return {
 			ok: true,
 			comments,
 			hasNextPage: envelope?.has_next_page === true,
 			totalCount: typeof count === "number" && Number.isFinite(count) ? count : null,
+			pinnedAnswer,
+			canPin,
 		};
 	});

@@ -704,6 +704,9 @@ function resolveSpaceId(ctx: ShowcaseCtx, st: SeedState, space: PostFixture["spa
 	return st.spaceIds[space as SpaceKey];
 }
 
+/** Fixture whose first comment is pinned as the expert answer (S13-19). */
+const PINNED_ANSWER_POST_KEY = "new-declared";
+
 async function seedCommunity(ctx: ShowcaseCtx, st: SeedState) {
 	for (const p of POSTS) {
 		const spaceId = resolveSpaceId(ctx, st, p.space);
@@ -734,6 +737,20 @@ async function seedCommunity(ctx: ShowcaseCtx, st: SeedState) {
 				);
 				return { id: out.circleCommentId, meta: { postId: circlePostId } };
 			});
+		}
+		// S13-19: pin the first answer on the "declared" thread so the showcase shows the card.
+		if (p.key === PINNED_ANSWER_POST_KEY && (p.comments?.length ?? 0) > 0) {
+			await ensureDb(ctx, "pinned_answer", p.key, (id) =>
+				ctx.db.pinnedAnswer.create({
+					data: {
+						id,
+						organizationId: st.orgId,
+						circlePostId,
+						circleCommentId: ref(ctx, "circle_comment", `${p.key}#0`),
+						pinnedByUserId: st.adminUserId ?? st.tom?.userId ?? "showcase-seed",
+					},
+				}),
+			);
 		}
 		for (const who of p.likedBy ?? []) {
 			const liker = st.personas.get(who);

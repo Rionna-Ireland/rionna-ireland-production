@@ -152,7 +152,14 @@ describe("getPostComments", () => {
 			{ organizationId: ORG_ID, postId: "34775788" },
 			ctx,
 		);
-		expect(res).toEqual({ ok: false, comments: [], hasNextPage: false, totalCount: null });
+		expect(res).toEqual({
+			ok: false,
+			comments: [],
+			hasNextPage: false,
+			totalCount: null,
+			pinnedAnswer: null,
+			canPin: false,
+		});
 	});
 
 	it("returns ok:false when the fetch throws / token fails / no circle member", async () => {

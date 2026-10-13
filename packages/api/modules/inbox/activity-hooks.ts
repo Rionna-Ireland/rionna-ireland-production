@@ -89,6 +89,45 @@ export function onPostCommented(p: {
 	});
 }
 
+/**
+ * S13-19: an expert answer was pinned on a member's post → tell the post
+ * author. Push follows the comment-interaction preference (COMMUNITY_COMMENT).
+ * `recordActivity` drops it when the pinner is the post author.
+ */
+export function onAnswerPinned(p: {
+	organizationId: string;
+	circlePostId: string;
+	pinner: { userId: string };
+	answererName: string | null;
+	answerBody: string;
+}): Promise<void> {
+	return guard("onAnswerPinned", { circlePostId: p.circlePostId }, async () => {
+		const author = await findPostAuthor(p.organizationId, p.circlePostId);
+		if (!author) return;
+		const data = { screen: "post" as const, spaceId: author.spaceId, postId: p.circlePostId };
+		const body = excerptOf(p.answerBody, 140);
+		const actor = { userId: p.pinner.userId, name: p.answererName };
+		const result = await recordActivity({
+			organizationId: p.organizationId,
+			recipientUserId: author.userId,
+			actor,
+			item: { kind: "expert_answer", groupKey: `expert_answer:${p.circlePostId}`, title: "", body, data, refId: p.circlePostId },
+			throttlePushMs: COMMENT_PUSH_THROTTLE_MS,
+		});
+		if (!result?.shouldPush || !result.pushedAt) return;
+		await sendPush({
+			organizationId: p.organizationId,
+			triggerType: "COMMUNITY_COMMENT",
+			triggerRefId: `expert:${p.circlePostId}:${result.pushedAt.toISOString()}`,
+			targetUserId: author.userId,
+			title: presentInboxItem({ kind: "expert_answer", title: "", body, actorName: p.answererName, actorCount: 1 }).title,
+			body,
+			data,
+			badge: result.unseenCount,
+		});
+	});
+}
+
 export function onMemberPostCreated(p: {
 	organizationId: string;
 	circleSpaceId: string;

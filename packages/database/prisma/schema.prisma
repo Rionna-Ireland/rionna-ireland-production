@@ -56,6 +56,8 @@ model User {
   inboxItems          InboxItem[]
   legalAcceptances    LegalAcceptance[]
   trainer             Trainer?
+  /// S13-19: free-text expert tag ("vet", "jockey"); non-null makes the user an expert.
+  expertLabel         String?
 
   @@unique([email])
   @@unique([username])
@@ -182,6 +184,8 @@ model Organization {
   legalAcceptances LegalAcceptance[]
   clubEventMetas   ClubEventMeta[]
   postAttributions PostAttribution[]
+  commentAttributions CommentAttribution[]
+  pinnedAnswers    PinnedAnswer[]
   insideTrackMetas InsideTrackMeta[]
 
   @@unique([slug])
@@ -277,6 +281,7 @@ enum NotificationTarget {
 enum NotificationType {
   WELCOME
   APP_UPDATE
+  EXPERT_ANSWER
 }
 
 model Notification {
@@ -559,6 +564,7 @@ model Trainer {
   horses           Horse[]
   entries          RaceEntry[]
   attributions     PostAttribution[]
+  commentAttributions CommentAttribution[]
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
 
@@ -1038,6 +1044,35 @@ model PostAttribution {
   @@index([organizationId])
   @@index([trainerId])
   @@map("post_attribution")
+}
+
+/// S13-19: "answer as trainer" on a comment; mirrors PostAttribution.
+model CommentAttribution {
+  id              String       @id @default(cuid())
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  circleCommentId String       @unique
+  trainerId       String
+  trainer         Trainer      @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+  createdAt       DateTime     @default(now())
+
+  @@index([organizationId])
+  @@index([trainerId])
+  @@map("comment_attribution")
+}
+
+/// S13-19: the one pinned expert answer per thread (Circle has no comment pinning).
+model PinnedAnswer {
+  id              String       @id @default(cuid())
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  circlePostId    String       @unique
+  circleCommentId String
+  pinnedByUserId  String
+  pinnedAt        DateTime     @default(now())
+
+  @@index([organizationId])
+  @@map("pinned_answer")
 }
 
 /// S13-13: admin-entered video length for an Inside Track post (linked videos expose none).

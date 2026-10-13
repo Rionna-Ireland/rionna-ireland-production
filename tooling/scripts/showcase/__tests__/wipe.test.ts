@@ -63,6 +63,7 @@ describe("runWipe ordering", () => {
 		const idx = (k: string) => WIPE_ORDER.indexOf(k);
 		expect(idx("club_event_meta")).toBeLessThan(idx("circle_event"));
 		expect(idx("post_attribution")).toBeLessThan(idx("circle_post"));
+		expect(idx("pinned_answer")).toBeLessThan(idx("circle_post"));
 		expect(idx("member_post")).toBeLessThan(idx("circle_post"));
 		expect(idx("circle_post")).toBeLessThan(idx("circle_comment"));
 		expect(idx("circle_event")).toBeLessThan(idx("circle_rsvp"));

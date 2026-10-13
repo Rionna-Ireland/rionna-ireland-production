@@ -114,6 +114,7 @@ export const WIPE_STEPS: WipeStep[] = [
 			});
 		},
 	},
+	{ kind: "pinned_answer", run: dbDelete((c) => c.db.pinnedAnswer) },
 	{ kind: "post_attribution", run: dbDelete((c) => c.db.postAttribution) },
 	{ kind: "member_post", run: dbDelete((c) => c.db.memberPost) },
 	{ kind: "club_event_meta", run: dbDelete((c) => c.db.clubEventMeta) },

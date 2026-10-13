@@ -16,7 +16,9 @@ export interface PostComment {
 	 */
 	authorCircleMemberId: string | null;
 	/** S13-11: club role badge. Filled by the procedure's batched lookup. */
-	authorRole?: "trainer" | "staff" | null;
+	authorRole?: "trainer" | "expert" | "staff" | null;
+	/** S13-19: expert tag ("vet"); set when authorRole is "expert". */
+	authorRoleLabel?: string | null;
 	createdAt: string | null;
 	likeCount: number;
 	/** Whether the authenticated member has liked this comment (`is_liked`). */
