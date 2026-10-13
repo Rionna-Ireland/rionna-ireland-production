@@ -15,7 +15,9 @@ import { ThreadsTab } from "./ThreadsTab";
  * S12-08 adds the "Needs attention" tab (members repeatedly tripping
  * moderation) as the default view.
  */
-export function ModerationQueue() {
+const TABS = ["attention", "reported", "blocked", "threads"];
+
+export function ModerationQueue({ tab = "" }: { tab?: string }) {
 	const t = useTranslations();
 
 	return (
@@ -24,7 +26,7 @@ export function ModerationQueue() {
 				<CardTitle>{t("admin.moderation.title")}</CardTitle>
 			</CardHeader>
 			<CardContent>
-				<Tabs defaultValue="attention">
+				<Tabs defaultValue={TABS.includes(tab) ? tab : "attention"}>
 					<TabsList>
 						<TabsTrigger value="attention">
 							{t("admin.moderation.tabs.attention")}

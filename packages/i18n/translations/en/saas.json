@@ -36,11 +36,23 @@
 			},
 			"actions": {
 				"title": "Quick actions",
+				"groups": {
+					"post": "Post",
+					"plan": "Plan",
+					"care": "Look after"
+				},
 				"horseUpdate": "Post a horse update",
 				"news": "Publish website news",
 				"announcement": "Post a community announcement",
-				"event": "Create an event",
+				"charityStory": "Share a charity story",
+				"insideTrack": "Add an Inside Track post",
+				"event": "Create an event or Live Q&A",
 				"poll": "Create a poll",
+				"reports": "Review reports",
+				"threads": "Answer a thread as the trainer",
+				"offer": "Add a partner offer",
+				"charityTotal": "Update the charity total",
+				"members": "Members & expert tags",
 				"soon": "Coming soon"
 			},
 			"recent": {
@@ -418,6 +430,13 @@
 				"draft": "Draft",
 				"published": "Published",
 				"publish_failed": "Needs attention"
+			},
+			"charity": {
+				"createTitle": "Share a charity story",
+				"editTitle": "Edit charity story",
+				"audience": "Everyone in the club, on the Charity screen",
+				"publish": "Post to all members",
+				"published": "Charity story posted."
 			},
 			"community": {
 				"createTitle": "Post a community announcement",
