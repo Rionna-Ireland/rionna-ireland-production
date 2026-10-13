@@ -26,7 +26,7 @@ export function AnnouncementList() {
 
 	const { data, isLoading } = useQuery({
 		...orpc.memberPosts.admin.list.queryOptions({
-			input: { organizationId, audienceType: "community", limit: 50, offset: 0 },
+			input: { organizationId, audienceType: ["community", "charity"], limit: 50, offset: 0 },
 		}),
 		enabled: !!organizationId,
 	});
@@ -65,7 +65,9 @@ export function AnnouncementList() {
 											{post.title}
 										</p>
 										<p className="text-sm truncate text-muted-foreground">
-											{t("admin.updates.community.audience")}
+											{post.audienceType === "charity"
+												? t("admin.updates.charity.audience")
+												: t("admin.updates.community.audience")}
 										</p>
 									</div>
 									<Badge status={statusBadge(post.status)}>
