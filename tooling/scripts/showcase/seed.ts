@@ -69,6 +69,7 @@ interface OrgMeta {
 		spaceGroupId?: string;
 		eventsSpaceId?: string;
 		communitySpaceId?: string;
+		qaSpaceId?: string;
 		insideTrack?: { spaceId?: string; pinnedPostIds?: string[] };
 	};
 	[k: string]: unknown;
@@ -178,6 +179,7 @@ async function preflight(ctx: ShowcaseCtx, options: SeedOptions): Promise<SeedSt
 		Object.entries(COMMUNITY_SPACES).map(([k, v]) => [k, v.id]),
 	) as Record<SpaceKey, string>;
 	if (meta.circle?.communitySpaceId) spaceIds.announcements = meta.circle.communitySpaceId;
+	if (meta.circle?.qaSpaceId) spaceIds.qa = meta.circle.qaSpaceId;
 
 	if (!ctx.dry) {
 		// Read-only: every target space must already exist before we write anything.

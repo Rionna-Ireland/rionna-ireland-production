@@ -4,6 +4,8 @@ export interface FeedFilterInput {
 	kind?: "poll" | "story";
 	category?: "charity";
 	spaceIds?: string[];
+	/** S13-18: the Charity chip also covers posts from this space (server-injected, never client input). */
+	charitySpaceId?: string;
 }
 
 /**
@@ -22,6 +24,14 @@ export function applyFeedFilter(
 	const spaces = filter.spaceIds && filter.spaceIds.length > 0 ? new Set(filter.spaceIds) : null;
 	if (!filter.kind && !spaces) return items;
 	return items.filter((item) => {
+		if (
+			filter.kind === "story" &&
+			filter.category === "charity" &&
+			filter.charitySpaceId &&
+			item.spaceId === filter.charitySpaceId
+		) {
+			return true;
+		}
 		if (filter.kind && item.kind !== filter.kind) return false;
 		if (filter.kind === "story" && filter.category && item.story?.category !== filter.category) {
 			return false;

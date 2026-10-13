@@ -105,6 +105,7 @@ export const createClubEvent = adminProcedure
 			circle,
 			meta,
 			communitySpaceId: parseOrgMetadata(org.metadata).circle?.communitySpaceId,
+			qaSpaceId: parseOrgMetadata(org.metadata).circle?.qaSpaceId,
 		});
 
 		// A member polling their feed within the 60s TTL, or tapping the

@@ -1042,7 +1042,8 @@ export type SpaceKey =
 	| "charityImpact"
 	| "networking"
 	| "stableNotes"
-	| "announcements";
+	| "announcements"
+	| "qa";
 
 /** Existing Circle spaces (verified before any write). Announcements comes from org metadata when set. */
 export const COMMUNITY_SPACES: Record<SpaceKey, { id: string; name: string }> = {
@@ -1053,6 +1054,7 @@ export const COMMUNITY_SPACES: Record<SpaceKey, { id: string; name: string }> = 
 	networking: { id: "2695473", name: "Networking" },
 	stableNotes: { id: "2695465", name: "Stable Notes" },
 	announcements: { id: "2695457", name: "Official Announcements" },
+	qa: { id: "2905717", name: "Q&A" },
 };
 
 export type PostAuthor = "admin" | "trainer" | (string & {});
@@ -1162,6 +1164,21 @@ export const POSTS: PostFixture[] = [
 		comments: [
 			["maeve", "Looking forward to all of it. Thank you for the update!"],
 			["tadhg", "Naas on Saturday, I will be glued to the app."],
+		],
+	},
+
+	// --- Q&A (questions threads live here, S13-18) ---
+	{
+		key: "qa-live-questions",
+		space: "qa",
+		author: "admin",
+		title: "Questions for the Live Q&A: Live Q&A with Cormac",
+		paragraphs: [
+			"Drop your questions below and we'll put them to the team on Thursday evening.",
+		],
+		comments: [
+			["siobhan", "How do you decide which race a horse is entered in?"],
+			["donal", "What does a typical morning on the gallops look like?"],
 		],
 	},
 

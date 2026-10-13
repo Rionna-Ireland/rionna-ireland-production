@@ -137,4 +137,30 @@ describe("buildFeedChips", () => {
 		expect(chips.some((c) => c.id === "space:ev1")).toBe(false);
 		expect(chips.some((c) => c.id === "space:s3")).toBe(true);
 	});
+
+	it("hides Charity Impact, Announcements and Stable Notes chips but keeps Q&A (S13-18)", () => {
+		const spaces = [
+			space({ id: "2695471", name: "Charity Impact" }),
+			space({ id: "2695457", name: "Official Announcements" }),
+			space({ id: "2695465", name: "Stable Notes" }),
+			space({ id: "2905717", name: "Q&A" }),
+		];
+		const chips = buildFeedChips({
+			spaces,
+			metadata: {
+				circle: {
+					qaSpaceId: "2905717",
+					charitySpaceId: "2695471",
+					spaces: {
+						"2695471": { hideChip: true },
+						"2695457": { hideChip: true },
+						"2695465": { hideChip: true },
+						"2905717": { hideChip: false },
+					},
+				},
+			},
+			horseSpaceIds: new Set(),
+		});
+		expect(chips.map((c) => c.label)).toEqual(["All", "News", "Charity", "Polls", "Q&A"]);
+	});
 });

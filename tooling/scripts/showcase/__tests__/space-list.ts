@@ -7,4 +7,5 @@ export const SpaceKeyList = [
 	"networking",
 	"stableNotes",
 	"announcements",
+	"qa",
 ] as const;

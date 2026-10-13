@@ -46,4 +46,21 @@ describe("applyFeedFilter", () => {
 			"s2",
 		]);
 	});
+
+	it("charity filter also returns posts from the charity space (S13-18)", () => {
+		const items = [...ITEMS, item("cp", "post", "9")];
+		expect(
+			applyFeedFilter(items, { kind: "story", category: "charity", charitySpaceId: "9" }).map(
+				(i) => i.id,
+			),
+		).toEqual(["s2", "cp"]);
+		// Without the space id configured, only the charity story matches.
+		expect(applyFeedFilter(items, { kind: "story", category: "charity" }).map((i) => i.id)).toEqual([
+			"s2",
+		]);
+		// The space id never widens a plain news filter.
+		expect(
+			applyFeedFilter(items, { kind: "story", charitySpaceId: "9" }).map((i) => i.id),
+		).toEqual(["s1", "s2"]);
+	});
 });

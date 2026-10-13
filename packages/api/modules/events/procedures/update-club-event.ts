@@ -88,6 +88,7 @@ export const updateClubEvent = adminProcedure
 			circle,
 			meta,
 			communitySpaceId: parseOrgMetadata(org.metadata).circle?.communitySpaceId,
+			qaSpaceId: parseOrgMetadata(org.metadata).circle?.qaSpaceId,
 		});
 		logger.info("[Events] Updated event", {
 			event: "admin_events_updated",

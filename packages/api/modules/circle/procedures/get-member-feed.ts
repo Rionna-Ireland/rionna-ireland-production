@@ -130,6 +130,7 @@ export const getMemberFeed = protectedProcedure
 			kind: input.filterKind,
 			category: input.filterCategory,
 			spaceIds: input.filterSpaceIds,
+			charitySpaceId: orgMetadata.circle?.charitySpaceId,
 		};
 		const paginate = (merged: MemberFeedItem[]): MemberFeedResult => {
 			const visible = applyFeedFilter(merged, filter);

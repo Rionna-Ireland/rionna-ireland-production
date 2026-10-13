@@ -8,7 +8,7 @@ import { descriptionToTiptap } from "./description-to-tiptap";
 type Meta = { type?: string; questionsPostId?: string | null } | null | undefined;
 
 /**
- * QA events get a companion Circle post in the announcements space; members
+ * QA events get a companion Circle post in the Q&A space (announcements as fallback); members
  * submit questions as comments on it. Never throws: the event is already
  * committed in Circle, so a failure here is logged and the next update retries.
  */
@@ -21,6 +21,8 @@ export async function ensureQuestionsPost(input: {
 	/** Sidecar row if the caller just wrote it; otherwise it is read here. */
 	meta?: Meta;
 	communitySpaceId?: string;
+	/** S13-18: preferred home for questions threads. */
+	qaSpaceId?: string;
 }): Promise<void> {
 	try {
 		const meta =
@@ -30,7 +32,7 @@ export async function ensureQuestionsPost(input: {
 				select: { type: true, questionsPostId: true },
 			}));
 		if (meta?.type !== "QA" || meta.questionsPostId) return;
-		const spaceId = input.communitySpaceId;
+		const spaceId = input.qaSpaceId ?? input.communitySpaceId;
 		if (!spaceId) return;
 		const when = input.startsAt
 			? new Date(input.startsAt).toLocaleDateString("en-IE", {
