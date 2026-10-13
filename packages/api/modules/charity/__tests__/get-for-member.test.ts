@@ -19,6 +19,12 @@ vi.mock("@repo/database", () => ({
 }));
 vi.mock("@repo/logs", () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), log: vi.fn() } }));
 
+vi.mock("@repo/payments/lib/circle", async (importOriginal) => ({
+	...(await importOriginal<object>()),
+	createCircleService: () => ({ getMemberToken: async () => ({ ok: true, data: { accessToken: "jwt" } }) }),
+	getCircleHeadlessApiBaseUrl: () => "https://circle.test/api/headless/v1",
+}));
+
 import { getForMember } from "../procedures/get-for-member";
 
 const USER = { id: "u1", role: "user", name: "Jane" };
@@ -52,7 +58,7 @@ describe("charity.getForMember", () => {
 				percentage: 5,
 				totalCents: 5_000,
 				goalProgress: null,
-				stories: [{ id: "n1", slug: "six-horses-retrained", title: "Six horses retrained", subtitle: null, featuredImageUrl: null, publishedAt: "2026-08-01T00:00:00.000Z" }],
+				stories: [{ id: "n1", source: "news", spaceId: null, postId: null, slug: "six-horses-retrained", title: "Six horses retrained", subtitle: null, featuredImageUrl: null, publishedAt: "2026-08-01T00:00:00.000Z" }],
 				pollId: null,
 			}),
 		});
@@ -85,5 +91,53 @@ describe("charity.getForMember", () => {
 		mockMemberFindFirst.mockResolvedValue({ id: "m1" });
 		mockOrgFindUnique.mockResolvedValue({ id: "org1", metadata: JSON.stringify({ features: { paddock: false } }) });
 		expect(await call(getForMember, { organizationId: "org1" }, ctx)).toEqual({ ok: true, charity: null });
+	});
+
+	describe("Charity Impact circle stories (S13-18)", () => {
+		const withSpace = () => {
+			mockOrgFindUnique.mockResolvedValue({
+				id: "org1",
+				slug: "rionna",
+				metadata: JSON.stringify({ circle: { charitySpaceId: "2695471" } }),
+			});
+			mockMemberFindFirst.mockResolvedValue({ id: "m1", circleMemberId: "900" });
+		};
+		const stubPosts = (status: number) =>
+			vi.stubGlobal(
+				"fetch",
+				vi.fn(async () => ({
+					ok: status < 400,
+					status,
+					json: async () => ({
+						records: [
+							{ id: 77, name: "Golf day raised 4k", created_at: "2026-09-01T00:00:00Z", space: { id: 2695471 } },
+						],
+					}),
+				})),
+			);
+
+		it("merges circle posts with news stories, newest first, tagged by source", async () => {
+			withSpace();
+			stubPosts(200);
+			const result = await call(getForMember, { organizationId: "org1" }, ctx);
+			const stories = result.charity?.stories ?? [];
+			expect(stories.map((s) => s.source)).toEqual(["circle", "news"]);
+			expect(stories[0]).toMatchObject({ source: "circle", spaceId: "2695471", postId: "77", slug: null, title: "Golf day raised 4k" });
+			expect(stories[1]).toMatchObject({ source: "news", slug: "six-horses-retrained" });
+		});
+
+		it("falls back to news only when circle errors", async () => {
+			withSpace();
+			stubPosts(500);
+			const result = await call(getForMember, { organizationId: "org1" }, ctx);
+			expect(result.charity?.stories.map((s) => s.source)).toEqual(["news"]);
+		});
+
+		it("falls back to news only when circle throws", async () => {
+			withSpace();
+			vi.stubGlobal("fetch", vi.fn(async () => { throw new Error("boom"); }));
+			const result = await call(getForMember, { organizationId: "org1" }, ctx);
+			expect(result.charity?.stories.map((s) => s.source)).toEqual(["news"]);
+		});
 	});
 });
