@@ -764,7 +764,7 @@ model MemberPost {
   author       User?   @relation(fields: [authorUserId], references: [id], onDelete: SetNull)
 
   // Audience: "horse" posts to a horse's space; "community" posts community-wide.
-  audienceType String // "horse" | "community"
+  audienceType String // "horse" | "community" | "insideTrack" | "charity"
   horseId      String?
   horse        Horse?  @relation(fields: [horseId], references: [id], onDelete: SetNull)
   updateType   String? // "trainer" | "wellbeing" | "general" | "race" (horse updates only)

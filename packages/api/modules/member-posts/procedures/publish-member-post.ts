@@ -207,6 +207,9 @@ function resolveCircleSpaceId(
 	if (post.audienceType === "insideTrack") {
 		return parseOrgMetadata(orgMetadata).circle?.insideTrack?.spaceId ?? null;
 	}
+	if (post.audienceType === "charity") {
+		return parseOrgMetadata(orgMetadata).circle?.charitySpaceId ?? null;
+	}
 	// community → org-level community space id (slice 5 wires the composer).
 	return parseOrgMetadata(orgMetadata).circle?.communitySpaceId ?? null;
 }
@@ -217,6 +220,9 @@ function noCircleSpaceMessage(audienceType: string): string {
 	}
 	if (audienceType === "insideTrack") {
 		return "No Inside Track Circle space is configured. Post directly in Circle.";
+	}
+	if (audienceType === "charity") {
+		return "No charity Circle space is configured. Post directly in Circle.";
 	}
 	return "No community Circle space is configured. Post directly in Circle.";
 }

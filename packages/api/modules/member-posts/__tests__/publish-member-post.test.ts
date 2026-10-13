@@ -490,6 +490,31 @@ describe("publishMemberPost (S2-09)", () => {
 			);
 		});
 
+		const charityDraft = () =>
+			draftPost({ audienceType: "charity", horseId: null, updateType: null, horse: null });
+
+		it("publishes a charity story to the charity space", async () => {
+			mockParseOrgMetadata.mockReturnValue({ circle: { charitySpaceId: "space_ch" } });
+			mockGetMemberPostById.mockResolvedValue(charityDraft());
+
+			const result = await call(publishMemberPost, { memberPostId: "mp1" }, ctx);
+
+			expect(result).toMatchObject({ ok: true });
+			expect(mockCreatePost).toHaveBeenCalledWith(
+				expect.objectContaining({ spaceId: "space_ch" }),
+			);
+		});
+
+		it("fails safe when no charity space is configured", async () => {
+			mockParseOrgMetadata.mockReturnValue({ circle: {} });
+			mockGetMemberPostById.mockResolvedValue(charityDraft());
+
+			const result = await call(publishMemberPost, { memberPostId: "mp1" }, ctx);
+
+			expect(result).toMatchObject({ ok: false, reason: "no_circle_space" });
+			expect(mockCreatePost).not.toHaveBeenCalled();
+		});
+
 		it("fires notifyInsideTrackMembers when notifyMembers is true", async () => {
 			mockParseOrgMetadata.mockReturnValue({
 				circle: { insideTrack: { spaceId: "space_it" } },

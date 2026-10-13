@@ -23,6 +23,7 @@ export const getClubHealth = adminProcedure
 			pastDueCount,
 			memberProvisioningFailures,
 			horseProvisioningFailures,
+			openReportCount,
 		] = await Promise.all([
 			db.member.count({ where: { organizationId, role: "member" } }),
 			db.purchase.count({
@@ -33,6 +34,9 @@ export const getClubHealth = adminProcedure
 			db.horse.count({
 				where: { organizationId, circleSpaceStatus: "provisioning_failed" },
 			}),
+			db.moderationFlag.count({
+				where: { organizationId, source: "reported", status: "open" },
+			}),
 		]);
 
 		return {
@@ -40,5 +44,6 @@ export const getClubHealth = adminProcedure
 			activeSubscriptionCount,
 			pastDueCount,
 			circleProvisioningFailures: memberProvisioningFailures + horseProvisioningFailures,
+			openReportCount,
 		};
 	});

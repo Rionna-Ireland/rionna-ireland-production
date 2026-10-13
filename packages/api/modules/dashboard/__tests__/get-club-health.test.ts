@@ -8,11 +8,12 @@
 import { call } from "@orpc/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockGetSession, mockMemberCount, mockPurchaseCount, mockHorseCount } = vi.hoisted(() => ({
+const { mockGetSession, mockMemberCount, mockPurchaseCount, mockHorseCount, mockFlagCount } = vi.hoisted(() => ({
 	mockGetSession: vi.fn(),
 	mockMemberCount: vi.fn(),
 	mockPurchaseCount: vi.fn(),
 	mockHorseCount: vi.fn(),
+	mockFlagCount: vi.fn(),
 }));
 
 vi.mock("@repo/auth", () => ({ auth: { api: { getSession: mockGetSession } } }));
@@ -22,6 +23,7 @@ vi.mock("@repo/database", () => ({
 		member: { count: mockMemberCount },
 		purchase: { count: mockPurchaseCount },
 		horse: { count: mockHorseCount },
+		moderationFlag: { count: mockFlagCount },
 	},
 }));
 
@@ -44,6 +46,7 @@ beforeEach(() => {
 	);
 	// horse.count for failed space provisioning
 	mockHorseCount.mockResolvedValue(1);
+	mockFlagCount.mockResolvedValue(4);
 });
 
 describe("getClubHealth (S2-09 surface A)", () => {
@@ -56,6 +59,7 @@ describe("getClubHealth (S2-09 surface A)", () => {
 			pastDueCount: 1,
 			// 2 members + 1 horse space failed
 			circleProvisioningFailures: 3,
+			openReportCount: 4,
 		});
 	});
 
@@ -67,6 +71,9 @@ describe("getClubHealth (S2-09 surface A)", () => {
 		});
 		expect(mockMemberCount).toHaveBeenCalledWith({
 			where: { organizationId: "org1", circleStatus: "provisioning_failed" },
+		});
+		expect(mockFlagCount).toHaveBeenCalledWith({
+			where: { organizationId: "org1", source: "reported", status: "open" },
 		});
 		expect(mockHorseCount).toHaveBeenCalledWith({
 			where: { organizationId: "org1", circleSpaceStatus: "provisioning_failed" },
