@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
+import { MEDIA_TOKEN_TTL_MS } from "../lib/limits";
 import { signMediaToken, verifyMediaToken } from "../lib/media-token";
 
 const base = {
@@ -36,7 +37,7 @@ describe("media token", () => {
 	});
 
 	it("rejects an expired token", () => {
-		const t = signMediaToken(base, Date.now() - 2 * 60 * 60 * 1000);
+		const t = signMediaToken(base, Date.now() - MEDIA_TOKEN_TTL_MS - 1000);
 		expect(verifyMediaToken(t, who)).toBeNull();
 	});
 

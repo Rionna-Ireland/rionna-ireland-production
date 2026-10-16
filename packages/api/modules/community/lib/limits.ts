@@ -38,4 +38,5 @@ export const MAX_POST_IMAGES = 6;
 export const MAX_POST_VIDEOS = 1;
 export const MEDIA_UPLOADS_PER_HOUR = 30;
 /** How long a media token stays valid after the upload is registered. */
-export const MEDIA_TOKEN_TTL_MS = 60 * 60 * 1000;
+// Long enough for a slow 200 MB upload plus writing the post; tokens are member+org bound.
+export const MEDIA_TOKEN_TTL_MS = 12 * 60 * 60 * 1000;
