@@ -15,7 +15,8 @@ import { recordBlock } from "../../moderation/record-block";
 import { screenAuto } from "../../moderation/screen-auto";
 import { screenText } from "../../moderation/screen-text";
 import { buildPostDoc } from "../lib/build-post-doc";
-import { MAX_BODY_CHARS, MAX_TITLE_CHARS, MIN_BODY_CHARS } from "../lib/limits";
+import { MAX_BODY_CHARS, MAX_POST_IMAGES, MAX_POST_VIDEOS, MAX_TITLE_CHARS, MIN_BODY_CHARS } from "../lib/limits";
+import { type MediaTokenPayload, verifyMediaToken } from "../lib/media-token";
 import { fetchMemberSpaces, getMemberSpacesCached, invalidateMemberSpacesCache, writeMemberSpacesCache } from "../lib/member-spaces";
 import { checkPostRateLimit } from "../lib/rate-limit";
 import { isMemberPostingAllowed, isPostableForMember, needsJoinToPost } from "../lib/space-settings";
@@ -27,10 +28,7 @@ const inputSchema = z
 		spaceId: z.string().min(1),
 		title: z.string().trim().max(MAX_TITLE_CHARS).optional(),
 		body: z.string().trim().max(MAX_BODY_CHARS).default(""),
-		imageKey: z
-			.string()
-			.regex(/^community\/[\w-]+\/[\w-]+\/[\w.-]+$/)
-			.optional(),
+		media: z.array(z.object({ mediaToken: z.string() })).max(MAX_POST_IMAGES + MAX_POST_VIDEOS).optional(),
 	})
 	.refine((v) => (v.title?.length ?? 0) > 0 || v.body.length >= MIN_BODY_CHARS, {
 		message: "Add a title or a longer post.",
@@ -50,7 +48,7 @@ export const createPost = protectedProcedure
 	})
 	.input(inputSchema)
 	.handler(async ({ input, context: { user } }): Promise<CreatePostResult> => {
-		const { organizationId, spaceId, title, body, imageKey } = input;
+		const { organizationId, spaceId, title, body, media } = input;
 
 		// Org lookup + kill-switch.
 		const org = await db.organization.findUnique({ where: { id: organizationId } });
@@ -72,8 +70,14 @@ export const createPost = protectedProcedure
 			return { ok: false, reason: "not_allowed" };
 		}
 
-		// An image key must have been uploaded under this member's own prefix.
-		if (imageKey && !imageKey.startsWith(`community/${organizationId}/${member.id}/`)) {
+		// Every media token must be ours, unexpired and issued to this member + org.
+		const verified = (media ?? []).map((m) => verifyMediaToken(m.mediaToken, { memberId: member.id, orgId: organizationId }));
+		const mediaItems = verified.filter((m): m is MediaTokenPayload => m !== null);
+		if (
+			mediaItems.length !== verified.length ||
+			mediaItems.filter((m) => m.kind === "image").length > MAX_POST_IMAGES ||
+			mediaItems.filter((m) => m.kind === "video").length > MAX_POST_VIDEOS
+		) {
 			return { ok: false, reason: "not_allowed" };
 		}
 
@@ -174,8 +178,8 @@ export const createPost = protectedProcedure
 			return { ok: false, reason: "rate_limited" };
 		}
 
-		// Serialize the plain-text body to Circle's tiptap_body, uploading any image.
-		const doc = buildPostDoc({ body, imageKey });
+		// Serialize the plain-text body to Circle's tiptap_body, passing any attached media through.
+		const doc = buildPostDoc({ body, media: mediaItems });
 		const serialized = await serializeNovelDocToCircle(doc, {}, { circle, fetchImageBytes });
 		if (!serialized.ok) {
 			return { ok: false, reason: "image_failed" };
@@ -183,7 +187,7 @@ export const createPost = protectedProcedure
 
 		const name = title || excerptOf(body, 80);
 		const idempotencyKey = `member-post:${member.id}:${createHash("sha1")
-			.update(`${spaceId}|${title ?? ""}|${body}|${imageKey ?? ""}`)
+			.update(`${spaceId}|${title ?? ""}|${body}|${mediaItems.map((m) => m.signedId).join(",")}`)
 			.digest("hex")}`;
 
 		const created = await circle.createPost({
@@ -205,7 +209,7 @@ export const createPost = protectedProcedure
 			circleSpaceId: spaceId,
 			title: title ?? null,
 			excerpt: excerptOf(body),
-			hasImage: Boolean(imageKey),
+			hasImage: mediaItems.some((m) => m.kind === "image"),
 		});
 
 		invalidateMemberFeedCache(user.id, organizationId);

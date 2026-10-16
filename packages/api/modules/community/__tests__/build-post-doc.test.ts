@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { buildPostDoc } from "../lib/build-post-doc";
+import type { MediaTokenPayload } from "../lib/media-token";
 
 describe("buildPostDoc", () => {
 	it("splits blank-line groups into paragraphs and single newlines into hardBreaks", () => {
@@ -42,11 +43,18 @@ describe("buildPostDoc", () => {
 		});
 	});
 
-	it("appends an image node pointing at the media proxy path", () => {
-		const content = buildPostDoc({ body: "x", imageKey: "community/o/m/a.jpg" }).content ?? [];
-		expect(content[content.length - 1]).toEqual({
-			type: "image",
-			attrs: { src: "/image-proxy/media/community/o/m/a.jpg" },
-		});
+	it("appends image and video media nodes in order after the text", () => {
+		const media = [
+			{ kind: "image", signedId: "s1", cdnUrl: "https://c/1.jpg", contentType: "image/jpeg" },
+			{ kind: "video", signedId: "s2", attachableSgid: "g2", cdnUrl: "https://c/2.mp4", contentType: "video/mp4" },
+		] as MediaTokenPayload[];
+		const content = buildPostDoc({ body: "x", media }).content ?? [];
+		expect(content.slice(1)).toEqual([
+			{ type: "image", attrs: { signedId: "s1", url: "https://c/1.jpg", contentType: "image/jpeg" } },
+			{
+				type: "embed",
+				attrs: { signedId: "s2", attachableSgid: "g2", url: "https://c/2.mp4", contentType: "video/mp4" },
+			},
+		]);
 	});
 });

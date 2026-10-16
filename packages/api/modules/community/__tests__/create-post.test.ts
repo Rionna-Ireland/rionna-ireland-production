@@ -84,6 +84,7 @@ vi.mock("../../moderation/screen-auto", () => ({ screenAuto: mockScreenAuto }));
 vi.mock("../../moderation/record-auto-block", () => ({ recordAutoBlock: mockRecordAutoBlock }));
 vi.mock("../../moderation/escalate-member", () => ({ maybeEscalateMember: vi.fn() }));
 
+import { signMediaToken } from "../lib/media-token";
 import { createPost } from "../procedures/create-post";
 
 const USER = { id: "u1", role: "user", name: "Jane" };
@@ -109,6 +110,15 @@ const SPACES = [
 	},
 ];
 
+const IMG = {
+	signedId: "sid1",
+	cdnUrl: "https://cdn/x.jpg",
+	contentType: "image/jpeg",
+	kind: "image" as const,
+	memberId: "m1",
+	orgId: "org1",
+};
+
 const baseInput = {
 	organizationId: "org1",
 	spaceId: SPACE_ID,
@@ -117,6 +127,7 @@ const baseInput = {
 };
 
 beforeEach(() => {
+	process.env.BETTER_AUTH_SECRET = "test-secret";
 	vi.clearAllMocks();
 	mockGetSession.mockResolvedValue({ session: { id: "s1" }, user: USER });
 	mockOrgFindUnique.mockResolvedValue({ id: "org1", slug: "org-slug", metadata: METADATA });
@@ -207,16 +218,38 @@ describe("community.createPost", () => {
 		expect(mockAddSpaceMember).not.toHaveBeenCalled();
 	});
 
-	it("returns not_allowed when imageKey is under another member's prefix", async () => {
-		const result = await call(
-			createPost,
-			{ ...baseInput, imageKey: "community/org1/other-member/x.jpg" },
-			ctx,
-		);
-		expect(result).toEqual({ ok: false, reason: "not_allowed" });
+	it("returns not_allowed for a forged or other-member media token", async () => {
+		const other = signMediaToken({ ...IMG, memberId: "other-member" });
+		for (const mediaToken of ["garbage", other]) {
+			const result = await call(createPost, { ...baseInput, media: [{ mediaToken }] }, ctx);
+			expect(result).toEqual({ ok: false, reason: "not_allowed" });
+		}
 		expect(mockCreatePost).not.toHaveBeenCalled();
 		expect(mockSerializeNovelDocToCircle).not.toHaveBeenCalled();
 		expect(mockCreateModerationFlag).not.toHaveBeenCalled();
+	});
+
+	it("returns not_allowed for more than 6 images or 2 videos, before any Circle write", async () => {
+		const img = { mediaToken: signMediaToken(IMG) };
+		const vid = { mediaToken: signMediaToken({ ...IMG, kind: "video", contentType: "video/mp4" }) };
+		for (const media of [Array(7).fill(img), [vid, vid]]) {
+			const result = await call(createPost, { ...baseInput, media }, ctx);
+			expect(result).toEqual({ ok: false, reason: "not_allowed" });
+		}
+		expect(mockSerializeNovelDocToCircle).not.toHaveBeenCalled();
+		expect(mockCreatePost).not.toHaveBeenCalled();
+	});
+
+	it("builds the doc from verified media and sets hasImage", async () => {
+		const media = [
+			{ mediaToken: signMediaToken(IMG) },
+			{ mediaToken: signMediaToken({ ...IMG, signedId: "sid2", kind: "video", contentType: "video/mp4" }) },
+		];
+		const result = await call(createPost, { ...baseInput, media }, ctx);
+		expect(result.ok).toBe(true);
+		const doc = mockSerializeNovelDocToCircle.mock.calls[0]?.[0];
+		expect(doc.content.slice(-2).map((n: { type: string }) => n.type)).toEqual(["image", "embed"]);
+		expect(mockCreateCommunityPost).toHaveBeenCalledWith(expect.objectContaining({ hasImage: true }));
 	});
 
 	it("returns blocked and records the flag when the title has a blocked word", async () => {
