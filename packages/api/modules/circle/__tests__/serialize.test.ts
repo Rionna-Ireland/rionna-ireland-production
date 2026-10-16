@@ -421,4 +421,30 @@ describe("serializeNovelDocToCircle — Circle block allow-list (S2-12)", () => 
 		if (!outcome.ok) throw new Error("expected ok");
 		expect(outcome.tiptapBody.body.content).toEqual([PARA("keep"), PARA("also keep")]);
 	});
+
+	it("passes an already-uploaded image (signedId) straight through without fetching or uploading", async () => {
+		const { deps, uploadImage, fetchImageBytes } = makeDeps();
+		const doc = {
+			type: "doc" as const,
+			content: [
+				{ type: "image", attrs: { signedId: "pre-1", url: "https://cdn/x.jpg", contentType: "image/png" } },
+			],
+		};
+		const outcome = await serializeNovelDocToCircle(doc, {}, deps);
+		if (!outcome.ok) throw new Error("expected ok");
+		expect(outcome.tiptapBody.body.content).toEqual([
+			{
+				type: "image",
+				attrs: {
+					signed_id: "pre-1",
+					content_type: "image/png",
+					width: "100%",
+					alignment: "center",
+					url: "https://cdn/x.jpg",
+				},
+			},
+		]);
+		expect(fetchImageBytes).not.toHaveBeenCalled();
+		expect(uploadImage).not.toHaveBeenCalled();
+	});
 });
