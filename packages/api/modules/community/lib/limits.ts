@@ -29,3 +29,14 @@ export const MAX_BODY_CHARS = 2000;
 export const MAX_NOTE_CHARS = 500;
 /** Longest content excerpt stored on a moderation flag. */
 export const EXCERPT_CHARS = 200;
+
+/** Direct-to-Circle member media (S15-01). */
+export const POST_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
+export const POST_VIDEO_CONTENT_TYPES = ["video/mp4", "video/quicktime"] as const;
+export const POST_VIDEO_MAX_BYTES = 200 * 1024 * 1024;
+export const MAX_POST_IMAGES = 6;
+export const MAX_POST_VIDEOS = 1;
+export const MEDIA_UPLOADS_PER_HOUR = 30;
+/** How long a media token stays valid after the upload is registered. */
+// Long enough for a slow 200 MB upload plus writing the post; tokens are member+org bound.
+export const MEDIA_TOKEN_TTL_MS = 12 * 60 * 60 * 1000;

@@ -53,11 +53,6 @@ export interface ListFeedChipsResult {
 	chips: FeedChip[];
 }
 
-export interface CreatePostImageUploadUrlResult {
-	signedUploadUrl: string;
-	path: string;
-}
-
 /** Reasons `community.createPost` can fail — the handler returns before any Circle write. */
 export type CreatePostFailure =
 	| "not_allowed"

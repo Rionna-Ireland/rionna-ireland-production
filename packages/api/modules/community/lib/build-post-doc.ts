@@ -5,12 +5,13 @@
  * thin bridge from that plain text to the doc shape `serializeNovelDocToCircle`
  * (`packages/payments/lib/circle/serialize.ts`) expects: blank-line-separated
  * groups become paragraphs, single newlines within a group become `hardBreak`s,
- * and bare URLs are auto-linked. An optional uploaded image is appended as a
- * doc-level image node pointing at the auth-gated media proxy (the same `src`
- * shape the serializer's `uploadInlineImage` reads, see serialize.ts:262).
+ * and bare URLs are auto-linked. Verified direct-to-Circle media (photos
+ * as `image` nodes, a video as an `embed` node) is appended in the order given.
  */
 
 import type { NovelDoc, TiptapNode } from "@repo/payments/lib/circle";
+
+import type { MediaTokenPayload } from "./media-token";
 
 const URL_RE = /https?:\/\/\S+/g;
 
@@ -46,7 +47,7 @@ function groupToNodes(group: string): TiptapNode[] {
 	return nodes;
 }
 
-export function buildPostDoc(p: { body: string; imageKey?: string }): NovelDoc {
+export function buildPostDoc(p: { body: string; media?: MediaTokenPayload[] }): NovelDoc {
 	const normalizedBody = p.body.replace(/\r\n?/g, "\n");
 	const groups = normalizedBody
 		.split(/\n{2,}/)
@@ -58,8 +59,16 @@ export function buildPostDoc(p: { body: string; imageKey?: string }): NovelDoc {
 		content: groupToNodes(group),
 	}));
 
-	if (p.imageKey) {
-		content.push({ type: "image", attrs: { src: `/image-proxy/media/${p.imageKey}` } });
+	// Direct-to-Circle media (S15-01): already uploaded, so the serializer passes these through.
+	for (const m of p.media ?? []) {
+		content.push(
+			m.kind === "image"
+				? { type: "image", attrs: { signedId: m.signedId, url: m.cdnUrl, contentType: m.contentType } }
+				: {
+						type: "embed",
+						attrs: { signedId: m.signedId, attachableSgid: m.attachableSgid, url: m.cdnUrl, contentType: m.contentType },
+					},
+		);
 	}
 
 	return { type: "doc", content };

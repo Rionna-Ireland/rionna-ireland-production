@@ -259,6 +259,25 @@ async function uploadInlineImage(
 	node: TiptapNode,
 	deps: SerializeDeps,
 ): Promise<InlineImageResult> {
+	// Already uploaded straight to Circle (S15-01): pass through, no fetch/upload.
+	const preSignedId = strAttr(node.attrs, "signedId", "signed_id");
+	if (preSignedId) {
+		const url = strAttr(node.attrs, "url");
+		return {
+			ok: true,
+			node: {
+				type: IMAGE_NODE_TYPE,
+				attrs: {
+					signed_id: preSignedId,
+					content_type: strAttr(node.attrs, "contentType", "content_type") ?? "image/jpeg",
+					width: "100%",
+					alignment: "center",
+					...(url ? { url } : {}),
+				},
+			},
+		};
+	}
+
 	const src = node.attrs?.src;
 	if (typeof src !== "string") {
 		return { ok: true, node: null };
