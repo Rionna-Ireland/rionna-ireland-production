@@ -93,6 +93,20 @@ describe("updateWebsite", () => {
 		expect(mockUpdate).toHaveBeenCalled();
 	});
 
+	it.each([
+		["traversal", "https://cdn/x/org1/website/../../org2/brand/x.png"],
+		["encoded traversal", "https://cdn/x/org1/website/%2e%2E/org2/x.png"],
+		["query string", "https://cdn/x/org1/website/hero/a.jpg?x=1"],
+		["fragment", "https://cdn/x/org1/website/hero/a.jpg#x"],
+	])("rejects %s in a media URL", async (_n, imageUrl) => {
+		mockFindUnique.mockResolvedValue({ metadata: null });
+		await expect(call(updateWebsite, input({ hero: { imageUrl } }), ctx)).rejects.toMatchObject(
+			{
+				code: "BAD_REQUEST",
+			},
+		);
+	});
+
 	it("rejects 5 stats", async () => {
 		mockFindUnique.mockResolvedValue({ metadata: null });
 		const stats = Array.from({ length: 5 }, () => ({ value: "1", label: "x" }));

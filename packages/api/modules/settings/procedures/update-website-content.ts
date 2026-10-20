@@ -56,6 +56,17 @@ const websiteSchema = z.object({
 	joinMode: z.enum(["waitlist", "signup"]).optional(),
 });
 
+// Raw prefix match plus no traversal/encoded dots/query/fragment, and the normalised
+// href must still sit under the prefix (catches backslashes and other URL quirks).
+function isUnderPrefix(u: string, prefix: string): boolean {
+	if (!u.startsWith(prefix) || /\.\.|%2e|[?#\\]/i.test(u.slice(prefix.length))) return false;
+	try {
+		return new URL(u).href.startsWith(prefix);
+	} catch {
+		return false;
+	}
+}
+
 export const updateWebsite = adminProcedure
 	.route({
 		method: "POST",
@@ -72,7 +83,7 @@ export const updateWebsite = adminProcedure
 			website.about?.photoUrl,
 			...(website.about?.founders ?? []).map((f) => f.photoUrl),
 		];
-		if (urls.some((u) => u && !u.startsWith(prefix))) {
+		if (urls.some((u) => u && !isUnderPrefix(u, prefix))) {
 			throw new ORPCError("BAD_REQUEST", { message: "Invalid media URL" });
 		}
 
