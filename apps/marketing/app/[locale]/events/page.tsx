@@ -1,9 +1,8 @@
-import { Button } from "@repo/ui/components/button";
 import { JoinCtaLink } from "@shared/components/JoinCtaLink";
+import { v2Button } from "@shared/components/ui/v2";
 import { getClubEvents } from "@shared/lib/club";
 import { getSiteJoinCta } from "@shared/lib/website";
 import { redirectIfWireframeMode } from "@shared/lib/wireframe-mode";
-import { ArrowRightIcon } from "lucide-react";
 import { getLocale, getTranslations, setRequestLocale } from "next-intl/server";
 
 export const revalidate = 300;
@@ -30,68 +29,60 @@ export default async function EventsListPage(props: { params: Promise<{ locale: 
 	const joinCta = await getSiteJoinCta();
 
 	return (
-		<div className="py-16 md:py-24 container">
-			<div className="max-w-3xl mb-16">
-				<span className="text-xs font-mono tracking-[0.22em] text-foreground/70 uppercase">
-					{t("eyebrow")}
-				</span>
-				<h1 className="mt-4 font-medium text-5xl md:text-6xl lg:text-7xl leading-tight font-display">
-					{t("title")}
-				</h1>
-				<p className="mt-4 text-lg text-foreground/70">{t("description")}</p>
-			</div>
-
-			{items.length === 0 ? (
-				<p className="text-foreground/60">{t("empty")}</p>
-			) : (
-				<div className="gap-6 md:grid-cols-2 lg:grid-cols-3 grid">
-					{items.map((event) => (
-						<div
-							key={event.id}
-							className="group block overflow-hidden rounded-3xl border bg-card"
-						>
-							<div className="relative aspect-[16/10] overflow-hidden bg-[#DAEDF3]">
-								{event.coverImageUrl ? (
-									// biome-ignore lint/a11y/useAltText: name as alt
-									<img
-										src={event.coverImageUrl}
-										alt={event.name}
-										className="inset-0 absolute h-full w-full object-cover"
-									/>
-								) : (
-									<div className="inset-0 text-6xl absolute flex items-center justify-center font-display text-foreground/10">
-										R
-									</div>
-								)}
-							</div>
-							<div className="p-6">
-								<span className="font-mono text-[10px] tracking-[0.2em] text-foreground/60 uppercase">
-									{event.startsAt
-										? new Intl.DateTimeFormat(activeLocale, {
-												dateStyle: "full",
-												timeStyle: "short",
-											}).format(new Date(event.startsAt))
-										: ""}
-								</span>
-								<h2 className="mt-2 font-medium text-2xl leading-tight font-display">
-									{event.name}
-								</h2>
-								<p className="mt-2 text-sm text-foreground/60">
-									{t("membersOnly")}
-								</p>
-							</div>
-						</div>
-					))}
+		<div className="bg-page">
+			<div className="gap-10 py-14 md:py-[56px] container flex flex-col">
+				<div className="max-w-3xl gap-3 flex flex-col">
+					<span className="type-label text-ink-variant">{t("eyebrow")}</span>
+					<h1 className="type-display-xl text-balance">{t("title")}</h1>
+					<p className="text-lg text-ink-variant leading-relaxed">{t("description")}</p>
 				</div>
-			)}
 
-			<div className="mt-16">
-				<Button size="lg" variant="primary" asChild>
-					<JoinCtaLink cta={joinCta}>
+				{items.length === 0 ? (
+					<p className="text-ink-variant">{t("empty")}</p>
+				) : (
+					<div className="gap-6 md:grid-cols-2 lg:grid-cols-3 grid">
+						{items.map((event) => (
+							<div
+								key={event.id}
+								className="bg-ice-light flex flex-col overflow-hidden rounded-lg"
+							>
+								<div className="bg-ice relative aspect-[16/10] overflow-hidden">
+									{event.coverImageUrl ? (
+										// biome-ignore lint/a11y/useAltText: name as alt
+										<img
+											src={event.coverImageUrl}
+											alt={event.name}
+											className="inset-0 absolute h-full w-full object-cover"
+										/>
+									) : (
+										<div className="inset-0 text-6xl text-ink/10 absolute flex items-center justify-center font-display">
+											R
+										</div>
+									)}
+								</div>
+								<div className="p-6 gap-2 flex flex-col">
+									<span className="type-label text-ink-variant">
+										{event.startsAt
+											? new Intl.DateTimeFormat(activeLocale, {
+													dateStyle: "full",
+													timeStyle: "short",
+												}).format(new Date(event.startsAt))
+											: ""}
+									</span>
+									<h2 className="type-display-md">{event.name}</h2>
+									<p className="text-sm text-ink-variant">{t("membersOnly")}</p>
+								</div>
+							</div>
+						))}
+					</div>
+				)}
+
+				<div className="gap-6 p-6 bg-ice-light flex flex-wrap items-center justify-between rounded-lg">
+					<span className="type-display-md">{t("rsvpNote")}</span>
+					<JoinCtaLink cta={joinCta} className={v2Button({ variant: "primary" })}>
 						{joinCta.labelKey ? tRoot(joinCta.labelKey) : t("joinCta")}
-						<ArrowRightIcon className="ml-2 size-4" />
 					</JoinCtaLink>
-				</Button>
+				</div>
 			</div>
 		</div>
 	);

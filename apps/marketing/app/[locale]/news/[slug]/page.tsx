@@ -62,36 +62,32 @@ export default async function NewsDetailPage(props: { params: Promise<Params> })
 	const encodedUrl = encodeURIComponent(shareUrl);
 	const encodedTitle = encodeURIComponent(post.title);
 
+	const date = post.publishedAt
+		? new Intl.DateTimeFormat(activeLocale, {
+				day: "numeric",
+				month: "long",
+				year: "numeric",
+			}).format(new Date(post.publishedAt))
+		: "";
+
 	return (
-		<article className="py-16 md:py-24">
-			<div className="container max-w-3xl">
+		<article className="bg-page py-14 md:py-[56px]">
+			<div className="max-w-3xl container">
 				<LocaleLink
 					href="/news"
-					className="font-mono text-xs tracking-[0.2em] uppercase text-foreground/60 hover:text-foreground"
+					className="text-sm text-ink-variant hover:text-ink hover:no-underline"
 				>
 					&larr; {t("back")}
 				</LocaleLink>
 
-				<header className="mt-8">
-					<span className="font-mono text-[10px] tracking-[0.2em] uppercase text-foreground/60">
-						{post.publishedAt
-							? new Intl.DateTimeFormat(activeLocale, {
-									day: "2-digit",
-									month: "long",
-									year: "numeric",
-								}).format(new Date(post.publishedAt))
-							: ""}
-					</span>
-					<h1 className="mt-3 font-display font-medium text-4xl md:text-5xl lg:text-6xl leading-tight text-balance">
-						{post.title}
-					</h1>
+				<header className="mt-8 gap-4 flex flex-col">
+					<span className="type-label text-ink-variant">{date}</span>
+					<h1 className="type-display-xl text-balance">{post.title}</h1>
 					{post.subtitle && (
-						<p className="mt-4 text-xl text-foreground/70 leading-relaxed">
-							{post.subtitle}
-						</p>
+						<p className="text-xl text-ink-variant leading-relaxed">{post.subtitle}</p>
 					)}
 					{post.author?.name && (
-						<p className="mt-6 font-mono text-xs tracking-[0.2em] uppercase text-foreground/60">
+						<p className="type-label text-ink-muted">
 							{t("byline", { name: post.author.name })}
 						</p>
 					)}
@@ -99,34 +95,41 @@ export default async function NewsDetailPage(props: { params: Promise<Params> })
 			</div>
 
 			{post.featuredImageUrl && (
-				<div className="container max-w-5xl mt-12">
-					<div className="aspect-[16/9] relative overflow-hidden rounded-3xl bg-[#DAEDF3]">
+				<div className="max-w-5xl mt-10 container">
+					<div className="bg-ice relative aspect-[16/9] overflow-hidden rounded-lg">
 						{/* biome-ignore lint/a11y/useAltText: title as alt */}
 						<img
 							src={post.featuredImageUrl}
 							alt={post.title}
-							className="absolute inset-0 h-full w-full object-cover"
+							className="inset-0 absolute h-full w-full object-cover"
 						/>
 					</div>
 				</div>
 			)}
 
-			<div className="container max-w-3xl mt-12">
+			<div className="max-w-3xl mt-10 container">
 				<div
-					className="prose prose-neutral dark:prose-invert max-w-none prose-headings:font-display prose-headings:font-medium"
+					className={[
+						"prose prose-lg max-w-none text-ink prose-p:text-ink prose-p:leading-relaxed prose-li:text-ink",
+						"prose-headings:font-display prose-headings:font-medium prose-headings:text-ink",
+						"prose-a:text-plum prose-strong:text-ink",
+						"prose-blockquote:not-italic prose-blockquote:border-l-[3px] prose-blockquote:border-plum prose-blockquote:py-1.5 prose-blockquote:pl-7 prose-blockquote:font-normal",
+						"prose-blockquote:font-display prose-blockquote:font-light prose-blockquote:italic prose-blockquote:text-[34px] prose-blockquote:leading-[1.22] prose-blockquote:text-plum",
+						"[&_blockquote_p]:text-plum [&_blockquote_p]:before:content-none [&_blockquote_p]:after:content-none",
+					].join(" ")}
 					// biome-ignore lint/security/noDangerouslySetInnerHtml: sanitised by Novel on save
 					dangerouslySetInnerHTML={{ __html: post.contentHtml }}
 				/>
 
-				<div className="mt-16 pt-8 border-t gap-4 flex items-center flex-wrap">
-					<span className="font-mono text-xs tracking-[0.2em] uppercase text-foreground/60">
-						{t("share")}
-					</span>
+				<p className="mt-10 text-lg text-ink-variant leading-relaxed">{t("appCta")}</p>
+
+				<div className="mt-10 pt-6 border-outline gap-4 flex flex-wrap items-center border-t">
+					<span className="type-label text-ink-variant">{t("share")}</span>
 					<a
 						href={`https://twitter.com/intent/tweet?url=${encodedUrl}&text=${encodedTitle}`}
 						target="_blank"
 						rel="noreferrer"
-						className="text-sm underline underline-offset-4"
+						className="text-sm text-plum underline underline-offset-4"
 					>
 						Twitter
 					</a>
@@ -134,7 +137,7 @@ export default async function NewsDetailPage(props: { params: Promise<Params> })
 						href={`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`}
 						target="_blank"
 						rel="noreferrer"
-						className="text-sm underline underline-offset-4"
+						className="text-sm text-plum underline underline-offset-4"
 					>
 						Facebook
 					</a>

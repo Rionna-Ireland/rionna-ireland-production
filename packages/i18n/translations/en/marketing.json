@@ -95,7 +95,8 @@
 		"empty": "No posts yet — check back soon.",
 		"back": "Back to news",
 		"byline": "By {name}",
-		"share": "Share"
+		"share": "Share",
+		"appCta": "Members can follow the full build-up, and RSVP for race days, in the Rionna app."
 	},
 	"events": {
 		"eyebrow": "Club calendar",
@@ -103,7 +104,8 @@
 		"description": "Race days, stable visits and member gatherings — see what's coming up at Rionna.",
 		"empty": "No upcoming events right now — check back soon.",
 		"membersOnly": "Members' event — join to see the details.",
-		"joinCta": "Join to RSVP"
+		"joinCta": "Join to RSVP",
+		"rsvpNote": "Members RSVP in the app."
 	},
 	"home": {
 		"hero": {
