@@ -7,9 +7,8 @@ import { ConsentBanner } from "@shared/components/ConsentBanner";
 import { ConsentProvider } from "@shared/components/ConsentProvider";
 import { Footer } from "@shared/components/Footer";
 import { NavBar } from "@shared/components/NavBar";
-import { getJoinCta } from "@shared/lib/join-url";
 import { isWaitlistOnly } from "@shared/lib/waitlist-mode";
-import { getWebsiteContent } from "@shared/lib/website";
+import { getSiteJoinCta } from "@shared/lib/website";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages, setRequestLocale } from "next-intl/server";
 import { ThemeProvider } from "next-themes";
@@ -69,9 +68,7 @@ export default async function MarketingLayout({
 	// S12-09 / D39: one-page waitlist site until launch, so no site chrome.
 	const waitlistOnly = isWaitlistOnly();
 	// Server-side so the client NavBar gets a plain serialisable CTA.
-	const joinCta = waitlistOnly
-		? null
-		: getJoinCta({ joinMode: (await getWebsiteContent()).content.joinMode });
+	const joinCta = waitlistOnly ? null : getSiteJoinCta();
 
 	return (
 		<html
