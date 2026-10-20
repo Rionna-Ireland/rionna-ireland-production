@@ -68,7 +68,7 @@ export default async function MarketingLayout({
 	// S12-09 / D39: one-page waitlist site until launch, so no site chrome.
 	const waitlistOnly = isWaitlistOnly();
 	// Server-side so the client NavBar gets a plain serialisable CTA.
-	const joinCta = waitlistOnly ? null : getSiteJoinCta();
+	const joinCta = waitlistOnly ? null : await getSiteJoinCta();
 
 	return (
 		<html

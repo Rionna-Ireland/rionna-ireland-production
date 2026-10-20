@@ -24,7 +24,7 @@ export async function WireframeMembership() {
 	const t = await getTranslations("membership.wireframe");
 
 	const tRoot = await getTranslations();
-	const joinCta = getSiteJoinCta();
+	const joinCta = await getSiteJoinCta();
 
 	return (
 		<div className="py-16 md:py-24 container">

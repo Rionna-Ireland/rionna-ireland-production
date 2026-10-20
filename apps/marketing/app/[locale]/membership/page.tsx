@@ -43,7 +43,7 @@ export default async function MembershipPage(props: { params: Promise<{ locale: 
 	const t = await getTranslations({ locale, namespace: "membership" });
 
 	const tRoot = await getTranslations({ locale });
-	const joinCta = getSiteJoinCta();
+	const joinCta = await getSiteJoinCta();
 
 	return (
 		<div className="py-16 md:py-24 container">

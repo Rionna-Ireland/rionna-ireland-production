@@ -27,7 +27,7 @@ export default async function EventsListPage(props: { params: Promise<{ locale: 
 	const { items } = await getClubEvents({ limit: 24 });
 
 	const tRoot = await getTranslations({ locale });
-	const joinCta = getSiteJoinCta();
+	const joinCta = await getSiteJoinCta();
 
 	return (
 		<div className="py-16 md:py-24 container">
