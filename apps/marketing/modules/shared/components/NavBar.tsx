@@ -35,6 +35,9 @@ export function NavBar({ joinCta }: { joinCta: JoinCta }) {
 	const isMenuItemActive = (href: string) =>
 		!href.includes("#") && localePathname.startsWith(href);
 
+	// Signup mode lands on the Join page (/membership), whose own CTA goes to SaaS signup.
+	const navJoinCta: JoinCta =
+		joinCta.mode === "signup" ? { ...joinCta, href: "/membership", external: false } : joinCta;
 	const joinLabel = joinCta.labelKey ? t(joinCta.labelKey) : t("common.menu.join");
 
 	return (
@@ -75,7 +78,7 @@ export function NavBar({ joinCta }: { joinCta: JoinCta }) {
 								{t("common.menu.login")}
 							</NextLink>
 						)}
-						<JoinCtaLink cta={joinCta} className={v2Button({ variant: "primary" })}>
+						<JoinCtaLink cta={navJoinCta} className={v2Button({ variant: "primary" })}>
 							{joinLabel}
 						</JoinCtaLink>
 					</div>
@@ -118,7 +121,7 @@ export function NavBar({ joinCta }: { joinCta: JoinCta }) {
 									</NextLink>
 								)}
 								<JoinCtaLink
-									cta={joinCta}
+									cta={navJoinCta}
 									onClick={() => setMobileMenuOpen(false)}
 									className={cn(v2Button({ variant: "primary" }), "mt-4 w-full")}
 								>

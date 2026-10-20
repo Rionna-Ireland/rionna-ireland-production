@@ -39,7 +39,9 @@
 				"description": "Parade ring nerves, the roar in the stands, a winner in the yard at dawn. Ownership is the excuse — the shared moments are the point."
 			}
 		},
-		"cta": "Become a member"
+		"cta": "Become a member",
+		"storyLabel": "Our story",
+		"peopleLabel": "The people"
 	},
 	"membership": {
 		"eyebrow": "Membership",

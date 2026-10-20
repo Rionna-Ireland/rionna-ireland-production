@@ -1,14 +1,9 @@
 import { config } from "@config";
 import { WireframeMembership } from "@home/components/WireframeMembership";
-import {
-	Accordion,
-	AccordionContent,
-	AccordionItem,
-	AccordionTrigger,
-} from "@repo/ui/components/accordion";
-import { Button } from "@repo/ui/components/button";
 import { JoinCtaLink } from "@shared/components/JoinCtaLink";
-import { getSiteJoinCta } from "@shared/lib/website";
+import { MembershipFaq, pickItems } from "@shared/components/MembershipFaq";
+import { v2Button } from "@shared/components/ui/v2";
+import { getSiteJoinCta, getWebsiteContent } from "@shared/lib/website";
 import { ArrowRightIcon, CheckIcon } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
@@ -40,79 +35,67 @@ export default async function MembershipPage(props: { params: Promise<{ locale: 
 		return <WireframeMembership />;
 	}
 
-	const t = await getTranslations({ locale, namespace: "membership" });
+	const [t, tRoot, joinCta, { content }] = await Promise.all([
+		getTranslations({ locale, namespace: "membership" }),
+		getTranslations({ locale }),
+		getSiteJoinCta(),
+		getWebsiteContent(),
+	]);
+	const { membership } = content;
 
-	const tRoot = await getTranslations({ locale });
-	const joinCta = await getSiteJoinCta();
+	const inclusions = pickItems(membership.inclusions, () =>
+		FEATURE_KEYS.map((key) => t(`plan.features.${key}`)),
+	);
+	const faq = pickItems(membership.faq, () =>
+		FAQ_KEYS.map((key) => ({
+			question: t(`faq.items.${key}.question`),
+			answer: t(`faq.items.${key}.answer`),
+		})),
+	);
 
 	return (
-		<div className="py-16 md:py-24 container">
-			<div className="max-w-3xl">
-				<span className="text-xs font-mono tracking-[0.22em] text-foreground/70 uppercase">
-					{t("eyebrow")}
-				</span>
-				<h1 className="mt-4 font-medium text-5xl md:text-6xl lg:text-7xl leading-tight font-display">
-					{t("title")}
-				</h1>
-				<p className="mt-6 text-lg md:text-xl leading-relaxed text-foreground/70">
-					{t("description")}
-				</p>
-			</div>
+		<div className="bg-page">
+			<section className="gap-3 py-12 container flex flex-col items-center text-center">
+				<span className="type-label text-plum">{t("eyebrow")}</span>
+				<h1 className="type-display-lg text-balance">{t("title")}</h1>
+				<p className="max-w-xl text-lg text-ink-variant">{t("description")}</p>
+			</section>
 
-			<div className="mt-16 gap-10 lg:grid-cols-[1.2fr_1fr] grid">
-				<div className="p-8 md:p-10 rounded-3xl bg-[#EEEADF] dark:bg-[#172741]">
-					<h2 className="font-medium text-3xl md:text-4xl font-display">
-						{t("plan.title")}
-					</h2>
-					<div className="mt-4 gap-2 flex items-baseline">
-						<span className="font-medium text-5xl md:text-6xl font-display">
-							{t("plan.price")}
+			<section className="gap-10 pb-16 lg:grid-cols-[1.15fr_1fr] container grid">
+				<div className="bg-welcome-navy p-8 md:p-10 gap-4 text-white flex flex-col rounded-lg">
+					<span className="type-label text-lilac">{t("plan.title")}</span>
+					<div className="gap-2 flex flex-wrap items-baseline">
+						<span className="type-display-lg">
+							{membership.price ?? t("plan.price")}
 						</span>
-						<span className="text-xs font-mono tracking-[0.2em] text-foreground/60 uppercase">
-							{t("plan.interval")}
+						<span className="type-label text-white/70">
+							{membership.interval ?? t("plan.interval")}
 						</span>
 					</div>
-					<p className="mt-3 text-foreground/70">{t("plan.priceNote")}</p>
-
-					<ul className="mt-8 gap-3 grid">
-						{FEATURE_KEYS.map((key) => (
-							<li key={key} className="gap-3 flex items-start">
-								<CheckIcon className="mt-0.5 size-5 shrink-0 text-foreground" />
-								<span className="text-foreground/90">
-									{t(`plan.features.${key}`)}
-								</span>
+					<p className="text-sm text-white/70">
+						{membership.note ?? t("plan.priceNote")}
+					</p>
+					<ul className="mt-4 gap-3 grid">
+						{inclusions.map((item, i) => (
+							<li key={`${item}-${i}`} className="gap-3 flex items-start">
+								<CheckIcon className="mt-0.5 size-5 text-lilac shrink-0" />
+								<span className="text-white/90">{item}</span>
 							</li>
 						))}
 					</ul>
-
-					<div className="mt-10">
-						<Button size="lg" variant="primary" asChild className="sm:w-auto w-full">
-							<JoinCtaLink cta={joinCta}>
-								{joinCta.labelKey ? tRoot(joinCta.labelKey) : t("plan.cta")}
-								<ArrowRightIcon className="ml-2 size-4" />
-							</JoinCtaLink>
-						</Button>
+					<div className="mt-6">
+						<JoinCtaLink cta={joinCta} className={v2Button({ variant: "onDark" })}>
+							{joinCta.labelKey ? tRoot(joinCta.labelKey) : t("plan.cta")}
+							<ArrowRightIcon className="ml-2 size-4" />
+						</JoinCtaLink>
 					</div>
 				</div>
 
 				<div>
-					<h2 className="font-medium text-3xl md:text-4xl font-display">
-						{t("faq.title")}
-					</h2>
-					<Accordion type="single" collapsible className="mt-6">
-						{FAQ_KEYS.map((key) => (
-							<AccordionItem key={key} value={key}>
-								<AccordionTrigger className="font-medium text-left">
-									{t(`faq.items.${key}.question`)}
-								</AccordionTrigger>
-								<AccordionContent className="text-foreground/70">
-									{t(`faq.items.${key}.answer`)}
-								</AccordionContent>
-							</AccordionItem>
-						))}
-					</Accordion>
+					<h2 className="type-display-md">{t("faq.title")}</h2>
+					<MembershipFaq items={faq} />
 				</div>
-			</div>
+			</section>
 		</div>
 	);
 }

@@ -1,8 +1,12 @@
 import { LocaleLink } from "@i18n/routing";
-import { Button } from "@repo/ui/components/button";
+import { FoundersSection } from "@shared/components/FoundersSection";
+import { MediaPlaceholder } from "@shared/components/MediaPlaceholder";
+import { v2Button } from "@shared/components/ui/v2";
 import { getClubOrganization } from "@shared/lib/club";
+import { getWebsiteContent } from "@shared/lib/website";
 import { redirectIfWireframeMode } from "@shared/lib/wireframe-mode";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import Image from "next/image";
 
 export async function generateMetadata(props: { params: Promise<{ locale: string }> }) {
 	const { locale } = await props.params;
@@ -13,49 +17,67 @@ export async function generateMetadata(props: { params: Promise<{ locale: string
 	};
 }
 
+const PILLARS = [
+	{ key: "openGates", tile: "bg-ice-light", label: "text-ink-variant", text: "text-ink" },
+	{ key: "leadWithCare", tile: "bg-lilac-light", label: "text-plum", text: "text-ink" },
+	{ key: "findJoy", tile: "bg-sage", label: "text-forest", text: "text-forest" },
+] as const;
+
 export default async function AboutPage(props: { params: Promise<{ locale: string }> }) {
 	const { locale } = await props.params;
 	setRequestLocale(locale);
 	redirectIfWireframeMode(locale);
 
 	const t = await getTranslations({ locale, namespace: "about" });
-	const club = await getClubOrganization();
+	const [club, { content }] = await Promise.all([getClubOrganization(), getWebsiteContent()]);
+	const { about } = content;
 
 	const aboutText = club.metadata.contact?.aboutText ?? t("fallbackAbout");
 
 	return (
-		<div className="container py-16 md:py-24">
-			<div className="max-w-3xl">
-				<span className="font-mono text-xs tracking-[0.22em] uppercase text-foreground/70">
-					{t("eyebrow")}
-				</span>
-				<h1 className="mt-4 font-display font-medium text-5xl md:text-6xl lg:text-7xl leading-tight">
-					{t("title")}
-				</h1>
-				<p className="mt-6 text-lg md:text-xl text-foreground/70 leading-relaxed whitespace-pre-line">
-					{aboutText}
-				</p>
-			</div>
+		<div className="bg-page">
+			<section className="gap-10 py-14 lg:grid-cols-[1.1fr_1fr] lg:items-center lg:py-[56px] container grid">
+				<div className="flex flex-col gap-[18px]">
+					<span className="type-label text-plum">{t("storyLabel")}</span>
+					<h1 className="type-display-xl text-balance">
+						{about.storyTitle ?? t("title")}
+					</h1>
+					<p className="text-lg text-ink-variant leading-relaxed whitespace-pre-line">
+						{aboutText}
+					</p>
+				</div>
+				<div className="md:h-[320px] relative h-[240px] overflow-hidden rounded-lg">
+					{about.photoUrl ? (
+						<Image
+							unoptimized
+							src={about.photoUrl}
+							alt=""
+							fill
+							sizes="(min-width: 1024px) 45vw, 100vw"
+							className="object-cover"
+						/>
+					) : (
+						<MediaPlaceholder tone="lilac" className="h-full" />
+					)}
+				</div>
+			</section>
 
-			<div className="mt-16 gap-6 md:grid-cols-3 grid">
-				{["openGates", "leadWithCare", "findJoy"].map((key) => (
-					<div key={key} className="rounded-3xl border p-8 bg-card">
-						<span className="font-mono text-[10px] tracking-[0.2em] uppercase text-foreground/60">
-							{t(`values.${key}.eyebrow`)}
-						</span>
-						<h3 className="mt-3 font-display font-medium text-2xl">
-							{t(`values.${key}.title`)}
-						</h3>
-						<p className="mt-3 text-foreground/70">{t(`values.${key}.description`)}</p>
+			<FoundersSection founders={about.founders} label={t("peopleLabel")} />
+
+			<section className="gap-6 py-10 md:grid-cols-3 container grid">
+				{PILLARS.map(({ key, tile, label, text }) => (
+					<div key={key} className={`gap-3 p-8 flex flex-col rounded-lg ${tile}`}>
+						<span className={`type-label ${label}`}>{t(`values.${key}.eyebrow`)}</span>
+						<p className={`text-lg ${text}`}>{t(`values.${key}.description`)}</p>
 					</div>
 				))}
-			</div>
+			</section>
 
-			<div className="mt-16">
-				<Button size="lg" variant="primary" asChild>
-					<LocaleLink href="/membership">{t("cta")}</LocaleLink>
-				</Button>
-			</div>
+			<section className="py-14 container">
+				<LocaleLink href="/membership" className={v2Button({ variant: "primary" })}>
+					{t("cta")}
+				</LocaleLink>
+			</section>
 		</div>
 	);
 }
