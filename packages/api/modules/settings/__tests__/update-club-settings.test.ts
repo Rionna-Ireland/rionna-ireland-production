@@ -118,3 +118,14 @@ describe("updateClubSettings — autoModeration (S12-08)", () => {
 		expect(written.features).toEqual({ polls: false });
 	});
 });
+
+describe("updateClubSettings — website (S16-01)", () => {
+	it("preserves website key", async () => {
+		mockParseOrgMetadata.mockReturnValue({ website: { hero: { title: "T" } } });
+
+		await call(updateClubSettings, { organizationId: "org1", contact: { phone: "1" } }, ctx);
+
+		const written = JSON.parse(mockUpdate.mock.calls[0][0].data.metadata);
+		expect(written.website).toEqual({ hero: { title: "T" } });
+	});
+});
