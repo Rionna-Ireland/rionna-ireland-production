@@ -8,7 +8,7 @@ import Image from "next/image";
 import { HeroMedia } from "./HeroMedia";
 
 export async function HeroSection() {
-	const [t, tRoot, { content }, joinCta] = await Promise.all([
+	const [t, tRoot, { content, featuredHorses }, joinCta] = await Promise.all([
 		getTranslations("home.hero"),
 		getTranslations(),
 		getWebsiteContent(),
@@ -29,9 +29,11 @@ export async function HeroSection() {
 						<JoinCtaLink cta={joinCta} className={v2Button({ variant: "onDark" })}>
 							{joinCta.labelKey ? tRoot(joinCta.labelKey) : t("joinCta")}
 						</JoinCtaLink>
-						<a href="#horses" className={v2Button({ variant: "ghostOnDark" })}>
-							{t("horsesCta")}
-						</a>
+						{featuredHorses.length > 0 && (
+							<a href="#horses" className={v2Button({ variant: "ghostOnDark" })}>
+								{t("horsesCta")}
+							</a>
+						)}
 					</div>
 				</div>
 				<div className="md:h-[420px] relative h-[280px] overflow-hidden rounded-lg">
@@ -39,6 +41,7 @@ export async function HeroSection() {
 						<HeroMedia imageUrl={hero.imageUrl} videoUrl={hero.videoUrl} />
 					) : hero.imageUrl ? (
 						<Image
+							unoptimized
 							src={hero.imageUrl}
 							alt=""
 							fill
@@ -47,7 +50,7 @@ export async function HeroSection() {
 							className="object-cover"
 						/>
 					) : (
-						<MediaPlaceholder tone="ice" tag="Hero photography" className="h-full" />
+						<MediaPlaceholder tone="ice" className="h-full" />
 					)}
 				</div>
 			</div>

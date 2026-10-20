@@ -1,5 +1,6 @@
 "use client";
 
+import { MediaPlaceholder } from "@shared/components/MediaPlaceholder";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 
@@ -12,8 +13,9 @@ export function HeroMedia({ imageUrl, videoUrl }: { imageUrl?: string; videoUrl:
 
 	return (
 		<>
-			{imageUrl && (
+			{imageUrl ? (
 				<Image
+					unoptimized
 					src={imageUrl}
 					alt=""
 					fill
@@ -21,6 +23,8 @@ export function HeroMedia({ imageUrl, videoUrl }: { imageUrl?: string; videoUrl:
 					sizes="(min-width: 1024px) 50vw, 100vw"
 					className="object-cover"
 				/>
+			) : (
+				<MediaPlaceholder tone="ice" className="inset-0 absolute h-full" />
 			)}
 			{motionOk && (
 				<video

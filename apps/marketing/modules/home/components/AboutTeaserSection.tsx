@@ -8,7 +8,8 @@ export async function AboutTeaserSection() {
 		getTranslations("about"),
 		getClubOrganization().catch(() => null),
 	]);
-	const text = org?.metadata?.contact?.aboutText?.trim() || tAbout("fallbackAbout");
+	const aboutText = org?.metadata?.contact?.aboutText;
+	const text = (typeof aboutText === "string" && aboutText.trim()) || tAbout("fallbackAbout");
 	const firstParagraph = text.split(/\n\s*\n/)[0] ?? text;
 
 	return (
