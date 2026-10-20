@@ -162,7 +162,9 @@
 	"common": {
 		"footer": {
 			"tagline": "A modern shared racehorse ownership club. Open the gates. Own the moments.",
-			"explore": "Explore",
+			"club": "Club",
+			"membership": "Membership",
+			"ourHorses": "Our horses",
 			"legal": "Legal",
 			"privacyPolicy": "Privacy policy",
 			"termsAndConditions": "Terms and conditions",
@@ -171,6 +173,7 @@
 		},
 		"menu": {
 			"about": "About",
+			"horses": "Horses",
 			"membership": "Membership",
 			"news": "News",
 			"events": "Events",

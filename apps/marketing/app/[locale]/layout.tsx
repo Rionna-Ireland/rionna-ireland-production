@@ -7,6 +7,7 @@ import { ConsentBanner } from "@shared/components/ConsentBanner";
 import { ConsentProvider } from "@shared/components/ConsentProvider";
 import { Footer } from "@shared/components/Footer";
 import { NavBar } from "@shared/components/NavBar";
+import { getClubOrganization } from "@shared/lib/club";
 import { isWaitlistOnly } from "@shared/lib/waitlist-mode";
 import { getSiteJoinCta } from "@shared/lib/website";
 import { NextIntlClientProvider } from "next-intl";
@@ -19,11 +20,8 @@ import type { PropsWithChildren } from "react";
 
 const ppEiko = localFont({
 	src: [
-		{ path: "../../public/fonts/PPEiko-Thin.otf", weight: "100", style: "normal" },
 		{ path: "../../public/fonts/PPEiko-LightItalic.otf", weight: "300", style: "italic" },
 		{ path: "../../public/fonts/PPEiko-Medium.otf", weight: "500", style: "normal" },
-		{ path: "../../public/fonts/PPEiko-Heavy.otf", weight: "800", style: "normal" },
-		{ path: "../../public/fonts/PPEiko-BlackItalic.otf", weight: "900", style: "italic" },
 	],
 	variable: "--font-display",
 });
@@ -69,6 +67,10 @@ export default async function MarketingLayout({
 	const waitlistOnly = isWaitlistOnly();
 	// Server-side so the client NavBar gets a plain serialisable CTA.
 	const joinCta = waitlistOnly ? null : await getSiteJoinCta();
+	const socialLinks =
+		waitlistOnly || config.wireframeMode
+			? undefined
+			: (await getClubOrganization()).metadata.contact?.socialLinks;
 
 	return (
 		<html
@@ -94,8 +96,8 @@ export default async function MarketingLayout({
 							<ThemeProvider
 								attribute="class"
 								disableTransitionOnChange
-								enableSystem={!config.wireframeMode}
-								forcedTheme={config.wireframeMode ? "light" : undefined}
+								enableSystem={false}
+								forcedTheme="light"
 								defaultTheme={config.defaultTheme}
 								themes={Array.from(config.enabledThemes)}
 							>
@@ -103,7 +105,7 @@ export default async function MarketingLayout({
 
 								<main className="min-h-screen">{children}</main>
 
-								{!waitlistOnly && <Footer />}
+								{!waitlistOnly && <Footer socialLinks={socialLinks} />}
 
 								{!config.wireframeMode && (
 									<>
