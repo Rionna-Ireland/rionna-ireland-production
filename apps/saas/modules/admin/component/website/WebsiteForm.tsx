@@ -473,7 +473,7 @@ export function WebsiteForm() {
 					{field(
 						"about.storyTitle",
 						t("admin.website.about.storyTitle"),
-						undefined,
+						"storyTitle",
 						CAP.storyTitle,
 					)}
 					<Upload

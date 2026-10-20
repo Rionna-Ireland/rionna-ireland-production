@@ -40,6 +40,9 @@ export const updateWebsite = adminProcedure
 		}
 
 		const ids = website.featuredHorseIds ?? [];
+		if (new Set(ids).size !== ids.length) {
+			throw new ORPCError("BAD_REQUEST", { message: "Duplicate featured horse" });
+		}
 		if (ids.length > 0) {
 			const found = await db.horse.findMany({
 				where: { organizationId, id: { in: ids }, publicProfileAt: { not: null } },

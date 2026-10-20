@@ -1,6 +1,6 @@
 import type { OrganizationWebsiteMetadata } from "@repo/database/types";
 
-// Caps mirror packages/api/modules/settings/procedures/update-website-content.ts.
+// Caps mirror packages/api/modules/settings/procedures/website-schema.ts.
 export const MAX_FEATURED = 5;
 export const MAX_STATS = 4;
 export const MAX_INCLUSIONS = 8;
@@ -131,6 +131,6 @@ export function fromWebsite(w: OrganizationWebsiteMetadata | undefined): Website
 			photoUrl: w?.about?.photoUrl ?? "",
 			founders: (w?.about?.founders ?? []).map((f) => ({ ...f, photoUrl: f.photoUrl ?? "" })),
 		},
-		joinMode: w?.joinMode ?? "waitlist",
+		joinMode: w?.joinMode ?? "signup",
 	};
 }

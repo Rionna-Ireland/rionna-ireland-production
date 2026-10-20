@@ -58,6 +58,12 @@ describe("updateWebsite", () => {
 		expect(written.website).toEqual({ hero: { subtitle: "new" } });
 	});
 
+	it("rejects duplicate featured horses", async () => {
+		await expect(
+			call(updateWebsite, input({ featuredHorseIds: ["h1", "h1"] }), ctx),
+		).rejects.toMatchObject({ code: "BAD_REQUEST" });
+	});
+
 	it("rejects a featured horse not public in this org", async () => {
 		mockFindUnique.mockResolvedValue({ metadata: null });
 		mockHorseFindMany.mockResolvedValue([{ id: "h1" }]);

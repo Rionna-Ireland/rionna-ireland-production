@@ -47,7 +47,11 @@ describe("website form helpers", () => {
 		expect(w.hero?.title).toBe("Hello");
 		expect(w.hero?.eyebrow).toBeUndefined();
 		expect(w.stats).toHaveLength(1);
-		expect(w.joinMode).toBe("waitlist");
+		expect(w.joinMode).toBe("signup");
+	});
+
+	it("defaults join mode to signup like the site", () => {
+		expect(fromWebsite(undefined).joinMode).toBe("signup");
 	});
 
 	it("caps stats at 4", () => {

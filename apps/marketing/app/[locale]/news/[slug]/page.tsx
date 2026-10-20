@@ -113,7 +113,7 @@ export default async function NewsDetailPage(props: { params: Promise<Params> })
 						"prose prose-lg max-w-none text-ink prose-p:text-ink prose-p:leading-relaxed prose-li:text-ink",
 						"prose-headings:font-display prose-headings:font-medium prose-headings:text-ink",
 						"prose-a:text-plum prose-strong:text-ink",
-						"prose-blockquote:not-italic prose-blockquote:border-l-[3px] prose-blockquote:border-plum prose-blockquote:py-1.5 prose-blockquote:pl-7 prose-blockquote:font-normal",
+						"prose-blockquote:border-l-[3px] prose-blockquote:border-plum prose-blockquote:py-1.5 prose-blockquote:pl-7",
 						"prose-blockquote:font-display prose-blockquote:font-light prose-blockquote:italic prose-blockquote:text-[34px] prose-blockquote:leading-[1.22] prose-blockquote:text-plum",
 						"[&_blockquote_p]:text-plum [&_blockquote_p]:before:content-none [&_blockquote_p]:after:content-none",
 					].join(" ")}

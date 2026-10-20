@@ -32,7 +32,8 @@ export default async function AboutPage(props: { params: Promise<{ locale: strin
 	const [club, { content }] = await Promise.all([getClubOrganization(), getWebsiteContent()]);
 	const { about } = content;
 
-	const aboutText = club.metadata.contact?.aboutText ?? t("fallbackAbout");
+	const rawAbout = club.metadata.contact?.aboutText;
+	const aboutText = (typeof rawAbout === "string" && rawAbout.trim()) || t("fallbackAbout");
 
 	return (
 		<div className="bg-page">

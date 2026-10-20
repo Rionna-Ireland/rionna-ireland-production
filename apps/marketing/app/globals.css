@@ -181,6 +181,7 @@
 	.theme-estate,
 	.dark .theme-estate {
 		color-scheme: light;
+		--radius: 0.75rem;
 
 		--background: #fcf9f2; /* surface */
 		--foreground: #1c1c18; /* on-surface */
@@ -229,6 +230,7 @@
 	.theme-estate-night,
 	.dark .theme-estate-night {
 		color-scheme: dark;
+		--radius: 0.75rem;
 
 		--background: #57385a;
 		--foreground: #eeeadf;
