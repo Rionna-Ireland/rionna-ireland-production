@@ -22,68 +22,66 @@ export default async function ContactPage(props: { params: Promise<{ locale: str
 	const contact = club.metadata.contact ?? {};
 
 	return (
-		<div className="container py-16 md:py-24">
-			<div className="gap-12 lg:grid-cols-[1fr_1.2fr] grid">
-				<div>
-					<span className="font-mono text-xs tracking-[0.22em] uppercase text-foreground/70">
-						{t("eyebrow")}
-					</span>
-					<h1 className="mt-4 font-display font-medium text-5xl md:text-6xl leading-tight">
-						{t("title")}
-					</h1>
-					<p className="mt-4 text-lg text-foreground/70">{t("description")}</p>
+		<div className="bg-page">
+			<div className="py-14 md:py-[56px] container">
+				<div className="gap-12 lg:grid-cols-[1fr_1.2fr] grid">
+					<div>
+						<span className="type-label text-plum">{t("eyebrow")}</span>
+						<h1 className="mt-4 type-display-xl">{t("title")}</h1>
+						<p className="mt-4 text-lg text-ink-variant">{t("description")}</p>
 
-					<ul className="mt-10 gap-5 grid">
-						{contact.contactEmail && (
-							<li className="flex items-start gap-3">
-								<MailIcon className="mt-1 size-5 text-foreground/70" />
-								<div>
-									<span className="font-mono text-[10px] tracking-[0.2em] uppercase text-foreground/60">
-										{t("emailLabel")}
-									</span>
-									<a
-										className="mt-0.5 block font-medium"
-										href={`mailto:${contact.contactEmail}`}
-									>
-										{contact.contactEmail}
-									</a>
-								</div>
-							</li>
-						)}
-						{contact.phone && (
-							<li className="flex items-start gap-3">
-								<PhoneIcon className="mt-1 size-5 text-foreground/70" />
-								<div>
-									<span className="font-mono text-[10px] tracking-[0.2em] uppercase text-foreground/60">
-										{t("phoneLabel")}
-									</span>
-									<a
-										className="mt-0.5 block font-medium"
-										href={`tel:${contact.phone.replace(/\s+/g, "")}`}
-									>
-										{contact.phone}
-									</a>
-								</div>
-							</li>
-						)}
-						{contact.address && (
-							<li className="flex items-start gap-3">
-								<MapPinIcon className="mt-1 size-5 text-foreground/70" />
-								<div>
-									<span className="font-mono text-[10px] tracking-[0.2em] uppercase text-foreground/60">
-										{t("addressLabel")}
-									</span>
-									<p className="mt-0.5 font-medium whitespace-pre-line">
-										{contact.address}
-									</p>
-								</div>
-							</li>
-						)}
-					</ul>
-				</div>
+						<ul className="mt-10 gap-5 grid">
+							{contact.contactEmail && (
+								<li className="gap-3 flex items-start">
+									<MailIcon className="mt-1 size-5 text-plum" />
+									<div>
+										<span className="type-label text-ink-muted">
+											{t("emailLabel")}
+										</span>
+										<a
+											className="mt-0.5 font-medium block"
+											href={`mailto:${contact.contactEmail}`}
+										>
+											{contact.contactEmail}
+										</a>
+									</div>
+								</li>
+							)}
+							{contact.phone && (
+								<li className="gap-3 flex items-start">
+									<PhoneIcon className="mt-1 size-5 text-plum" />
+									<div>
+										<span className="type-label text-ink-muted">
+											{t("phoneLabel")}
+										</span>
+										<a
+											className="mt-0.5 font-medium block"
+											href={`tel:${contact.phone.replace(/\s+/g, "")}`}
+										>
+											{contact.phone}
+										</a>
+									</div>
+								</li>
+							)}
+							{contact.address && (
+								<li className="gap-3 flex items-start">
+									<MapPinIcon className="mt-1 size-5 text-plum" />
+									<div>
+										<span className="type-label text-ink-muted">
+											{t("addressLabel")}
+										</span>
+										<p className="mt-0.5 font-medium whitespace-pre-line">
+											{contact.address}
+										</p>
+									</div>
+								</li>
+							)}
+						</ul>
+					</div>
 
-				<div>
-					<ContactForm />
+					<div>
+						<ContactForm />
+					</div>
 				</div>
 			</div>
 		</div>

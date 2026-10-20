@@ -1,21 +1,18 @@
 import { LocaleLink } from "@i18n/routing";
-import { Button } from "@repo/ui";
-import { ArrowLeftIcon } from "lucide-react";
+import { v2Button } from "@shared/components/ui/v2";
 import { getTranslations } from "next-intl/server";
 
 export default async function NotFoundPage() {
 	const t = await getTranslations("notFound");
 
 	return (
-		<div className="flex h-full flex-col items-center justify-center">
-			<h1 className="font-bold text-5xl">{t("code")}</h1>
-			<p className="mt-2 text-2xl">{t("title")}</p>
+		<div className="bg-page py-24 flex flex-col items-center justify-center text-center">
+			<span className="type-label text-plum">{t("code")}</span>
+			<h1 className="type-display-xl mt-3">{t("title")}</h1>
 
-			<Button asChild className="mt-4">
-				<LocaleLink href="/">
-					<ArrowLeftIcon className="mr-2 size-4" /> {t("goToHomepage")}
-				</LocaleLink>
-			</Button>
+			<LocaleLink href="/" className={`${v2Button({ variant: "primary" })} mt-8`}>
+				{t("goToHomepage")}
+			</LocaleLink>
 		</div>
 	);
 }

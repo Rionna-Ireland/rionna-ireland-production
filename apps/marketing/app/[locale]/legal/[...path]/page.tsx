@@ -64,7 +64,7 @@ export default async function LegalPage(props: { params: Promise<Params> }) {
 					</LocaleLink>
 				)}
 				<div className="mb-12 max-w-2xl mx-auto">
-					<h1 className="font-bold text-4xl text-center">{title}</h1>
+					<h1 className="type-display-lg text-center">{title}</h1>
 				</div>
 
 				<PostContent content={body} />

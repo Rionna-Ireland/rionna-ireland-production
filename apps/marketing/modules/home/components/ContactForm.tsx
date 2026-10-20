@@ -2,7 +2,6 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Alert, AlertTitle } from "@repo/ui/components/alert";
-import { Button } from "@repo/ui/components/button";
 import {
 	Form,
 	FormControl,
@@ -13,6 +12,7 @@ import {
 } from "@repo/ui/components/form";
 import { Input } from "@repo/ui/components/input";
 import { Textarea } from "@repo/ui/components/textarea";
+import { v2Button } from "@shared/components/ui/v2";
 import { MailCheckIcon, MailIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
@@ -72,7 +72,10 @@ export function ContactForm() {
 								<FormItem>
 									<FormLabel>{t("contact.form.name")}</FormLabel>
 									<FormControl>
-										<Input {...field} />
+										<Input
+											{...field}
+											className="border-outline bg-white rounded-lg"
+										/>
 									</FormControl>
 									<FormMessage />
 								</FormItem>
@@ -86,7 +89,10 @@ export function ContactForm() {
 								<FormItem>
 									<FormLabel>{t("contact.form.email")}</FormLabel>
 									<FormControl>
-										<Input {...field} />
+										<Input
+											{...field}
+											className="border-outline bg-white rounded-lg"
+										/>
 									</FormControl>
 									<FormMessage />
 								</FormItem>
@@ -100,21 +106,23 @@ export function ContactForm() {
 								<FormItem>
 									<FormLabel>{t("contact.form.message")}</FormLabel>
 									<FormControl>
-										<Textarea {...field} />
+										<Textarea
+											{...field}
+											className="border-outline bg-white rounded-lg"
+										/>
 									</FormControl>
 									<FormMessage />
 								</FormItem>
 							)}
 						/>
 
-						<Button
+						<button
 							type="submit"
-							className="w-full"
-							variant="primary"
-							loading={form.formState.isSubmitting}
+							className={`${v2Button({ variant: "primary" })} w-full disabled:opacity-60`}
+							disabled={form.formState.isSubmitting}
 						>
 							{t("contact.form.submit")}
-						</Button>
+						</button>
 					</form>
 				</Form>
 			)}
