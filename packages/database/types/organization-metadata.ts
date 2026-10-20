@@ -9,6 +9,38 @@ export type CircleNotificationCategory =
 export type CirclePollDeliveryProfile = "legacy_all" | "personalized_only";
 export type CirclePollSafetyMode = "observe" | "enforce";
 
+export interface OrganizationWebsiteMetadata {
+	hero?: {
+		eyebrow?: string;
+		title?: string;
+		subtitle?: string;
+		/** mediaPublic public URL */
+		imageUrl?: string;
+		/** Optional mp4; muted autoplay loop, imageUrl is the poster. */
+		videoUrl?: string;
+	};
+	/** Ordered; max 5. */
+	featuredHorseIds?: string[];
+	/** Max 4, free text ("340+", "€48k"). */
+	stats?: { value: string; label: string }[];
+	membership?: {
+		price?: string;
+		interval?: string;
+		note?: string;
+		/** Max 8. */
+		inclusions?: string[];
+		/** Max 12. */
+		faq?: { question: string; answer: string }[];
+	};
+	about?: {
+		storyTitle?: string;
+		photoUrl?: string;
+		/** Max 6. */
+		founders?: { name: string; role: string; bio: string; photoUrl?: string }[];
+	};
+	joinMode?: "waitlist" | "signup";
+}
+
 export interface OrganizationMetadata {
 	brand?: {
 		primaryColor?: string;
@@ -47,7 +79,10 @@ export interface OrganizationMetadata {
 		 * entry ⇒ memberPosting false, hideChip false, autoJoin false (fail
 		 * closed — S12-02b Task 6).
 		 */
-		spaces?: Record<string, { memberPosting?: boolean; hideChip?: boolean; autoJoin?: boolean }>;
+		spaces?: Record<
+			string,
+			{ memberPosting?: boolean; hideChip?: boolean; autoJoin?: boolean }
+		>;
 		/**
 		 * S12-02b final review I3: last processed member id (ascending order)
 		 * from the auto-join reconcile sweep, so a run resumes where the
@@ -97,6 +132,8 @@ export interface OrganizationMetadata {
 	horseAutoFollow?: boolean;
 	/** S9-03: club-specific blocked words, matched alongside the base list. */
 	moderation?: { extraBlockedWords?: string[] };
+	/** S16-01: editable marketing-site content slots. */
+	website?: OrganizationWebsiteMetadata;
 }
 
 export function parseOrgMetadata(raw: string | null): OrganizationMetadata {
