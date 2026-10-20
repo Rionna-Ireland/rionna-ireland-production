@@ -21,7 +21,8 @@
 			"offers": "Partner offers",
 			"charity": "Charity",
 			"moderation": "Moderation",
-			"waitlist": "Waitlist"
+			"waitlist": "Waitlist",
+			"website": "Website"
 		},
 		"dashboard": {
 			"health": {
@@ -1008,7 +1009,70 @@
 			"assignAdminRole": "Assign admin role",
 			"removeAdminRole": "Remove admin role"
 		},
-		"description": "Manage your application."
+		"description": "Manage your application.",
+		"website": {
+			"saved": "Website content saved.",
+			"saveError": "Could not save website content.",
+			"uploadError": "Upload failed. Check file type and size.",
+			"viewSite": "View site",
+			"removeMedia": "Remove",
+			"hero": {
+				"title": "Hero",
+				"eyebrow": "Eyebrow",
+				"heading": "Title",
+				"subtitle": "Subtitle",
+				"image": "Image (JPEG, PNG or WebP, up to 10MB)",
+				"video": "Video (MP4, up to 25MB)"
+			},
+			"horses": {
+				"title": "Featured horses",
+				"hint": "Choose up to {max} public horses. Use the arrows to set the order."
+			},
+			"stats": {
+				"title": "Stats",
+				"value": "Value",
+				"label": "Label",
+				"add": "Add stat"
+			},
+			"membership": {
+				"title": "Membership",
+				"price": "Price",
+				"interval": "Interval",
+				"note": "Note",
+				"inclusions": "Inclusions",
+				"addInclusion": "Add inclusion",
+				"faq": "FAQ",
+				"addFaq": "Add question",
+				"question": "Question",
+				"answer": "Answer"
+			},
+			"about": {
+				"title": "About",
+				"storyTitle": "Story title",
+				"photo": "Photo",
+				"storyText": "The story text is edited in",
+				"storyTextLink": "Club settings",
+				"founders": "Founders",
+				"addFounder": "Add founder",
+				"name": "Name",
+				"role": "Role",
+				"bio": "Bio"
+			},
+			"join": {
+				"title": "Join button",
+				"waitlist": "Waitlist",
+				"signup": "Signup",
+				"hint": "Has no effect while public signup is closed."
+			},
+			"placeholder": {
+				"heroEyebrow": "Modern shared racehorse ownership",
+				"heroTitle": "Open the gates. Own the moments.",
+				"heroSubtitle": "A modern racehorse ownership club built around a stable full of Flat and National Hunt horses — and a community of people who love being close to the action.",
+				"membershipPrice": "€45",
+				"membershipInterval": "per month",
+				"membershipNote": "Billed monthly. Cancel any time from your account."
+			}
+		}
 	},
 	"app": {
 		"menu": {
