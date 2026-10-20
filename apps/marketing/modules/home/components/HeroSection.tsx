@@ -1,50 +1,53 @@
-import { config } from "@config";
-import { LocaleLink } from "@i18n/routing";
-import { Button } from "@repo/ui/components/button";
-import { ArrowRightIcon } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { JoinCtaLink } from "@shared/components/JoinCtaLink";
+import { MediaPlaceholder } from "@shared/components/MediaPlaceholder";
+import { v2Button } from "@shared/components/ui/v2";
+import { getSiteJoinCta, getWebsiteContent } from "@shared/lib/website";
+import { getTranslations } from "next-intl/server";
+import Image from "next/image";
 
-export function HeroSection() {
-	const t = useTranslations("home.hero");
+import { HeroMedia } from "./HeroMedia";
+
+export async function HeroSection() {
+	const [t, tRoot, { content }, joinCta] = await Promise.all([
+		getTranslations("home.hero"),
+		getTranslations(),
+		getWebsiteContent(),
+		getSiteJoinCta(),
+	]);
+	const { hero } = content;
 
 	return (
-		<section className="relative overflow-hidden">
-			<div className="absolute -top-32 -left-32 size-[520px] rounded-full bg-[#F2D6F4] blur-3xl opacity-70 dark:opacity-30" />
-			<div className="absolute -bottom-32 -right-32 size-[460px] rounded-full bg-[#DAEDF3] blur-3xl opacity-70 dark:opacity-30" />
-
-			<div className="container relative z-10 py-20 md:py-28 lg:py-36">
-				<div className="max-w-4xl">
-					<span className="font-mono text-xs tracking-[0.22em] uppercase text-foreground/70">
-						{t("eyebrow")}
-					</span>
-					<h1 className="mt-6 font-display font-medium text-5xl md:text-6xl lg:text-7xl xl:text-8xl leading-[0.95] text-foreground text-balance">
-						{t("title")}
-					</h1>
-					<p className="mt-6 max-w-2xl text-lg md:text-xl text-foreground/70 leading-relaxed">
-						{t("subtitle")}
+		<section className="bg-welcome-navy text-white">
+			<div className="gap-10 py-16 lg:grid-cols-2 lg:items-center lg:py-[72px] container grid">
+				<div className="gap-5 flex flex-col">
+					<span className="type-label text-lilac">{hero.eyebrow ?? t("eyebrow")}</span>
+					<h1 className="type-display-xl text-balance">{hero.title ?? t("title")}</h1>
+					<p className="max-w-xl text-lg text-white/80">
+						{hero.subtitle ?? t("subtitle")}
 					</p>
-					<div className="mt-10 flex flex-wrap gap-3">
-						<Button size="lg" variant="primary" asChild>
-							<LocaleLink href="/membership">
-								{t("joinCta")}
-								<ArrowRightIcon className="ml-2 size-4" />
-							</LocaleLink>
-						</Button>
-						<Button size="lg" variant="ghost" asChild>
-							<LocaleLink href="/about">{t("learnMoreCta")}</LocaleLink>
-						</Button>
+					<div className="gap-3.5 flex flex-wrap">
+						<JoinCtaLink cta={joinCta} className={v2Button({ variant: "onDark" })}>
+							{joinCta.labelKey ? tRoot(joinCta.labelKey) : t("joinCta")}
+						</JoinCtaLink>
+						<a href="#horses" className={v2Button({ variant: "ghostOnDark" })}>
+							{t("horsesCta")}
+						</a>
 					</div>
-
-					{config.saasUrl && (
-						<p className="mt-8 font-mono text-xs tracking-[0.18em] uppercase text-foreground/50">
-							{t("membersNote")}{" "}
-							<a
-								href={config.saasUrl}
-								className="underline underline-offset-4 hover:text-foreground"
-							>
-								{t("signInLink")}
-							</a>
-						</p>
+				</div>
+				<div className="md:h-[420px] relative h-[280px] overflow-hidden rounded-lg">
+					{hero.videoUrl ? (
+						<HeroMedia imageUrl={hero.imageUrl} videoUrl={hero.videoUrl} />
+					) : hero.imageUrl ? (
+						<Image
+							src={hero.imageUrl}
+							alt=""
+							fill
+							priority
+							sizes="(min-width: 1024px) 50vw, 100vw"
+							className="object-cover"
+						/>
+					) : (
+						<MediaPlaceholder tone="ice" tag="Hero photography" className="h-full" />
 					)}
 				</div>
 			</div>

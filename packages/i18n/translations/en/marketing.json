@@ -110,6 +110,7 @@
 			"subtitle": "A modern racehorse ownership club built around a stable full of Flat and National Hunt horses — and a community of people who love being close to the action.",
 			"joinCta": "Become a member",
 			"learnMoreCta": "Learn more",
+			"horsesCta": "Meet the horses",
 			"membersNote": "Already a member?",
 			"signInLink": "Sign in"
 		},
@@ -145,6 +146,13 @@
 			"eyebrow": "Latest news",
 			"title": "From the yard.",
 			"viewAll": "View all"
+		},
+		"whyJoin": {
+			"eyebrow": "Why join"
+		},
+		"aboutTeaser": {
+			"eyebrow": "About Rionna",
+			"more": "More about us"
 		},
 		"finalCta": {
 			"eyebrow": "Join the club",
