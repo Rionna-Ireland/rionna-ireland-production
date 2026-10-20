@@ -1071,7 +1071,10 @@
 				"membershipPrice": "€45",
 				"membershipInterval": "per month",
 				"membershipNote": "Billed monthly. Cancel any time from your account."
-			}
+			},
+			"moveUp": "Move up",
+			"moveDown": "Move down",
+			"remove": "Remove"
 		}
 	},
 	"app": {

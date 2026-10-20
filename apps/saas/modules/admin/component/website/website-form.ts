@@ -7,6 +7,23 @@ export const MAX_INCLUSIONS = 8;
 export const MAX_FAQ = 12;
 export const MAX_FOUNDERS = 6;
 
+// Text caps mirror website-schema.ts in the api (asserted by WebsiteForm.test).
+export const CAP = {
+	eyebrow: 60,
+	title: 120,
+	subtitle: 280,
+	statValue: 12,
+	statLabel: 40,
+	membershipShort: 40,
+	inclusion: 120,
+	question: 200,
+	answer: 1500,
+	storyTitle: 120,
+	founderName: 80,
+	founderRole: 80,
+	founderBio: 600,
+} as const;
+
 export type WebsiteFormValues = {
 	hero: { eyebrow: string; title: string; subtitle: string; imageUrl: string; videoUrl: string };
 	featuredHorseIds: string[];

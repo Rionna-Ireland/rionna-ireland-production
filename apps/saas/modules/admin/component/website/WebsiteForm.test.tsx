@@ -30,7 +30,9 @@ vi.mock("next/link", () => ({
 	),
 }));
 
-import { atCap, fromWebsite, MAX_STATS, moveItem, toWebsitePayload } from "./website-form";
+import { websiteSchema } from "@repo/api/modules/settings/procedures/website-schema";
+
+import { atCap, CAP, fromWebsite, MAX_STATS, moveItem, toWebsitePayload } from "./website-form";
 import { WebsiteForm } from "./WebsiteForm";
 
 describe("website form helpers", () => {
@@ -58,6 +60,49 @@ describe("website form helpers", () => {
 		const faq = [{ question: "a" }, { question: "b" }];
 		expect(moveItem(faq, 1, -1).map((f) => f.question)).toEqual(["b", "a"]);
 		expect(moveItem(faq, 0, -1)).toBe(faq);
+	});
+});
+
+describe("caps match the server schema", () => {
+	const build = (n: number) => {
+		const x = (max: number) => "x".repeat(max + n);
+		const v = fromWebsite(undefined);
+		v.hero = {
+			eyebrow: x(CAP.eyebrow),
+			title: x(CAP.title),
+			subtitle: x(CAP.subtitle),
+			imageUrl: "",
+			videoUrl: "",
+		};
+		v.stats = [{ value: x(CAP.statValue), label: x(CAP.statLabel) }];
+		v.membership = {
+			price: x(CAP.membershipShort),
+			interval: x(CAP.membershipShort),
+			note: x(CAP.membershipShort),
+			inclusions: [x(CAP.inclusion)],
+			faq: [{ question: x(CAP.question), answer: x(CAP.answer) }],
+		};
+		v.about = {
+			storyTitle: x(CAP.storyTitle),
+			photoUrl: "",
+			founders: [
+				{
+					name: x(CAP.founderName),
+					role: x(CAP.founderRole),
+					bio: x(CAP.founderBio),
+					photoUrl: "",
+				},
+			],
+		};
+		return toWebsitePayload(v);
+	};
+
+	it("accepts every field exactly at its cap", () => {
+		expect(websiteSchema.safeParse(build(0)).success).toBe(true);
+	});
+
+	it("rejects over-cap text", () => {
+		expect(websiteSchema.safeParse(build(1)).success).toBe(false);
 	});
 });
 

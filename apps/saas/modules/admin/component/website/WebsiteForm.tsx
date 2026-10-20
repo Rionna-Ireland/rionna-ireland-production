@@ -19,6 +19,7 @@ import { type FieldPath, useForm } from "react-hook-form";
 
 import {
 	atCap,
+	CAP,
 	fromWebsite,
 	MAX_FAQ,
 	MAX_FEATURED,
@@ -43,6 +44,7 @@ function ListControls({
 	onMove?: (dir: -1 | 1) => void;
 	onRemove?: () => void;
 }) {
+	const t = useTranslations("admin.website");
 	return (
 		<div className="gap-1 flex">
 			{onMove && (
@@ -51,7 +53,7 @@ function ListControls({
 						type="button"
 						size="icon"
 						variant="ghost"
-						aria-label="Move up"
+						aria-label={t("moveUp")}
 						disabled={index === 0}
 						onClick={() => onMove(-1)}
 					>
@@ -61,7 +63,7 @@ function ListControls({
 						type="button"
 						size="icon"
 						variant="ghost"
-						aria-label="Move down"
+						aria-label={t("moveDown")}
 						disabled={index === count - 1}
 						onClick={() => onMove(1)}
 					>
@@ -74,12 +76,42 @@ function ListControls({
 					type="button"
 					size="icon"
 					variant="ghost"
-					aria-label="Remove"
+					aria-label={t("remove")}
 					onClick={onRemove}
 				>
 					<Trash2Icon className="size-4" />
 				</Button>
 			)}
+		</div>
+	);
+}
+
+function Upload({
+	label,
+	accept,
+	value,
+	onFile,
+	onClear,
+}: {
+	label: string;
+	accept: string;
+	value: string;
+	onFile: (file: File | undefined) => void;
+	onClear: () => void;
+}) {
+	const t = useTranslations("admin.website");
+	return (
+		<div className="gap-1 grid">
+			<Label>{label}</Label>
+			<div className="gap-3 flex items-center">
+				{value && <span className="text-xs truncate text-muted-foreground">{value}</span>}
+				<Input type="file" accept={accept} onChange={(e) => onFile(e.target.files?.[0])} />
+				{value && (
+					<Button type="button" variant="outline" onClick={onClear}>
+						{t("removeMedia")}
+					</Button>
+				)}
+			</div>
 		</div>
 	);
 }
@@ -111,6 +143,20 @@ export function WebsiteForm() {
 	useEffect(() => {
 		if (settings) form.reset(fromWebsite(settings.website));
 	}, [settings, form]);
+
+	// A featured horse that stopped being public (or fell outside the list) would fail every save.
+	useEffect(() => {
+		if (!horsesData) return;
+		const ids = new Set(publicHorses.map((h) => h.id));
+		const cur = form.getValues("featuredHorseIds");
+		if (cur.some((id) => !ids.has(id))) {
+			form.setValue(
+				"featuredHorseIds",
+				cur.filter((id) => ids.has(id)),
+				{ shouldDirty: true },
+			);
+		}
+	}, [horsesData, settings]);
 
 	const set = <P extends FieldPath<WebsiteFormValues>>(name: P, value: unknown) =>
 		setValue(name, value as never, { shouldDirty: true });
@@ -153,41 +199,16 @@ export function WebsiteForm() {
 		}
 	}
 
-	const Upload = ({
-		label,
-		accept,
-		kind,
-		target,
-		value,
-	}: {
-		label: string;
-		accept: string;
-		kind: Kind;
-		target: FieldPath<WebsiteFormValues>;
-		value: string;
-	}) => (
-		<div className="gap-1 grid">
-			<Label>{label}</Label>
-			<div className="gap-3 flex items-center">
-				{value && <span className="text-xs truncate text-muted-foreground">{value}</span>}
-				<Input
-					type="file"
-					accept={accept}
-					onChange={(e) => upload(e.target.files?.[0], kind, target)}
-				/>
-				{value && (
-					<Button type="button" variant="outline" onClick={() => set(target, "")}>
-						{t("admin.website.removeMedia")}
-					</Button>
-				)}
-			</div>
-		</div>
-	);
+	const up = (kind: Kind, target: FieldPath<WebsiteFormValues>) => ({
+		onFile: (f: File | undefined) => upload(f, kind, target),
+		onClear: () => set(target, ""),
+	});
 
 	const field = (
 		name: FieldPath<WebsiteFormValues>,
 		label: string,
 		placeholderKey?: string,
+		maxLength?: number,
 		multiline = false,
 	) => (
 		<div className="gap-1 grid">
@@ -195,11 +216,13 @@ export function WebsiteForm() {
 			{multiline ? (
 				<Textarea
 					rows={3}
+					maxLength={maxLength}
 					placeholder={placeholderKey ? ph(placeholderKey) : undefined}
 					{...register(name)}
 				/>
 			) : (
 				<Input
+					maxLength={maxLength}
 					placeholder={placeholderKey ? ph(placeholderKey) : undefined}
 					{...register(name)}
 				/>
@@ -252,21 +275,30 @@ export function WebsiteForm() {
 					<CardTitle>{t("admin.website.hero.title")}</CardTitle>
 				</CardHeader>
 				<CardContent className="gap-4 grid">
-					{field("hero.eyebrow", t("admin.website.hero.eyebrow"), "heroEyebrow")}
-					{field("hero.title", t("admin.website.hero.heading"), "heroTitle")}
-					{field("hero.subtitle", t("admin.website.hero.subtitle"), "heroSubtitle", true)}
+					{field(
+						"hero.eyebrow",
+						t("admin.website.hero.eyebrow"),
+						"heroEyebrow",
+						CAP.eyebrow,
+					)}
+					{field("hero.title", t("admin.website.hero.heading"), "heroTitle", CAP.title)}
+					{field(
+						"hero.subtitle",
+						t("admin.website.hero.subtitle"),
+						"heroSubtitle",
+						CAP.subtitle,
+						true,
+					)}
 					<Upload
 						label={t("admin.website.hero.image")}
 						accept="image/jpeg,image/png,image/webp"
-						kind="hero"
-						target="hero.imageUrl"
+						{...up("hero", "hero.imageUrl")}
 						value={v.hero.imageUrl}
 					/>
 					<Upload
 						label={t("admin.website.hero.video")}
 						accept="video/mp4"
-						kind="hero"
-						target="hero.videoUrl"
+						{...up("hero", "hero.videoUrl")}
 						value={v.hero.videoUrl}
 					/>
 				</CardContent>
@@ -290,6 +322,12 @@ export function WebsiteForm() {
 								count={v.featuredHorseIds.length}
 								onMove={(d) =>
 									set("featuredHorseIds", moveItem(v.featuredHorseIds, i, d))
+								}
+								onRemove={() =>
+									set(
+										"featuredHorseIds",
+										v.featuredHorseIds.filter((x) => x !== id),
+									)
 								}
 							/>
 						</div>
@@ -332,10 +370,12 @@ export function WebsiteForm() {
 							<Input
 								className="w-28"
 								placeholder={t("admin.website.stats.value")}
+								maxLength={CAP.statValue}
 								{...register(`stats.${i}.value`)}
 							/>
 							<Input
 								placeholder={t("admin.website.stats.label")}
+								maxLength={CAP.statLabel}
 								{...register(`stats.${i}.label`)}
 							/>
 							<ListControls
@@ -360,18 +400,28 @@ export function WebsiteForm() {
 						"membership.price",
 						t("admin.website.membership.price"),
 						"membershipPrice",
+						CAP.membershipShort,
 					)}
 					{field(
 						"membership.interval",
 						t("admin.website.membership.interval"),
 						"membershipInterval",
+						CAP.membershipShort,
 					)}
-					{field("membership.note", t("admin.website.membership.note"), "membershipNote")}
+					{field(
+						"membership.note",
+						t("admin.website.membership.note"),
+						"membershipNote",
+						CAP.membershipShort,
+					)}
 
 					<Label>{t("admin.website.membership.inclusions")}</Label>
 					{v.membership.inclusions.map((_, i) => (
 						<div key={i} className="gap-2 flex items-center">
-							<Input {...register(`membership.inclusions.${i}`)} />
+							<Input
+								maxLength={CAP.inclusion}
+								{...register(`membership.inclusions.${i}`)}
+							/>
 							<ListControls
 								index={i}
 								count={v.membership.inclusions.length}
@@ -392,11 +442,13 @@ export function WebsiteForm() {
 						<div key={i} className="gap-2 rounded p-3 grid border">
 							<Input
 								placeholder={t("admin.website.membership.question")}
+								maxLength={CAP.question}
 								{...register(`membership.faq.${i}.question`)}
 							/>
 							<Textarea
 								rows={3}
 								placeholder={t("admin.website.membership.answer")}
+								maxLength={CAP.answer}
 								{...register(`membership.faq.${i}.answer`)}
 							/>
 							<ListControls
@@ -418,12 +470,16 @@ export function WebsiteForm() {
 					<CardTitle>{t("admin.website.about.title")}</CardTitle>
 				</CardHeader>
 				<CardContent className="gap-4 grid">
-					{field("about.storyTitle", t("admin.website.about.storyTitle"))}
+					{field(
+						"about.storyTitle",
+						t("admin.website.about.storyTitle"),
+						undefined,
+						CAP.storyTitle,
+					)}
 					<Upload
 						label={t("admin.website.about.photo")}
 						accept="image/jpeg,image/png,image/webp"
-						kind="about"
-						target="about.photoUrl"
+						{...up("about", "about.photoUrl")}
 						value={v.about.photoUrl}
 					/>
 					<p className="text-sm text-muted-foreground">
@@ -437,22 +493,24 @@ export function WebsiteForm() {
 						<div key={i} className="gap-2 rounded p-3 grid border">
 							<Input
 								placeholder={t("admin.website.about.name")}
+								maxLength={CAP.founderName}
 								{...register(`about.founders.${i}.name`)}
 							/>
 							<Input
 								placeholder={t("admin.website.about.role")}
+								maxLength={CAP.founderRole}
 								{...register(`about.founders.${i}.role`)}
 							/>
 							<Textarea
 								rows={3}
 								placeholder={t("admin.website.about.bio")}
+								maxLength={CAP.founderBio}
 								{...register(`about.founders.${i}.bio`)}
 							/>
 							<Upload
 								label={t("admin.website.about.photo")}
 								accept="image/jpeg,image/png,image/webp"
-								kind="founder"
-								target={`about.founders.${i}.photoUrl`}
+								{...up("founder", `about.founders.${i}.photoUrl`)}
 								value={v.about.founders[i]?.photoUrl ?? ""}
 							/>
 							<ListControls
