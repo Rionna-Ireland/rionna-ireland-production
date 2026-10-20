@@ -1,6 +1,7 @@
 import { Button } from "@repo/ui/components/button";
 import { JoinCtaLink } from "@shared/components/JoinCtaLink";
 import { getJoinCta } from "@shared/lib/join-url";
+import { getWebsiteContent } from "@shared/lib/website";
 import { ArrowRightIcon } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 
@@ -24,7 +25,9 @@ export async function WireframeMembership() {
 	const t = await getTranslations("membership.wireframe");
 
 	const tRoot = await getTranslations();
-	const joinCta = getJoinCta();
+	const joinCta = getJoinCta({
+		joinMode: (await getWebsiteContent()).content.joinMode,
+	});
 
 	return (
 		<div className="py-16 md:py-24 container">

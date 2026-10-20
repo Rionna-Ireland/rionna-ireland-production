@@ -2,6 +2,7 @@ import { Button } from "@repo/ui/components/button";
 import { JoinCtaLink } from "@shared/components/JoinCtaLink";
 import { getClubEvents } from "@shared/lib/club";
 import { getJoinCta } from "@shared/lib/join-url";
+import { getWebsiteContent } from "@shared/lib/website";
 import { redirectIfWireframeMode } from "@shared/lib/wireframe-mode";
 import { ArrowRightIcon } from "lucide-react";
 import { getLocale, getTranslations, setRequestLocale } from "next-intl/server";
@@ -27,7 +28,9 @@ export default async function EventsListPage(props: { params: Promise<{ locale: 
 	const { items } = await getClubEvents({ limit: 24 });
 
 	const tRoot = await getTranslations({ locale });
-	const joinCta = getJoinCta();
+	const joinCta = getJoinCta({
+		joinMode: (await getWebsiteContent()).content.joinMode,
+	});
 
 	return (
 		<div className="py-16 md:py-24 container">

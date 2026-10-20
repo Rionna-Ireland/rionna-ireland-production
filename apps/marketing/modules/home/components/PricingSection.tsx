@@ -6,18 +6,17 @@ import type { PaidPlan } from "@repo/payments/types";
 import { cn } from "@repo/ui";
 import { Button } from "@repo/ui/components/button";
 import { Tabs, TabsList, TabsTrigger } from "@repo/ui/components/tabs";
-import { getJoinCta } from "@shared/lib/join-url";
+import type { JoinCta } from "@shared/lib/join-url";
 import { ArrowRightIcon, BadgePercentIcon, CheckIcon, StarIcon } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 
-export function PricingSection() {
+export function PricingSection({ joinCta }: { joinCta: JoinCta }) {
 	const t = useTranslations();
 	const format = useFormatter();
 	const [interval, setBillingInterval] = useState<"month" | "year">("month");
 
 	// S12-09 / D39: signup while open, the waitlist while closed.
-	const joinCta = useMemo(() => getJoinCta(), []);
 	const joinLabel = joinCta.labelKey ? t(joinCta.labelKey) : (t("pricing.getStarted") ?? "");
 
 	const plans = useMemo(() => {

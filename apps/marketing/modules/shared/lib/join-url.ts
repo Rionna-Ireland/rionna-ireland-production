@@ -1,6 +1,8 @@
 import { config } from "@config";
 import { isPublicSignupOpen } from "@repo/utils";
 
+import type { JoinMode } from "./website-normalize";
+
 /**
  * S12-09 / D39: the one place marketing decides where "Join" goes. While
  * public signup is closed every Join CTA points at the waitlist; flipping
@@ -19,14 +21,17 @@ export interface JoinCtaOptions {
 	signupOpen?: boolean;
 	saasUrl?: string;
 	wireframeMode?: boolean;
+	/** Admin-chosen mode; can only close signup, never open it past the env gate. */
+	joinMode?: JoinMode;
 }
 
 export function getJoinCta({
 	signupOpen = isPublicSignupOpen(),
 	saasUrl = config.saasUrl,
 	wireframeMode = config.wireframeMode,
+	joinMode = "signup",
 }: JoinCtaOptions = {}): JoinCta {
-	if (signupOpen && saasUrl) {
+	if (signupOpen && saasUrl && joinMode === "signup") {
 		return {
 			mode: "signup",
 			href: `${saasUrl.replace(/\/$/, "")}/signup`,

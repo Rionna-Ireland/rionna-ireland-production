@@ -52,6 +52,28 @@ describe("getJoinCta (S12-09 / D39)", () => {
 		});
 	});
 
+	it("sends Join to the waitlist when the admin sets joinMode to waitlist, even with signup open", () => {
+		expect(
+			getJoinCta({
+				signupOpen: true,
+				saasUrl: "https://app.rionna.test",
+				wireframeMode: false,
+				joinMode: "waitlist",
+			}),
+		).toMatchObject({ mode: "waitlist", href: "/waitlist", external: false });
+	});
+
+	it("never opens signup past the env gate: joinMode signup with signup closed -> waitlist", () => {
+		expect(
+			getJoinCta({
+				signupOpen: false,
+				saasUrl: "https://app.rionna.test",
+				wireframeMode: false,
+				joinMode: "signup",
+			}),
+		).toMatchObject({ mode: "waitlist", href: "/waitlist" });
+	});
+
 	it("reads NEXT_PUBLIC_PUBLIC_SIGNUP_OPEN by default (closed unless 'true')", () => {
 		const previous = process.env.NEXT_PUBLIC_PUBLIC_SIGNUP_OPEN;
 		try {

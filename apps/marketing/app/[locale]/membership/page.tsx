@@ -9,6 +9,7 @@ import {
 import { Button } from "@repo/ui/components/button";
 import { JoinCtaLink } from "@shared/components/JoinCtaLink";
 import { getJoinCta } from "@shared/lib/join-url";
+import { getWebsiteContent } from "@shared/lib/website";
 import { ArrowRightIcon, CheckIcon } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
@@ -43,7 +44,9 @@ export default async function MembershipPage(props: { params: Promise<{ locale: 
 	const t = await getTranslations({ locale, namespace: "membership" });
 
 	const tRoot = await getTranslations({ locale });
-	const joinCta = getJoinCta();
+	const joinCta = getJoinCta({
+		joinMode: (await getWebsiteContent()).content.joinMode,
+	});
 
 	return (
 		<div className="py-16 md:py-24 container">
