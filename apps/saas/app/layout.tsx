@@ -15,11 +15,11 @@ import type { PropsWithChildren } from "react";
 
 const ppEiko = localFont({
 	src: [
-		{ path: "../public/fonts/PPEiko-Thin.otf", weight: "100", style: "normal" },
-		{ path: "../public/fonts/PPEiko-LightItalic.otf", weight: "300", style: "italic" },
-		{ path: "../public/fonts/PPEiko-Medium.otf", weight: "500", style: "normal" },
-		{ path: "../public/fonts/PPEiko-Heavy.otf", weight: "800", style: "normal" },
-		{ path: "../public/fonts/PPEiko-BlackItalic.otf", weight: "900", style: "italic" },
+		{ path: "../public/fonts/PPEiko-Thin.woff2", weight: "100", style: "normal" },
+		{ path: "../public/fonts/PPEiko-LightItalic.woff2", weight: "300", style: "italic" },
+		{ path: "../public/fonts/PPEiko-Medium.woff2", weight: "500", style: "normal" },
+		{ path: "../public/fonts/PPEiko-Heavy.woff2", weight: "800", style: "normal" },
+		{ path: "../public/fonts/PPEiko-BlackItalic.woff2", weight: "900", style: "italic" },
 	],
 	variable: "--font-display",
 });
@@ -63,6 +63,7 @@ export default async function RootLayout({ children }: PropsWithChildren) {
 							attribute="class"
 							disableTransitionOnChange
 							enableSystem={false}
+							forcedTheme="light"
 							defaultTheme={config.defaultTheme}
 							themes={Array.from(config.enabledThemes)}
 						>

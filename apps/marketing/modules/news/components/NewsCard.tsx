@@ -4,6 +4,7 @@ import { MaskedText } from "@shared/components/motion/MaskedText";
 import { PhotoUnmask } from "@shared/components/motion/PhotoUnmask";
 import { PatternMosaic } from "@shared/components/pattern/PatternMosaic";
 import Image from "next/image";
+import type { ReactNode } from "react";
 
 import { type NewsTilePost, placeholderFor } from "./news-types";
 
@@ -14,6 +15,22 @@ const SIZES = {
 } as const;
 
 /** One news item as a contained card: the whole card is a single link. */
+function Wrap({
+	immediate,
+	...props
+}: {
+	immediate?: boolean;
+	direction: "up" | "left";
+	className: string;
+	children: ReactNode;
+}) {
+	return immediate ? (
+		<div className={props.className}>{props.children}</div>
+	) : (
+		<PhotoUnmask {...props} />
+	);
+}
+
 export function NewsCard({
 	post,
 	size,
@@ -45,7 +62,8 @@ export function NewsCard({
 				className,
 			)}
 		>
-			<PhotoUnmask
+			{/* The lead photo is the LCP element: painted at t=0, not clip-revealed. */}
+			<Wrap
 				immediate={immediate}
 				direction={index % 2 ? "left" : "up"}
 				className={cn("photo-zoom relative", aspect)}
@@ -58,7 +76,8 @@ export function NewsCard({
 							alt=""
 							fill
 							sizes="(min-width: 768px) 60vw, 100vw"
-							loading={immediate ? "eager" : "lazy"}
+							priority={immediate}
+							loading={immediate ? undefined : "lazy"}
 							className="object-cover"
 						/>
 					) : (
@@ -72,7 +91,7 @@ export function NewsCard({
 						/>
 					)}
 				</div>
-			</PhotoUnmask>
+			</Wrap>
 			<div className="px-5 pb-5 gap-3 flex flex-1 flex-col">
 				<span className="type-label text-plum">{date}</span>
 				{immediate ? (

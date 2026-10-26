@@ -48,7 +48,7 @@ export async function HeroSection() {
 			data-nav-tone="dark"
 			className="hero lg:min-h-svh lg:grid-cols-[45fr_20fr_35fr] bg-welcome-navy text-white grid"
 		>
-			<div className="grain px-6 pt-32 pb-12 lg:px-12 lg:pb-16 lg:min-h-0 relative isolate flex min-h-svh flex-col justify-end bg-[#0f1b30]">
+			<div className="grain px-6 pt-32 pb-12 lg:px-12 lg:pb-16 lg:min-h-0 relative isolate flex min-h-[60svh] flex-col justify-end bg-[#0f1b30]">
 				<span className="type-label hero-rise mb-6 text-lilac">
 					{hero.eyebrow ?? t("eyebrow")}
 				</span>

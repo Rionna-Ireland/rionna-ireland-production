@@ -28,7 +28,7 @@ export function People({
 				stageClassName="gap-8 py-16 flex flex-col justify-center"
 			>
 				<SectionLabel index={index} label={label} className="container" />
-				<div className="people-view" tabIndex={0} aria-label={label}>
+				<div className="people-view" role="region" tabIndex={0} aria-label={label}>
 					<ul className="people-track gap-5 px-6 flex w-max items-start">
 						{founders.map((f, i) => (
 							<li

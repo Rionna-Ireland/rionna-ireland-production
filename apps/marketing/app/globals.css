@@ -295,7 +295,7 @@
 	transition: transform var(--dur-deal) var(--ease-out-editorial);
 }
 
-@media (hover: hover) {
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
 	.card-lift:hover {
 		transform: translateY(-0.25rem);
 	}
@@ -733,6 +733,15 @@
 	}
 }
 
+@keyframes ch-word {
+	from {
+		transform: translate3d(0, 0.35em, 0);
+	}
+	to {
+		transform: none;
+	}
+}
+
 @keyframes hero-word {
 	from {
 		transform: translate3d(0, 130%, 0);
@@ -744,7 +753,6 @@
 
 @keyframes hero-rise {
 	from {
-		opacity: 0;
 		transform: translate3d(0, 16px, 0);
 	}
 }
@@ -802,7 +810,7 @@
 }
 
 /* Why-join pattern panel: ring spurs turn when the card is hovered. */
-@media (hover: hover) {
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
 	.card-lift:hover .pc-star {
 		rotate: 22.5deg;
 	}
@@ -1247,8 +1255,13 @@
 
 /* Opener headline: a page-time animation (not the hydration-gated reveal) so it paints at t=0. */
 @media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
+	/* Words are painted (unclipped) at t=0 so the h1 can be LCP, and still rise with the stagger. */
+	.ch-title .mask-word {
+		overflow: visible;
+	}
+
 	.ch-title .mask-word > span {
-		animation: hero-word var(--dur-reveal) var(--ease-out-editorial)
+		animation: ch-word var(--dur-reveal) var(--ease-out-editorial)
 			calc(var(--reveal-delay, 0ms) + var(--i, 0) * var(--step-rise)) both;
 	}
 
@@ -1366,7 +1379,7 @@
 	display: none;
 }
 
-@media (hover: hover) {
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
 	.tile:hover .photo-zoom img {
 		transform: scale(1.03);
 	}

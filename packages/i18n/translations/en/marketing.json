@@ -218,6 +218,11 @@
 		"goToHomepage": "Go to homepage"
 	},
 	"common": {
+		"consent": {
+			"message": "We use essential cookies to keep the site running and optional ones to help us make it better. You can change your mind any time.",
+			"decline": "Decline",
+			"allow": "Allow"
+		},
 		"footer": {
 			"tagline": "A racing club for a new generation. Open the gates.",
 			"club": "Club",

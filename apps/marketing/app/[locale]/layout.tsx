@@ -21,8 +21,8 @@ import type { PropsWithChildren } from "react";
 
 const ppEiko = localFont({
 	src: [
-		{ path: "../../public/fonts/PPEiko-LightItalic.otf", weight: "300", style: "italic" },
-		{ path: "../../public/fonts/PPEiko-Medium.otf", weight: "500", style: "normal" },
+		{ path: "../../public/fonts/PPEiko-LightItalic.woff2", weight: "300", style: "italic" },
+		{ path: "../../public/fonts/PPEiko-Medium.woff2", weight: "500", style: "normal" },
 	],
 	variable: "--font-display",
 });
@@ -87,7 +87,9 @@ export default async function MarketingLayout({
 		>
 			<head>
 				{/* The waitlist has no arrival; don't mark it seen for a later preview visit. */}
-				{!waitlistOnly && <script dangerouslySetInnerHTML={{ __html: ARRIVAL_INLINE_SCRIPT }} />}
+				{!waitlistOnly && (
+					<script dangerouslySetInnerHTML={{ __html: ARRIVAL_INLINE_SCRIPT }} />
+				)}
 			</head>
 			<body
 				className={cn(

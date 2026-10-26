@@ -158,20 +158,23 @@
 	}
 }
 
-.press {
-	transition:
-		transform var(--dur-press) var(--ease-out-press),
-		background-color var(--dur-hover) var(--ease-out-press),
-		border-color var(--dur-hover) var(--ease-out-press),
-		color var(--dur-hover) var(--ease-out-press);
-}
-
-.press:active {
-	transform: scale(0.98);
-}
-
-@media (prefers-reduced-motion: reduce) {
+/* Layered so `transition-*` utilities on the same element win. */
+@layer components {
 	.press {
-		transition: none;
+		transition:
+			transform var(--dur-press) var(--ease-out-press),
+			background-color var(--dur-hover) var(--ease-out-press),
+			border-color var(--dur-hover) var(--ease-out-press),
+			color var(--dur-hover) var(--ease-out-press);
+	}
+
+	.press:active {
+		transform: scale(0.98);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.press {
+			transition: none;
+		}
 	}
 }

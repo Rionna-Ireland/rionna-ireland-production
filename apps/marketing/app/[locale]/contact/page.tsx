@@ -59,7 +59,7 @@ export default async function ContactPage(props: { params: Promise<{ locale: str
 
 					<dl className="mt-12 gap-8 grid">
 						{details.map((d, i) => (
-							<Reveal key={d.label} immediate delayMs={500 + i * 100}>
+							<Reveal key={d.label} immediate delayMs={200}>
 								<dt className="type-label text-lilac">{d.label}</dt>
 								<dd className="mt-1 text-2xl font-display whitespace-pre-line">
 									{d.href ? (

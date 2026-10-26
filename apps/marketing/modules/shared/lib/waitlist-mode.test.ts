@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { isAllowedInWaitlistMode, isWaitlistOnly } from "./waitlist-mode";
+import { isAllowedInWaitlistMode, isStaticMediaPath, isWaitlistOnly } from "./waitlist-mode";
 
 const LOCALES = ["en", "de"];
 
@@ -42,4 +42,17 @@ describe("isAllowedInWaitlistMode", () => {
 	])("blocks %s", (path) => {
 		expect(isAllowedInWaitlistMode(path, LOCALES)).toBe(false);
 	});
+});
+
+describe("isStaticMediaPath", () => {
+	it.each([
+		"/hero/a.mp4",
+		"/media/about/x.mp4",
+		"/app-screens/1.webp",
+		"/store-badges/a.svg",
+		"/patterns/p.svg",
+	])("gates %s", (p) => expect(isStaticMediaPath(p)).toBe(true));
+	it.each(["/mediaX", "/media", "/about", "/en/hero/a.mp4"])("ignores %s", (p) =>
+		expect(isStaticMediaPath(p)).toBe(false),
+	);
 });

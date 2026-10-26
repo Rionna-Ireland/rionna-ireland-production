@@ -27,3 +27,8 @@ export function isAllowedInWaitlistMode(pathname: string, locales: readonly stri
 	const path = first && locales.includes(first) ? `/${rest.join("/")}` : pathname;
 	return WAITLIST_ONLY_ALLOWED.some((pattern) => pattern.test(path));
 }
+
+/** Static media dirs under `public/`; gated with the pages, but never locale-rewritten. */
+export function isStaticMediaPath(pathname: string): boolean {
+	return /^\/(hero|patterns|app-screens|store-badges|media)\//.test(pathname);
+}

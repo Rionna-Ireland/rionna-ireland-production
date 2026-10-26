@@ -32,7 +32,7 @@ export async function HeroEventCard({ event }: { event: PublicClubEvent }) {
 							alt=""
 							fill
 							sizes="80px"
-							className="object-cover grayscale transition-[filter] duration-(--dur-hover) group-hover:grayscale-0"
+							className="object-cover opacity-80 transition-opacity duration-(--dur-hover) group-hover:opacity-100"
 						/>
 					</div>
 				)}

@@ -178,7 +178,7 @@ export function Opener({
 					/>
 					<Reveal
 						immediate
-						delayMs={500}
+						delayMs={200}
 						className="max-w-xl text-ink/70 text-lg text-pretty"
 					>
 						<p>{intro}</p>
