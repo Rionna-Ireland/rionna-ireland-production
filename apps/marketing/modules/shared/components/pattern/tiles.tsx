@@ -44,14 +44,6 @@ export const COLOURWAYS = {
 		light: "#F2D6F4",
 		spur: "#CCA1D0",
 	},
-	// Quad on a white base (cells 2/7/12/19 family).
-	white: {
-		base: "#FFFFFF",
-		mid: "#EEEADF",
-		accent: "#CCA1D0",
-		light: "#FFFFFF",
-		spur: "#EEEADF",
-	},
 	// Cell 27: the green Submark quad (corners sage, not cream).
 	greenMark: {
 		base: "#043F29",

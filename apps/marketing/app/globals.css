@@ -467,7 +467,7 @@
 }
 
 /*
- * Static pattern textures (full compositions from the S16 pattern library).
+ * Static pattern textures, each repeating one library cell (p1 harlequin, p3 quad, p7 submark quad, p8 half-drop).
  * Painted on ::before behind content, so text over it is unaffected; dial it
  * with --texture-opacity. Needs no positioned parent: the rule sets one, in
  * the components layer so Tailwind position utilities still win.
@@ -495,23 +495,23 @@
 	}
 
 	.texture-p1::before {
-		background-image: url("/patterns/pattern-1-swatch.svg");
-		background-size: 153.333px 153.333px;
+		background-image: url("/patterns/cell-1.svg");
+		background-size: 152px 176px;
 	}
 
 	.texture-p3::before {
-		background-image: url("/patterns/pattern-3-swatch.svg");
-		background-size: 153.333px 153.333px;
+		background-image: url("/patterns/cell-7.svg");
+		background-size: 154px 154px;
 	}
 
 	.texture-p7::before {
-		background-image: url("/patterns/pattern-7-final.svg");
-		background-size: 520px 960px;
+		background-image: url("/patterns/cell-5.svg");
+		background-size: 200px 200px;
 	}
 
 	.texture-p8::before {
-		background-image: url("/patterns/pattern-8-final.svg");
-		background-size: 520px 960px;
+		background-image: url("/patterns/cell-6.svg");
+		background-size: 420px 214px;
 	}
 }
 

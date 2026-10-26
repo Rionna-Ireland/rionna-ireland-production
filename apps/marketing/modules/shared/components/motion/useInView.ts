@@ -2,6 +2,16 @@
 
 import { type RefObject, useEffect, useState } from "react";
 
+/**
+ * Taller than the viewport can never reach `threshold` visible, so it counts
+ * as in view as soon as it intersects.
+ */
+export function isEntryInView(entry: IntersectionObserverEntry, threshold: number): boolean {
+	if (!entry.isIntersecting) return false;
+	const rootHeight = entry.rootBounds?.height ?? globalThis.innerHeight ?? 0;
+	return entry.intersectionRatio >= threshold || entry.boundingClientRect.height > rootHeight;
+}
+
 /** True once `ref` scrolls into view (stays true when `once`). No IntersectionObserver: true. */
 export function useInView(
 	ref: RefObject<Element | null>,
@@ -23,14 +33,14 @@ export function useInView(
 		const observer = new IntersectionObserver(
 			([entry]) => {
 				if (!entry) return;
-				if (entry.isIntersecting) {
+				if (isEntryInView(entry, threshold)) {
 					setInView(true);
 					if (once) observer.disconnect();
-				} else if (!once) {
+				} else if (!once && !entry.isIntersecting) {
 					setInView(false);
 				}
 			},
-			{ threshold, rootMargin },
+			{ threshold: [0, threshold], rootMargin },
 		);
 		observer.observe(el);
 		return () => observer.disconnect();

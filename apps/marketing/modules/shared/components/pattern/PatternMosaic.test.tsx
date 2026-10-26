@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
@@ -21,12 +21,16 @@ describe("PatternMosaic", () => {
 		expect(html.lastIndexOf("--delay:900ms")).toBeGreaterThan(html.lastIndexOf("pc-slot"));
 	});
 
-	it("default markup equals the pre-move waitlist snapshot", () => {
-		const expected = readFileSync(
-			new URL("./pattern-mosaic-default.fixture.html", import.meta.url),
-			"utf8",
+	it("default markup equals the pre-move waitlist snapshot (sha256)", () => {
+		const html = renderToStaticMarkup(<PatternMosaic />);
+		expect(
+			html.startsWith(
+				'<div aria-hidden="true" class="grid grid-cols-4 content-start overflow-hidden">',
+			),
+		).toBe(true);
+		expect(createHash("sha256").update(html).digest("hex")).toBe(
+			"f3a3506d0e05e770891d114ee6fc0420ad3a6e1b629d5d0468eef8ddda418cc9",
 		);
-		expect(renderToStaticMarkup(<PatternMosaic />)).toBe(expected);
 	});
 
 	it("honours columns, rows and colourway", () => {
@@ -42,17 +46,32 @@ describe("PatternMosaic", () => {
 });
 
 describe("new tile kinds", () => {
-	const cases: [TileKind, keyof typeof COLOURWAYS][] = [
-		["submarkQuad", "plum"],
-		["submarkQuad", "pinkTint"],
-		["submarkQuad", "iceTint"],
-		["submarkQuad", "sageTint"],
-		["halfDrop", "cream"],
-		["ring", "lilac"],
-		["quad", "white"],
-	];
-	it.each(cases)("%s / %s renders paths", (kind, colourway) => {
-		const html = renderToStaticMarkup(<PatternTile spec={{ kind, colourway, turn: 0 }} />);
-		expect(html).toContain("<path");
+	const render = (kind: TileKind, colourway: keyof typeof COLOURWAYS) =>
+		renderToStaticMarkup(<PatternTile spec={{ kind, colourway, turn: 0 }} />);
+
+	it("submarkQuad plum: cream centre, lilac corners", () => {
+		const html = render("submarkQuad", "plum");
+		expect(html).toContain('fill="#EEEADF" transform="translate(77.5 84)"');
+		expect(html).toContain('fill="#CCA1D0" transform="translate(-22.5 -20)"');
+	});
+	it.each([
+		["pinkTint", "#57385A", "#CCA1D0"],
+		["iceTint", "#374B6C", "#B9D8E1"],
+		["sageTint", "#043F29", "#A6B999"],
+		["greenMark", "#EEEADF", "#D4DCCE"],
+	] as const)("submarkQuad %s: mark %s, corners %s", (cw, mark, corner) => {
+		const html = render("submarkQuad", cw);
+		expect(html).toContain(`fill="${mark}" transform="translate(77.5 84)"`);
+		expect(html).toContain(`fill="${corner}" transform="translate(177.5 180)"`);
+	});
+	it("halfDrop has a 200x102 viewBox and cream/white fills", () => {
+		const html = render("halfDrop", "cream");
+		expect(html).toContain('viewBox="0 0 200 102"');
+		expect(html).toContain('fill="#FFFFFF"');
+	});
+	it("ring lilac: lilac ground, cream star", () => {
+		const html = render("ring", "lilac");
+		expect(html).toContain('<rect width="200" height="200" fill="#CCA1D0">');
+		expect(html).toContain('fill="#EEEADF"');
 	});
 });
