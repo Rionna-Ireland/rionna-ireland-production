@@ -444,6 +444,8 @@
 	background-position: 0 100%;
 	background-size: 0 1px;
 	transition: background-size var(--dur-hover) var(--ease-out-press);
+	-webkit-box-decoration-break: clone;
+	box-decoration-break: clone;
 }
 
 .link-draw:hover,
@@ -1546,11 +1548,6 @@
 	background-size: 100% 1px;
 }
 
-.link-draw {
-	-webkit-box-decoration-break: clone;
-	box-decoration-break: clone;
-}
-
 /* Drop cap on the first paragraph of the (CMS-rendered) body. */
 .drop-cap > p:first-of-type::first-letter {
 	float: left;
@@ -1602,11 +1599,11 @@
 
 @media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
 	.unmask-now {
-		animation: unmask var(--dur-rise) var(--ease-out-editorial) 200ms both;
+		animation: unmask var(--dur-rise) var(--ease-out-editorial) both;
 	}
 }
 
-/* Parallax on grid photos, the reading line, the pull-quote rule and inline images. */
+/* Scroll-linked entry for grid photos, the reading line, the pull-quote rule and inline images. */
 @supports (animation-timeline: view()) {
 	@media (prefers-reduced-motion: no-preference) {
 		.unmask:not(.unmask-now) {

@@ -116,8 +116,6 @@
 		}
 	},
 	"news": {
-		"eyebrow": "News",
-		"title": "Lorem ipsum dolor sit.",
 		"description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor.",
 		"empty": "No posts yet. Check back soon.",
 		"back": "Back to news",
@@ -128,7 +126,6 @@
 			"title": "News",
 			"description": "Race previews, results and stories from the yard."
 		},
-		"readStory": "Read the story",
 		"joinCta": "Join Rionna",
 		"heading": "News",
 		"read": "Read",
@@ -241,8 +238,6 @@
 			"contact": "Contact",
 			"login": "Sign in",
 			"join": "Join",
-			"faq": "FAQ",
-			"journal": "Journal",
 			"becomeMember": "Become a member",
 			"theApp": "The app",
 			"app": "App"

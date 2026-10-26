@@ -83,9 +83,9 @@ export function NewsCard({
 						className={cn(titleClass, "text-balance")}
 					/>
 				) : (
-					<h3 className={cn(titleClass, "text-balance")}>
+					<h2 className={cn(titleClass, "text-balance")}>
 						<span className="link-draw">{post.title}</span>
-					</h3>
+					</h2>
 				)}
 				<p className="text-ink-variant text-sm md:text-base line-clamp-3">
 					{post.subtitle || excerptFallback}
