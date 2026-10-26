@@ -26,7 +26,7 @@ export function CircleFeedCard({ item, basePath }: CircleFeedCardProps) {
 	return (
 		<Link
 			href={href}
-			className="group block overflow-hidden rounded-2xl bg-card shadow-sm transition-shadow hover:no-underline hover:shadow-md"
+			className="group hover:shadow-md block overflow-hidden rounded-xl border bg-card transition-shadow hover:no-underline"
 		>
 			{item.imageUrl ? (
 				<div className="relative aspect-[16/9] overflow-hidden bg-secondary">
@@ -34,22 +34,26 @@ export function CircleFeedCard({ item, basePath }: CircleFeedCardProps) {
 					<img
 						src={item.imageUrl}
 						alt={item.title}
-						className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+						className="inset-0 absolute h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
 					/>
 				</div>
 			) : null}
 			<div className="p-5">
 				{meta ? (
-					<span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+					<span className="font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase">
 						{meta}
 					</span>
 				) : null}
-				<h3 className="mt-2 font-display text-xl leading-tight text-foreground">{item.title}</h3>
+				<h3 className="mt-2 text-xl leading-tight font-display text-foreground">
+					{item.title}
+				</h3>
 				{item.excerpt ? (
-					<p className="mt-2 line-clamp-3 text-sm text-muted-foreground">{item.excerpt}</p>
+					<p className="mt-2 text-sm line-clamp-3 text-muted-foreground">
+						{item.excerpt}
+					</p>
 				) : null}
 				{item.authorName ? (
-					<p className="mt-3 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+					<p className="mt-3 font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase">
 						{item.authorName}
 					</p>
 				) : null}

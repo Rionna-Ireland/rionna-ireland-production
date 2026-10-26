@@ -55,7 +55,7 @@ export function CommunityOverview() {
 		<div className="gap-6 flex flex-col">
 			<Card className="p-6">
 				<div className="mb-1 flex items-center justify-between">
-					<h2 className="font-semibold text-2xl">{t("admin.community.title")}</h2>
+					<h2 className="type-display-md">{t("admin.community.title")}</h2>
 					<a
 						href="https://app.circle.so"
 						target="_blank"

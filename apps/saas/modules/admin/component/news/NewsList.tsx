@@ -144,7 +144,7 @@ export function NewsList() {
 	return (
 		<Card className="p-6">
 			<div className="mb-4 flex items-center justify-between">
-				<h2 className="font-semibold text-2xl">{t("admin.news.title")}</h2>
+				<h2 className="type-display-md">{t("admin.news.title")}</h2>
 				<Button onClick={() => router.push(getAdminPath("/news/new"))}>
 					<PlusIcon className="mr-2 size-4" />
 					{t("admin.news.newPost")}

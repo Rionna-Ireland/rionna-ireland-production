@@ -123,7 +123,7 @@ export function MembershipHero() {
 	const memberSinceRow = formatDate(summary?.memberSince);
 
 	return (
-		<section className="p-6 md:p-10 shadow-sm rounded-2xl bg-card">
+		<section className="p-6 md:p-10 rounded-xl border bg-card">
 			<div className="gap-4 flex items-start justify-between">
 				<p className="text-xs tracking-wider font-mono text-muted-foreground uppercase">
 					{eyebrow}

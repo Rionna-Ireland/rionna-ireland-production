@@ -58,8 +58,8 @@ export function ForgotPasswordForm() {
 
 	return (
 		<>
-			<h1 className="font-bold text-xl md:text-2xl">{t("auth.forgotPassword.title")}</h1>
-			<p className="mt-1 mb-6 text-foreground/60">{t("auth.forgotPassword.message")} </p>
+			<h1 className="type-display-md">{t("auth.forgotPassword.title")}</h1>
+			<p className="mt-1 mb-6 text-ink-variant">{t("auth.forgotPassword.message")} </p>
 
 			{form.formState.isSubmitSuccessful ? (
 				<Alert variant="success">

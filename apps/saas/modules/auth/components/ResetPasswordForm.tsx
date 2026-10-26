@@ -69,8 +69,8 @@ export function ResetPasswordForm() {
 
 	return (
 		<>
-			<h1 className="font-bold text-xl md:text-2xl">{t("auth.resetPassword.title")}</h1>
-			<p className="mt-1 mb-6 text-foreground/60">{t("auth.resetPassword.message")} </p>
+			<h1 className="type-display-md">{t("auth.resetPassword.title")}</h1>
+			<p className="mt-1 mb-6 text-ink-variant">{t("auth.resetPassword.message")} </p>
 
 			{form.formState.isSubmitSuccessful ? (
 				<Alert variant="success">

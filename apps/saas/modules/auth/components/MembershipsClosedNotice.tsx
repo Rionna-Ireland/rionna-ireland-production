@@ -12,8 +12,8 @@ export async function MembershipsClosedNotice() {
 
 	return (
 		<div className="text-center">
-			<h1 className="font-bold text-2xl lg:text-3xl">{t("title")}</h1>
-			<p className="mt-2 text-muted-foreground">{t("message")}</p>
+			<h1 className="type-display-md">{t("title")}</h1>
+			<p className="mt-2 text-ink-variant">{t("message")}</p>
 			<div className="mt-6">
 				<Button asChild variant="primary" className="w-full">
 					<a href={`${config.marketingUrl ?? ""}/waitlist`}>

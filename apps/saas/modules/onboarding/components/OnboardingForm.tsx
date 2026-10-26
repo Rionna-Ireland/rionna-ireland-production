@@ -1,13 +1,13 @@
 "use client";
-import { authClient } from "@repo/auth/client";
 import { useUserPurchases } from "@payments/hooks/purchases";
+import { authClient } from "@repo/auth/client";
 import { Progress } from "@repo/ui/components/progress";
 import { useRouter } from "@shared/hooks/router";
 import { clearCache } from "@shared/lib/cache";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
-import { withQuery } from "ufo";
 import type { ReactNode } from "react";
+import { withQuery } from "ufo";
 
 import { OnboardingAccountStep } from "./OnboardingAccountStep";
 
@@ -51,7 +51,7 @@ export function OnboardingForm() {
 
 	return (
 		<div>
-			<h1 className="font-bold text-xl md:text-2xl">{t("onboarding.title")}</h1>
+			<h1 className="type-display-md">{t("onboarding.title")}</h1>
 			<p className="mt-2 mb-6 text-foreground/60">{t("onboarding.message")}</p>
 
 			{steps.length > 1 && (

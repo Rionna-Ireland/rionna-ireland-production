@@ -72,8 +72,8 @@ export function AcceptTermsForm({ redirectTo }: { redirectTo: string }) {
 
 	return (
 		<div>
-			<h1 className="font-bold text-xl md:text-2xl">{t("legal.acceptTerms.title")}</h1>
-			<p className="mt-1 mb-6 text-foreground/60">{t("legal.acceptTerms.message")}</p>
+			<h1 className="type-display-md">{t("legal.acceptTerms.title")}</h1>
+			<p className="mt-1 mb-6 text-ink-variant">{t("legal.acceptTerms.message")}</p>
 
 			<Form {...form}>
 				<form className="gap-4 flex flex-col items-stretch" onSubmit={onSubmit}>

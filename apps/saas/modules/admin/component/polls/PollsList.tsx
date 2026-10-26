@@ -36,7 +36,10 @@ export function PollsList() {
 	const { organizationId: orgId } = useAdminOrganization();
 	const organizationId = orgId ?? "";
 	const queryClient = useQueryClient();
-	const [currentPage, setCurrentPage] = useQueryState("currentPage", parseAsInteger.withDefault(1));
+	const [currentPage, setCurrentPage] = useQueryState(
+		"currentPage",
+		parseAsInteger.withDefault(1),
+	);
 
 	const { data, isLoading, isError } = useQuery({
 		...orpc.polls.admin.list.queryOptions({
@@ -56,7 +59,11 @@ export function PollsList() {
 	const onPublish = async (pollId: string) => {
 		if (!organizationId) return;
 		try {
-			const outcome = await publish.mutateAsync({ organizationId, pollId, notifyMembers: true });
+			const outcome = await publish.mutateAsync({
+				organizationId,
+				pollId,
+				notifyMembers: true,
+			});
 			if (outcome.ok) {
 				toastSuccess(t("admin.polls.published"));
 				await refresh();
@@ -87,7 +94,7 @@ export function PollsList() {
 		<div className="space-y-4">
 			<div className="gap-4 flex items-start justify-between">
 				<div>
-					<h1 className="font-semibold text-2xl">{t("admin.polls.title")}</h1>
+					<h1 className="type-display-md">{t("admin.polls.title")}</h1>
 					<p className="text-muted-foreground">{t("admin.polls.subtitle")}</p>
 				</div>
 				<Button asChild>
@@ -100,7 +107,7 @@ export function PollsList() {
 
 			<Card>
 				{!organizationId || isLoading ? (
-					<div className="flex items-center justify-center p-8">
+					<div className="p-8 flex items-center justify-center">
 						<Spinner className="size-5" />
 					</div>
 				) : isError || !data ? (
@@ -128,11 +135,21 @@ export function PollsList() {
 								<TableRow key={poll.id}>
 									<TableCell className="font-medium">{poll.question}</TableCell>
 									<TableCell>
-										{t(`admin.polls.scope.${poll.scope === "space" ? "space" : "club"}`)}
+										{t(
+											`admin.polls.scope.${poll.scope === "space" ? "space" : "club"}`,
+										)}
 									</TableCell>
 									<TableCell>
-										<Badge status={STATUS_BADGE[poll.status as "draft" | "open" | "closed"]}>
-											{t(`admin.polls.status.${poll.status as "draft" | "open" | "closed"}`)}
+										<Badge
+											status={
+												STATUS_BADGE[
+													poll.status as "draft" | "open" | "closed"
+												]
+											}
+										>
+											{t(
+												`admin.polls.status.${poll.status as "draft" | "open" | "closed"}`,
+											)}
 										</Badge>
 									</TableCell>
 									<TableCell>{poll._count.votes}</TableCell>

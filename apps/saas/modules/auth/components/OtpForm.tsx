@@ -55,7 +55,7 @@ export function OtpForm() {
 
 	return (
 		<>
-			<h1 className="font-bold text-xl md:text-2xl">{t("auth.verify.title")}</h1>
+			<h1 className="type-display-md">{t("auth.verify.title")}</h1>
 			<p className="mt-1 mb-4 text-foreground/60">{t("auth.verify.message")}</p>
 
 			<Form {...form}>
