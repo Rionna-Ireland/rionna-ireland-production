@@ -41,14 +41,14 @@ export function NewsCard({
 		<LocaleLink
 			href={`/news/${post.slug}`}
 			className={cn(
-				"tile card-lift group bg-white border-outline p-3 gap-5 flex break-inside-avoid flex-col rounded-lg border hover:no-underline hover:shadow-[0_12px_32px_-16px_rgb(23_39_65/0.35)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+				"tile card-lift group bg-white border-outline gap-5 flex break-inside-avoid flex-col overflow-hidden rounded-lg border hover:no-underline hover:shadow-[0_12px_32px_-16px_rgb(23_39_65/0.35)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
 				className,
 			)}
 		>
 			<PhotoUnmask
 				immediate={immediate}
 				direction={index % 2 ? "left" : "up"}
-				className={cn("photo-zoom relative rounded-md", aspect)}
+				className={cn("photo-zoom relative", aspect)}
 			>
 				<div className="inset-0 absolute">
 					{post.featuredImageUrl ? (
@@ -73,7 +73,7 @@ export function NewsCard({
 					)}
 				</div>
 			</PhotoUnmask>
-			<div className="px-2 pb-2 gap-3 flex flex-1 flex-col">
+			<div className="px-5 pb-5 gap-3 flex flex-1 flex-col">
 				<span className="type-label text-plum">{date}</span>
 				{immediate ? (
 					<MaskedText
