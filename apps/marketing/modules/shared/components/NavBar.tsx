@@ -30,8 +30,7 @@ export function NavBar({ joinCta }: { joinCta: JoinCta }) {
 		: [
 				{ label: t("common.menu.membership"), href: "/membership" },
 				{ label: t("common.menu.about"), href: "/about" },
-				{ label: t("common.menu.faq"), href: "/membership#faq" },
-				{ label: t("common.menu.journal"), href: "/news" },
+				{ label: t("common.menu.news"), href: "/news" },
 			];
 
 	const isMenuItemActive = (href: string) =>
@@ -48,7 +47,6 @@ export function NavBar({ joinCta }: { joinCta: JoinCta }) {
 
 	const navRef = useRef<HTMLElement>(null);
 	const [tone, setTone] = useState<NavTone>("light");
-	const [scrolled, setScrolled] = useState(false);
 
 	// Tone follows the [data-nav-tone] section under the bar's centre; rAF-throttled.
 	useEffect(() => {
@@ -69,7 +67,6 @@ export function NavBar({ joinCta }: { joinCta: JoinCta }) {
 				};
 			});
 			setTone(toneAt(sections, navRect.top + navRect.height / 2));
-			setScrolled(window.scrollY > window.innerHeight);
 		};
 		const schedule = () => {
 			if (!frame) frame = requestAnimationFrame(update);
@@ -92,18 +89,17 @@ export function NavBar({ joinCta }: { joinCta: JoinCta }) {
 				ref={navRef}
 				className="nav-glass pointer-events-auto container"
 				data-tone={tone}
-				data-scrolled={scrolled}
 				data-edge={localePathname === "/" ? "ice" : undefined}
 				data-test="navigation"
 			>
-				<div className="nav-glass-inner">
-					<div className="gap-6 py-3 lg:py-3.5 flex items-center justify-between">
+				<div>
+					<div className="gap-2 sm:gap-6 py-3 lg:py-3.5 flex items-center justify-between">
 						<LocaleLink
 							href="/"
 							className="block hover:no-underline focus-visible:outline-2 focus-visible:outline-offset-4"
 							aria-label={config.appName}
 						>
-							<Wordmark className="h-6 w-auto" />
+							<Wordmark className="h-5 sm:h-6 w-auto shrink-0" />
 						</LocaleLink>
 
 						<div className="lg:flex hidden items-center gap-[30px]">
@@ -144,14 +140,15 @@ export function NavBar({ joinCta }: { joinCta: JoinCta }) {
 								"lg:hidden ml-auto",
 							)}
 						>
-							{joinLabel}
+							<span className="sm:hidden">{t("common.menu.join")}</span>
+							<span className="sm:inline hidden">{joinLabel}</span>
 						</JoinCtaLink>
 
 						<Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
 							<SheetTrigger asChild>
 								<button
 									type="button"
-									className="size-10 lg:hidden flex items-center justify-center rounded-lg border border-current/20 focus-visible:outline-2 focus-visible:outline-offset-2"
+									className="size-11 lg:hidden flex shrink-0 items-center justify-center rounded-lg border border-current/20 focus-visible:outline-2 focus-visible:outline-offset-2"
 									aria-label={t("common.aria.menu")}
 								>
 									<MenuIcon className="size-5" />

@@ -563,8 +563,7 @@
 	.stat-hairline,
 	.nav-glass,
 	.nav-glass::before,
-	.nav-glass::after,
-	.nav-glass-inner {
+	.nav-glass::after {
 		transition: none;
 	}
 
@@ -638,16 +637,6 @@
 	.nav-glass::after {
 		background: color-mix(in srgb, var(--color-ink) 90%, transparent);
 	}
-}
-
-/* Contracts ~8% once past the first screen (transform only). */
-.nav-glass-inner {
-	transform-origin: top center;
-	transition: transform var(--dur-hover) var(--ease-out-editorial);
-}
-
-.nav-glass[data-scrolled="true"] .nav-glass-inner {
-	transform: scale(0.92);
 }
 
 @keyframes page-enter {
