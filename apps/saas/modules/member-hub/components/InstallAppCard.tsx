@@ -2,6 +2,7 @@
 
 import { useActiveOrganization } from "@organizations/hooks/use-active-organization";
 import { parseOrgMetadata } from "@repo/database/types";
+import { useTranslations } from "next-intl";
 import Image from "next/image";
 
 // Official store badge URLs. These are the standard public assets Apple
@@ -12,6 +13,7 @@ const GOOGLE_BADGE_SRC =
 	"https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png";
 
 export function InstallAppCard() {
+	const t = useTranslations();
 	const { activeOrganization } = useActiveOrganization();
 	const clubName = activeOrganization?.name ?? "the club";
 	const rawMetadata =
@@ -89,7 +91,7 @@ export function InstallAppCard() {
 				<ol className="mt-3 space-y-2 list-inside list-decimal text-foreground/85">
 					<li>Install the app from the store.</li>
 					<li>Sign in with the same email you used here.</li>
-					<li>You're in — no extra setup.</li>
+					<li>{t("app.memberHub.installNoSetup")}</li>
 				</ol>
 			</div>
 		</section>

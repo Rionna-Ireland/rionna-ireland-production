@@ -20,8 +20,8 @@ describe("copy rules: no em dashes in user-facing copy", () => {
 	it("marketing.json has none", () => {
 		expect(hits(read("marketing.json"), emDash)).toEqual([]);
 	});
-	it("saas.json admin.website.placeholder has none", () => {
-		expect(hits(read("saas.json").admin.website.placeholder, emDash)).toEqual([]);
+	it("saas.json has none", () => {
+		expect(hits(read("saas.json"), emDash)).toEqual([]);
 	});
 });
 

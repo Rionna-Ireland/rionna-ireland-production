@@ -353,8 +353,8 @@ export function HorseUpdateForm({ memberPostId }: HorseUpdateFormProps) {
 									<div className="text-sm">
 										<span className="font-semibold tracking-wide uppercase">
 											{t("admin.updates.form.audienceMembers")}
-										</span>{" "}
-										— {horseName} ·{" "}
+										</span>
+										: {horseName} ·{" "}
 										{t(`admin.updates.form.types.${updateType}`)}
 									</div>
 								</Alert>
@@ -399,8 +399,7 @@ export function HorseUpdateForm({ memberPostId }: HorseUpdateFormProps) {
 								{hasBody && deferredPreviewDoc ? (
 									<div className="mt-6 p-4 rounded-md border border-muted">
 										<p className="mb-2 text-xs tracking-wide font-mono text-muted-foreground uppercase">
-											Member preview (approximate — media finalises on
-											publish)
+											Member preview (approximate; media finalises on publish)
 										</p>
 										<CircleTiptapRenderer
 											doc={localDocToHydrated(deferredPreviewDoc)}

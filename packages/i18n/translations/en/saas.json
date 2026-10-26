@@ -109,9 +109,9 @@
 				"title": "Remove {name} from membership?",
 				"intro": "This cancels their subscription and removes their access across all systems.",
 				"blastStripe": "Their Stripe subscription is cancelled immediately.",
-				"blastCircle": "Their community access is removed — posts and history are preserved, not deleted.",
+				"blastCircle": "Their community access is removed. Posts and history are preserved, not deleted.",
 				"blastApp": "They are removed from the club roster and lose app access.",
-				"gdprNote": "This is not a full GDPR account deletion (erasing their data) — that is a separate, heavier action.",
+				"gdprNote": "This is not a full GDPR account deletion (erasing their data). That is a separate, heavier action.",
 				"confirmLabel": "Type {name} to confirm",
 				"cancel": "Cancel",
 				"submit": "Remove from membership",
@@ -176,9 +176,9 @@
 		},
 		"events": {
 			"title": "Events",
-			"subtitle": "Posts to your Circle events space — RSVP and reminders are handled by Circle.",
+			"subtitle": "Posts to your Circle events space. RSVP and reminders are handled by Circle.",
 			"new": "New event",
-			"notConfigured": "No Circle events space is configured yet — set metadata.circle.eventsSpaceId.",
+			"notConfigured": "No Circle events space is configured yet. Set metadata.circle.eventsSpaceId.",
 			"loadError": "Couldn't load events. Please try again.",
 			"empty": "No events yet. Create the first one.",
 			"rsvps": "RSVPs",
@@ -209,10 +209,10 @@
 			},
 			"fallback": {
 				"title": "Couldn't create the event",
-				"body": "Nothing was published. Try again in a minute — if it keeps failing, contact support."
+				"body": "Nothing was published. Try again in a minute. If it keeps failing, contact support."
 			},
 			"notifications": {
-				"failed": "Couldn't create the event — see the fallback below.",
+				"failed": "Couldn't create the event. See the fallback below.",
 				"error": "Something went wrong. Please try again.",
 				"coverUploadError": "Couldn't upload the cover image. Please try again."
 			},
@@ -258,7 +258,7 @@
 			"updated": "Draft updated.",
 			"published": "Poll published.",
 			"closed": "Poll closed.",
-			"error": "Something went wrong — try again.",
+			"error": "Something went wrong. Try again.",
 			"createTitle": "New poll",
 			"editTitle": "Edit draft",
 			"backToList": "Back to polls",
@@ -471,7 +471,7 @@
 					"race": "Race notes"
 				},
 				"audienceMembers": "🔒 Members",
-				"chooseHorsePrompt": "Choose a horse first — you pick who sees this before you write.",
+				"chooseHorsePrompt": "Choose a horse first. You pick who sees this before you write.",
 				"titleLabel": "Title",
 				"content": "Update",
 				"videoUrlLabel": "Video URL (optional)",
@@ -486,12 +486,12 @@
 				"publishTo": "Post to Members · {horse}",
 				"fallback": {
 					"title": "Couldn't publish",
-					"body": "Your draft is saved. Try publishing again in a minute — if it keeps failing, contact support."
+					"body": "Your draft is saved. Try publishing again in a minute. If it keeps failing, contact support."
 				},
 				"notifications": {
 					"draftSaved": "Draft saved.",
 					"published": "Posted to {horse}'s members.",
-					"publishFailed": "Couldn't publish — see the details below.",
+					"publishFailed": "Couldn't publish. See the details below.",
 					"error": "Something went wrong. Please try again."
 				}
 			}
@@ -499,7 +499,7 @@
 		"insideTrack": {
 			"createTitle": "Post an Inside Track piece",
 			"editTitle": "Edit Inside Track piece",
-			"audience": "Educational content — all members",
+			"audience": "Educational content for all members",
 			"audienceLabel": "Inside Track",
 			"notifyMembers": "Notify members",
 			"notifyMembersHint": "Send a push notification to all members.",
@@ -517,7 +517,7 @@
 				"saved": "Video length saved.",
 				"invalid": "Enter a length in minutes (e.g. 4 or 4.5), or leave blank to clear."
 			},
-			"notConfigured": "No Inside Track Circle space is configured yet — set metadata.circle.insideTrack.spaceId.",
+			"notConfigured": "No Inside Track Circle space is configured yet. Set metadata.circle.insideTrack.spaceId.",
 			"list": {
 				"title": "Inside Track pieces",
 				"new": "New piece",
@@ -640,14 +640,14 @@
 				"syncStatusStale": "Sync stale",
 				"syncStatusUnlinked": "Not linked",
 				"circleSpaceId": "Circle Space ID",
-				"circleSpaceIdHint": "Leave blank — a private discussion space is created automatically when you save. Only paste an ID to link an existing Circle space.",
+				"circleSpaceIdHint": "Leave blank and a private discussion space is created automatically when you save. Only paste an ID to link an existing Circle space.",
 				"bio": "Bio",
 				"story": "Story",
-				"storyHint": "Long-form narrative for the Horse Profile's \"Story & pedigree\" section — the fuller story behind the short bio above.",
+				"storyHint": "Long-form narrative for the Horse Profile's \"Story & pedigree\" section, the fuller story behind the short bio above.",
 				"trainerNotes": "Trainer Notes",
-				"ownershipBlurb": "Ownership Blurb",
+				"ownershipBlurb": "Membership blurb",
 				"pedigree": "Pedigree",
-				"pedigreeHint": "Leave blank if you're linking a racing record — sire, dam and damsire are pulled from The Racing API when you link the horse and sync. You can also enter them manually.",
+				"pedigreeHint": "Leave blank if you're linking a racing record. Sire, dam and damsire are pulled from The Racing API when you link the horse and sync. You can also enter them manually.",
 				"sire": "Sire",
 				"dam": "Dam",
 				"damsire": "Damsire",
@@ -776,7 +776,7 @@
 				"provisioning_failed": "Provisioning failed",
 				"none": "Not provisioned"
 			},
-			"circleUnavailable": "Circle is unavailable — showing last known local data. Counts may be missing.",
+			"circleUnavailable": "Circle is unavailable, so this shows the last known local data. Counts may be missing.",
 			"openCircleAdmin": "Open Circle admin",
 			"retryProvisioning": "Retry",
 			"members": "Members",
@@ -790,7 +790,7 @@
 			"inviteOnly": "Invite only",
 			"open": "Open",
 			"followers": "Followers",
-			"followersTitle": "{horse} — followers",
+			"followersTitle": "{horse}: followers",
 			"addFollower": "Add follower",
 			"removeFollower": "Remove",
 			"followAllMembers": "Follow all members",
@@ -947,7 +947,7 @@
 				"createTitle": "New public news post",
 				"editTitle": "Edit public news post",
 				"publicBadge": "🌐 Public marketing website",
-				"publicHint": "This publishes to your public marketing website — anyone on the internet can see it. It is NOT a member update and does NOT post to Circle.",
+				"publicHint": "This publishes to your public marketing website, so anyone on the internet can see it. It is NOT a member update and does NOT post to Circle.",
 				"titleLabel": "Title",
 				"subtitleLabel": "Subtitle",
 				"slugLabel": "Slug",
@@ -1079,6 +1079,13 @@
 		}
 	},
 	"app": {
+		"memberHub": {
+			"billingPortalRefresh": "We couldn't open the billing portal. Please refresh and try again.",
+			"billingPortalRetry": "We couldn't open the billing portal. Please try again in a moment.",
+			"membershipIssue": "There's an issue with your membership. Let's get it sorted.",
+			"installNoSetup": "You're in. No extra setup.",
+			"feedQuiet": "Your feed is quiet right now. Open the app for the latest."
+		},
 		"menu": {
 			"accountSettings": "Account settings",
 			"admin": "Admin",

@@ -24,7 +24,7 @@ export function PollResultsCard({ organizationId, pollId }: PollResultsCardProps
 
 	if (isLoading || !data) {
 		return (
-			<div className="flex items-center justify-center p-8">
+			<div className="p-8 flex items-center justify-center">
 				<Spinner className="size-5" />
 			</div>
 		);
@@ -67,7 +67,10 @@ export function PollResultsCard({ organizationId, pollId }: PollResultsCardProps
 									</span>
 								</div>
 								<div className="h-2 rounded bg-muted">
-									<div className="h-2 rounded bg-primary" style={{ width: `${pct}%` }} />
+									<div
+										className="h-2 rounded bg-primary"
+										style={{ width: `${pct}%` }}
+									/>
 								</div>
 							</div>
 						);
@@ -75,12 +78,14 @@ export function PollResultsCard({ organizationId, pollId }: PollResultsCardProps
 					<div>
 						<h3 className="mt-6 font-medium">{t("admin.polls.results.voters")}</h3>
 						{data.voters.length === 0 && (
-							<p className="text-muted-foreground">{t("admin.polls.results.noVotes")}</p>
+							<p className="text-muted-foreground">
+								{t("admin.polls.results.noVotes")}
+							</p>
 						)}
 						<ul className="mt-2 space-y-1 text-sm">
 							{data.voters.map((v) => (
 								<li key={v.id}>
-									{v.name ?? v.email} —{" "}
+									{v.name ?? v.email}:{" "}
 									{data.poll.options.find((o) => o.id === v.optionId)?.label}
 								</li>
 							))}

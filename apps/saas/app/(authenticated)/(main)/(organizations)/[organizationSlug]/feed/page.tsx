@@ -2,6 +2,7 @@ import { getActiveOrganization } from "@auth/lib/server";
 import { CircleFeedList } from "@member-hub/components/CircleFeedList";
 import { getMemberFeed } from "@repo/api/modules/circle/procedures/get-member-feed";
 import { PageHeader } from "@shared/components/PageHeader";
+import { getTranslations } from "next-intl/server";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 
@@ -28,6 +29,7 @@ export default async function MemberFeedPage({
 		return notFound();
 	}
 
+	const t = await getTranslations();
 	const result = await getMemberFeed.callable({ context: { headers: await headers() } })({
 		organizationId: activeOrganization.id,
 		page: 1,
@@ -43,9 +45,7 @@ export default async function MemberFeedPage({
 					We couldn't load your feed right now. Please try again shortly.
 				</p>
 			) : result.items.length === 0 ? (
-				<p className="text-muted-foreground">
-					Your feed is quiet right now — open the app for the latest.
-				</p>
+				<p className="text-muted-foreground">{t("app.memberHub.feedQuiet")}</p>
 			) : (
 				<CircleFeedList
 					organizationId={activeOrganization.id}

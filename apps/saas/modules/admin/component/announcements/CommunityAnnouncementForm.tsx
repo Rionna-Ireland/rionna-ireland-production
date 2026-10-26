@@ -222,8 +222,8 @@ export function CommunityAnnouncementForm({
 								<div className="text-sm">
 									<span className="font-semibold tracking-wide uppercase">
 										{t("admin.updates.form.audienceMembers")}
-									</span>{" "}
-									— {t(`${copy}.audience`)}
+									</span>
+									: {t(`${copy}.audience`)}
 								</div>
 							</Alert>
 
