@@ -733,7 +733,16 @@ main[data-nav-space]:has([data-hero-under-nav]) {
 	animation: arrival-lift-fast 300ms var(--ease-out-editorial) forwards;
 }
 
-:root[data-arrival="skip"] .arrival * {
+:root[data-arrival="skip"] .arrival-content {
+	animation: arrival-drift 300ms var(--ease-out-editorial) both;
+}
+
+:root[data-arrival="skip"] .arrival-content * {
+	animation: none;
+}
+
+/* A transformed/animated ancestor would trap the fixed overlay (wrong size, under the nav). */
+.page-enter:has(.arrival) {
 	animation: none;
 }
 
@@ -795,14 +804,11 @@ main[data-nav-space]:has([data-hero-under-nav]) {
 }
 
 @keyframes arrival-lift {
-	0%,
-	99% {
+	from {
 		clip-path: inset(0 0 0 0);
-		opacity: 1;
 	}
-	100% {
+	to {
 		clip-path: inset(0 0 100% 0);
-		opacity: 0;
 		visibility: hidden;
 		pointer-events: none;
 	}
@@ -822,4 +828,3 @@ main[data-nav-space]:has([data-hero-under-nav]) {
 		pointer-events: none;
 	}
 }
-

@@ -19,6 +19,13 @@ describe("shouldPlayArrival", () => {
 		expect(shouldPlayArrival(s)).toBe(false);
 	});
 
+	it("ignores non-home paths without touching the flag", () => {
+		const s = memory();
+		expect(shouldPlayArrival(s, "/en/news")).toBe(false);
+		expect(shouldPlayArrival(s, "/en/")).toBe(true);
+		expect(shouldPlayArrival(s, "/en")).toBe(false);
+	});
+
 	it("plays when storage is unavailable", () => {
 		expect(shouldPlayArrival(null)).toBe(true);
 	});
@@ -38,18 +45,24 @@ describe("shouldPlayArrival", () => {
 
 describe("ARRIVAL_INLINE_SCRIPT", () => {
 	it("behaves like shouldPlayArrival", () => {
-		const run = (stored: string | null) => {
+		const run = (stored: string | null, pathname = "/en") => {
 			const doc = { documentElement: { dataset: {} as Record<string, string> } };
 			const sets: string[] = [];
 			const sessionStorage = {
 				getItem: () => stored,
 				setItem: (k: string, v: string) => void sets.push(`${k}=${v}`),
 			};
-			new Function("document", "sessionStorage", ARRIVAL_INLINE_SCRIPT)(doc, sessionStorage);
+			new Function("document", "sessionStorage", "location", ARRIVAL_INLINE_SCRIPT)(
+				doc,
+				sessionStorage,
+				{ pathname },
+			);
 			return { arrival: doc.documentElement.dataset.arrival, sets };
 		};
 		expect(run("1")).toEqual({ arrival: "seen", sets: [] });
 		expect(run(null)).toEqual({ arrival: undefined, sets: ["rionna:arrived=1"] });
+		expect(run("1", "/en/news")).toEqual({ arrival: undefined, sets: [] });
+		expect(run(null, "/en/news")).toEqual({ arrival: undefined, sets: [] });
 	});
 });
 
