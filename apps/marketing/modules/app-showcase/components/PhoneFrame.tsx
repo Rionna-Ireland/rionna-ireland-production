@@ -29,6 +29,8 @@ export function PhoneFrame({
 					fill
 					sizes={sizes}
 					priority={priority}
+					// Unoptimized: /_next/image would read these past the preview gate.
+					unoptimized
 					className="object-cover object-top"
 				/>
 			</div>

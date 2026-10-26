@@ -34,6 +34,7 @@ export function AppStoreButtons({
 						width={120}
 						height={40}
 						unoptimized
+						loading="eager"
 						className="h-10 w-auto"
 					/>
 				</a>
@@ -52,6 +53,7 @@ export function AppStoreButtons({
 						width={646}
 						height={250}
 						sizes="157px"
+						loading="eager"
 						className="h-[60px] w-auto"
 					/>
 				</a>

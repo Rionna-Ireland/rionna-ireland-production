@@ -3,10 +3,7 @@
 import { useActiveOrganization } from "@organizations/hooks/use-active-organization";
 import { parseOrgMetadata } from "@repo/database/types";
 import { useTranslations } from "next-intl";
-
-// shortcut: store homepages until the listings are live (same as marketing's store-links); set Organization.metadata.appLinks to replace them.
-const TEMP_IOS_URL = "https://apps.apple.com/";
-const TEMP_ANDROID_URL = "https://play.google.com/store/apps";
+import type { ReactNode } from "react";
 
 export function InstallAppCard() {
 	const t = useTranslations("app.memberHub.installApp");
@@ -32,12 +29,7 @@ export function InstallAppCard() {
 
 			<div className="mt-6 gap-x-5 gap-y-3 flex flex-wrap items-start">
 				<div className="flex flex-col items-start">
-					<a
-						href={iosUrl || TEMP_IOS_URL}
-						target="_blank"
-						rel="noopener"
-						className="inline-block"
-					>
+					<StoreBadge href={iosUrl} className="inline-block">
 						<img
 							src="/store-badges/app-store-black.svg"
 							alt={t("altIos")}
@@ -45,17 +37,12 @@ export function InstallAppCard() {
 							height={40}
 							className="h-10 w-auto"
 						/>
-					</a>
+					</StoreBadge>
 					{!iosUrl && comingSoon}
 				</div>
 				<div className="flex flex-col items-start">
 					{/* Google's PNG carries padding: 60px tall shows a 40px badge. */}
-					<a
-						href={androidUrl || TEMP_ANDROID_URL}
-						target="_blank"
-						rel="noopener"
-						className="-my-2.5 -mx-2.5 inline-block"
-					>
+					<StoreBadge href={androidUrl} className="-my-2.5 -mx-2.5 inline-block">
 						<img
 							src="/store-badges/google-play.png"
 							alt={t("altAndroid")}
@@ -63,7 +50,7 @@ export function InstallAppCard() {
 							height={60}
 							className="h-[60px] w-auto"
 						/>
-					</a>
+					</StoreBadge>
 					{!androidUrl && comingSoon}
 				</div>
 			</div>
@@ -79,5 +66,24 @@ export function InstallAppCard() {
 				</ol>
 			</div>
 		</section>
+	);
+}
+
+/** Links to the store listing once Organization.metadata.appLinks has it; until then the badge is shown unlinked. */
+function StoreBadge({
+	href,
+	className,
+	children,
+}: {
+	href?: string;
+	className: string;
+	children: ReactNode;
+}) {
+	return href ? (
+		<a href={href} target="_blank" rel="noopener" className={className}>
+			{children}
+		</a>
+	) : (
+		<span className={className}>{children}</span>
 	);
 }

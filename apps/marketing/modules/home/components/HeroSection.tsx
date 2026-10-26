@@ -36,7 +36,6 @@ export async function HeroSection() {
 	const { hero } = content;
 	const title = hero.title ?? t("title");
 	// Admin video (+poster) -> admin image alone -> temporary clip.
-	const admin = Boolean(hero.videoUrl || hero.imageUrl);
 	const media = hero.videoUrl
 		? { videoUrl: hero.videoUrl, imageUrl: hero.imageUrl }
 		: hero.imageUrl
@@ -92,7 +91,8 @@ export async function HeroSection() {
 					<HeroMedia
 						imageUrl={media.imageUrl}
 						videoUrl={media.videoUrl}
-						unoptimized={admin}
+						// Unoptimized: admin media is remote; the temp clip must not bypass the preview gate via /_next/image.
+						unoptimized
 					/>
 				</div>
 				{/* Unmask curtain: sits over the already-painted poster, so the poster stays the LCP. */}

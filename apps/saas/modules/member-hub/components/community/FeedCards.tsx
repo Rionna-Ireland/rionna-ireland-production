@@ -86,7 +86,7 @@ function CardImage({ item }: { item: MemberFeedItem }) {
 	return item.imageUrl ? (
 		<img
 			src={item.imageUrl}
-			alt={item.title}
+			alt=""
 			className="aspect-video bg-cream w-full rounded-md object-cover"
 		/>
 	) : null;
@@ -347,7 +347,9 @@ export function FeaturedCard({ card, basePath }: { card: FeaturedCardData; baseP
 	const kicker = when ? t("featuredKicker", { when }) : t("featuredKickerNoDate");
 	return (
 		<div className="gap-1 border-outline bg-cream p-5 relative flex flex-col rounded-xl border">
-			<span className="type-label text-label">{kicker}</span>
+			<span suppressHydrationWarning className="type-label text-label">
+				{kicker}
+			</span>
 			<h2 className={TITLE}>
 				{href ? (
 					<Link href={href} className={STRETCH}>
