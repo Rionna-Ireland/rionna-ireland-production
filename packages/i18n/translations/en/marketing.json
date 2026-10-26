@@ -113,11 +113,13 @@
 		},
 		"hero": {
 			"eyebrow": "Modern shared racehorse ownership",
-			"title": "Open the gates. Own the moments.",
+			"title": "Open the gates",
 			"subtitle": "A modern racehorse ownership club built around a stable full of Flat and National Hunt horses, and a community of people who love being close to the action.",
 			"joinCta": "Become a member",
 			"learnMoreCta": "Learn more",
 			"horsesCta": "Meet the horses",
+			"nextEvent": "Next event",
+			"allEvents": "See all events",
 			"membersNote": "Already a member?",
 			"signInLink": "Sign in"
 		},

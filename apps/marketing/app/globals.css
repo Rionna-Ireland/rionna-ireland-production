@@ -828,3 +828,95 @@ main[data-nav-space]:has([data-hero-under-nav]) {
 		pointer-events: none;
 	}
 }
+
+/* ── S16-02 C1: home hero opening choreography (starts as the arrival curtain lifts) ── */
+
+.hero-drift {
+	will-change: transform;
+}
+
+@media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
+	/* Strip unmask, top to bottom: the cover shrinks away over the painted poster. */
+	.hero-strip-cover {
+		animation: hero-unmask var(--dur-rise) var(--ease-out-editorial) var(--arrival-offset)
+			forwards;
+	}
+
+	.hero-poster {
+		animation: hero-poster-settle var(--dur-mark) var(--ease-out-editorial)
+			var(--arrival-offset) backwards;
+	}
+
+	/* Headline words: an animation (not the reveal transition) so it syncs to page time, not hydration. */
+	.hero-title .mask-word > span {
+		animation: hero-word var(--dur-reveal) var(--ease-out-editorial)
+			calc(var(--arrival-offset) + 100ms + var(--i, 0) * 60ms) backwards;
+	}
+
+	.hero-rise {
+		animation: hero-rise var(--dur-reveal) var(--ease-out-editorial)
+			calc(var(--arrival-offset) + 300ms + var(--n, 0) * var(--step-rise)) backwards;
+	}
+
+	.hero-card {
+		animation: hero-card var(--dur-reveal) var(--ease-out-editorial)
+			calc(var(--arrival-offset) + 900ms) backwards;
+	}
+
+	.hero-pattern .pc-face {
+		animation-delay: calc(var(--arrival-offset) + 200ms + var(--delay, 0ms));
+	}
+}
+
+/* The only scroll-linked motion on the site: the strip drifts up ~8% as the hero scrolls away. */
+@supports (animation-timeline: scroll()) {
+	@media (prefers-reduced-motion: no-preference) {
+		.hero-drift {
+			animation: hero-drift linear both;
+			animation-timeline: scroll(root);
+			animation-range: 0 100svh;
+		}
+	}
+}
+
+@keyframes hero-unmask {
+	to {
+		clip-path: inset(100% 0 0 0);
+		visibility: hidden;
+	}
+}
+
+@keyframes hero-poster-settle {
+	from {
+		transform: scale(1.08);
+	}
+}
+
+@keyframes hero-word {
+	from {
+		transform: translate3d(0, 105%, 0);
+	}
+	to {
+		transform: none;
+	}
+}
+
+@keyframes hero-rise {
+	from {
+		opacity: 0;
+		transform: translate3d(0, 16px, 0);
+	}
+}
+
+@keyframes hero-card {
+	from {
+		opacity: 0;
+		transform: translate3d(0, 24px, 0);
+	}
+}
+
+@keyframes hero-drift {
+	to {
+		transform: translate3d(0, -7.4%, 0);
+	}
+}

@@ -1,58 +1,105 @@
 import { JoinCtaLink } from "@shared/components/JoinCtaLink";
-import { MediaPlaceholder } from "@shared/components/MediaPlaceholder";
+import { MaskedText } from "@shared/components/motion/MaskedText";
+import { PatternMosaic } from "@shared/components/pattern/PatternMosaic";
 import { v2Button } from "@shared/components/ui/v2";
+import { getClubEvents, type PublicClubEvent } from "@shared/lib/club";
 import { getSiteJoinCta, getWebsiteContent } from "@shared/lib/website";
+import { ArrowRightIcon } from "lucide-react";
 import { getTranslations } from "next-intl/server";
-import Image from "next/image";
 
+import { pickNextEvent } from "../lib/next-event";
+import { HeroEventCard } from "./HeroEventCard";
 import { HeroMedia } from "./HeroMedia";
 
+// shortcut: temporary hero clip until the club supplies footage; upload via Admin → Website → Hero video, then delete public/hero/
+const TEMP_HERO = { videoUrl: "/hero/temp-hero.mp4", imageUrl: "/hero/temp-hero.webp" };
+
+async function readNextEvent(): Promise<PublicClubEvent | null> {
+	try {
+		const { items } = await getClubEvents();
+		return pickNextEvent(items, new Date());
+	} catch {
+		return null;
+	}
+}
+
 export async function HeroSection() {
-	const [t, tRoot, { content, featuredHorses }, joinCta] = await Promise.all([
+	const [t, tRoot, { content, featuredHorses }, joinCta, nextEvent] = await Promise.all([
 		getTranslations("home.hero"),
 		getTranslations(),
 		getWebsiteContent(),
 		getSiteJoinCta(),
+		readNextEvent(),
 	]);
 	const { hero } = content;
+	const admin = Boolean(hero.videoUrl);
+	const media = admin
+		? { videoUrl: hero.videoUrl as string, imageUrl: hero.imageUrl }
+		: TEMP_HERO;
 
 	return (
-		<section data-nav-tone="dark" data-hero-under-nav className="bg-welcome-navy text-white">
-			<div className="gap-10 py-16 lg:grid-cols-2 lg:items-center lg:py-[72px] container grid">
-				<div className="gap-5 flex flex-col">
-					<span className="type-label text-lilac">{hero.eyebrow ?? t("eyebrow")}</span>
-					<h1 className="type-display-xl text-balance">{hero.title ?? t("title")}</h1>
-					<p className="max-w-xl text-lg text-white/80">
-						{hero.subtitle ?? t("subtitle")}
-					</p>
-					<div className="gap-3.5 flex flex-wrap">
-						<JoinCtaLink cta={joinCta} className={v2Button({ variant: "onDark" })}>
-							{joinCta.labelKey ? tRoot(joinCta.labelKey) : t("joinCta")}
-						</JoinCtaLink>
-						{featuredHorses.length > 0 && (
-							<a href="#horses" className={v2Button({ variant: "ghostOnDark" })}>
-								{t("horsesCta")}
-							</a>
-						)}
-					</div>
-				</div>
-				<div className="md:h-[420px] relative h-[280px] overflow-hidden rounded-lg">
-					{hero.videoUrl ? (
-						<HeroMedia imageUrl={hero.imageUrl} videoUrl={hero.videoUrl} />
-					) : hero.imageUrl ? (
-						<Image
-							unoptimized
-							src={hero.imageUrl}
-							alt=""
-							fill
-							priority
-							sizes="(min-width: 1024px) 50vw, 100vw"
-							className="object-cover"
-						/>
-					) : (
-						<MediaPlaceholder tone="ice" className="h-full" />
+		<section
+			data-nav-tone="dark"
+			data-hero-under-nav
+			className="hero lg:min-h-svh lg:grid-cols-[45fr_20fr_35fr] bg-welcome-navy text-white grid"
+		>
+			<div className="grain px-6 pt-32 pb-12 lg:px-12 lg:pb-16 lg:min-h-0 relative isolate flex min-h-svh flex-col justify-end bg-[#0f1b30]">
+				<span className="type-label hero-rise mb-6 text-lilac">
+					{hero.eyebrow ?? t("eyebrow")}
+				</span>
+				<MaskedText
+					as="h1"
+					text={hero.title ?? t("title")}
+					className="hero-title font-display text-[clamp(3.75rem,10vw,9rem)] leading-[0.92] tracking-[-0.02em] text-balance"
+				/>
+				<p
+					className="hero-rise mt-8 max-w-md text-lg text-white/80"
+					style={{ "--n": 1 } as never}
+				>
+					{hero.subtitle ?? t("subtitle")}
+				</p>
+				<div
+					className="hero-rise mt-8 gap-3.5 flex flex-wrap"
+					style={{ "--n": 2 } as never}
+				>
+					<JoinCtaLink
+						cta={joinCta}
+						className={`group ${v2Button({ variant: "accent" })}`}
+					>
+						{joinCta.labelKey ? tRoot(joinCta.labelKey) : t("joinCta")}
+						<ArrowRightIcon className="ml-2 size-4 group-hover:translate-x-1 transition-transform duration-(--dur-hover)" />
+					</JoinCtaLink>
+					{featuredHorses.length > 0 && (
+						<a href="#horses" className={v2Button({ variant: "ghostOnDark" })}>
+							{t("horsesCta")}
+						</a>
 					)}
 				</div>
+			</div>
+
+			<div className="hero-strip lg:aspect-auto bg-ink relative aspect-[4/5] overflow-hidden">
+				<div className="hero-drift inset-x-0 top-0 absolute h-[108%]">
+					<HeroMedia
+						imageUrl={media.imageUrl}
+						videoUrl={media.videoUrl}
+						unoptimized={admin}
+					/>
+				</div>
+				{/* Unmask curtain: sits over the already-painted poster, so the poster stays the LCP. */}
+				<div
+					aria-hidden="true"
+					className="hero-strip-cover inset-0 bg-welcome-navy absolute"
+				/>
+			</div>
+
+			<div className="bg-welcome-navy relative min-h-[28rem] overflow-hidden">
+				<PatternMosaic
+					colourway="navy"
+					columns={4}
+					rows={10}
+					className="hero-pattern inset-0 absolute"
+				/>
+				{nextEvent && <HeroEventCard event={nextEvent} />}
 			</div>
 		</section>
 	);
