@@ -86,7 +86,8 @@ export default async function MarketingLayout({
 			)}
 		>
 			<head>
-				<script dangerouslySetInnerHTML={{ __html: ARRIVAL_INLINE_SCRIPT }} />
+				{/* The waitlist has no arrival; don't mark it seen for a later preview visit. */}
+				{!waitlistOnly && <script dangerouslySetInnerHTML={{ __html: ARRIVAL_INLINE_SCRIPT }} />}
 			</head>
 			<body
 				className={cn(
