@@ -108,6 +108,9 @@
 		"rsvpNote": "Members RSVP in the app."
 	},
 	"home": {
+		"arrival": {
+			"tagline": "Open the gates"
+		},
 		"hero": {
 			"eyebrow": "Modern shared racehorse ownership",
 			"title": "Open the gates. Own the moments.",

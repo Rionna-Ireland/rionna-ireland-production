@@ -1,5 +1,6 @@
 import { AnalyticsScript } from "@analytics";
 import { config } from "@config";
+import { ARRIVAL_INLINE_SCRIPT } from "@home/components/arrival-logic";
 import { config as i18nConfig } from "@i18n/config";
 import { cn } from "@repo/ui";
 import { ClientProviders } from "@shared/components/ClientProviders";
@@ -84,6 +85,9 @@ export default async function MarketingLayout({
 				waitlistOnly && "bg-[#57385A]",
 			)}
 		>
+			<head>
+				<script dangerouslySetInnerHTML={{ __html: ARRIVAL_INLINE_SCRIPT }} />
+			</head>
 			<body
 				className={cn(
 					"min-h-screen bg-background text-foreground antialiased",

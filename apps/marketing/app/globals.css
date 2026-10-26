@@ -675,3 +675,151 @@ main[data-nav-space] {
 main[data-nav-space]:has([data-hero-under-nav]) {
 	padding-top: 0;
 }
+
+/* ── S16-02 C0: home arrival (CSS-only; timeline in ms from t=0) ─────────── */
+
+:root {
+	/* The hero timeline adds this to its delays (Task 5). */
+	--arrival-offset: 2100ms;
+}
+
+:root[data-arrival="seen"],
+:root[data-arrival="skip"] {
+	--arrival-offset: 0ms;
+}
+
+:root[data-arrival="seen"] .arrival {
+	display: none;
+}
+
+/* Settled (non-animated) state is the finished lockup, so `skip` can drop animations. */
+.arrival {
+	animation: arrival-lift 600ms var(--ease-out-editorial) 2100ms forwards;
+}
+
+.arrival-content {
+	animation: arrival-drift 600ms var(--ease-out-editorial) 2100ms both;
+}
+
+.arrival-stroke {
+	stroke-dasharray: 1;
+	animation:
+		arrival-draw 900ms var(--ease-out-editorial) backwards,
+		arrival-fade 300ms linear 900ms forwards;
+}
+
+.arrival-fill-rect {
+	transform-box: fill-box;
+	animation: arrival-flood 300ms var(--ease-out-editorial) 900ms backwards;
+}
+
+.arrival-mark {
+	animation: arrival-slide 500ms var(--ease-out-editorial) 1100ms backwards;
+}
+
+.arrival-letters {
+	clip-path: inset(0 0 0 17.7%);
+	animation: arrival-wipe 500ms var(--ease-out-editorial) 1100ms backwards;
+}
+
+.arrival-tagline {
+	font-weight: 300;
+	font-style: italic;
+	color: #cca1d0;
+	animation: arrival-rise 450ms var(--ease-out-editorial) 1450ms backwards;
+}
+
+:root[data-arrival="skip"] .arrival {
+	animation: arrival-lift-fast 300ms var(--ease-out-editorial) forwards;
+}
+
+:root[data-arrival="skip"] .arrival * {
+	animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.arrival {
+		display: none;
+	}
+
+	:root {
+		--arrival-offset: 0ms;
+	}
+}
+
+@keyframes arrival-draw {
+	from {
+		stroke-dashoffset: 1;
+	}
+	to {
+		stroke-dashoffset: 0;
+	}
+}
+
+@keyframes arrival-fade {
+	to {
+		opacity: 0;
+	}
+}
+
+@keyframes arrival-flood {
+	from {
+		transform: translateY(100%);
+	}
+}
+
+@keyframes arrival-slide {
+	from {
+		transform: translateX(232.5%);
+	}
+}
+
+@keyframes arrival-wipe {
+	from {
+		clip-path: inset(0 100% 0 17.7%);
+	}
+}
+
+@keyframes arrival-rise {
+	from {
+		opacity: 0;
+		transform: translateY(12px);
+	}
+}
+
+@keyframes arrival-drift {
+	to {
+		opacity: 0;
+		transform: translateY(-24px);
+	}
+}
+
+@keyframes arrival-lift {
+	0%,
+	99% {
+		clip-path: inset(0 0 0 0);
+		opacity: 1;
+	}
+	100% {
+		clip-path: inset(0 0 100% 0);
+		opacity: 0;
+		visibility: hidden;
+		pointer-events: none;
+	}
+}
+
+@keyframes arrival-lift-fast {
+	0% {
+		clip-path: inset(0 0 0 0);
+	}
+	99% {
+		opacity: 1;
+	}
+	100% {
+		clip-path: inset(0 0 100% 0);
+		opacity: 0;
+		visibility: hidden;
+		pointer-events: none;
+	}
+}
+
