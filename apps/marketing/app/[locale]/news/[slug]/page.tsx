@@ -4,7 +4,6 @@ import { MaskedText } from "@shared/components/motion/MaskedText";
 import { PhotoUnmask } from "@shared/components/motion/PhotoUnmask";
 import { ReadingProgress } from "@shared/components/motion/ReadingProgress";
 import { Reveal } from "@shared/components/motion/Reveal";
-import { PatternMosaic } from "@shared/components/pattern/PatternMosaic";
 import { v2Button } from "@shared/components/ui/v2";
 import { getBaseUrl } from "@shared/lib/base-url";
 import { getClubNewsPostBySlug } from "@shared/lib/club";
@@ -142,14 +141,6 @@ export default async function NewsDetailPage(props: { params: Promise<Params> })
 			</div>
 
 			<div className={`${column} mt-12`}>
-				<PatternMosaic
-					colourway="lilac"
-					kind="quad"
-					columns={16}
-					rows={1}
-					trigger="view"
-					className="mb-12 rounded-lg"
-				/>
 				<div
 					className={[
 						"article-body drop-cap prose max-w-none text-ink prose-p:text-ink prose-li:text-ink",
