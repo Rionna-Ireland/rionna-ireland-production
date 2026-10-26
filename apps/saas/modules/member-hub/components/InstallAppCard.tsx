@@ -3,95 +3,79 @@
 import { useActiveOrganization } from "@organizations/hooks/use-active-organization";
 import { parseOrgMetadata } from "@repo/database/types";
 import { useTranslations } from "next-intl";
-import Image from "next/image";
 
-// Official store badge URLs. These are the standard public assets Apple
-// and Google publish for store-link badges.
-const APPLE_BADGE_SRC =
-	"https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg";
-const GOOGLE_BADGE_SRC =
-	"https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png";
+// shortcut: store homepages until the listings are live (same as marketing's store-links); set Organization.metadata.appLinks to replace them.
+const TEMP_IOS_URL = "https://apps.apple.com/";
+const TEMP_ANDROID_URL = "https://play.google.com/store/apps";
 
 export function InstallAppCard() {
-	const t = useTranslations();
+	const t = useTranslations("app.memberHub.installApp");
 	const { activeOrganization } = useActiveOrganization();
-	const clubName = activeOrganization?.name ?? "the club";
 	const rawMetadata =
 		(activeOrganization?.metadata as unknown as string | null | undefined) ?? null;
 	const metadata =
 		typeof rawMetadata === "string" ? parseOrgMetadata(rawMetadata) : (rawMetadata ?? {});
-	const appLinks = metadata.appLinks ?? {};
-	const { iosUrl, androidUrl } = appLinks;
-	const hasAny = Boolean(iosUrl || androidUrl);
-
-	if (!hasAny) {
-		return (
-			<section className="p-6 md:p-10 rounded-xl border bg-card">
-				<p className="text-xs tracking-wider font-mono text-muted-foreground uppercase">
-					APP LAUNCHING SOON
-				</p>
-				<h3 className="mt-3 text-2xl md:text-3xl leading-tight font-display text-foreground">
-					The {clubName} app is in final testing.
-				</h3>
-				<p className="mt-3 max-w-2xl text-foreground/75">
-					We'll email you the moment it's live on the App Store and Play Store.
-				</p>
-			</section>
-		);
-	}
+	const iosUrl = metadata.appLinks?.iosUrl?.trim();
+	const androidUrl = metadata.appLinks?.androidUrl?.trim();
+	const comingSoon = (
+		<span className="mt-2 type-label text-xs text-ink-variant">{t("comingSoon")}</span>
+	);
 
 	return (
 		<section className="p-6 md:p-10 rounded-xl border bg-card">
 			<p className="text-xs tracking-wider font-mono text-muted-foreground uppercase">
-				GET THE APP
+				{t("eyebrow")}
 			</p>
 			<h3 className="mt-3 text-2xl md:text-3xl leading-tight font-display text-foreground">
-				Our Stables, Pulse, and Community live in the app.
+				{t("title")}
 			</h3>
 
-			<div className="mt-6 gap-3 flex flex-wrap items-center">
-				{iosUrl ? (
+			<div className="mt-6 gap-x-5 gap-y-3 flex flex-wrap items-start">
+				<div className="flex flex-col items-start">
 					<a
-						href={iosUrl}
+						href={iosUrl || TEMP_IOS_URL}
 						target="_blank"
-						rel="noreferrer"
-						aria-label="Download on the App Store"
+						rel="noopener"
+						className="inline-block"
 					>
-						<Image
-							src={APPLE_BADGE_SRC}
-							alt="Download on the App Store"
-							width={160}
-							height={48}
-							unoptimized
+						<img
+							src="/store-badges/app-store-black.svg"
+							alt={t("altIos")}
+							width={120}
+							height={40}
+							className="h-10 w-auto"
 						/>
 					</a>
-				) : null}
-				{androidUrl ? (
+					{!iosUrl && comingSoon}
+				</div>
+				<div className="flex flex-col items-start">
+					{/* Google's PNG carries padding: 60px tall shows a 40px badge. */}
 					<a
-						href={androidUrl}
+						href={androidUrl || TEMP_ANDROID_URL}
 						target="_blank"
-						rel="noreferrer"
-						aria-label="Get it on Google Play"
+						rel="noopener"
+						className="-my-2.5 -mx-2.5 inline-block"
 					>
-						<Image
-							src={GOOGLE_BADGE_SRC}
-							alt="Get it on Google Play"
-							width={180}
-							height={54}
-							unoptimized
+						<img
+							src="/store-badges/google-play.png"
+							alt={t("altAndroid")}
+							width={155}
+							height={60}
+							className="h-[60px] w-auto"
 						/>
 					</a>
-				) : null}
+					{!androidUrl && comingSoon}
+				</div>
 			</div>
 
 			<div className="mt-8">
 				<p className="text-xs tracking-wider font-mono text-muted-foreground uppercase">
-					HOW IT WORKS
+					{t("howTitle")}
 				</p>
 				<ol className="mt-3 space-y-2 list-inside list-decimal text-foreground/85">
-					<li>Install the app from the store.</li>
-					<li>Sign in with the same email you used here.</li>
-					<li>{t("app.memberHub.installNoSetup")}</li>
+					<li>{t("step1")}</li>
+					<li>{t("step2")}</li>
+					<li>{t("step3")}</li>
 				</ol>
 			</div>
 		</section>

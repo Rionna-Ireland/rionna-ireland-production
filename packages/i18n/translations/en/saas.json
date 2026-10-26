@@ -1083,7 +1083,17 @@
 			"billingPortalRefresh": "We couldn't open the billing portal. Please refresh and try again.",
 			"billingPortalRetry": "We couldn't open the billing portal. Please try again in a moment.",
 			"membershipIssue": "There's an issue with your membership. Let's get it sorted.",
-			"installNoSetup": "You're in. No extra setup.",
+			"installApp": {
+				"eyebrow": "Get the app",
+				"title": "Our Stables, Pulse and Community live in the app.",
+				"altIos": "Download on the App Store",
+				"altAndroid": "Get it on Google Play",
+				"comingSoon": "Coming soon",
+				"howTitle": "How it works",
+				"step1": "Download the Rionna app from the App Store or Google Play.",
+				"step2": "Log in with the same email and password you use here.",
+				"step3": "You're in. No extra setup."
+			},
 			"feedQuiet": "Your feed is quiet right now. Open the app for the latest."
 		},
 		"community": {
