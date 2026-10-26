@@ -531,7 +531,7 @@
 	}
 
 	.mask-word > span {
-		transform: translate3d(0, 110%, 0);
+		transform: translate3d(0, 130%, 0);
 	}
 
 	[data-revealed] .mask-word > span {
@@ -560,6 +560,7 @@
 	.link-draw,
 	.card-lift,
 	.photo-zoom img,
+	.stat-hairline,
 	.nav-glass,
 	.nav-glass::before,
 	.nav-glass::after,
@@ -914,7 +915,7 @@ main[data-nav-space]:has([data-hero-under-nav]) {
 
 @keyframes hero-word {
 	from {
-		transform: translate3d(0, 105%, 0);
+		transform: translate3d(0, 130%, 0);
 	}
 	to {
 		transform: none;
@@ -951,5 +952,83 @@ main[data-nav-space]:has([data-hero-under-nav]) {
 	from {
 		opacity: 0;
 		transform: translate3d(0, -8px, 0);
+	}
+}
+
+/* ── S16-02 C1b/C2/C3: home flow ────────────────────────────────────────── */
+
+/* The next section covers the hero; rounded top over the (always overlapped) hero edge. */
+.home-flow {
+	position: relative;
+	z-index: 10;
+	margin-top: -2rem;
+	border-radius: 2rem 2rem 0 0;
+	background: var(--color-paper);
+	overflow: clip;
+}
+
+@media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
+	.home-hero {
+		position: sticky;
+		top: 0;
+		z-index: 0;
+	}
+}
+
+/* Stat hairline draws left to right as its count finishes. */
+.stat-hairline {
+	transform-origin: left;
+	transition: transform var(--dur-reveal) var(--ease-out-editorial);
+}
+
+/* Ring-tile card corner: spurs turn when the card is hovered. */
+.tile-corner .pc-star {
+	transform-box: fill-box;
+	transform-origin: center;
+	transition: rotate var(--dur-deal) var(--ease-out-editorial);
+}
+
+@media (hover: hover) {
+	.card-lift:hover .tile-corner .pc-star {
+		rotate: 22.5deg;
+	}
+}
+
+.deal-row {
+	perspective: 1200px;
+}
+
+@media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
+	/* Horse cards deal in diagonally (index x step-deal x 2), like the mosaic tiles. */
+	.deal-row:not([data-revealed]) .deal-card {
+		opacity: 0;
+	}
+
+	.deal-row[data-revealed] .deal-card {
+		animation: pc-deal var(--dur-deal) var(--ease-out-editorial) backwards;
+		animation-delay: calc(var(--i, 0) * var(--step-deal) * 2);
+	}
+
+	/* Corner tile deals in with its card's reveal. */
+	.reveal[data-revealed] .tile-corner {
+		animation: pc-deal var(--dur-deal) var(--ease-out-editorial) backwards;
+		animation-delay: calc(var(--reveal-delay, 0ms) + 200ms);
+	}
+}
+
+/* About statement: each word fills from muted to ink as it scrolls through. */
+@supports (animation-timeline: view()) {
+	@media (prefers-reduced-motion: no-preference) {
+		.fill-word {
+			animation: fill-word linear both;
+			animation-timeline: view();
+			animation-range: entry 25% entry 100%;
+		}
+	}
+}
+
+@keyframes fill-word {
+	from {
+		opacity: 0.22;
 	}
 }

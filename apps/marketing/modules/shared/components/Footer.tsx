@@ -1,6 +1,7 @@
 import { config } from "@config";
 import { LocaleLink } from "@i18n/routing";
 import { Wordmark } from "@shared/components/brand/Wordmark";
+import { PatternMosaic } from "@shared/components/pattern/PatternMosaic";
 import { getClubOrganization } from "@shared/lib/club";
 import { getTranslations } from "next-intl/server";
 
@@ -44,8 +45,9 @@ export async function Footer({ socialLinks }: { socialLinks?: SocialLinks }) {
 	}).filter((entry): entry is [string, string] => Boolean(entry[1]));
 
 	return (
-		<footer className="bg-ink py-12 text-white">
-			<div className="gap-8 md:grid-cols-[1.4fr_1fr_1fr_1fr] container grid grid-cols-2">
+		<footer data-nav-tone="dark" className="bg-ink pb-12 text-white">
+			<PatternMosaic colourway="navy" columns={12} rows={1} trigger="view" />
+			<div className="gap-8 pt-12 md:grid-cols-[1.4fr_1fr_1fr_1fr] container grid grid-cols-2">
 				<div className="md:col-span-1 col-span-2">
 					<Wordmark className="h-6 text-white w-auto" />
 					<p className="mt-4 max-w-xs text-ice text-[13px]">

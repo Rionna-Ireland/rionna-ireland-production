@@ -28,12 +28,17 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
 	return (
 		<>
 			<Arrival tagline={t("tagline")} />
-			<HeroSection />
-			<HorsePreviewSection />
-			<StatsSection stats={content.stats} />
-			<AboutTeaserSection />
-			<FeaturesSection />
-			<FinalCtaSection />
+			{/* Curtain: the hero sticks (lg, motion allowed) while .home-flow slides up over it. */}
+			<div className="home-hero">
+				<HeroSection />
+			</div>
+			<div data-nav-tone="light" className="home-flow">
+				<HorsePreviewSection />
+				<StatsSection stats={content.stats} />
+				<AboutTeaserSection />
+				<FeaturesSection />
+				<FinalCtaSection />
+			</div>
 		</>
 	);
 }
