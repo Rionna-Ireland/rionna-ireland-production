@@ -61,7 +61,7 @@ export async function HeroSection() {
 							"--hero-step": `${heroWordStepMs(title.split(/\s+/).filter(Boolean).length)}ms`,
 						} as CSSProperties
 					}
-					className="hero-title font-display text-[clamp(3.75rem,10vw,9rem)] leading-[0.92] tracking-[-0.02em] text-balance"
+					className="hero-title lg:text-[clamp(4.5rem,6.4vw,7.5rem)] font-display text-[clamp(3.5rem,14vw,6rem)] leading-[0.92] tracking-[-0.02em] text-balance"
 				/>
 				<p
 					className="hero-rise mt-8 max-w-md text-lg text-white/80"

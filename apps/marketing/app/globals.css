@@ -412,8 +412,8 @@
 	overflow: hidden;
 	vertical-align: top;
 	/* Room for descenders inside the clip. */
-	padding-bottom: 0.12em;
-	margin-bottom: -0.12em;
+	padding-bottom: 0.25em;
+	margin-bottom: -0.25em;
 }
 
 .mask-word > span {
@@ -844,7 +844,9 @@ main[data-nav-space]:has([data-hero-under-nav]) {
 @media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
 	/* Strip unmask, top to bottom: the cover shrinks away over the painted poster. */
 	.hero-strip-cover {
-		animation: hero-unmask var(--dur-rise) var(--ease-out-editorial) var(--arrival-offset)
+		visibility: visible;
+		clip-path: inset(0);
+		animation: hero-unmask var(--dur-unmask) var(--ease-out-editorial) var(--arrival-offset)
 			forwards;
 	}
 
