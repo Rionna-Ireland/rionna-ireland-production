@@ -91,7 +91,7 @@ export default async function MembershipPage(props: { params: Promise<{ locale: 
 					</div>
 				</div>
 
-				<div id="faq" className="scroll-mt-24">
+				<div id="faq" className="scroll-mt-28">
 					<h2 className="type-display-md">{t("faq.title")}</h2>
 					<MembershipFaq items={faq} />
 				</div>

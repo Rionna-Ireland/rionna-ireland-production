@@ -103,7 +103,12 @@ export default async function MarketingLayout({
 							>
 								{joinCta && <NavBar joinCta={joinCta} />}
 
-								<main className="min-h-screen">{children}</main>
+								<main
+									className="min-h-screen"
+									data-nav-space={waitlistOnly ? undefined : ""}
+								>
+									{children}
+								</main>
 
 								{!waitlistOnly && <Footer socialLinks={socialLinks} />}
 

@@ -87,10 +87,10 @@ export function NavBar({ joinCta }: { joinCta: JoinCta }) {
 	const dark = tone === "dark";
 
 	return (
-		<div className="top-3 px-3 pt-3 sticky z-50">
+		<div className="inset-x-3 top-3 pointer-events-none fixed z-50">
 			<nav
 				ref={navRef}
-				className="nav-glass container"
+				className="nav-glass pointer-events-auto container"
 				data-tone={tone}
 				data-scrolled={scrolled}
 				data-edge={localePathname === "/" ? "ice" : undefined}
@@ -100,7 +100,7 @@ export function NavBar({ joinCta }: { joinCta: JoinCta }) {
 					<div className="gap-6 py-3 lg:py-3.5 flex items-center justify-between">
 						<LocaleLink
 							href="/"
-							className="block hover:no-underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
+							className="block hover:no-underline focus-visible:outline-2 focus-visible:outline-offset-4"
 							aria-label={config.appName}
 						>
 							<Wordmark className="h-6 w-auto" />
@@ -112,7 +112,7 @@ export function NavBar({ joinCta }: { joinCta: JoinCta }) {
 									key={menuItem.href}
 									href={menuItem.href}
 									className={cn(
-										"link-draw text-sm font-medium opacity-75 hover:no-underline hover:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring",
+										"link-draw text-sm font-medium opacity-75 hover:no-underline hover:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-4",
 										isMenuItemActive(menuItem.href) && "opacity-100",
 									)}
 									prefetch
@@ -123,7 +123,7 @@ export function NavBar({ joinCta }: { joinCta: JoinCta }) {
 							{config.saasUrl && (
 								<NextLink
 									href={config.saasUrl}
-									className="link-draw text-sm font-medium hover:no-underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
+									className="link-draw text-sm font-medium hover:no-underline focus-visible:outline-2 focus-visible:outline-offset-4"
 									prefetch
 								>
 									{t("common.menu.login")}
@@ -137,11 +137,21 @@ export function NavBar({ joinCta }: { joinCta: JoinCta }) {
 							</JoinCtaLink>
 						</div>
 
+						<JoinCtaLink
+							cta={navJoinCta}
+							className={cn(
+								v2Button({ variant: dark ? "onDark" : "primary", size: "md" }),
+								"lg:hidden ml-auto",
+							)}
+						>
+							{joinLabel}
+						</JoinCtaLink>
+
 						<Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
 							<SheetTrigger asChild>
 								<button
 									type="button"
-									className="size-10 lg:hidden flex items-center justify-center rounded-lg border border-current/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+									className="size-10 lg:hidden flex items-center justify-center rounded-lg border border-current/20 focus-visible:outline-2 focus-visible:outline-offset-2"
 									aria-label={t("common.aria.menu")}
 								>
 									<MenuIcon className="size-5" />
