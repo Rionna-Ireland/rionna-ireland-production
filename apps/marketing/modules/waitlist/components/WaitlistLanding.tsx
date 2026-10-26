@@ -1,8 +1,8 @@
 import { LocaleLink } from "@i18n/routing";
+import { PatternMosaic } from "@shared/components/pattern/PatternMosaic";
 import { getTranslations } from "next-intl/server";
 import type { CSSProperties } from "react";
 
-import { PatternMosaic } from "./pattern/PatternMosaic";
 import { WaitlistForm } from "./WaitlistForm";
 
 // The Rionna horse-head mark (from @repo/ui Logo), used huge like the poster.

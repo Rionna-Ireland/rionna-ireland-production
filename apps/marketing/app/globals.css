@@ -272,6 +272,25 @@
 	}
 }
 
+/*
+ * S16-02 A1 motion tokens. Values come from the waitlist; .pc-* and .wl-*
+ * below use them with unchanged values.
+ */
+@layer base {
+	:root {
+		--ease-out-editorial: cubic-bezier(0.22, 1, 0.36, 1);
+		--ease-out-press: cubic-bezier(0.16, 1, 0.3, 1);
+		--dur-press: 120ms;
+		--dur-hover: 300ms;
+		--dur-reveal: 700ms;
+		--dur-rise: 1200ms;
+		--dur-deal: 1400ms;
+		--dur-mark: 1800ms;
+		--step-deal: 90ms;
+		--step-rise: 80ms;
+	}
+}
+
 /* ── S12-09 pattern-cells quilt ─────────────────────────────────────────── */
 
 /*
@@ -285,7 +304,7 @@
 
 /* On load (and the join ripple) each tile settles in, diagonal by diagonal. */
 .pc-face {
-	animation: pc-deal 1400ms cubic-bezier(0.22, 1, 0.36, 1) both;
+	animation: pc-deal var(--dur-deal) var(--ease-out-editorial) both;
 	animation-delay: var(--delay, 0ms);
 	transform-origin: center;
 	will-change: transform, opacity;
@@ -295,7 +314,7 @@
 .pc-face .pc-star {
 	transform-box: fill-box;
 	transform-origin: center;
-	transition: rotate 1400ms cubic-bezier(0.22, 1, 0.36, 1);
+	transition: rotate var(--dur-deal) var(--ease-out-editorial);
 }
 
 .pc-slot:hover .pc-star {
@@ -315,7 +334,11 @@
 
 /* ── S12-09 waitlist panel ──────────────────────────────────────────────── */
 
-/* Film-grain over the plum so the flat colour reads as printed paper. */
+/*
+ * Film-grain so flat colour reads as printed paper. `.grain` needs a
+ * positioned parent that makes a stacking context (e.g. relative + isolate).
+ */
+.grain::after,
 .wl-panel::after {
 	content: "";
 	position: absolute;
@@ -327,22 +350,23 @@
 	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
+.mark-settle,
 .wl-mark {
-	animation: wl-mark 1800ms cubic-bezier(0.22, 1, 0.36, 1) 200ms both;
+	animation: wl-mark var(--dur-mark) var(--ease-out-editorial) 200ms both;
 	will-change: transform, opacity;
 }
 
 .wl-rise {
-	animation: wl-rise 1200ms cubic-bezier(0.22, 1, 0.36, 1) both;
+	animation: wl-rise var(--dur-rise) var(--ease-out-editorial) both;
 	will-change: transform, opacity;
 	animation-delay: calc(var(--d, 0ms) + 250ms);
 }
 
 .wl-cta {
 	transition:
-		background-color 300ms ease,
-		color 300ms ease,
-		transform 300ms cubic-bezier(0.16, 1, 0.3, 1);
+		background-color var(--dur-hover) ease,
+		color var(--dur-hover) ease,
+		transform var(--dur-hover) var(--ease-out-press);
 }
 
 .wl-cta:hover {
@@ -373,15 +397,164 @@
 	}
 }
 
+/* ── S16-02 shared motion utilities ─────────────────────────────────────── */
+
+.reveal {
+	transition:
+		opacity var(--dur-reveal) var(--ease-out-editorial) var(--reveal-delay, 0ms),
+		transform var(--dur-reveal) var(--ease-out-editorial) var(--reveal-delay, 0ms);
+}
+
+/* Words slide up out of a mask; revealed by [data-revealed] on self or ancestor. */
+.mask-word {
+	display: inline-block;
+	overflow: hidden;
+	vertical-align: top;
+	/* Room for descenders inside the clip. */
+	padding-bottom: 0.12em;
+	margin-bottom: -0.12em;
+}
+
+.mask-word > span {
+	display: inline-block;
+	transition: transform var(--dur-rise) var(--ease-out-editorial)
+		calc(var(--reveal-delay, 0ms) + var(--i, 0) * var(--step-rise));
+}
+
+.press {
+	transition: transform var(--dur-press) var(--ease-out-press);
+}
+
+.press:active {
+	transform: scale(0.98);
+}
+
+/* Underline draws in from the left on hover/focus. */
+.link-draw {
+	background-image: linear-gradient(currentColor, currentColor);
+	background-repeat: no-repeat;
+	background-position: 0 100%;
+	background-size: 0 1px;
+	transition: background-size var(--dur-hover) var(--ease-out-press);
+}
+
+.link-draw:hover,
+.link-draw:focus-visible {
+	background-size: 100% 1px;
+}
+
+.card-lift {
+	transition: transform var(--dur-hover) var(--ease-out-press);
+}
+
+.photo-zoom {
+	overflow: hidden;
+}
+
+.photo-zoom img {
+	transition: transform var(--dur-deal) var(--ease-out-editorial);
+}
+
+@media (hover: hover) {
+	.card-lift:hover {
+		transform: translateY(-0.25rem);
+	}
+
+	.card-lift:hover .photo-zoom img,
+	.photo-zoom:hover img {
+		transform: scale(1.03);
+	}
+}
+
+/*
+ * Static pattern textures (full compositions from the S16 pattern library).
+ * Painted on ::before behind content, so text over it is unaffected; dial it
+ * with --texture-opacity. Needs no positioned parent: the rule sets one, in
+ * the components layer so Tailwind position utilities still win.
+ */
+@layer components {
+	.texture-p1,
+	.texture-p3,
+	.texture-p7,
+	.texture-p8 {
+		position: relative;
+		isolation: isolate;
+	}
+
+	.texture-p1::before,
+	.texture-p3::before,
+	.texture-p7::before,
+	.texture-p8::before {
+		content: "";
+		position: absolute;
+		inset: 0;
+		z-index: -1;
+		pointer-events: none;
+		opacity: var(--texture-opacity, 1);
+		background-repeat: repeat;
+	}
+
+	.texture-p1::before {
+		background-image: url("/patterns/pattern-1-swatch.svg");
+		background-size: 153.333px 153.333px;
+	}
+
+	.texture-p3::before {
+		background-image: url("/patterns/pattern-3-swatch.svg");
+		background-size: 153.333px 153.333px;
+	}
+
+	.texture-p7::before {
+		background-image: url("/patterns/pattern-7-final.svg");
+		background-size: 520px 960px;
+	}
+
+	.texture-p8::before {
+		background-image: url("/patterns/pattern-8-final.svg");
+		background-size: 520px 960px;
+	}
+}
+
+/*
+ * Hide-before-reveal. Gated so content is never hidden without JS or under
+ * Reduce Motion.
+ */
+@media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
+	.reveal:not([data-revealed]) {
+		opacity: 0;
+		transform: translate3d(0, 16px, 0);
+	}
+
+	.mask-word > span {
+		transform: translate3d(0, 110%, 0);
+	}
+
+	[data-revealed] .mask-word > span {
+		transform: none;
+	}
+
+	/* PatternMosaic trigger="view": hold the deal until in view. */
+	.pc-wait {
+		animation-play-state: paused;
+	}
+}
+
 @media (prefers-reduced-motion: reduce) {
 	.pc-face,
 	.wl-mark,
+	.mark-settle,
 	.wl-rise {
 		animation: none;
 	}
 
 	.pc-face .pc-star,
-	.wl-cta {
+	.wl-cta,
+	.reveal,
+	.mask-word > span,
+	.press,
+	.link-draw,
+	.card-lift,
+	.photo-zoom img {
 		transition: none;
 	}
 }

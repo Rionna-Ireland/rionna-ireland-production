@@ -34,10 +34,72 @@ export const COLOURWAYS = {
 		light: "#FFFFFF",
 		spur: "#FFFFFF",
 	},
+	// S16-02 library additions. `mark` = centre Submark (default cream), `corner` =
+	// the clipped corner Submarks / stars (default `accent`), read by submarkQuad.
+	// Cell 4: lilac ground, pale ring, cream star.
+	lilac: {
+		base: "#F2D6F4",
+		mid: "#CCA1D0",
+		accent: "#EEEADF",
+		light: "#F2D6F4",
+		spur: "#CCA1D0",
+	},
+	// Quad on a white base (cells 2/7/12/19 family).
+	white: {
+		base: "#FFFFFF",
+		mid: "#EEEADF",
+		accent: "#CCA1D0",
+		light: "#FFFFFF",
+		spur: "#EEEADF",
+	},
+	// Cell 27: the green Submark quad (corners sage, not cream).
+	greenMark: {
+		base: "#043F29",
+		mid: "#A6B999",
+		accent: "#EEEADF",
+		light: "#D4DCCE",
+		spur: "#A6B999",
+		corner: "#D4DCCE",
+	},
+	// Cells 30-32: pale tint on cream with a coloured Submark.
+	pinkTint: {
+		base: "#EEEADF",
+		mid: "#F2D6F4",
+		accent: "#CCA1D0",
+		light: "#F2D6F4",
+		spur: "#CCA1D0",
+		mark: "#57385A",
+	},
+	iceTint: {
+		base: "#EEEADF",
+		mid: "#DAEDF3",
+		accent: "#B9D8E1",
+		light: "#DAEDF3",
+		spur: "#B9D8E1",
+		mark: "#374B6C",
+	},
+	sageTint: {
+		base: "#EEEADF",
+		mid: "#D4DCCE",
+		accent: "#A6B999",
+		light: "#D4DCCE",
+		spur: "#A6B999",
+		mark: "#043F29",
+	},
 } as const;
 
+type Palette = {
+	base: string;
+	mid: string;
+	accent: string;
+	light: string;
+	spur: string;
+	mark?: string;
+	corner?: string;
+};
+
 export type Colourway = keyof typeof COLOURWAYS;
-export type TileKind = "quad" | "gem" | "ring" | "harlequin";
+export type TileKind = "quad" | "gem" | "ring" | "harlequin" | "submarkQuad" | "halfDrop";
 
 export interface TileSpec {
 	kind: TileKind;
@@ -49,6 +111,14 @@ export interface TileSpec {
 // The sheet's star, centred on (0,0), tip-to-tip 54.6 units.
 const STAR_PATH =
 	"M-0.797 -26.812C-0.648 -27.729 0.647 -27.729 0.797 -26.812L3.479 -10.381C3.577 -9.78 4.26 -9.492 4.746 -9.846L18.05 -19.533C18.793 -20.074 19.709 -19.141 19.178 -18.384L9.667 -4.834C9.319 -4.339 9.602 -3.644 10.192 -3.544L26.324 -0.812C27.225 -0.659 27.225 0.659 26.324 0.812L10.192 3.543C9.602 3.643 9.319 4.339 9.667 4.835L19.178 18.384C19.709 19.141 18.793 20.074 18.05 19.533L4.746 9.846C4.26 9.492 3.577 9.78 3.479 10.381L0.797 26.812C0.647 27.729 -0.647 27.729 -0.797 26.812L-3.48 10.381C-3.578 9.78 -4.26 9.492 -4.747 9.846L-18.05 19.533C-18.793 20.074 -19.709 19.141 -19.178 18.384L-9.668 4.835C-9.32 4.339 -9.603 3.643 -10.193 3.543L-26.325 0.812C-27.226 0.66 -27.226 -0.659 -26.325 -0.812L-10.193 -3.544C-9.603 -3.644 -9.32 -4.339 -9.668 -4.834L-19.178 -18.384C-19.71 -19.141 -18.793 -20.074 -18.05 -19.533L-4.747 -9.846C-4.26 -9.492 -3.578 -9.78 -3.48 -10.381L-0.797 -26.812Z";
+
+// The horse-head Submark (cells 5/26/27/30-32), 45x40, origin at its top-left.
+const SUBMARK_PATH =
+	"M0.716 0C1.711 3.886 3.855 6.289 7.259 7.61L7.259 0L7.974 0C9.356 5.399 15.079 8.091 19.093 8.657C26.478 9.697 45 15.103 45 38.99L16.101 38.99L16.101 25.846C12.652 34.698 8.918 39.488 0 40L0 0L0.716 0Z";
+
+// The larger Submark of the half-drop tile (cell 6), 84x74.87.
+const SUBMARK_LARGE_PATH =
+	"M1.336 0C3.193 7.273 7.197 11.772 13.551 14.244L13.551 0L14.884 0C17.465 10.106 28.147 15.144 35.641 16.203C49.426 18.151 84 28.269 84 72.979L30.055 72.979L30.055 48.377C23.617 64.946 16.648 73.911 0 74.87L0 0L1.336 0Z";
 
 function Star({ x, y, scale = 1, fill }: { x: number; y: number; scale?: number; fill: string }) {
 	return (
@@ -83,7 +153,7 @@ function Ring({ fill }: { fill: string }) {
 	return <>{cells}</>;
 }
 
-function Quad({ c }: { c: (typeof COLOURWAYS)[Colourway] }) {
+function Quad({ c }: { c: Palette }) {
 	return (
 		<>
 			<rect width={100} height={100} fill={c.mid} />
@@ -99,7 +169,7 @@ function Quad({ c }: { c: (typeof COLOURWAYS)[Colourway] }) {
 	);
 }
 
-function Gem({ c }: { c: (typeof COLOURWAYS)[Colourway] }) {
+function Gem({ c }: { c: Palette }) {
 	// Inner gem: the 3×3 block plus four arms, hollow centre (sheet: clip11).
 	const gem: [number, number][] = [
 		[-1, -1],
@@ -134,7 +204,7 @@ function Gem({ c }: { c: (typeof COLOURWAYS)[Colourway] }) {
 	);
 }
 
-function RingStar({ c }: { c: (typeof COLOURWAYS)[Colourway] }) {
+function RingStar({ c }: { c: Palette }) {
 	return (
 		<>
 			<rect width={200} height={200} fill={c.mid} />
@@ -148,7 +218,7 @@ function RingStar({ c }: { c: (typeof COLOURWAYS)[Colourway] }) {
 	);
 }
 
-function Harlequin({ c }: { c: (typeof COLOURWAYS)[Colourway] }) {
+function Harlequin({ c }: { c: Palette }) {
 	// Two star quadrants and two lozenge quadrants (sheet: clip15–20).
 	const lozenges: ReactNode[] = [];
 	for (const [ox, oy] of [
@@ -179,12 +249,61 @@ function Harlequin({ c }: { c: (typeof COLOURWAYS)[Colourway] }) {
 	);
 }
 
-const RENDERERS = { quad: Quad, gem: Gem, ring: RingStar, harlequin: Harlequin } as const;
+/** Quad with the Submark instead of the centre star (cells 5, 26, 27, 30-32). */
+function SubmarkQuad({ c }: { c: Palette }) {
+	const corner = c.corner ?? c.accent;
+	return (
+		<>
+			<rect width={100} height={100} fill={c.mid} />
+			<rect x={100} width={100} height={100} fill={c.base} />
+			<rect y={100} width={100} height={100} fill={c.base} />
+			<rect x={100} y={100} width={100} height={100} fill={c.mid} />
+			<path d={SUBMARK_PATH} fill={c.mark ?? "#EEEADF"} transform="translate(77.5 84)" />
+			{[
+				[-22.5, -20],
+				[177.5, -20],
+				[-22.5, 180],
+				[177.5, 180],
+			].map(([x, y]) => (
+				<path
+					key={`${x}:${y}`}
+					d={SUBMARK_PATH}
+					fill={corner}
+					transform={`translate(${x} ${y})`}
+				/>
+			))}
+		</>
+	);
+}
+
+/** 200x102 half-drop of two Submarks (cell 6); tile it for textures. */
+function HalfDrop({ c }: { c: Palette }) {
+	return (
+		<>
+			<rect width={200} height={102} fill={c.base} />
+			<path d={SUBMARK_LARGE_PATH} fill={c.mid} transform="translate(16 13.565)" />
+			<path d={SUBMARK_LARGE_PATH} fill={c.mid} transform="matrix(-1 0 0 -1 184 88.435)" />
+		</>
+	);
+}
+
+const RENDERERS = {
+	quad: Quad,
+	gem: Gem,
+	ring: RingStar,
+	harlequin: Harlequin,
+	submarkQuad: SubmarkQuad,
+	halfDrop: HalfDrop,
+} as const;
 
 export function PatternTile({ spec }: { spec: TileSpec }) {
 	const Renderer = RENDERERS[spec.kind];
 	return (
-		<svg viewBox="0 0 200 200" className="pc-tile block size-full" aria-hidden="true">
+		<svg
+			viewBox={spec.kind === "halfDrop" ? "0 0 200 102" : "0 0 200 200"}
+			className="pc-tile block size-full"
+			aria-hidden="true"
+		>
 			<g transform={`rotate(${spec.turn * 90} 100 100)`}>
 				<Renderer c={COLOURWAYS[spec.colourway]} />
 			</g>

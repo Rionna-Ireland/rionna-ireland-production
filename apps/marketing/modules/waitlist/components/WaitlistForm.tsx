@@ -12,6 +12,7 @@ import {
 	FormMessage,
 } from "@repo/ui/components/form";
 import { Input } from "@repo/ui/components/input";
+import { WAITLIST_JOINED_EVENT } from "@shared/components/pattern/PatternMosaic";
 import { useTranslations } from "next-intl";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -19,7 +20,6 @@ import { z } from "zod";
 
 import { joinWaitlist } from "../actions/join-waitlist";
 import { createWaitlistFieldsSchema, WAITLIST_HONEYPOT_FIELD } from "../lib/schema";
-import { WAITLIST_JOINED_EVENT } from "./pattern/PatternMosaic";
 
 // Night-panel field: translucent cream fill (--input) with a hairline that
 // warms to lilac on focus; 2px focus ring with offset (§2b a11y guardrail).
