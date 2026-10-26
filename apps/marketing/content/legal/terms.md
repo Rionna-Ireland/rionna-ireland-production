@@ -1,5 +1,6 @@
 ---
 title: Terms of Service
+updated: "2026-10-26"
 version: "2026-09-27"
 ---
 

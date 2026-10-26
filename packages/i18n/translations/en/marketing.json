@@ -2,6 +2,7 @@
 	"contact": {
 		"eyebrow": "Get in touch",
 		"title": "Say hello",
+		"hello": "Say hello.",
 		"description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore. Ut enim ad minim veniam, quis nostrud exercitation.",
 		"emailLabel": "Email",
 		"phoneLabel": "Phone",
@@ -209,9 +210,13 @@
 			"cta": "Become a member"
 		}
 	},
+	"legal": {
+		"lastUpdated": "Last updated",
+		"toc": "On this page"
+	},
 	"notFound": {
 		"code": "404",
-		"title": "Page not found",
+		"title": "Off the course.",
 		"goToDashboard": "Go to dashboard",
 		"goToHomepage": "Go to homepage"
 	},

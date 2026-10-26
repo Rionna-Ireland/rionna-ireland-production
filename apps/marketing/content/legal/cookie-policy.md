@@ -1,5 +1,6 @@
 ---
 title: Cookie Policy
+updated: "2026-10-26"
 ---
 
 _This is placeholder content. Final copy will be supplied by the club's legal counsel before launch._
