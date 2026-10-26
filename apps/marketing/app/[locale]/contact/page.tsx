@@ -38,9 +38,11 @@ export default async function ContactPage(props: { params: Promise<{ locale: str
 	].filter((d) => d.value);
 
 	return (
-		// The glass nav carries its own tint, so "light" reads over both halves.
-		<div data-nav-tone="light" className="lg:grid-cols-2 lg:min-h-svh grid">
-			<section className="grain bg-ink px-6 pt-36 pb-16 text-white lg:px-16 lg:pb-24 relative isolate">
+		<div className="lg:grid-cols-2 lg:min-h-svh grid">
+			<section
+				data-nav-tone="dark"
+				className="grain bg-ink px-6 pt-36 pb-16 text-white lg:px-16 lg:pb-24 relative isolate"
+			>
 				<div className="max-w-xl ml-auto">
 					<Reveal immediate>
 						<span className="type-label text-lilac">{t("eyebrow")}</span>
@@ -75,7 +77,9 @@ export default async function ContactPage(props: { params: Promise<{ locale: str
 			</section>
 
 			<section className="bg-page px-6 py-16 lg:px-16 lg:pt-36 lg:pb-24">
-				<div className="max-w-xl">
+				{/* Later sections win tone overlaps, and the columns share a y-range on desktop:
+				    marking only the inner block keeps the bar dark over the ink column at the top. */}
+				<div data-nav-tone="light" className="max-w-xl">
 					<ContactForm />
 				</div>
 			</section>
