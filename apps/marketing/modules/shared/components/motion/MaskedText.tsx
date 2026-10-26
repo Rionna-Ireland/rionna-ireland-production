@@ -17,12 +17,15 @@ export function MaskedText({
 	text,
 	className,
 	delayMs = 0,
+	immediate,
 	style,
 }: {
 	as?: ElementType;
 	text: string;
 	className?: string;
 	delayMs?: number;
+	/** Above the fold: page-time word animation (`.ch-title`) instead of the observer reveal. */
+	immediate?: boolean;
 	style?: CSSProperties;
 }) {
 	const ref = useRef<HTMLElement>(null);
@@ -30,8 +33,8 @@ export function MaskedText({
 	return (
 		<Tag
 			ref={ref}
-			className={className}
-			data-revealed={revealed ? "" : undefined}
+			className={immediate ? `ch-title ${className ?? ""}`.trim() : className}
+			data-revealed={!immediate && revealed ? "" : undefined}
 			style={{ "--reveal-delay": `${delayMs}ms`, ...style } as CSSProperties}
 		>
 			{splitWords(text).map((word, i) => (

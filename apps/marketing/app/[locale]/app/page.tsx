@@ -82,22 +82,23 @@ export default async function AppPage(props: { params: Promise<{ locale: string 
 				/>
 				<div className="gap-12 pt-36 pb-16 lg:grid-cols-[1.2fr_1fr] lg:items-center lg:pb-24 relative container grid">
 					<div className="gap-6 flex flex-col items-start">
-						<Reveal>
+						<Reveal immediate>
 							<span className="type-label text-lilac">{t("hero.eyebrow")}</span>
 						</Reveal>
 						<MaskedText
+							immediate
 							as="h1"
 							text={t("hero.title")}
 							className="font-display text-[clamp(3.25rem,8vw,7rem)] leading-[0.95] tracking-[-0.02em] text-balance"
 						/>
-						<Reveal delayMs={200}>
+						<Reveal immediate delayMs={200}>
 							<p className="max-w-md text-lg text-white/80">{t("hero.subtitle")}</p>
 						</Reveal>
-						<Reveal delayMs={300}>
+						<Reveal immediate delayMs={300}>
 							<AppStoreButtons tone="dark" {...badges} />
 						</Reveal>
 					</div>
-					<Reveal delayMs={400} className="mx-auto w-[min(18rem,70vw)]">
+					<Reveal immediate delayMs={400} className="mx-auto w-[min(18rem,70vw)]">
 						<PhoneFrame
 							priority
 							src={shot("01-home")}

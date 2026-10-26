@@ -1356,7 +1356,13 @@ main[data-nav-space]:has([data-hero-under-nav]) {
 @media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
 	.ch-title .mask-word > span {
 		animation: hero-word var(--dur-reveal) var(--ease-out-editorial)
-			calc(var(--i, 0) * var(--step-rise)) both;
+			calc(var(--reveal-delay, 0ms) + var(--i, 0) * var(--step-rise)) both;
+	}
+
+	/* Above-the-fold Reveal: page-time rise, never hidden before hydration. */
+	.ch-rise {
+		animation: ch-rise var(--dur-reveal) var(--ease-out-editorial)
+			calc(var(--reveal-delay, 0ms) + var(--n, 0) * var(--step-rise)) both;
 	}
 }
 

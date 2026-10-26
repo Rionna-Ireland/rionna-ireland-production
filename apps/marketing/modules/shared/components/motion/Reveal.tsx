@@ -14,11 +14,14 @@ export function Reveal({
 	as: Tag = "div",
 	className,
 	delayMs,
+	immediate,
 	children,
 }: {
 	as?: ElementType;
 	className?: string;
 	delayMs?: number;
+	/** Above the fold: page-time rise (`.ch-rise`) instead of the hydration-gated observer reveal. */
+	immediate?: boolean;
 	children: ReactNode;
 }) {
 	const ref = useRef<HTMLElement>(null);
@@ -26,8 +29,8 @@ export function Reveal({
 	return (
 		<Tag
 			ref={ref}
-			className={cn("reveal", className)}
-			data-revealed={revealed ? "" : undefined}
+			className={cn(immediate ? "ch-rise" : "reveal", className)}
+			data-revealed={!immediate && revealed ? "" : undefined}
 			style={delayMs ? ({ "--reveal-delay": `${delayMs}ms` } as CSSProperties) : undefined}
 		>
 			{children}
