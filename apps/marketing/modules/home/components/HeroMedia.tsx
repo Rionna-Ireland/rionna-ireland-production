@@ -1,6 +1,7 @@
 "use client";
 
 import { MediaPlaceholder } from "@shared/components/MediaPlaceholder";
+import { useMotionOk } from "@shared/components/motion/useMotionOk";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 
@@ -19,15 +20,9 @@ export function HeroMedia({
 	/** Admin/DB URLs bypass the image optimiser; static public/ assets don't. */
 	unoptimized: boolean;
 }) {
-	const [motionOk, setMotionOk] = useState(false);
+	const motionOk = useMotionOk();
 	const [ready, setReady] = useState(false);
 	const videoRef = useRef<HTMLVideoElement>(null);
-
-	useEffect(() => {
-		const saveData = (navigator as Navigator & { connection?: { saveData?: boolean } })
-			.connection?.saveData;
-		setMotionOk(!window.matchMedia("(prefers-reduced-motion: reduce)").matches && !saveData);
-	}, []);
 
 	useEffect(() => {
 		const video = videoRef.current;

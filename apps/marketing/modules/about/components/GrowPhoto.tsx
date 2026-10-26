@@ -1,8 +1,10 @@
 import { PinnedStage } from "@shared/components/motion/PinnedStage";
 import { PlayWhenVisible } from "@shared/components/motion/PlayWhenVisible";
 import { SectionLabel } from "@shared/components/motion/SectionLabel";
-import { PatternCycle } from "@shared/components/pattern/PatternCycle";
 import Image from "next/image";
+
+import { pickClubMedia } from "./club-media";
+import { ClubVideo } from "./ClubVideo";
 
 export function GrowPhoto({
 	label,
@@ -15,6 +17,7 @@ export function GrowPhoto({
 	caption: string;
 	photoUrl?: string | null;
 }) {
+	const media = pickClubMedia({ photoUrl });
 	return (
 		<PlayWhenVisible id="club" data-chapter="" data-nav-tone="dark">
 			<PinnedStage
@@ -31,10 +34,10 @@ export function GrowPhoto({
 					className="ch-label text-lilac mb-6 self-center"
 				/>
 				<div className="ch-photo max-w-5xl relative mx-auto aspect-[16/10] w-full overflow-hidden rounded-lg">
-					{photoUrl ? (
+					{media.kind === "photo" ? (
 						<Image
 							unoptimized
-							src={photoUrl}
+							src={media.src}
 							alt=""
 							fill
 							sizes="100vw"
@@ -42,7 +45,7 @@ export function GrowPhoto({
 							className="object-cover"
 						/>
 					) : (
-						<PatternCycle className="size-full" />
+						<ClubVideo src={media.src} poster={media.poster} />
 					)}
 				</div>
 				<p className="ch-caption type-display-md mt-6 max-w-5xl text-white mx-auto w-full">
