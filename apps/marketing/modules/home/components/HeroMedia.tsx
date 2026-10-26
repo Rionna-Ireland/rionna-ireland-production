@@ -15,7 +15,7 @@ export function HeroMedia({
 	unoptimized,
 }: {
 	imageUrl?: string;
-	videoUrl: string;
+	videoUrl?: string;
 	/** Admin/DB URLs bypass the image optimiser; static public/ assets don't. */
 	unoptimized: boolean;
 }) {
@@ -57,7 +57,7 @@ export function HeroMedia({
 			) : (
 				<MediaPlaceholder tone="ice" className="inset-0 absolute h-full" />
 			)}
-			{motionOk && (
+			{motionOk && videoUrl && (
 				<video
 					ref={videoRef}
 					className={`inset-0 absolute size-full object-cover transition-opacity duration-(--dur-reveal) ease-(--ease-out-editorial) ${ready ? "opacity-100" : "opacity-0"}`}

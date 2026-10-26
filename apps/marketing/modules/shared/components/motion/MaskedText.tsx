@@ -17,11 +17,13 @@ export function MaskedText({
 	text,
 	className,
 	delayMs = 0,
+	style,
 }: {
 	as?: ElementType;
 	text: string;
 	className?: string;
 	delayMs?: number;
+	style?: CSSProperties;
 }) {
 	const ref = useRef<HTMLElement>(null);
 	const revealed = useInView(ref);
@@ -30,7 +32,7 @@ export function MaskedText({
 			ref={ref}
 			className={className}
 			data-revealed={revealed ? "" : undefined}
-			style={{ "--reveal-delay": `${delayMs}ms` } as CSSProperties}
+			style={{ "--reveal-delay": `${delayMs}ms`, ...style } as CSSProperties}
 		>
 			{splitWords(text).map((word, i) => (
 				<span key={`${i}:${word}`}>

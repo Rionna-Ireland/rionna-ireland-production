@@ -6,7 +6,9 @@ import { getClubEvents, type PublicClubEvent } from "@shared/lib/club";
 import { getSiteJoinCta, getWebsiteContent } from "@shared/lib/website";
 import { ArrowRightIcon } from "lucide-react";
 import { getTranslations } from "next-intl/server";
+import type { CSSProperties } from "react";
 
+import { heroWordStepMs } from "../lib/hero-timing";
 import { pickNextEvent } from "../lib/next-event";
 import { HeroEventCard } from "./HeroEventCard";
 import { HeroMedia } from "./HeroMedia";
@@ -32,10 +34,14 @@ export async function HeroSection() {
 		readNextEvent(),
 	]);
 	const { hero } = content;
-	const admin = Boolean(hero.videoUrl);
-	const media = admin
-		? { videoUrl: hero.videoUrl as string, imageUrl: hero.imageUrl }
-		: TEMP_HERO;
+	const title = hero.title ?? t("title");
+	// Admin video (+poster) -> admin image alone -> temporary clip.
+	const admin = Boolean(hero.videoUrl || hero.imageUrl);
+	const media = hero.videoUrl
+		? { videoUrl: hero.videoUrl, imageUrl: hero.imageUrl }
+		: hero.imageUrl
+			? { videoUrl: undefined, imageUrl: hero.imageUrl }
+			: TEMP_HERO;
 
 	return (
 		<section
@@ -49,7 +55,12 @@ export async function HeroSection() {
 				</span>
 				<MaskedText
 					as="h1"
-					text={hero.title ?? t("title")}
+					text={title}
+					style={
+						{
+							"--hero-step": `${heroWordStepMs(title.split(/\s+/).filter(Boolean).length)}ms`,
+						} as CSSProperties
+					}
 					className="hero-title font-display text-[clamp(3.75rem,10vw,9rem)] leading-[0.92] tracking-[-0.02em] text-balance"
 				/>
 				<p

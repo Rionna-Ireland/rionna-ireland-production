@@ -286,6 +286,7 @@
 		--dur-rise: 1200ms;
 		--dur-deal: 1400ms;
 		--dur-mark: 1800ms;
+		--dur-unmask: 900ms;
 		--step-deal: 90ms;
 		--step-rise: 80ms;
 	}
@@ -835,6 +836,11 @@ main[data-nav-space]:has([data-hero-under-nav]) {
 	will-change: transform;
 }
 
+/* Hidden unless the motion block below arms it, so no-JS and Reduce Motion never lose the poster. */
+.hero-strip-cover {
+	visibility: hidden;
+}
+
 @media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
 	/* Strip unmask, top to bottom: the cover shrinks away over the painted poster. */
 	.hero-strip-cover {
@@ -850,7 +856,7 @@ main[data-nav-space]:has([data-hero-under-nav]) {
 	/* Headline words: an animation (not the reveal transition) so it syncs to page time, not hydration. */
 	.hero-title .mask-word > span {
 		animation: hero-word var(--dur-reveal) var(--ease-out-editorial)
-			calc(var(--arrival-offset) + 100ms + var(--i, 0) * 60ms) backwards;
+			calc(var(--arrival-offset) + 100ms + var(--i, 0) * var(--hero-step, 0ms)) both;
 	}
 
 	.hero-rise {
@@ -865,6 +871,18 @@ main[data-nav-space]:has([data-hero-under-nav]) {
 
 	.hero-pattern .pc-face {
 		animation-delay: calc(var(--arrival-offset) + 200ms + var(--delay, 0ms));
+	}
+
+	/* Spurs light up once as the deal wave passes (same delay as their tile). */
+	.hero-pattern .pc-star {
+		animation: hero-spur var(--dur-deal) var(--ease-out-editorial)
+			calc(var(--arrival-offset) + 200ms + var(--delay, 0ms)) backwards;
+	}
+
+	/* Home nav only (data-edge=ice), and only while the arrival plays. */
+	:root:not([data-arrival="seen"], [data-arrival="skip"]) .nav-glass[data-edge="ice"] {
+		animation: hero-nav var(--dur-reveal) var(--ease-out-editorial)
+			calc(var(--arrival-offset) + 900ms) backwards;
 	}
 }
 
@@ -918,5 +936,18 @@ main[data-nav-space]:has([data-hero-under-nav]) {
 @keyframes hero-drift {
 	to {
 		transform: translate3d(0, -7.4%, 0);
+	}
+}
+
+@keyframes hero-spur {
+	40% {
+		fill: var(--color-ice, #b9d8e1);
+	}
+}
+
+@keyframes hero-nav {
+	from {
+		opacity: 0;
+		transform: translate3d(0, -8px, 0);
 	}
 }
