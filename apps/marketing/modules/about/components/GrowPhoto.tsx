@@ -1,6 +1,7 @@
-import { MediaPlaceholder } from "@shared/components/MediaPlaceholder";
 import { PinnedStage } from "@shared/components/motion/PinnedStage";
+import { PlayWhenVisible } from "@shared/components/motion/PlayWhenVisible";
 import { SectionLabel } from "@shared/components/motion/SectionLabel";
+import { PatternCycle } from "@shared/components/pattern/PatternCycle";
 import Image from "next/image";
 
 export function GrowPhoto({
@@ -15,7 +16,7 @@ export function GrowPhoto({
 	photoUrl?: string | null;
 }) {
 	return (
-		<section id="club" data-chapter data-nav-tone="dark">
+		<PlayWhenVisible id="club" data-chapter data-nav-tone="dark">
 			<PinnedStage
 				heightSvh={240}
 				stageClassName="bg-plum relative isolate flex flex-col justify-center overflow-hidden px-6 py-16"
@@ -41,13 +42,13 @@ export function GrowPhoto({
 							className="object-cover"
 						/>
 					) : (
-						<MediaPlaceholder tone="lilac" className="h-full rounded-none" />
+						<PatternCycle className="size-full" />
 					)}
 				</div>
 				<p className="ch-caption type-display-md mt-6 max-w-5xl text-white mx-auto w-full">
 					{caption}
 				</p>
 			</PinnedStage>
-		</section>
+		</PlayWhenVisible>
 	);
 }

@@ -2,7 +2,7 @@ import { Close } from "@about/components/Close";
 import { GrowPhoto } from "@about/components/GrowPhoto";
 import { Opener } from "@about/components/Opener";
 import { People } from "@about/components/People";
-import { StoryBeats } from "@about/components/StoryBeats";
+import { StoryBeats, splitBeats } from "@about/components/StoryBeats";
 import { Values } from "@about/components/Values";
 import { ChapterRail } from "@shared/components/motion/ChapterRail";
 import { chapterNumbering } from "@shared/components/motion/chapters";
@@ -20,6 +20,7 @@ export async function generateMetadata(props: { params: Promise<{ locale: string
 	};
 }
 
+const MIN_BEATS = 4;
 const VALUE_KEYS = ["openGates", "leadWithCare", "findJoy"] as const;
 
 export default async function AboutPage(props: { params: Promise<{ locale: string }> }) {
@@ -36,7 +37,9 @@ export default async function AboutPage(props: { params: Promise<{ locale: strin
 	const { about } = content;
 
 	const rawAbout = club.metadata.contact?.aboutText;
-	const aboutText = (typeof rawAbout === "string" && rawAbout.trim()) || t("fallbackAbout");
+	const adminText = typeof rawAbout === "string" ? rawAbout.trim() : "";
+	// Short or missing admin copy would leave the pinned story with a beat or two.
+	const aboutText = splitBeats(adminText).length >= MIN_BEATS ? adminText : t("fallbackBeats");
 
 	const chapters = chapterNumbering(about.founders.length > 0);
 	const label = (id: string) => t(`chapters.${id}` as "chapters.story");
@@ -57,6 +60,7 @@ export default async function AboutPage(props: { params: Promise<{ locale: strin
 					label={label(story.id)}
 					index={story.index}
 					title={about.storyTitle ?? t("title")}
+					intro={t("intro")}
 					photoUrl={about.photoUrl}
 				/>
 			)}
