@@ -64,7 +64,6 @@ export default async function MembershipPage(props: { params: Promise<{ locale: 
 		<div>
 			<section
 				data-nav-tone="dark"
-				data-hero-under-nav
 				className="grain bg-plum text-white relative isolate overflow-hidden"
 			>
 				<PatternMosaic
@@ -99,57 +98,63 @@ export default async function MembershipPage(props: { params: Promise<{ locale: 
 				<div className="gap-12 lg:flex-row lg:gap-20 container flex flex-col">
 					<div className="lg:w-5/12 lg:self-start lg:sticky lg:top-28 shrink-0">
 						<InViewStage className="ticket text-white">
-							<div className="bg-welcome-navy p-8 md:p-10 gap-3 relative isolate flex flex-col overflow-hidden rounded-t-lg">
-								<PatternMosaic
-									colourway="navy"
-									columns={2}
-									rows={4}
-									trigger="view"
-									className="inset-y-0 right-0 w-20 md:w-28 absolute -z-10 opacity-20"
-								/>
-								<span className="type-label text-lilac">{t("plan.title")}</span>
-								<div className="gap-3 flex flex-wrap items-baseline">
-									<span className="font-display text-[clamp(4rem,8vw,6rem)] leading-none">
-										{membership.price ?? t("plan.price")}
-									</span>
-									<span className="type-label text-white/70">
-										{membership.interval ?? t("plan.interval")}
-									</span>
+							<div className="bg-welcome-navy relative isolate overflow-hidden rounded-lg">
+								<div className="p-8 pr-24 md:p-10 md:pr-32 gap-3 relative flex flex-col">
+									<PatternMosaic
+										colourway="navy"
+										columns={2}
+										rows={4}
+										trigger="view"
+										className="inset-y-0 right-0 w-20 md:w-28 absolute -z-10 opacity-20"
+									/>
+									<span className="type-label text-lilac">{t("plan.title")}</span>
+									<div className="gap-3 flex flex-wrap items-baseline">
+										<span className="font-display text-[clamp(4rem,8vw,6rem)] leading-none">
+											{membership.price ?? t("plan.price")}
+										</span>
+										<span className="type-label text-white/70">
+											{membership.interval ?? t("plan.interval")}
+										</span>
+									</div>
+									<p className="type-label text-white/60">
+										{membership.note ?? t("plan.priceNote")}
+									</p>
 								</div>
-								<p className="type-label text-white/60">
-									{membership.note ?? t("plan.priceNote")}
-								</p>
-							</div>
-							<div className="ticket-perf bg-welcome-navy" aria-hidden="true" />
-							<div className="bg-welcome-navy p-8 md:p-10 rounded-b-lg">
-								<ul className="gap-3 grid">
-									{inclusions.map((item, i) => (
-										<li key={`${item}-${i}`} className="gap-3 flex items-start">
-											<svg
-												viewBox="0 0 24 24"
-												fill="none"
-												stroke="currentColor"
-												strokeWidth="2"
-												strokeLinecap="round"
-												strokeLinejoin="round"
-												aria-hidden="true"
-												className="draw-check mt-0.5 size-5 text-lilac shrink-0"
-												style={{ "--i": i } as CSSProperties}
+								<div className="p-8 md:p-10 border-t border-[rgb(255_255_255/0.14)]">
+									<ul className="gap-3 grid">
+										{inclusions.map((item, i) => (
+											<li
+												key={`${item}-${i}`}
+												className="gap-3 flex items-start"
 											>
-												<path d="M4 12.5l5 5L20 6.5" pathLength={1} />
-											</svg>
-											<span className="text-white/90">{item}</span>
-										</li>
-									))}
-								</ul>
-								<div className="mt-8">
-									<JoinCtaLink
-										cta={joinCta}
-										className={v2Button({ variant: "onDark" })}
-									>
-										{joinCta.labelKey ? tRoot(joinCta.labelKey) : t("plan.cta")}
-										<ArrowRightIcon className="ticket-arrow ml-2 size-4" />
-									</JoinCtaLink>
+												<svg
+													viewBox="0 0 24 24"
+													fill="none"
+													stroke="currentColor"
+													strokeWidth="2"
+													strokeLinecap="round"
+													strokeLinejoin="round"
+													aria-hidden="true"
+													className="draw-check mt-0.5 size-5 text-lilac shrink-0"
+													style={{ "--i": i } as CSSProperties}
+												>
+													<path d="M4 12.5l5 5L20 6.5" pathLength={1} />
+												</svg>
+												<span className="text-white/90">{item}</span>
+											</li>
+										))}
+									</ul>
+									<div className="mt-8">
+										<JoinCtaLink
+											cta={joinCta}
+											className={v2Button({ variant: "onDark" })}
+										>
+											{joinCta.labelKey
+												? tRoot(joinCta.labelKey)
+												: t("plan.cta")}
+											<ArrowRightIcon className="ticket-arrow ml-2 size-4" />
+										</JoinCtaLink>
+									</div>
 								</div>
 							</div>
 						</InViewStage>

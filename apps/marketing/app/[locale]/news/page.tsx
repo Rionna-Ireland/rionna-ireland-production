@@ -33,8 +33,8 @@ export default async function NewsListPage(props: { params: Promise<{ locale: st
 			: "";
 
 	return (
-		<div className="bg-page">
-			<div className="gap-10 py-14 md:py-[56px] container flex flex-col">
+		<div data-nav-tone="light" className="under-nav bg-page">
+			<div className="gap-10 pb-14 md:pb-[56px] container flex flex-col">
 				<div className="max-w-3xl gap-3 flex flex-col">
 					<span className="type-label text-ink-variant">{t("eyebrow")}</span>
 					<h1 className="type-display-xl text-balance">{t("title")}</h1>

@@ -639,10 +639,10 @@
 	}
 }
 
+/* No translate: it would expose a body-coloured strip above full-bleed tops. */
 @keyframes page-enter {
 	from {
 		opacity: 0;
-		transform: translateY(8px);
 	}
 }
 
@@ -659,12 +659,9 @@
 	--nav-space: 6.5rem;
 }
 
-main[data-nav-space] {
-	padding-top: var(--nav-space);
-}
-
-main[data-nav-space]:has([data-hero-under-nav]) {
-	padding-top: 0;
+/* First sections run to y=0 behind the glass nav and carry their own clearance. */
+.under-nav {
+	padding-top: calc(var(--nav-space) + var(--section-pad, 3.5rem));
 }
 
 /* ── S16-02 C0: home arrival (CSS-only; timeline in ms from t=0) ─────────── */
@@ -1394,22 +1391,6 @@ main[data-nav-space]:has([data-hero-under-nav]) {
 }
 
 /* ── S16-03 Membership: ticket, check draw, FAQ plus ─────────────────────── */
-
-.ticket-perf {
-	height: 2rem;
-	background: repeating-linear-gradient(
-			90deg,
-			rgb(255 255 255 / 0.28) 0 6px,
-			transparent 6px 14px
-		)
-		center / calc(100% - 3.5rem) 1px no-repeat;
-	/* Notches are cut out (transparent), not painted. */
-	mask:
-		radial-gradient(circle at 0 50%, transparent 0.9rem, #000 calc(0.9rem + 1px)),
-		radial-gradient(circle at 100% 50%, transparent 0.9rem, #000 calc(0.9rem + 1px));
-	mask-composite: intersect;
-	-webkit-mask-composite: source-in;
-}
 
 .draw-check path {
 	stroke-dasharray: 1;

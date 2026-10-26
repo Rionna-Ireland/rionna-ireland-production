@@ -71,7 +71,7 @@ export default async function NewsDetailPage(props: { params: Promise<Params> })
 		: "";
 
 	return (
-		<article className="bg-page py-14 md:py-[56px]">
+		<article data-nav-tone="light" className="under-nav bg-page pb-14 md:pb-[56px]">
 			<div className="max-w-3xl container">
 				<LocaleLink
 					href="/news"

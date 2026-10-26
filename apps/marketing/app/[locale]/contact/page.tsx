@@ -23,8 +23,8 @@ export default async function ContactPage(props: { params: Promise<{ locale: str
 	const contact = club.metadata.contact ?? {};
 
 	return (
-		<div className="bg-page">
-			<div className="py-14 md:py-[56px] container">
+		<div data-nav-tone="light" className="under-nav bg-page">
+			<div className="pb-14 md:pb-[56px] container">
 				<div className="gap-12 lg:grid-cols-[1fr_1.2fr] grid">
 					<div>
 						<span className="type-label text-plum">{t("eyebrow")}</span>

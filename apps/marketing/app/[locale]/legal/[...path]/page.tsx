@@ -47,10 +47,11 @@ export default async function LegalPage(props: { params: Promise<Params> }) {
 		// Waitlist-only mode: the body is plum, so legal copy sits on the cream
 		// estate theme where the prose colours stay readable.
 		<div
+			data-nav-tone={isWaitlistOnly() ? undefined : "light"}
 			className={
 				isWaitlistOnly()
 					? "theme-estate min-h-svh bg-background text-foreground"
-					: undefined
+					: "under-nav [--section-pad:0px]"
 			}
 		>
 			<div className="max-w-6xl py-16 container">

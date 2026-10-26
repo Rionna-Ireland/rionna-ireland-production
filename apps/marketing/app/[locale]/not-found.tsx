@@ -6,7 +6,10 @@ export default async function NotFoundPage() {
 	const t = await getTranslations("notFound");
 
 	return (
-		<div className="bg-page py-24 flex flex-col items-center justify-center text-center">
+		<div
+			data-nav-tone="light"
+			className="under-nav bg-page pb-24 flex flex-col items-center justify-center text-center"
+		>
 			<span className="type-label text-plum">{t("code")}</span>
 			<h1 className="type-display-xl mt-3">{t("title")}</h1>
 

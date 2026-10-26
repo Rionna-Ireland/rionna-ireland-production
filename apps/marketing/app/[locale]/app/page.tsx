@@ -71,7 +71,6 @@ export default async function AppPage(props: { params: Promise<{ locale: string 
 		<>
 			<section
 				data-nav-tone="dark"
-				data-hero-under-nav
 				className="grain bg-welcome-navy text-white relative isolate overflow-hidden"
 			>
 				<PatternMosaic
