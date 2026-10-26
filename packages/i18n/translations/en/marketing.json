@@ -44,6 +44,18 @@
 			}
 		},
 		"cta": "Become a member",
+		"chapters": {
+			"story": "Our story",
+			"why": "Why we exist",
+			"club": "The club",
+			"people": "The people",
+			"believe": "What we believe"
+		},
+		"caption": "Lorem ipsum dolor sit amet, consectetur adipiscing.",
+		"close": {
+			"eyebrow": "Join us",
+			"title": "Open the gates"
+		},
 		"storyLabel": "Our story",
 		"peopleLabel": "The people",
 		"meta": {

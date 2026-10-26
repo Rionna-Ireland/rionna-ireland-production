@@ -1072,3 +1072,271 @@ main[data-nav-space]:has([data-hero-under-nav]) {
 		display: none;
 	}
 }
+
+/* ── S16-03 About scrollytelling ─────────────────────────────────────────── */
+
+/* Static composition first: every chapter is a normal section with all content visible. */
+.pin-stage {
+	position: relative;
+}
+
+.ch-card {
+	position: absolute;
+	width: min(var(--s), 30vw);
+}
+
+.ch-rule {
+	transform-origin: top;
+}
+
+.ch-caption {
+	text-wrap: balance;
+}
+
+.people-view {
+	overflow-x: auto;
+	scroll-snap-type: x mandatory;
+	scrollbar-width: none;
+}
+
+.people-card:nth-child(even) {
+	margin-top: 3rem;
+}
+
+.chip {
+	position: relative;
+	display: inline-block;
+	width: 1.9em;
+	height: 0.8em;
+	margin-inline: 0.15em;
+	vertical-align: middle;
+	overflow: hidden;
+	border-radius: 999px;
+}
+
+.chip > div {
+	position: absolute;
+	inset-inline: 0;
+	top: 50%;
+	translate: 0 -50%;
+}
+
+/* Cards stack as they scroll; plain flow under Reduce Motion. */
+@media (prefers-reduced-motion: no-preference) {
+	.stack-card {
+		position: sticky;
+		top: calc(var(--nav-space) + var(--i) * 1.25rem);
+		min-height: 60svh;
+	}
+}
+
+/* Scroll-driven chapters: only where view timelines exist and motion is allowed. */
+@supports (animation-timeline: view()) {
+	@media (prefers-reduced-motion: no-preference) {
+		.pin {
+			height: min(var(--pin-h), 150svh);
+			view-timeline: --stage block;
+		}
+
+		.pin-stage {
+			position: sticky;
+			top: 0;
+			height: 100svh;
+			min-height: 0;
+			padding-block: 0;
+		}
+
+		.ch-card,
+		.ch-headline,
+		.ch-rule,
+		.beat,
+		.beat-word,
+		.chip .pc-star,
+		.ch-photo,
+		.ch-photo::after,
+		.ch-label,
+		.ch-caption,
+		.ch-frame,
+		.people-track {
+			animation-timing-function: linear;
+			animation-fill-mode: both;
+			animation-timeline: --stage;
+			animation-range: contain 0% contain 100%;
+		}
+
+		.ch-card {
+			animation-name: ch-fly;
+		}
+
+		.ch-headline {
+			animation-name: ch-grey;
+			animation-range: contain 5% contain 70%;
+		}
+
+		.ch-rule {
+			animation-name: ch-draw;
+			animation-range: contain 50% contain 100%;
+		}
+
+		.beat-word {
+			animation-name: fill-word;
+			animation-range: contain calc(var(--w) * 1%) contain calc(var(--w) * 1% + 12%);
+		}
+
+		.beat {
+			animation-name: beat-out;
+			animation-range: contain 85% contain 100%;
+		}
+
+		.chip .pc-star {
+			animation-name: chip-turn;
+			animation-range: contain 0% contain 70%;
+		}
+
+		.ch-frame {
+			animation-name: ch-frame;
+		}
+
+		.ch-photo {
+			position: absolute;
+			inset: 0;
+			aspect-ratio: auto;
+			max-width: none;
+			margin: 0;
+			border-radius: 0;
+			animation-name: ch-grow;
+			animation-range: contain 0% contain 70%;
+		}
+
+		.ch-photo::after {
+			content: "";
+			position: absolute;
+			inset: 0;
+			background: linear-gradient(
+				to top,
+				color-mix(in oklab, var(--color-plum) 75%, transparent),
+				transparent 50%
+			);
+			animation-name: ch-scrim;
+			animation-range: contain 40% contain 70%;
+		}
+
+		.ch-label {
+			position: absolute;
+			top: calc(var(--nav-space) + 1rem);
+			left: 1.5rem;
+			z-index: 3;
+			animation-name: ch-label-out;
+			animation-range: contain 15% contain 45%;
+		}
+
+		.ch-caption {
+			position: absolute;
+			left: 1.5rem;
+			bottom: 2.5rem;
+			z-index: 3;
+			margin: 0;
+			max-width: min(36rem, 80vw);
+			animation-name: ch-rise;
+			animation-range: contain 70% contain 90%;
+		}
+	}
+
+	@media (prefers-reduced-motion: no-preference) and (min-width: 64rem) {
+		.people-view {
+			overflow: clip;
+			scroll-snap-type: none;
+		}
+
+		.people-track {
+			animation-name: people-slide;
+			animation-range: contain 5% contain 95%;
+		}
+	}
+
+	@media (prefers-reduced-motion: no-preference) and (min-width: 48rem) {
+		.pin {
+			height: var(--pin-h);
+		}
+	}
+}
+
+@keyframes ch-fly {
+	70% {
+		opacity: 1;
+	}
+	to {
+		opacity: 0;
+		transform: translate3d(calc(var(--dx) * 1vw), calc(var(--dy) * 1vh), 0)
+			scale(calc(1 + var(--depth) * 1.4));
+	}
+}
+
+@keyframes ch-grey {
+	to {
+		opacity: 0.3;
+	}
+}
+
+@keyframes ch-draw {
+	from {
+		transform: scaleY(0);
+	}
+}
+
+@keyframes beat-out {
+	to {
+		opacity: 0;
+		transform: translate3d(0, -6vh, 0);
+	}
+}
+
+@keyframes chip-turn {
+	to {
+		rotate: 22.5deg;
+	}
+}
+
+@keyframes ch-frame {
+	from {
+		transform: scale(1.1);
+	}
+	to {
+		opacity: 0.2;
+		transform: scale(0.9);
+	}
+}
+
+@keyframes ch-grow {
+	from {
+		clip-path: inset(calc(50% - 14vmin) calc(50% - 14vmin) round 1rem);
+	}
+	to {
+		clip-path: inset(0 round 0);
+	}
+}
+
+@keyframes ch-scrim {
+	from {
+		opacity: 0;
+	}
+}
+
+@keyframes ch-label-out {
+	to {
+		opacity: 0;
+	}
+}
+
+@keyframes ch-rise {
+	from {
+		opacity: 0;
+		transform: translate3d(0, 40px, 0);
+	}
+}
+
+@keyframes people-slide {
+	to {
+		transform: translate3d(calc(-100% + 100vw), 0, 0);
+	}
+}

@@ -6,6 +6,7 @@
 			"@config": ["./config"],
 			"@analytics": ["./modules/analytics"],
 			"@home/*": ["./modules/home/*"],
+			"@about/*": ["./modules/about/*"],
 			"@app-showcase/*": ["./modules/app-showcase/*"],
 			"@blog/*": ["./modules/blog/*"],
 			"@i18n/*": ["./modules/i18n/*"],

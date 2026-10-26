@@ -1,12 +1,15 @@
-import { LocaleLink } from "@i18n/routing";
-import { FoundersSection } from "@shared/components/FoundersSection";
-import { MediaPlaceholder } from "@shared/components/MediaPlaceholder";
-import { v2Button } from "@shared/components/ui/v2";
+import { Close } from "@about/components/Close";
+import { GrowPhoto } from "@about/components/GrowPhoto";
+import { Opener } from "@about/components/Opener";
+import { People } from "@about/components/People";
+import { StoryBeats } from "@about/components/StoryBeats";
+import { Values } from "@about/components/Values";
+import { ChapterRail } from "@shared/components/motion/ChapterRail";
+import { chapterNumbering } from "@shared/components/motion/chapters";
 import { getClubOrganization } from "@shared/lib/club";
-import { getWebsiteContent } from "@shared/lib/website";
+import { getSiteJoinCta, getWebsiteContent } from "@shared/lib/website";
 import { redirectIfWireframeMode } from "@shared/lib/wireframe-mode";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import Image from "next/image";
 
 export async function generateMetadata(props: { params: Promise<{ locale: string }> }) {
 	const { locale } = await props.params;
@@ -17,11 +20,7 @@ export async function generateMetadata(props: { params: Promise<{ locale: string
 	};
 }
 
-const PILLARS = [
-	{ key: "openGates", tile: "bg-ice-light", label: "text-ink-variant", text: "text-ink" },
-	{ key: "leadWithCare", tile: "bg-lilac-light", label: "text-plum", text: "text-ink" },
-	{ key: "findJoy", tile: "bg-sage", label: "text-forest", text: "text-forest" },
-] as const;
+const VALUE_KEYS = ["openGates", "leadWithCare", "findJoy"] as const;
 
 export default async function AboutPage(props: { params: Promise<{ locale: string }> }) {
 	const { locale } = await props.params;
@@ -29,56 +28,66 @@ export default async function AboutPage(props: { params: Promise<{ locale: strin
 	redirectIfWireframeMode(locale);
 
 	const t = await getTranslations({ locale, namespace: "about" });
-	const [club, { content }] = await Promise.all([getClubOrganization(), getWebsiteContent()]);
+	const [club, { content }, joinCta] = await Promise.all([
+		getClubOrganization(),
+		getWebsiteContent(),
+		getSiteJoinCta(),
+	]);
 	const { about } = content;
 
 	const rawAbout = club.metadata.contact?.aboutText;
 	const aboutText = (typeof rawAbout === "string" && rawAbout.trim()) || t("fallbackAbout");
 
+	const chapters = chapterNumbering(about.founders.length > 0).map((c) => ({
+		...c,
+		label: t(`chapters.${c.id}` as "chapters.story"),
+	}));
+	const ch = (id: string) => chapters.find((c) => c.id === id);
+	const [story, why, club_, people, believe] = ["story", "why", "club", "people", "believe"].map(
+		ch,
+	);
+
 	return (
 		<div className="bg-page">
-			<section className="gap-10 py-14 lg:grid-cols-[1.1fr_1fr] lg:items-center lg:py-[56px] container grid">
-				<div className="flex flex-col gap-[18px]">
-					<span className="type-label text-plum">{t("storyLabel")}</span>
-					<h1 className="type-display-xl text-balance">
-						{about.storyTitle ?? t("title")}
-					</h1>
-					<p className="text-lg text-ink-variant leading-relaxed whitespace-pre-line">
-						{aboutText}
-					</p>
-				</div>
-				<div className="md:h-[320px] relative h-[240px] overflow-hidden rounded-lg">
-					{about.photoUrl ? (
-						<Image
-							unoptimized
-							src={about.photoUrl}
-							alt=""
-							fill
-							sizes="(min-width: 1024px) 45vw, 100vw"
-							className="object-cover"
-						/>
-					) : (
-						<MediaPlaceholder tone="lilac" className="h-full" />
-					)}
-				</div>
-			</section>
-
-			<FoundersSection founders={about.founders} label={t("peopleLabel")} />
-
-			<section className="gap-6 py-10 md:grid-cols-3 container grid">
-				{PILLARS.map(({ key, tile, label, text }) => (
-					<div key={key} className={`gap-3 p-8 flex flex-col rounded-lg ${tile}`}>
-						<span className={`type-label ${label}`}>{t(`values.${key}.eyebrow`)}</span>
-						<p className={`text-lg ${text}`}>{t(`values.${key}.description`)}</p>
-					</div>
-				))}
-			</section>
-
-			<section className="py-14 container">
-				<LocaleLink href="/membership" className={v2Button({ variant: "primary" })}>
-					{t("cta")}
-				</LocaleLink>
-			</section>
+			<ChapterRail chapters={chapters} />
+			{story && (
+				<Opener
+					label={story.label}
+					index={story.index}
+					title={about.storyTitle ?? t("title")}
+					photoUrl={about.photoUrl}
+				/>
+			)}
+			{why && <StoryBeats text={aboutText} label={why.label} index={why.index} />}
+			{club_ && (
+				<GrowPhoto
+					label={club_.label}
+					index={club_.index}
+					caption={t("caption")}
+					photoUrl={about.photoUrl}
+				/>
+			)}
+			{people && (
+				<People founders={about.founders} label={people.label} index={people.index} />
+			)}
+			{believe && (
+				<Values
+					label={believe.label}
+					index={believe.index}
+					cards={VALUE_KEYS.map((key) => ({
+						key,
+						eyebrow: t(`values.${key}.eyebrow`),
+						title: t(`values.${key}.title`),
+						description: t(`values.${key}.description`),
+					}))}
+				/>
+			)}
+			<Close
+				eyebrow={t("close.eyebrow")}
+				title={t("close.title")}
+				ctaLabel={t("cta")}
+				joinCta={joinCta}
+			/>
 		</div>
 	);
 }
