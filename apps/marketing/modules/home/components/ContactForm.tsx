@@ -89,6 +89,7 @@ export function ContactForm() {
 							autoComplete={f.autoComplete}
 							placeholder={f.label}
 							aria-invalid={!!err(f.name)}
+							aria-describedby={err(f.name) ? `contact-${f.name}-error` : undefined}
 							className={input}
 						/>
 						<label htmlFor={`contact-${f.name}`} className={label}>
@@ -96,7 +97,15 @@ export function ContactForm() {
 						</label>
 						<span aria-hidden="true" className={line} />
 					</div>
-					{err(f.name) && <p className="mt-1 text-sm text-destructive">{err(f.name)}</p>}
+					{err(f.name) && (
+						<p
+							id={`contact-${f.name}-error`}
+							role="alert"
+							className="mt-1 text-sm text-destructive"
+						>
+							{err(f.name)}
+						</p>
+					)}
 				</div>
 			))}
 
@@ -108,6 +117,7 @@ export function ContactForm() {
 						rows={5}
 						placeholder={t("contact.form.message")}
 						aria-invalid={!!err("message")}
+						aria-describedby={err("message") ? "contact-message-error" : undefined}
 						className={`${input} resize-none`}
 					/>
 					<label htmlFor="contact-message" className={label}>
@@ -116,7 +126,13 @@ export function ContactForm() {
 					<span aria-hidden="true" className={line} />
 				</div>
 				{err("message") && (
-					<p className="mt-1 text-sm text-destructive">{err("message")}</p>
+					<p
+						id="contact-message-error"
+						role="alert"
+						className="mt-1 text-sm text-destructive"
+					>
+						{err("message")}
+					</p>
 				)}
 			</div>
 
