@@ -282,5 +282,65 @@
 			"error": "Something went wrong. Please try again.",
 			"rejoin": "Join the waitlist again"
 		}
+	},
+	"appPage": {
+		"meta": {
+			"title": "The app",
+			"description": "The Rionna app puts your club in your pocket: horses, events, community and the paddock in one place."
+		},
+		"hero": {
+			"eyebrow": "The Rionna app",
+			"title": "Lorem ipsum dolor sit amet.",
+			"subtitle": "Lorem ipsum dolor sit amet, consectetur adipiscing elit sed do eiusmod."
+		},
+		"badges": {
+			"ios": "Download on the App Store",
+			"android": "Get it on Google Play",
+			"comingSoon": "COMING SOON"
+		},
+		"features": {
+			"stables": {
+				"label": "Stables",
+				"title": "Lorem ipsum dolor sit.",
+				"body": "Lorem ipsum dolor sit amet, consectetur adipiscing elit sed do eiusmod tempor."
+			},
+			"community": {
+				"label": "Community",
+				"title": "Consectetur adipiscing elit.",
+				"body": "Lorem ipsum dolor sit amet, consectetur adipiscing elit sed do eiusmod tempor."
+			},
+			"events": {
+				"label": "Events",
+				"title": "Sed do eiusmod tempor.",
+				"body": "Lorem ipsum dolor sit amet, consectetur adipiscing elit sed do eiusmod tempor."
+			},
+			"paddock": {
+				"label": "The Paddock",
+				"title": "Ut enim ad minim veniam.",
+				"body": "Lorem ipsum dolor sit amet, consectetur adipiscing elit sed do eiusmod tempor."
+			},
+			"notifications": {
+				"label": "Notifications",
+				"title": "Duis aute irure dolor.",
+				"body": "Lorem ipsum dolor sit amet, consectetur adipiscing elit sed do eiusmod tempor."
+			}
+		},
+		"screens": {
+			"home": "Rionna app home screen",
+			"stables": "Rionna app stables screen",
+			"horseDetail": "Rionna app horse detail screen",
+			"events": "Rionna app events screen",
+			"eventDetail": "Rionna app event detail screen",
+			"communityFeed": "Rionna app community feed",
+			"communityThread": "Rionna app community thread",
+			"paddock": "Rionna app paddock screen",
+			"paddockCharity": "Rionna app paddock charity screen",
+			"notifications": "Rionna app notifications screen"
+		},
+		"closing": {
+			"eyebrow": "Join the club",
+			"title": "Lorem ipsum dolor sit.",
+			"cta": "Become a member"
+		}
 	}
 }

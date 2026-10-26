@@ -1009,3 +1009,66 @@ main[data-nav-space]:has([data-hero-under-nav]) {
 		opacity: 0.22;
 	}
 }
+
+/* ── S16-02 E: /app scroll-told features ─────────────────────────────────── */
+
+/* Stacked by default: every row carries its own tint and phone. */
+.fs-row {
+	background: var(--tint);
+	/* Full-bleed band from inside the container. */
+	box-shadow: 0 0 0 100vmax var(--tint);
+	clip-path: inset(0 -100vmax);
+}
+
+.fs-sticky,
+.fs-tint {
+	display: none;
+}
+
+.fs-screen {
+	isolation: isolate;
+	position: absolute;
+	inset: 0;
+	opacity: 0;
+	transform: translate3d(0, 24px, 0);
+	transition:
+		opacity var(--dur-reveal) var(--ease-out-editorial),
+		transform var(--dur-reveal) var(--ease-out-editorial);
+}
+
+.fs-screen.is-active {
+	opacity: 1;
+	transform: none;
+}
+
+.fs-back {
+	position: absolute;
+	top: 0;
+	left: 0;
+	z-index: -1;
+	rotate: 6deg;
+	translate: 22% 2%;
+	opacity: 0.85;
+}
+
+/* Scroll-told only where there is room, motion is allowed and JS runs. */
+@media (min-width: 64rem) and (prefers-reduced-motion: no-preference) and (scripting: enabled) {
+	.fs-sticky {
+		display: flex;
+	}
+
+	.fs-tint {
+		display: block;
+		transition: opacity var(--dur-rise) var(--ease-out-editorial);
+	}
+
+	.fs-row {
+		background: transparent;
+		box-shadow: none;
+		clip-path: none;
+	}
+
+	.fs-inline {
+		display: none;
+	}
+}
