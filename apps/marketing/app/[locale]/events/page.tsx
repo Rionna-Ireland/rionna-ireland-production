@@ -1,11 +1,4 @@
-import { EventsCalendar } from "@events/components/EventsCalendar";
-import { CLUB_TZ, dayKey } from "@events/lib/calendar";
-import { pickNextEvent } from "@home/lib/next-event";
 import { JoinCtaLink } from "@shared/components/JoinCtaLink";
-import { MaskedText } from "@shared/components/motion/MaskedText";
-import { Reveal } from "@shared/components/motion/Reveal";
-import { SectionLabel } from "@shared/components/motion/SectionLabel";
-import { PatternMosaic } from "@shared/components/pattern/PatternMosaic";
 import { v2Button } from "@shared/components/ui/v2";
 import { getClubEvents } from "@shared/lib/club";
 import { getSiteJoinCta } from "@shared/lib/website";
@@ -34,133 +27,63 @@ export default async function EventsListPage(props: { params: Promise<{ locale: 
 
 	const tRoot = await getTranslations({ locale });
 	const joinCta = await getSiteJoinCta();
-	const joinLabel = joinCta.labelKey ? tRoot(joinCta.labelKey) : t("joinCta");
-
-	const now = new Date();
-	const next = pickNextEvent(items, now);
-	const [ny = 0, nm = 1, nd = 1] = (next?.startsAt ? dayKey(next.startsAt) : dayKey(now))
-		.split("-")
-		.map(Number);
-	const nextDate = next?.startsAt ? new Date(next.startsAt) : null;
-	const month = nextDate
-		? new Intl.DateTimeFormat(activeLocale, { month: "long", timeZone: CLUB_TZ }).format(
-				nextDate,
-			)
-		: "";
-	const time = nextDate
-		? new Intl.DateTimeFormat(activeLocale, {
-				weekday: "long",
-				hour: "numeric",
-				minute: "2-digit",
-				timeZone: CLUB_TZ,
-			}).format(nextDate)
-		: "";
-	// 2024-01-01 is a Monday: Monday-first short weekday labels.
-	const weekdays = Array.from({ length: 7 }, (_, i) =>
-		new Intl.DateTimeFormat(activeLocale, { weekday: "short", timeZone: "UTC" }).format(
-			new Date(Date.UTC(2024, 0, 1 + i)),
-		),
-	);
 
 	return (
-		<div className="bg-page">
-			<section
-				data-nav-tone="dark"
-				className="under-nav grain bg-ink text-white relative isolate overflow-hidden"
-			>
-				<PatternMosaic
-					colourway="navy"
-					kind="harlequin"
-					columns={4}
-					rows={6}
-					className="-right-10 top-24 md:grid absolute -z-10 hidden w-[22rem] opacity-60"
-				/>
-				<div className="gap-6 pb-16 md:pb-24 container flex flex-col">
-					<Reveal immediate>
-						<SectionLabel index={1} label={t("eyebrow")} className="text-ice" />
-					</Reveal>
-					<MaskedText
-						as="h1"
-						immediate
-						text={t("title")}
-						className="type-display-xl text-balance"
-					/>
-					<Reveal immediate delayMs={300}>
-						<p className="max-w-xl text-lg text-lilac leading-relaxed">
-							{t("description")}
-						</p>
-					</Reveal>
-					{next && (
-						<Reveal immediate delayMs={500} className="mt-6 gap-6 flex items-end">
-							<span className="font-display text-[clamp(6rem,22vw,16rem)] leading-[0.8] tracking-[-0.03em] tabular-nums">
-								{nd}
-							</span>
-							<span className="pb-2 gap-1 flex flex-col">
-								<span className="type-label text-ice">
-									{month}
-									{" · "}
-									{time}
-								</span>
-								<span className="type-display-md max-w-md text-balance">
-									{next.name}
-								</span>
-							</span>
-						</Reveal>
-					)}
+		<div data-nav-tone="light" className="under-nav bg-page">
+			<div className="gap-10 pb-14 md:pb-[56px] container flex flex-col">
+				<div className="max-w-3xl gap-3 flex flex-col">
+					<span className="type-label text-ink-variant">{t("eyebrow")}</span>
+					<h1 className="type-display-xl text-balance">{t("title")}</h1>
+					<p className="text-lg text-ink-variant leading-relaxed">{t("description")}</p>
 				</div>
-			</section>
 
-			<section data-nav-tone="light" className="bg-cream py-14 md:py-20">
-				<div className="container">
-					<Reveal className="mb-8">
-						<SectionLabel index={2} label={t("calendar")} />
-					</Reveal>
-					{items.length === 0 ? <p className="text-ink-variant">{t("empty")}</p> : null}
-					<EventsCalendar
-						events={items.map(({ id, name, startsAt, coverImageUrl }) => ({
-							id,
-							name,
-							startsAt: startsAt ? new Date(startsAt).toISOString() : null,
-							coverImageUrl,
-						}))}
-						locale={activeLocale}
-						initial={{ year: ny, month: nm - 1 }}
-						todayKey={dayKey(now)}
-						cta={joinCta}
-						labels={{
-							prev: t("prevMonth"),
-							next: t("nextMonth"),
-							close: t("close"),
-							membersOnly: t("membersOnly"),
-							joinLabel,
-							weekdays,
-							hasEvents: t("hasEvents"),
-						}}
-					/>
-				</div>
-			</section>
+				{items.length === 0 ? (
+					<p className="text-ink-variant">{t("empty")}</p>
+				) : (
+					<div className="gap-6 md:grid-cols-2 lg:grid-cols-3 grid">
+						{items.map((event) => (
+							<div
+								key={event.id}
+								className="bg-ice-light flex flex-col overflow-hidden rounded-lg"
+							>
+								<div className="bg-ice relative aspect-[16/10] overflow-hidden">
+									{event.coverImageUrl ? (
+										// biome-ignore lint/a11y/useAltText: name as alt
+										<img
+											src={event.coverImageUrl}
+											alt={event.name}
+											className="inset-0 absolute h-full w-full object-cover"
+										/>
+									) : (
+										<div className="inset-0 text-6xl text-ink/10 absolute flex items-center justify-center font-display">
+											R
+										</div>
+									)}
+								</div>
+								<div className="p-6 gap-2 flex flex-col">
+									<span className="type-label text-ink-variant">
+										{event.startsAt
+											? new Intl.DateTimeFormat(activeLocale, {
+													dateStyle: "full",
+													timeStyle: "short",
+												}).format(new Date(event.startsAt))
+											: ""}
+									</span>
+									<h2 className="type-display-md">{event.name}</h2>
+									<p className="text-sm text-ink-variant">{t("membersOnly")}</p>
+								</div>
+							</div>
+						))}
+					</div>
+				)}
 
-			<section
-				data-nav-tone="dark"
-				className="grain bg-plum py-14 text-white md:py-20 relative isolate overflow-hidden"
-			>
-				<PatternMosaic
-					colourway="lilac"
-					kind="ring"
-					columns={8}
-					rows={2}
-					trigger="view"
-					className="inset-x-0 top-0 absolute -z-10 opacity-40"
-				/>
-				<div className="gap-6 pt-10 container flex flex-wrap items-center justify-between">
-					<Reveal as="span" className="type-display-lg max-w-xl text-balance">
-						{t("rsvpNote")}
-					</Reveal>
-					<JoinCtaLink cta={joinCta} className={v2Button({ variant: "onDark" })}>
-						{joinLabel}
+				<div className="gap-6 p-6 bg-ice-light flex flex-wrap items-center justify-between rounded-lg">
+					<span className="type-display-md">{t("rsvpNote")}</span>
+					<JoinCtaLink cta={joinCta} className={v2Button({ variant: "primary" })}>
+						{joinCta.labelKey ? tRoot(joinCta.labelKey) : t("joinCta")}
 					</JoinCtaLink>
 				</div>
-			</section>
+			</div>
 		</div>
 	);
 }

@@ -7,7 +7,6 @@
 			"@analytics": ["./modules/analytics"],
 			"@home/*": ["./modules/home/*"],
 			"@about/*": ["./modules/about/*"],
-			"@events/*": ["./modules/events/*"],
 			"@news/*": ["./modules/news/*"],
 			"@app-showcase/*": ["./modules/app-showcase/*"],
 			"@blog/*": ["./modules/blog/*"],

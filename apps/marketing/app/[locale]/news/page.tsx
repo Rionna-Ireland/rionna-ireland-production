@@ -1,6 +1,8 @@
 import { NewsGrid } from "@news/components/NewsGrid";
-import { NewsLead } from "@news/components/NewsLead";
-import { NewsOpener } from "@news/components/NewsOpener";
+import { NewsLeadCard } from "@news/components/NewsLeadCard";
+import { MaskedText } from "@shared/components/motion/MaskedText";
+import { Reveal } from "@shared/components/motion/Reveal";
+import { SectionLabel } from "@shared/components/motion/SectionLabel";
 import { getClubNewsPosts } from "@shared/lib/club";
 import { redirectIfWireframeMode } from "@shared/lib/wireframe-mode";
 import { getLocale, getTranslations, setRequestLocale } from "next-intl/server";
@@ -35,33 +37,36 @@ export default async function NewsListPage(props: { params: Promise<{ locale: st
 
 	return (
 		<div className="bg-page">
-			<NewsOpener
-				index={1}
-				label={t("yard")}
-				title={t("heading")}
-				intro={t("description")}
-				posts={items.slice(0, 6)}
-			/>
-			{!lead ? (
-				<p className="py-20 text-ink-variant container">{t("empty")}</p>
-			) : (
-				<>
-					<NewsLead
-						index={2}
-						label={t("latest")}
-						post={lead}
-						date={formatDate(lead.publishedAt)}
-						readLabel={t("readStory")}
+			<section data-nav-tone="light" className="under-nav pb-10 md:pb-14">
+				<div className="gap-5 container flex flex-col">
+					<Reveal immediate>
+						<SectionLabel index={1} label={t("yard")} />
+					</Reveal>
+					<MaskedText
+						as="h1"
+						immediate
+						text={t("heading")}
+						className="font-display text-[clamp(4rem,12vw,9rem)] leading-[0.95] tracking-[-0.02em]"
 					/>
-					{rest.length > 0 && (
-						<NewsGrid
-							index={3}
-							label={t("more")}
-							posts={rest}
-							formatDate={formatDate}
+					<Reveal immediate delayMs={300}>
+						<p className="max-w-xl text-lg text-ink-variant text-pretty">
+							{t("description")}
+						</p>
+					</Reveal>
+				</div>
+				{lead && (
+					<div className="mt-10 container">
+						<NewsLeadCard
+							post={lead}
+							date={formatDate(lead.publishedAt)}
+							readLabel={t("readStory")}
 						/>
-					)}
-				</>
+					</div>
+				)}
+			</section>
+			{!lead && <p className="pb-20 text-ink-variant container">{t("empty")}</p>}
+			{rest.length > 0 && (
+				<NewsGrid index={2} label={t("more")} posts={rest} formatDate={formatDate} />
 			)}
 		</div>
 	);

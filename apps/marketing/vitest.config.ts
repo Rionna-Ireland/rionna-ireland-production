@@ -15,7 +15,6 @@ export default defineConfig({
 			"@analytics": path.resolve(import.meta.dirname, "./modules/analytics"),
 			"@home": path.resolve(import.meta.dirname, "./modules/home"),
 			"@about": path.resolve(import.meta.dirname, "./modules/about"),
-			"@events": path.resolve(import.meta.dirname, "./modules/events"),
 			"@news": path.resolve(import.meta.dirname, "./modules/news"),
 			"@blog": path.resolve(import.meta.dirname, "./modules/blog"),
 			"@i18n": path.resolve(import.meta.dirname, "./modules/i18n"),

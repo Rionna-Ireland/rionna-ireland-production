@@ -1586,20 +1586,6 @@
 	}
 }
 
-@keyframes cal-slide-next {
-	from {
-		opacity: 0;
-		transform: translate3d(28px, 0, 0);
-	}
-}
-
-@keyframes cal-slide-prev {
-	from {
-		opacity: 0;
-		transform: translate3d(-28px, 0, 0);
-	}
-}
-
 @keyframes rule-draw {
 	from {
 		transform: scaleY(0);
@@ -1609,15 +1595,6 @@
 @keyframes unmask-scroll {
 	from {
 		clip-path: inset(100% 0 0 0);
-	}
-}
-
-@keyframes photo-drift {
-	from {
-		transform: translate3d(0, -6%, 0);
-	}
-	to {
-		transform: translate3d(0, 6%, 0);
 	}
 }
 
@@ -1635,25 +1612,11 @@
 	.unmask-now {
 		animation: unmask var(--dur-rise) var(--ease-out-editorial) 200ms both;
 	}
-
-	.cal-slide-next {
-		animation: cal-slide-next var(--dur-reveal) var(--ease-out-editorial) both;
-	}
-
-	.cal-slide-prev {
-		animation: cal-slide-prev var(--dur-reveal) var(--ease-out-editorial) both;
-	}
 }
 
 /* Parallax on grid photos, the reading line, the pull-quote rule and inline images. */
 @supports (animation-timeline: view()) {
 	@media (prefers-reduced-motion: no-preference) {
-		.drift {
-			animation: photo-drift linear both;
-			animation-timeline: view();
-			animation-range: cover 0% cover 100%;
-		}
-
 		.article-body blockquote::before {
 			animation: rule-draw linear both;
 			animation-timeline: view();
@@ -1669,13 +1632,19 @@
 		.reading-progress {
 			display: block;
 			position: fixed;
-			inset: 5.25rem 0 auto;
+			inset: 4.75rem 0 auto;
 			z-index: 40;
 			height: 2px;
 			background: var(--color-ice);
 			transform-origin: left;
 			animation: reading-fill linear both;
 			animation-timeline: scroll(root block);
+		}
+
+		@media (min-width: 48rem) {
+			.reading-progress {
+				top: 5.25rem;
+			}
 		}
 	}
 }

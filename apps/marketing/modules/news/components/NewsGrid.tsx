@@ -59,7 +59,7 @@ export function NewsGrid({
 									direction={i % 2 ? "left" : "up"}
 									className={cn("photo-zoom relative rounded-lg", tile.aspect)}
 								>
-									<div className="drift inset-x-0 absolute -inset-y-[7%]">
+									<div className="inset-0 absolute">
 										{post.featuredImageUrl ? (
 											<Image
 												unoptimized

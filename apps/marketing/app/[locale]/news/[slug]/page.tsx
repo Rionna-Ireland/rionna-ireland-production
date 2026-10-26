@@ -137,19 +137,19 @@ export default async function NewsDetailPage(props: { params: Promise<Params> })
 								/>
 							</div>
 						</PhotoUnmask>
-					) : (
-						<PatternMosaic
-							colourway="lilac"
-							kind="quad"
-							columns={12}
-							rows={1}
-							className="rounded-lg"
-						/>
-					)}
+					) : null}
 				</div>
 			</div>
 
 			<div className={`${column} mt-12`}>
+				<PatternMosaic
+					colourway="lilac"
+					kind="quad"
+					columns={16}
+					rows={1}
+					trigger="view"
+					className="mb-12 rounded-lg"
+				/>
 				<div
 					className={[
 						"article-body drop-cap prose max-w-none text-ink prose-p:text-ink prose-li:text-ink",
