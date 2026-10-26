@@ -9,7 +9,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 
 export async function generateMetadata(props: { params: Promise<{ locale: string }> }) {
 	const { locale } = await props.params;
-	const t = await getTranslations({ locale, namespace: "membership" });
+	const t = await getTranslations({ locale, namespace: "membership.meta" });
 	return {
 		title: t("title"),
 		description: t("description"),

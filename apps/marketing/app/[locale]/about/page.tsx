@@ -10,7 +10,7 @@ import Image from "next/image";
 
 export async function generateMetadata(props: { params: Promise<{ locale: string }> }) {
 	const { locale } = await props.params;
-	const t = await getTranslations({ locale, namespace: "about" });
+	const t = await getTranslations({ locale, namespace: "about.meta" });
 	return {
 		title: t("title"),
 		description: t("description"),

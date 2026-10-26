@@ -39,3 +39,14 @@ describe("copy rules: waitlist is live, never lorem", () => {
 		expect(hits(read("marketing.json").waitlist, lorem)).toEqual([]);
 	});
 });
+
+describe("copy rules: page meta is real copy", () => {
+	it("every *.meta block has no lorem", () => {
+		const m = read("marketing.json");
+		const metas = Object.fromEntries(Object.entries(m).map(([k, v]) => [k, (v as any).meta]));
+		expect(Object.keys(metas).filter((k) => metas[k])).toEqual(
+			expect.arrayContaining(["about", "membership", "news", "events", "contact"]),
+		);
+		expect(hits(metas, lorem)).toEqual([]);
+	});
+});

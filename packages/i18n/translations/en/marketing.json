@@ -15,6 +15,10 @@
 				"success": "Thanks, your message is on its way. We'll be back to you soon."
 			},
 			"submit": "Send message"
+		},
+		"meta": {
+			"title": "Contact",
+			"description": "Questions about Rionna? Get in touch and we will get back to you."
 		}
 	},
 	"about": {
@@ -41,7 +45,11 @@
 		},
 		"cta": "Become a member",
 		"storyLabel": "Our story",
-		"peopleLabel": "The people"
+		"peopleLabel": "The people",
+		"meta": {
+			"title": "About",
+			"description": "Rionna is a racing club for a new generation. Meet the people and the ideas behind it."
+		}
 	},
 	"membership": {
 		"eyebrow": "Membership",
@@ -86,6 +94,10 @@
 		"wireframe": {
 			"badge": "Preview build",
 			"cta": "Join now"
+		},
+		"meta": {
+			"title": "Membership",
+			"description": "One flat membership for the whole club. See what is included and how to join."
 		}
 	},
 	"news": {
@@ -96,7 +108,11 @@
 		"back": "Back to news",
 		"byline": "By {name}",
 		"share": "Share",
-		"appCta": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore."
+		"appCta": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore.",
+		"meta": {
+			"title": "News",
+			"description": "Race previews, results and stories from the yard."
+		}
 	},
 	"events": {
 		"eyebrow": "Club calendar",
@@ -105,7 +121,11 @@
 		"empty": "No upcoming events right now. Check back soon.",
 		"membersOnly": "Members' event. Join to see the details.",
 		"joinCta": "Join to RSVP",
-		"rsvpNote": "Members RSVP in the app."
+		"rsvpNote": "Members RSVP in the app.",
+		"meta": {
+			"title": "Events",
+			"description": "Race days, stable visits and member gatherings at Rionna."
+		}
 	},
 	"home": {
 		"arrival": {
