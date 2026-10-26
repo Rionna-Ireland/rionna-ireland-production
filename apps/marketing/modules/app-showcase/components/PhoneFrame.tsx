@@ -1,7 +1,7 @@
 import { cn } from "@repo/ui";
 import Image from "next/image";
 
-/** CSS phone: ink bezel, soft highlight. The frames are full-page captures of varying height; show the top 780x1550 as one phone screen. */
+/** CSS phone: ink bezel, soft highlight. The frames are full-page captures of varying height; assets are pre-cropped to 780x1550 as one phone screen. */
 export function PhoneFrame({
 	src,
 	alt,
@@ -22,15 +22,16 @@ export function PhoneFrame({
 				className,
 			)}
 		>
-			<Image
-				src={src}
-				alt={alt}
-				width={780}
-				height={1550}
-				sizes={sizes}
-				priority={priority}
-				className="h-auto w-full rounded-[35px]"
-			/>
+			<div className="relative aspect-[780/1550] w-full overflow-hidden rounded-[35px]">
+				<Image
+					src={src}
+					alt={alt}
+					fill
+					sizes={sizes}
+					priority={priority}
+					className="object-cover object-top"
+				/>
+			</div>
 		</div>
 	);
 }
