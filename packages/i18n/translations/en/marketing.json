@@ -12,7 +12,7 @@
 			"name": "Name",
 			"notifications": {
 				"error": "We couldn't send your message. Please try again in a moment.",
-				"success": "Thanks — your message is on its way. We'll be back to you soon."
+				"success": "Thanks, your message is on its way. We'll be back to you soon."
 			},
 			"submit": "Send message"
 		}
@@ -21,7 +21,7 @@
 		"eyebrow": "About Rionna",
 		"title": "Opening the gates to a different kind of ownership.",
 		"description": "A modern, community-driven shared racehorse ownership club.",
-		"fallbackAbout": "Rionna is a shared racehorse ownership club built for a new generation of owners. We care as much about the horses as we do about the people following their journey — members who come from every corner of the racing world (and plenty who are brand new to it).\n\nWe believe ownership should feel personal, connected, and joyful. That the finish line isn't the only moment worth celebrating. That the sport gets better when it makes room for more voices.\n\nThis is the club we wanted to be part of. We hope you'll join us.",
+		"fallbackAbout": "Rionna is a shared racehorse ownership club built for a new generation of owners. We care as much about the horses as we do about the people following their journey, and for members who come from every corner of the racing world (and plenty who are brand new to it).\n\nWe believe ownership should feel personal, connected, and joyful. That the finish line isn't the only moment worth celebrating. That the sport gets better when it makes room for more voices.\n\nThis is the club we wanted to be part of. We hope you'll join us.",
 		"values": {
 			"openGates": {
 				"eyebrow": "Open the gates",
@@ -31,12 +31,12 @@
 			"leadWithCare": {
 				"eyebrow": "Lead with care",
 				"title": "Horse first, always.",
-				"description": "Welfare is the baseline — from the yard through retirement — and the same care shapes how we look after our members."
+				"description": "Welfare is the baseline, from the yard through retirement, and the same care shapes how we look after our members."
 			},
 			"findJoy": {
 				"eyebrow": "Find the joy in it",
 				"title": "Share the moments.",
-				"description": "Parade ring nerves, the roar in the stands, a winner in the yard at dawn. Ownership is the excuse — the shared moments are the point."
+				"description": "Parade ring nerves, the roar in the stands, a winner in the yard at dawn. Ownership is the excuse. The shared moments are the point."
 			}
 		},
 		"cta": "Become a member",
@@ -53,9 +53,9 @@
 			"interval": "per month",
 			"priceNote": "Billed monthly. Cancel any time from your account.",
 			"features": {
-				"stables": "Track every horse in the stable — bios, photos, trainer notes",
+				"stables": "Track every horse in the stable: bios, photos, trainer notes",
 				"liveRaceData": "Live entries, declarations, and results powered by Timeform",
-				"community": "Private members' community — posts, polls, trainer Q&A, events",
+				"community": "Private members' community: posts, polls, trainer Q&A, events",
 				"pushAlerts": "Real-time push alerts when horses are declared or run",
 				"trainerUpdates": "Trainer updates straight from the yard",
 				"exclusiveNews": "Members-only news, interviews, and behind-the-scenes content"
@@ -71,7 +71,7 @@
 				},
 				"howToCancel": {
 					"question": "How do I cancel?",
-					"answer": "From the website account page — one click, no calls, no forms. Your membership stays active until the end of the billing period."
+					"answer": "From the website account page. One click, no calls, no forms. Your membership stays active until the end of the billing period."
 				},
 				"tierChanges": {
 					"question": "Are there different membership tiers?",
@@ -79,7 +79,7 @@
 				},
 				"appSupport": {
 					"question": "Which devices does the app work on?",
-					"answer": "iOS and Android, from the App Store and Play Store. Billing stays on the website — nothing goes through Apple or Google."
+					"answer": "iOS and Android, from the App Store and Play Store. Billing stays on the website, and nothing goes through Apple or Google."
 				}
 			}
 		},
@@ -92,7 +92,7 @@
 		"eyebrow": "News",
 		"title": "The latest from the yard.",
 		"description": "Race previews, results, interviews, and stories from the stable.",
-		"empty": "No posts yet — check back soon.",
+		"empty": "No posts yet. Check back soon.",
 		"back": "Back to news",
 		"byline": "By {name}",
 		"share": "Share",
@@ -101,9 +101,9 @@
 	"events": {
 		"eyebrow": "Club calendar",
 		"title": "Events",
-		"description": "Race days, stable visits and member gatherings — see what's coming up at Rionna.",
-		"empty": "No upcoming events right now — check back soon.",
-		"membersOnly": "Members' event — join to see the details.",
+		"description": "Race days, stable visits and member gatherings. See what's coming up at Rionna.",
+		"empty": "No upcoming events right now. Check back soon.",
+		"membersOnly": "Members' event. Join to see the details.",
 		"joinCta": "Join to RSVP",
 		"rsvpNote": "Members RSVP in the app."
 	},
@@ -111,7 +111,7 @@
 		"hero": {
 			"eyebrow": "Modern shared racehorse ownership",
 			"title": "Open the gates. Own the moments.",
-			"subtitle": "A modern racehorse ownership club built around a stable full of Flat and National Hunt horses — and a community of people who love being close to the action.",
+			"subtitle": "A modern racehorse ownership club built around a stable full of Flat and National Hunt horses, and a community of people who love being close to the action.",
 			"joinCta": "Become a member",
 			"learnMoreCta": "Learn more",
 			"horsesCta": "Meet the horses",
@@ -121,7 +121,7 @@
 		"horses": {
 			"eyebrow": "Our stable",
 			"title": "Meet the horses.",
-			"description": "Every member follows every horse — from the yard, through the race, to the post-run debrief.",
+			"description": "Every member follows every horse, from the yard, through the race, to the post-run debrief.",
 			"trainerLabel": "Trained by {name}",
 			"ctaMembership": "See the full stable"
 		},
@@ -131,7 +131,7 @@
 			"description": "Ownership, made present. The tools and the moments that make it feel live.",
 			"stables": {
 				"title": "Our Stables",
-				"description": "Photos, bios, trainer updates, race history — the full profile of every horse in the club, always up to date."
+				"description": "Photos, bios, trainer updates, race history: the full profile of every horse in the club, always up to date."
 			},
 			"pulse": {
 				"title": "Pulse dashboard",
