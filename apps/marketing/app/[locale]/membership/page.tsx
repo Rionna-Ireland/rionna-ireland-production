@@ -1,11 +1,18 @@
 import { config } from "@config";
 import { WireframeMembership } from "@home/components/WireframeMembership";
+import { pickItems } from "@shared/components/faq-items";
 import { JoinCtaLink } from "@shared/components/JoinCtaLink";
-import { MembershipFaq, pickItems } from "@shared/components/MembershipFaq";
+import { MembershipFaq } from "@shared/components/MembershipFaq";
+import { InViewStage } from "@shared/components/motion/InViewStage";
+import { MaskedText } from "@shared/components/motion/MaskedText";
+import { Reveal } from "@shared/components/motion/Reveal";
+import { SectionLabel } from "@shared/components/motion/SectionLabel";
+import { PatternMosaic } from "@shared/components/pattern/PatternMosaic";
 import { v2Button } from "@shared/components/ui/v2";
 import { getSiteJoinCta, getWebsiteContent } from "@shared/lib/website";
-import { ArrowRightIcon, CheckIcon } from "lucide-react";
+import { ArrowRightIcon } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import type { CSSProperties } from "react";
 
 export async function generateMetadata(props: { params: Promise<{ locale: string }> }) {
 	const { locale } = await props.params;
@@ -54,46 +61,94 @@ export default async function MembershipPage(props: { params: Promise<{ locale: 
 	);
 
 	return (
-		<div className="bg-page">
-			<section className="gap-3 py-12 container flex flex-col items-center text-center">
-				<span className="type-label text-plum">{t("eyebrow")}</span>
-				<h1 className="type-display-lg text-balance">{t("title")}</h1>
-				<p className="max-w-xl text-lg text-ink-variant">{t("description")}</p>
+		<div>
+			<section
+				data-nav-tone="dark"
+				data-hero-under-nav
+				className="grain bg-plum text-white relative isolate overflow-hidden"
+			>
+				<PatternMosaic
+					colourway="plum"
+					columns={4}
+					rows={10}
+					className="lg:block inset-y-0 right-0 absolute hidden w-[28%] opacity-70"
+				/>
+				<div className="gap-6 pt-40 pb-40 relative container flex flex-col items-start">
+					<Reveal immediate>
+						<SectionLabel index={1} label={t("eyebrow")} className="text-lilac" />
+					</Reveal>
+					<MaskedText
+						immediate
+						as="h1"
+						text={t("title")}
+						className="font-display text-[clamp(3.25rem,8vw,7rem)] leading-[0.95] tracking-[-0.02em] text-balance"
+					/>
+					<Reveal immediate delayMs={200}>
+						<p className="max-w-xl text-lg text-white/80">{t("description")}</p>
+					</Reveal>
+				</div>
 			</section>
 
-			<section className="gap-10 pb-16 lg:grid-cols-[1.15fr_1fr] container grid">
-				<div className="bg-welcome-navy p-8 md:p-10 gap-4 text-white flex flex-col rounded-lg">
-					<span className="type-label text-lilac">{t("plan.title")}</span>
-					<div className="gap-2 flex flex-wrap items-baseline">
-						<span className="type-display-lg">
-							{membership.price ?? t("plan.price")}
-						</span>
-						<span className="type-label text-white/70">
-							{membership.interval ?? t("plan.interval")}
-						</span>
-					</div>
-					<p className="text-sm text-white/70">
-						{membership.note ?? t("plan.priceNote")}
-					</p>
-					<ul className="mt-4 gap-3 grid">
-						{inclusions.map((item, i) => (
-							<li key={`${item}-${i}`} className="gap-3 flex items-start">
-								<CheckIcon className="mt-0.5 size-5 text-lilac shrink-0" />
-								<span className="text-white/90">{item}</span>
-							</li>
-						))}
-					</ul>
-					<div className="mt-6">
-						<JoinCtaLink cta={joinCta} className={v2Button({ variant: "onDark" })}>
-							{joinCta.labelKey ? tRoot(joinCta.labelKey) : t("plan.cta")}
-							<ArrowRightIcon className="ml-2 size-4" />
-						</JoinCtaLink>
-					</div>
+			<section className="pb-20 bg-page relative">
+				<div className="-mt-28 relative container">
+					<InViewStage className="ticket max-w-xl text-white mx-auto">
+						<div className="bg-welcome-navy p-8 md:p-10 gap-3 flex flex-col rounded-t-lg">
+							<span className="type-label text-lilac">{t("plan.title")}</span>
+							<div className="gap-3 flex flex-wrap items-baseline">
+								<span className="font-display text-[clamp(4rem,10vw,6rem)] leading-none">
+									{membership.price ?? t("plan.price")}
+								</span>
+								<span className="type-label text-white/70">
+									{membership.interval ?? t("plan.interval")}
+								</span>
+							</div>
+							<p className="type-label text-white/60">
+								{membership.note ?? t("plan.priceNote")}
+							</p>
+						</div>
+						<div className="ticket-perf bg-welcome-navy" aria-hidden="true" />
+						<div className="bg-welcome-navy p-8 md:p-10 rounded-b-lg">
+							<ul className="gap-3 grid">
+								{inclusions.map((item, i) => (
+									<li key={`${item}-${i}`} className="gap-3 flex items-start">
+										<svg
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											strokeWidth="2"
+											strokeLinecap="round"
+											strokeLinejoin="round"
+											aria-hidden="true"
+											className="draw-check mt-0.5 size-5 text-lilac shrink-0"
+											style={{ "--i": i } as CSSProperties}
+										>
+											<path d="M4 12.5l5 5L20 6.5" pathLength={1} />
+										</svg>
+										<span className="text-white/90">{item}</span>
+									</li>
+								))}
+							</ul>
+							<div className="mt-8">
+								<JoinCtaLink
+									cta={joinCta}
+									className={v2Button({ variant: "onDark" })}
+								>
+									{joinCta.labelKey ? tRoot(joinCta.labelKey) : t("plan.cta")}
+									<ArrowRightIcon className="ticket-arrow ml-2 size-4" />
+								</JoinCtaLink>
+							</div>
+						</div>
+					</InViewStage>
 				</div>
+			</section>
 
-				<div id="faq" className="scroll-mt-28">
-					<h2 className="type-display-md">{t("faq.title")}</h2>
-					<MembershipFaq items={faq} />
+			<section
+				id="faq"
+				data-nav-tone="light"
+				className="py-20 md:py-28 bg-cream scroll-mt-28"
+			>
+				<div className="container">
+					<MembershipFaq items={faq} title={t("faq.title")} />
 				</div>
 			</section>
 		</div>

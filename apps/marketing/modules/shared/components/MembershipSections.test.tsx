@@ -1,8 +1,9 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
+import { pickItems } from "./faq-items";
 import { FoundersSection } from "./FoundersSection";
-import { MembershipFaq, pickItems } from "./MembershipFaq";
+import { MembershipFaq } from "./MembershipFaq";
 
 describe("FoundersSection", () => {
 	it("is absent with no founders", () => {
