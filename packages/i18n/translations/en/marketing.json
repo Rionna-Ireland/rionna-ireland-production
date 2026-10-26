@@ -232,7 +232,8 @@
 			"faq": "FAQ",
 			"journal": "Journal",
 			"becomeMember": "Become a member",
-			"theApp": "The app"
+			"theApp": "The app",
+			"app": "App"
 		},
 		"aria": {
 			"menu": "Menu",

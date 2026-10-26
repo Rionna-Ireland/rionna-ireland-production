@@ -31,6 +31,8 @@ export function NavBar({ joinCta }: { joinCta: JoinCta }) {
 				{ label: t("common.menu.membership"), href: "/membership" },
 				{ label: t("common.menu.about"), href: "/about" },
 				{ label: t("common.menu.news"), href: "/news" },
+				{ label: t("common.menu.events"), href: "/events" },
+				{ label: t("common.menu.app"), href: "/app" },
 			];
 
 	const isMenuItemActive = (href: string) =>
@@ -102,7 +104,7 @@ export function NavBar({ joinCta }: { joinCta: JoinCta }) {
 							<Wordmark className="h-5 sm:h-6 w-auto shrink-0" />
 						</LocaleLink>
 
-						<div className="lg:flex hidden items-center gap-[30px]">
+						<div className="xl:flex hidden items-center gap-[30px]">
 							{menuItems.map((menuItem) => (
 								<LocaleLink
 									key={menuItem.href}
@@ -137,7 +139,7 @@ export function NavBar({ joinCta }: { joinCta: JoinCta }) {
 							cta={navJoinCta}
 							className={cn(
 								v2Button({ variant: dark ? "onDark" : "primary", size: "md" }),
-								"lg:hidden ml-auto",
+								"xl:hidden ml-auto",
 							)}
 						>
 							<span className="sm:hidden">{t("common.menu.join")}</span>
@@ -148,7 +150,7 @@ export function NavBar({ joinCta }: { joinCta: JoinCta }) {
 							<SheetTrigger asChild>
 								<button
 									type="button"
-									className="size-11 lg:hidden flex shrink-0 items-center justify-center rounded-lg border border-current/20 focus-visible:outline-2 focus-visible:outline-offset-2"
+									className="size-11 xl:hidden flex shrink-0 items-center justify-center rounded-lg border border-current/20 focus-visible:outline-2 focus-visible:outline-offset-2"
 									aria-label={t("common.aria.menu")}
 								>
 									<MenuIcon className="size-5" />
