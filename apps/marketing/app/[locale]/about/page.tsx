@@ -38,10 +38,12 @@ export default async function AboutPage(props: { params: Promise<{ locale: strin
 	const rawAbout = club.metadata.contact?.aboutText;
 	const aboutText = (typeof rawAbout === "string" && rawAbout.trim()) || t("fallbackAbout");
 
-	const chapters = chapterNumbering(about.founders.length > 0).map((c) => ({
-		...c,
-		label: t(`chapters.${c.id}` as "chapters.story"),
-	}));
+	const chapters = chapterNumbering(about.founders.length > 0);
+	const label = (id: string) => t(`chapters.${id}` as "chapters.story");
+	const railChapters = [
+		...chapters.map((c) => ({ id: c.id, label: label(c.id) })),
+		{ id: "close", label: t("close.title") },
+	];
 	const ch = (id: string) => chapters.find((c) => c.id === id);
 	const [story, why, club_, people, believe] = ["story", "why", "club", "people", "believe"].map(
 		ch,
@@ -49,30 +51,30 @@ export default async function AboutPage(props: { params: Promise<{ locale: strin
 
 	return (
 		<div className="bg-page">
-			<ChapterRail chapters={chapters} />
+			<ChapterRail chapters={railChapters} />
 			{story && (
 				<Opener
-					label={story.label}
+					label={label(story.id)}
 					index={story.index}
 					title={about.storyTitle ?? t("title")}
 					photoUrl={about.photoUrl}
 				/>
 			)}
-			{why && <StoryBeats text={aboutText} label={why.label} index={why.index} />}
+			{why && <StoryBeats text={aboutText} label={label(why.id)} index={why.index} />}
 			{club_ && (
 				<GrowPhoto
-					label={club_.label}
+					label={label(club_.id)}
 					index={club_.index}
 					caption={t("caption")}
 					photoUrl={about.photoUrl}
 				/>
 			)}
 			{people && (
-				<People founders={about.founders} label={people.label} index={people.index} />
+				<People founders={about.founders} label={label(people.id)} index={people.index} />
 			)}
 			{believe && (
 				<Values
-					label={believe.label}
+					label={label(believe.id)}
 					index={believe.index}
 					cards={VALUE_KEYS.map((key) => ({
 						key,

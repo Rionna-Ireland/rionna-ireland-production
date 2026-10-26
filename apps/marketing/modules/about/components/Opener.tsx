@@ -57,14 +57,13 @@ export function Opener({
 	photoUrl?: string | null;
 }) {
 	return (
-		<section id="story" data-chapter data-nav-tone="light" className="scroll-mt-0">
+		<section id="story" data-chapter data-nav-tone="light">
 			<PinnedStage
 				heightSvh={220}
 				stageClassName="grain bg-cream min-h-svh relative isolate flex items-center justify-center overflow-hidden"
 			>
 				{CARDS.map((c, i) => (
 					<div
-						// biome-ignore lint/suspicious/noArrayIndexKey: static list
 						key={i}
 						className={`ch-card ${i > 3 ? "max-md:hidden" : ""} ${c.depth > 1 ? "z-20" : "z-0"}`}
 						style={
@@ -103,7 +102,7 @@ export function Opener({
 					<MaskedText
 						as="h1"
 						text={title}
-						className="max-w-5xl text-ink font-display text-[clamp(3rem,9vw,8.5rem)] leading-[0.95] tracking-[-0.02em] text-balance"
+						className="ch-title max-w-5xl text-ink font-display text-[clamp(3rem,9vw,8.5rem)] leading-[0.95] tracking-[-0.02em] text-balance"
 					/>
 				</div>
 				<span

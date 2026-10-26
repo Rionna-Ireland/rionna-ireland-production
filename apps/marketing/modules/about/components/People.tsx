@@ -23,11 +23,12 @@ export function People({
 	return (
 		<section id="people" data-chapter data-nav-tone="light" className="bg-page">
 			<PinnedStage
+				wide
 				heightSvh={100 + founders.length * 70}
 				stageClassName="gap-8 py-16 flex flex-col justify-center"
 			>
 				<SectionLabel index={index} label={label} className="container" />
-				<div className="people-view">
+				<div className="people-view" tabIndex={0} aria-label={label}>
 					<ul className="people-track gap-5 px-6 flex w-max items-start">
 						{founders.map((f, i) => (
 							<li

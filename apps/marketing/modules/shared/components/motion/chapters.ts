@@ -1,13 +1,7 @@
-export type Chapter = { id: string; label: string; index: number };
+export type Chapter = { id: string; index: number };
 
-/** About chapters in order; the people chapter drops out (and numbering closes up) without founders. */
+/** About chapters in order (labels come from i18n); the people chapter drops out, and numbering closes up, without founders. */
 export function chapterNumbering(hasFounders: boolean): Chapter[] {
-	const all = [
-		{ id: "story", label: "Our story" },
-		{ id: "why", label: "Why we exist" },
-		{ id: "club", label: "The club" },
-		...(hasFounders ? [{ id: "people", label: "The people" }] : []),
-		{ id: "believe", label: "What we believe" },
-	];
-	return all.map((c, i) => ({ ...c, index: i + 1 }));
+	const ids = ["story", "why", "club", ...(hasFounders ? ["people"] : []), "believe"];
+	return ids.map((id, i) => ({ id, index: i + 1 }));
 }

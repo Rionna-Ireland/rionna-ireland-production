@@ -39,7 +39,9 @@ export function ChapterRail({ chapters }: { chapters: { id: string; label: strin
 					<span
 						className={cn(
 							"type-label transition-opacity duration-(--dur-hover)",
-							active === c.id ? "opacity-100" : "opacity-0 group-hover:opacity-70",
+							active === c.id
+								? "opacity-100"
+								: "opacity-0 group-hover:opacity-70 group-focus-visible:opacity-100",
 						)}
 					>
 						{c.label}

@@ -1133,12 +1133,12 @@ main[data-nav-space]:has([data-hero-under-nav]) {
 /* Scroll-driven chapters: only where view timelines exist and motion is allowed. */
 @supports (animation-timeline: view()) {
 	@media (prefers-reduced-motion: no-preference) {
-		.pin {
+		.pin:not(.pin-wide) {
 			height: min(var(--pin-h), 150svh);
 			view-timeline: --stage block;
 		}
 
-		.pin-stage {
+		.pin:not(.pin-wide) > .pin-stage {
 			position: sticky;
 			top: 0;
 			height: 100svh;
@@ -1243,6 +1243,17 @@ main[data-nav-space]:has([data-hero-under-nav]) {
 	}
 
 	@media (prefers-reduced-motion: no-preference) and (min-width: 64rem) {
+		.pin-wide {
+			height: var(--pin-h);
+			view-timeline: --stage block;
+		}
+
+		.pin-wide > .pin-stage {
+			position: sticky;
+			top: 0;
+			height: 100svh;
+		}
+
 		.people-view {
 			overflow: clip;
 			scroll-snap-type: none;
@@ -1255,7 +1266,7 @@ main[data-nav-space]:has([data-hero-under-nav]) {
 	}
 
 	@media (prefers-reduced-motion: no-preference) and (min-width: 48rem) {
-		.pin {
+		.pin:not(.pin-wide) {
 			height: var(--pin-h);
 		}
 	}
@@ -1337,6 +1348,41 @@ main[data-nav-space]:has([data-hero-under-nav]) {
 
 @keyframes people-slide {
 	to {
-		transform: translate3d(calc(-100% + 100vw), 0, 0);
+		transform: translate3d(min(0px, calc(100vw - 100%)), 0, 0);
+	}
+}
+
+/* Opener headline: a page-time animation (not the hydration-gated reveal) so it paints at t=0. */
+@media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
+	.ch-title .mask-word > span {
+		animation: hero-word var(--dur-reveal) var(--ease-out-editorial)
+			calc(var(--i, 0) * var(--step-rise)) both;
+	}
+}
+
+@media print {
+	.pin,
+	.pin-wide {
+		height: auto !important;
+	}
+
+	.pin-stage {
+		position: static !important;
+		height: auto !important;
+	}
+
+	.ch-card,
+	.ch-headline,
+	.ch-rule,
+	.beat,
+	.beat-word,
+	.chip .pc-star,
+	.ch-photo,
+	.ch-photo::after,
+	.ch-label,
+	.ch-caption,
+	.ch-frame,
+	.people-track {
+		animation: none;
 	}
 }

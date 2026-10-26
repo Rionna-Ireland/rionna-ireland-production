@@ -19,6 +19,8 @@ export function Close({
 }) {
 	return (
 		<section
+			id="close"
+			data-chapter
 			data-nav-tone="dark"
 			className="grain bg-plum text-white relative isolate overflow-hidden"
 		>

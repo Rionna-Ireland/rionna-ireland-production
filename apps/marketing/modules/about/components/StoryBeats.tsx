@@ -30,7 +30,6 @@ export function StoryBeats({ text, label, index }: { text: string; label: string
 				const chip = CHIPS[b % CHIPS.length];
 				return (
 					<PinnedStage
-						// biome-ignore lint/suspicious/noArrayIndexKey: static paragraphs
 						key={b}
 						heightSvh={170}
 						stageClassName="relative flex min-h-[60svh] items-center justify-center px-6 py-20"
@@ -39,10 +38,7 @@ export function StoryBeats({ text, label, index }: { text: string; label: string
 							{b === 0 && <SectionLabel index={index} label={label} />}
 							<div className="text-ink font-display text-[clamp(1.5rem,3.2vw,2.75rem)] leading-[1.15] tracking-[-0.01em]">
 								{words.map((word, i) => (
-									<span
-										// biome-ignore lint/suspicious/noArrayIndexKey: static word list
-										key={`${i}:${word}`}
-									>
+									<span key={`${i}:${word}`}>
 										<span
 											className="beat-word"
 											style={
