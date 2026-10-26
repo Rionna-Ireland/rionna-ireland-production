@@ -1093,8 +1093,7 @@
 				"step1": "Download the Rionna app from the App Store or Google Play.",
 				"step2": "Log in with the same email and password you use here.",
 				"step3": "You're in. No extra setup."
-			},
-			"feedQuiet": "Your feed is quiet right now. Open the app for the latest."
+			}
 		},
 		"community": {
 			"title": "Community",
@@ -1112,12 +1111,13 @@
 			},
 			"time": {
 				"justNow": "Just now",
-				"minutesAgo": "{count} min ago",
-				"hoursAgo": "{count} hours ago",
-				"daysAgo": "{count} days ago"
+				"minutesAgo": "{count, plural, one {# min ago} other {# mins ago}}",
+				"hoursAgo": "{count, plural, one {# hour ago} other {# hours ago}}",
+				"daysAgo": "{count, plural, one {# day ago} other {# days ago}}"
 			},
 			"like": "Like",
-			"unlike": "Unlike",
+			"likeFailed": "Couldn't save your like. Please try again.",
+			"voteFailed": "Couldn't save your vote. Please try again.",
 			"likeCount": "{count, plural, one {# like} other {# likes}}",
 			"commentCount": "{count, plural, one {# comment} other {# comments}}",
 			"readStory": "Read the story",

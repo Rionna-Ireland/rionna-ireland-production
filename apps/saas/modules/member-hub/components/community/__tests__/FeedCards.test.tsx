@@ -1,3 +1,6 @@
+import type { MemberFeedItem } from "@repo/api/modules/circle/lib/parse-post";
+import type { FeedChip } from "@repo/api/modules/community/lib/types";
+import type { PollCardData } from "@repo/api/modules/polls/lib/poll-view";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
@@ -22,7 +25,7 @@ vi.mock("next/link", () => ({
 import { PollCard, PostCard, StoryCard } from "../FeedCards";
 import { FeedChips } from "../FeedChips";
 
-const post = {
+const post: MemberFeedItem = {
 	id: "p1",
 	spaceId: "s1",
 	kind: "post",
@@ -38,7 +41,7 @@ const post = {
 	url: null,
 	authorRole: "expert",
 	authorRoleLabel: "Vet",
-} as never;
+};
 
 describe("PostCard", () => {
 	const html = renderToStaticMarkup(
@@ -56,20 +59,25 @@ describe("PostCard", () => {
 		expect(html).toContain("Stable Updates");
 		expect(html).toContain('href="/club/feed/s1/p1"');
 	});
-	it("like is a pressed toggle and there is no composer", () => {
+	it("like is a pressed toggle with a constant label, and there is no composer", () => {
 		expect(html).toContain('aria-pressed="true"');
+		expect(html).toContain('aria-label="app.community.like"');
+		expect(html).not.toContain("unlike");
+		expect(html).toContain("app.community.likeCount[count=9]");
+		expect(html).toContain("app.community.commentCount[count=4]");
+		expect(html).not.toMatch(/\sdisabled(=|>|\s)/);
 		expect(html).not.toContain("<textarea");
 		expect(html).not.toContain("<form");
 	});
 });
 
 describe("StoryCard", () => {
-	const story = {
-		...(post as object),
+	const story: MemberFeedItem = {
+		...post,
 		kind: "story",
 		spaceId: null,
 		story: { slug: "big-win", category: null },
-	} as never;
+	};
 	it("links to the marketing story, or stays unlinked without the url", () => {
 		expect(
 			renderToStaticMarkup(<StoryCard item={story} marketingUrl="https://rionna.com" />),
@@ -81,7 +89,7 @@ describe("StoryCard", () => {
 });
 
 describe("PollCard", () => {
-	const poll = {
+	const poll: PollCardData = {
 		id: "poll1",
 		question: "Which?",
 		scope: "club",
@@ -95,7 +103,7 @@ describe("PollCard", () => {
 		],
 		myVoteOptionId: "a",
 		results: { total: 4, byOption: { a: 3, b: 1 } },
-	} as never;
+	};
 	it("renders options as pressed buttons with results", () => {
 		const html = renderToStaticMarkup(
 			<PollCard poll={poll} pending={false} onVote={() => {}} />,
@@ -104,20 +112,33 @@ describe("PollCard", () => {
 		expect(html).toContain("[percent=75]");
 		expect(html).toContain("[count=4]");
 	});
-	it("disables voting when closed", () => {
-		const closed = { ...(poll as object), status: "closed" } as never;
+	it("marks voting aria-disabled (not disabled) when closed or pending", () => {
+		const closed: PollCardData = { ...poll, status: "closed" };
+		const closedHtml = renderToStaticMarkup(
+			<PollCard poll={closed} pending={false} onVote={() => {}} />,
+		);
+		expect(closedHtml).toContain('aria-disabled="true"');
+		expect(closedHtml).not.toMatch(/\sdisabled(=|>|\s)/);
+		expect(renderToStaticMarkup(<PollCard poll={poll} pending onVote={() => {}} />)).toContain(
+			'aria-disabled="true"',
+		);
 		expect(
-			renderToStaticMarkup(<PollCard poll={closed} pending={false} onVote={() => {}} />),
-		).toContain("disabled");
+			renderToStaticMarkup(<PollCard poll={poll} pending={false} onVote={() => {}} />),
+		).toContain('aria-disabled="false"');
+	});
+	it("uses an h2 for the question", () => {
+		expect(
+			renderToStaticMarkup(<PollCard poll={poll} pending={false} onVote={() => {}} />),
+		).toContain("<h2");
 	});
 });
 
 describe("FeedChips", () => {
 	it("is a radiogroup with roving tabindex", () => {
-		const chips = [
+		const chips: FeedChip[] = [
 			{ id: "all", kind: "all", label: "All", spaceIds: [] },
 			{ id: "news", kind: "news", label: "News", spaceIds: [] },
-		] as never;
+		];
 		const html = renderToStaticMarkup(
 			<FeedChips chips={chips} selectedId="news" onSelect={() => {}} label="Filter" />,
 		);

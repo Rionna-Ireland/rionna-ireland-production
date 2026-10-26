@@ -3,12 +3,12 @@
 import type { MemberFeedItem } from "@repo/api/modules/circle/lib/parse-post";
 import type { MemberFeedResult } from "@repo/api/modules/circle/procedures/get-member-feed";
 import type { ListFeedChipsResult } from "@repo/api/modules/community/lib/types";
+import { toastError } from "@repo/ui/components/toast";
 import { orpcClient } from "@shared/lib/orpc-client";
 import { orpc } from "@shared/lib/orpc-query-utils";
-import type { InfiniteData } from "@tanstack/react-query";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import {
 	announcementSpaceIdsFromChips,
@@ -19,7 +19,7 @@ import {
 import {
 	applyLike,
 	applyVote,
-	mapPages,
+	optimisticFeedUpdate,
 	reconcileLike,
 	reconcilePoll,
 } from "../../lib/community/feed-cache";
@@ -44,8 +44,6 @@ interface CommunityFeedProps {
 	initialFeed: MemberFeedResult;
 	initialChips: ListFeedChipsResult | null;
 }
-
-type FeedData = InfiniteData<MemberFeedResult, number>;
 
 export function CommunityFeed({
 	organizationId,
@@ -101,67 +99,60 @@ export function CommunityFeed({
 	const horseIds = useMemo(() => horseSpaceIds(chips), [chips]);
 	const featured = firstPage?.featured ?? null;
 
-	/** Applies a transform to every cached feed (every filter), returning snapshots for rollback. */
-	function patchFeeds(fn: (items: MemberFeedItem[]) => MemberFeedItem[]) {
-		const snapshots: [readonly unknown[], FeedData][] = [];
-		for (const [key, data] of queryClient.getQueriesData<FeedData>({
-			queryKey: orpc.circle.getMemberFeed.key(),
-		})) {
-			if (!data || !Array.isArray(data.pages)) continue;
-			const next = mapPages(data, fn);
-			if (next === data) continue;
-			snapshots.push([key, data]);
-			queryClient.setQueryData(key, next);
-		}
-		return snapshots;
-	}
+	const feedKey = orpc.circle.getMemberFeed.key();
+	const likesInFlight = useRef(new Set<string>());
+	const votesInFlight = useRef(new Set<string>());
 
-	function track(set: typeof setPendingLikes, id: string, on: boolean) {
-		set((prev) => {
-			const next = new Set(prev);
-			if (on) next.add(id);
-			else next.delete(id);
-			return next;
-		});
+	/** Failed writes roll back that item only, then refetch for the truth and say so quietly. */
+	function onFailed(message: string) {
+		void queryClient.invalidateQueries({ queryKey: feedKey });
+		toastError(message);
 	}
 
 	async function toggleLike(item: MemberFeedItem) {
-		if (pendingLikes.has(item.id)) return;
 		const liked = !item.isLiked;
-		track(setPendingLikes, item.id, true);
-		await queryClient.cancelQueries({ queryKey: orpc.circle.getMemberFeed.key() });
-		const snapshots = patchFeeds((list) => applyLike(list, item.id, liked));
-		try {
-			const result = await orpcClient.circle.setPostLike({
-				organizationId,
-				postId: item.id,
-				liked,
-				...(item.spaceId ? { spaceId: item.spaceId } : {}),
-			});
-			if (!result.ok) throw new Error("Post like failed");
-			patchFeeds((list) => reconcileLike(list, item.id, result.liked, result.likeCount));
-		} catch {
-			for (const [key, data] of snapshots) queryClient.setQueryData(key, data);
-			void queryClient.invalidateQueries({ queryKey: orpc.circle.getMemberFeed.key() });
-		} finally {
-			track(setPendingLikes, item.id, false);
-		}
+		const outcome = await optimisticFeedUpdate({
+			qc: queryClient,
+			queryKey: feedKey,
+			pending: likesInFlight.current,
+			notify: () => setPendingLikes(new Set(likesInFlight.current)),
+			id: item.id,
+			apply: (list) => applyLike(list, item.id, liked),
+			rollback: (list) => applyLike(list, item.id, item.isLiked),
+			send: async () => {
+				const result = await orpcClient.circle.setPostLike({
+					organizationId,
+					postId: item.id,
+					liked,
+					...(item.spaceId ? { spaceId: item.spaceId } : {}),
+				});
+				if (!result.ok) throw new Error("Post like failed");
+				return result;
+			},
+			reconcile: (result) => (list) =>
+				reconcileLike(list, item.id, result.liked, result.likeCount),
+		});
+		if (outcome === "failed") onFailed(t("likeFailed"));
 	}
 
 	async function vote(pollId: string, optionId: string) {
-		if (pendingVotes.has(pollId)) return;
-		track(setPendingVotes, pollId, true);
-		await queryClient.cancelQueries({ queryKey: orpc.circle.getMemberFeed.key() });
-		const snapshots = patchFeeds((list) => applyVote(list, pollId, optionId));
-		try {
-			const result = await orpcClient.polls.vote({ organizationId, pollId, optionId });
-			if (!result.ok) throw new Error(`Vote failed: ${result.reason}`);
-			patchFeeds((list) => reconcilePoll(list, result.poll));
-		} catch {
-			for (const [key, data] of snapshots) queryClient.setQueryData(key, data);
-		} finally {
-			track(setPendingVotes, pollId, false);
-		}
+		const previous = items.find((i) => i.poll?.id === pollId)?.poll?.myVoteOptionId ?? null;
+		const outcome = await optimisticFeedUpdate({
+			qc: queryClient,
+			queryKey: feedKey,
+			pending: votesInFlight.current,
+			notify: () => setPendingVotes(new Set(votesInFlight.current)),
+			id: pollId,
+			apply: (list) => applyVote(list, pollId, optionId),
+			rollback: (list) => applyVote(list, pollId, previous),
+			send: async () => {
+				const result = await orpcClient.polls.vote({ organizationId, pollId, optionId });
+				if (!result.ok) throw new Error(`Vote failed: ${result.reason}`);
+				return result;
+			},
+			reconcile: (result) => (list) => reconcilePoll(list, result.poll),
+		});
+		if (outcome === "failed") onFailed(t("voteFailed"));
 	}
 
 	const unavailable = firstPage?.ok === false;
@@ -193,13 +184,6 @@ export function CommunityFeed({
 			</header>
 
 			<div className="gap-8 xl:grid xl:grid-cols-[minmax(0,680px)_320px] xl:items-start xl:justify-center xl:gap-10 flex flex-col">
-				{hasRail ? (
-					<aside className="gap-4 xl:sticky xl:top-6 xl:col-start-2 xl:row-start-1 flex flex-col">
-						{featured ? <FeaturedCard card={featured} basePath={basePath} /> : null}
-						<AnnouncementCards announcements={announcements} basePath={basePath} />
-					</aside>
-				) : null}
-
 				<section
 					aria-busy={loading}
 					className="gap-4 xl:col-start-1 xl:row-start-1 flex flex-col"
@@ -219,31 +203,33 @@ export function CommunityFeed({
 					) : items.length === 0 ? (
 						<Notice title={emptyCopy.title} body={emptyCopy.body} />
 					) : (
-						items.map((item) =>
-							item.kind === "poll" && item.poll ? (
-								<PollCard
-									key={feedItemKey(item)}
-									poll={item.poll}
-									pending={pendingVotes.has(item.poll.id)}
-									onVote={vote}
-								/>
-							) : item.kind === "story" && item.story ? (
-								<StoryCard
-									key={feedItemKey(item)}
-									item={item}
-									marketingUrl={marketingUrl}
-								/>
-							) : (
+						items.map((item) => {
+							const key = feedItemKey(item);
+							// A poll or story missing its payload has nothing to show; skip it rather than fake a post.
+							if (item.kind === "poll")
+								return item.poll ? (
+									<PollCard
+										key={key}
+										poll={item.poll}
+										pending={pendingVotes.has(item.poll.id)}
+										onVote={vote}
+									/>
+								) : null;
+							if (item.kind === "story")
+								return item.story ? (
+									<StoryCard key={key} item={item} marketingUrl={marketingUrl} />
+								) : null;
+							return (
 								<PostCard
-									key={feedItemKey(item)}
+									key={key}
 									item={item}
 									basePath={basePath}
 									horseIds={horseIds}
 									likePending={pendingLikes.has(item.id)}
 									onToggleLike={toggleLike}
 								/>
-							),
-						)
+							);
+						})
 					)}
 
 					{!loading && !unavailable && (feedQuery.hasNextPage || loadFailed) ? (
@@ -266,6 +252,13 @@ export function CommunityFeed({
 						</div>
 					) : null}
 				</section>
+
+				{hasRail ? (
+					<aside className="gap-4 xl:order-none xl:sticky xl:top-6 xl:col-start-2 xl:row-start-1 order-first flex flex-col">
+						{featured ? <FeaturedCard card={featured} basePath={basePath} /> : null}
+						<AnnouncementCards announcements={announcements} basePath={basePath} />
+					</aside>
+				) : null}
 			</div>
 		</div>
 	);

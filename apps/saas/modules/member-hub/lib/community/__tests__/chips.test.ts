@@ -5,6 +5,7 @@ import {
 	announcementSpaceIdsFromChips,
 	chipToFilter,
 	emptyKindForChip,
+	nextChipIndex,
 	selectAnnouncements,
 } from "../chips";
 
@@ -77,5 +78,20 @@ describe("announcements", () => {
 		expect(selectAnnouncements(items, ["a"]).map((i) => i.id)).toEqual(["new", "old"]);
 		expect(selectAnnouncements(items, ["a"], 1)).toHaveLength(1);
 		expect(selectAnnouncements(undefined)).toEqual([]);
+	});
+});
+
+describe("nextChipIndex", () => {
+	it("moves with arrows, wraps, and jumps with Home and End", () => {
+		expect(nextChipIndex("ArrowRight", 0, 3)).toBe(1);
+		expect(nextChipIndex("ArrowDown", 2, 3)).toBe(0);
+		expect(nextChipIndex("ArrowLeft", 0, 3)).toBe(2);
+		expect(nextChipIndex("ArrowUp", 2, 3)).toBe(1);
+		expect(nextChipIndex("Home", 2, 3)).toBe(0);
+		expect(nextChipIndex("End", 0, 3)).toBe(2);
+	});
+	it("ignores other keys", () => {
+		expect(nextChipIndex("Tab", 1, 3)).toBeNull();
+		expect(nextChipIndex("a", 1, 3)).toBeNull();
 	});
 });

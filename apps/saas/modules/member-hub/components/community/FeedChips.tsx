@@ -4,6 +4,8 @@ import type { FeedChip } from "@repo/api/modules/community/lib/types";
 import { cn } from "@repo/ui";
 import { useRef } from "react";
 
+import { nextChipIndex } from "../../lib/community/chips";
+
 interface FeedChipsProps {
 	chips: FeedChip[];
 	selectedId: string;
@@ -17,17 +19,9 @@ export function FeedChips({ chips, selectedId, onSelect, label }: FeedChipsProps
 	if (chips.length === 0) return null;
 
 	function onKeyDown(event: React.KeyboardEvent, index: number) {
-		const step =
-			event.key === "ArrowRight" || event.key === "ArrowDown"
-				? 1
-				: event.key === "ArrowLeft" || event.key === "ArrowUp"
-					? -1
-					: 0;
-		const target =
-			event.key === "Home" ? 0 : event.key === "End" ? chips.length - 1 : index + step;
-		if (event.key !== "Home" && event.key !== "End" && step === 0) return;
+		const next = nextChipIndex(event.key, index, chips.length);
+		if (next === null) return;
 		event.preventDefault();
-		const next = (target + chips.length) % chips.length;
 		onSelect((chips[next] as FeedChip).id);
 		refs.current[next]?.focus();
 	}

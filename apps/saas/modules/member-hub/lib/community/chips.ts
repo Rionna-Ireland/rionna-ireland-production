@@ -76,3 +76,18 @@ export function selectAnnouncements(
 		.sort((a, b) => (Date.parse(b.createdAt ?? "") || 0) - (Date.parse(a.createdAt ?? "") || 0))
 		.slice(0, limit);
 }
+
+/** Roving-focus target for a radiogroup key press (wraps at the ends); null for keys that don't move. */
+export function nextChipIndex(key: string, index: number, length: number): number | null {
+	const target =
+		key === "Home"
+			? 0
+			: key === "End"
+				? length - 1
+				: key === "ArrowRight" || key === "ArrowDown"
+					? index + 1
+					: key === "ArrowLeft" || key === "ArrowUp"
+						? index - 1
+						: null;
+	return target === null ? null : (target + length) % length;
+}

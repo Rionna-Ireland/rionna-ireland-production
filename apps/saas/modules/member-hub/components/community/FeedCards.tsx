@@ -106,10 +106,15 @@ function LikeButton({
 		<button
 			type="button"
 			aria-pressed={item.isLiked}
-			aria-label={item.isLiked ? t("unlike") : t("like")}
-			disabled={pending}
-			onClick={onToggle}
-			className="gap-1.5 py-1 pr-2 text-label hover:text-plum relative z-10 inline-flex items-center rounded-full disabled:opacity-60"
+			aria-label={t("like")}
+			aria-disabled={pending}
+			onClick={() => {
+				if (!pending) onToggle();
+			}}
+			className={cn(
+				"gap-1.5 py-1 pr-2 text-label hover:text-plum relative z-10 inline-flex items-center rounded-full",
+				pending && "opacity-60",
+			)}
 		>
 			<svg
 				aria-hidden
@@ -125,7 +130,8 @@ function LikeButton({
 					strokeLinejoin="round"
 				/>
 			</svg>
-			<span aria-label={t("likeCount", { count: item.likeCount })}>{item.likeCount}</span>
+			<span aria-hidden>{item.likeCount}</span>
+			<span className="sr-only">{t("likeCount", { count: item.likeCount })}</span>
 		</button>
 	);
 }
@@ -148,7 +154,7 @@ export function PostCard({ item, basePath, horseIds, likePending, onToggleLike }
 			<div className="gap-3 flex flex-col">
 				<AuthorHeader item={item} horseIds={horseIds} />
 				{item.title ? (
-					<h3 className={TITLE}>
+					<h2 className={TITLE}>
 						{href ? (
 							<Link href={href} className={STRETCH}>
 								{item.title}
@@ -156,7 +162,7 @@ export function PostCard({ item, basePath, horseIds, likePending, onToggleLike }
 						) : (
 							item.title
 						)}
-					</h3>
+					</h2>
 				) : null}
 				{item.excerpt ? (
 					<p className="text-lg text-ink-variant line-clamp-3">{item.excerpt}</p>
@@ -177,8 +183,9 @@ export function PostCard({ item, basePath, horseIds, likePending, onToggleLike }
 						>
 							<path d="M4.5 5.5h15v10h-8l-4 3.5v-3.5h-3z" strokeLinejoin="round" />
 						</svg>
-						<span aria-label={t("commentCount", { count: item.commentCount })}>
-							{item.commentCount}
+						<span aria-hidden>{item.commentCount}</span>
+						<span className="sr-only">
+							{t("commentCount", { count: item.commentCount })}
 						</span>
 					</span>
 				</div>
@@ -200,7 +207,7 @@ export function StoryCard({
 		<article className={CARD}>
 			<div className="gap-3 flex flex-col">
 				<AuthorHeader item={item} horseIds={new Set()} />
-				<h3 className={TITLE}>
+				<h2 className={TITLE}>
 					{href ? (
 						<a href={href} className={STRETCH}>
 							{item.title}
@@ -208,7 +215,7 @@ export function StoryCard({
 					) : (
 						item.title
 					)}
-				</h3>
+				</h2>
 				{item.excerpt ? (
 					<p className="text-lg text-ink-variant line-clamp-3">{item.excerpt}</p>
 				) : null}
@@ -240,9 +247,9 @@ export function PollCard({
 			<div className="gap-4 flex flex-col">
 				<div className="gap-2 flex flex-col">
 					<span className="type-label text-label">{eyebrow}</span>
-					<h3 id={titleId} className={TITLE}>
+					<h2 id={titleId} className={TITLE}>
 						{poll.question}
-					</h3>
+					</h2>
 				</div>
 				<div role="group" aria-labelledby={titleId} className="gap-3 flex flex-col">
 					{poll.options.map((option) => {
@@ -253,10 +260,12 @@ export function PollCard({
 								key={option.id}
 								type="button"
 								aria-pressed={mine}
-								disabled={!canVote}
-								onClick={() => onVote(poll.id, option.id)}
+								aria-disabled={!canVote}
+								onClick={() => {
+									if (canVote) onVote(poll.id, option.id);
+								}}
 								className={cn(
-									"gap-3 p-3 relative flex items-center justify-between overflow-hidden rounded-lg border text-left disabled:cursor-default",
+									"gap-3 p-3 relative flex items-center justify-between overflow-hidden rounded-lg border text-left aria-disabled:cursor-default",
 									mine ? "border-plum" : "border-outline",
 									canVote && "hover:border-plum",
 								)}
@@ -313,7 +322,7 @@ export function AnnouncementCards({
 				>
 					<div className="gap-3 flex flex-col">
 						<span className="type-label text-white/80">{t("announcementKicker")}</span>
-						<h3 className={cn(TITLE, "line-clamp-4")}>{item.title}</h3>
+						<h2 className={cn(TITLE, "line-clamp-4")}>{item.title}</h2>
 					</div>
 					<Link
 						href={`${basePath}/feed/${encodeURIComponent(item.spaceId as string)}/${encodeURIComponent(item.id)}`}
@@ -339,7 +348,7 @@ export function FeaturedCard({ card, basePath }: { card: FeaturedCardData; baseP
 	return (
 		<div className="gap-1 border-outline bg-cream p-5 relative flex flex-col rounded-xl border">
 			<span className="type-label text-label">{kicker}</span>
-			<h3 className={TITLE}>
+			<h2 className={TITLE}>
 				{href ? (
 					<Link href={href} className={STRETCH}>
 						{card.title}
@@ -347,7 +356,7 @@ export function FeaturedCard({ card, basePath }: { card: FeaturedCardData; baseP
 				) : (
 					card.title
 				)}
-			</h3>
+			</h2>
 			{card.cta ? <p className="text-sm text-ink-variant">{card.cta}</p> : null}
 		</div>
 	);

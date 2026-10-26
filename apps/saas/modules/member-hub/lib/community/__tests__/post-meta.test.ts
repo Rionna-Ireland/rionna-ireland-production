@@ -34,7 +34,11 @@ describe("relativeTime", () => {
 		expect(relativeTime(ago(5 * 60_000), now)).toEqual({ kind: "minutesAgo", count: 5 });
 		expect(relativeTime(ago(3 * 3_600_000), now)).toEqual({ kind: "hoursAgo", count: 3 });
 		expect(relativeTime(ago(2 * 86_400_000), now)).toEqual({ kind: "daysAgo", count: 2 });
-		expect(relativeTime(ago(10 * 86_400_000), now)).toEqual({ kind: "date", text: "16 Oct" });
+		// The short date is in the viewer's timezone, so assert its shape rather than the day.
+		expect(relativeTime(ago(10 * 86_400_000), now)).toEqual({
+			kind: "date",
+			text: expect.stringMatching(/^\d{1,2} [A-Z][a-z]{2}$/),
+		});
 	});
 	it("null for missing or invalid", () => {
 		expect(relativeTime(null)).toBeNull();

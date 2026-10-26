@@ -1,5 +1,6 @@
 import type { MemberFeedItem } from "@repo/api/modules/circle/lib/parse-post";
 import type { PollCardData } from "@repo/api/modules/polls/lib/poll-view";
+import type { QueryClient } from "@tanstack/react-query";
 
 /** Pure cache transforms ported from the mobile app; each returns the same reference when nothing changes. */
 
@@ -27,7 +28,8 @@ export function reconcileLike(
 	return items.map((i) => (i.id === postId ? { ...i, isLiked: liked, likeCount } : i));
 }
 
-export function applyVote(items: Items, pollId: string, optionId: string): Items {
+/** Sets my vote; `null` clears it (used to undo an optimistic vote). */
+export function applyVote(items: Items, pollId: string, optionId: string | null): Items {
 	let changed = false;
 	const next = items.map((i) => {
 		if (i.kind !== "poll" || i.poll?.id !== pollId || i.poll.myVoteOptionId === optionId)
@@ -62,6 +64,64 @@ export function mapPages<T extends PagedFeed>(data: T, fn: (items: Items) => Ite
 		return { ...page, items };
 	});
 	return changed ? { ...data, pages } : data;
+}
+
+interface FeedCacheClient {
+	cancelQueries: QueryClient["cancelQueries"];
+	getQueriesData: QueryClient["getQueriesData"];
+	setQueryData: QueryClient["setQueryData"];
+}
+
+/** Applies an items transform to every cached feed under `queryKey` (first page, filtered, load-more pages). */
+export function patchFeedCaches(
+	qc: Pick<FeedCacheClient, "getQueriesData" | "setQueryData">,
+	queryKey: readonly unknown[],
+	fn: (items: Items) => Items,
+) {
+	for (const [key, data] of qc.getQueriesData<PagedFeed>({ queryKey })) {
+		if (!data || !Array.isArray(data.pages)) continue;
+		const next = mapPages(data, fn);
+		if (next !== data) qc.setQueryData(key, next);
+	}
+}
+
+/**
+ * Optimistic update for one item: skip while `id` is in flight, patch every cached feed,
+ * send, then reconcile with the server answer. On failure only that item is rolled back
+ * (via `rollback`), so concurrent updates to other items survive.
+ */
+export async function optimisticFeedUpdate<R>(opts: {
+	qc: FeedCacheClient;
+	queryKey: readonly unknown[];
+	/** Ids in flight; mutated here. `notify` runs after each change so the UI can re-render. */
+	pending: Set<string>;
+	notify: () => void;
+	id: string;
+	apply: (items: Items) => Items;
+	rollback: (items: Items) => Items;
+	/** Must throw when the server rejects. */
+	send: () => Promise<R>;
+	reconcile: (result: R) => (items: Items) => Items;
+}): Promise<"skipped" | "ok" | "failed"> {
+	const { qc, queryKey, pending, id } = opts;
+	if (pending.has(id)) return "skipped";
+	pending.add(id);
+	opts.notify();
+	try {
+		await qc.cancelQueries({ queryKey });
+		patchFeedCaches(qc, queryKey, opts.apply);
+		try {
+			const result = await opts.send();
+			patchFeedCaches(qc, queryKey, opts.reconcile(result));
+			return "ok";
+		} catch {
+			patchFeedCaches(qc, queryKey, opts.rollback);
+			return "failed";
+		}
+	} finally {
+		pending.delete(id);
+		opts.notify();
+	}
 }
 
 /** Integer percentages that sum to exactly 100, or all 0 when there are no votes. */
