@@ -190,15 +190,7 @@ export default async function NewsDetailPage(props: { params: Promise<Params> })
 				data-nav-tone="dark"
 				className="grain bg-plum mt-16 md:mt-24 py-16 text-white md:py-24 relative isolate overflow-hidden"
 			>
-				<PatternMosaic
-					colourway="lilac"
-					kind="ring"
-					columns={8}
-					rows={2}
-					trigger="view"
-					className="inset-x-0 top-0 absolute -z-10 opacity-40"
-				/>
-				<div className="gap-6 pt-8 container flex flex-wrap items-center justify-between">
+				<div className="gap-6 container flex flex-wrap items-center justify-between">
 					<Reveal as="p" className="type-display-lg max-w-xl text-balance">
 						{t("appCta")}
 					</Reveal>

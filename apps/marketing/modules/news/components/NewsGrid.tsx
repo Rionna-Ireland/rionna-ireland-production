@@ -1,14 +1,6 @@
 import type { NewsTilePost } from "./news-types";
 import { NewsCard } from "./NewsCard";
 
-// Asymmetric rhythm of cards: one large, then smaller ones, repeating.
-const LAYOUT = [
-	{ size: "large", span: "md:col-span-7", offset: "" },
-	{ size: "small", span: "md:col-span-5", offset: "md:mt-16" },
-	{ size: "small", span: "md:col-span-5", offset: "" },
-	{ size: "large", span: "md:col-span-7", offset: "md:mt-16" },
-] as const;
-
 export function NewsGrid({
 	posts,
 	formatDate,
@@ -23,22 +15,19 @@ export function NewsGrid({
 	return (
 		<section data-nav-tone="light" className="bg-page">
 			<div className="py-14 md:py-24 container">
-				<div className="gap-6 md:grid-cols-12 grid grid-cols-1">
-					{posts.map((post, i) => {
-						const l = LAYOUT[i % LAYOUT.length]!;
-						return (
-							<NewsCard
-								key={post.id}
-								post={post}
-								size={l.size}
-								index={i + 1}
-								date={formatDate(post.publishedAt)}
-								excerptFallback={excerptFallback}
-								readLabel={readLabel}
-								className={`${l.span} ${l.offset}`}
-							/>
-						);
-					})}
+				<div className="gap-6 md:columns-2 lg:columns-3 columns-1">
+					{posts.map((post, i) => (
+						<NewsCard
+							key={post.id}
+							post={post}
+							size="masonry"
+							index={i}
+							date={formatDate(post.publishedAt)}
+							excerptFallback={excerptFallback}
+							readLabel={readLabel}
+							className="mb-6"
+						/>
+					))}
 				</div>
 			</div>
 		</section>

@@ -9,8 +9,8 @@ import { type NewsTilePost, placeholderFor } from "./news-types";
 
 const SIZES = {
 	lead: { aspect: "aspect-[4/3] md:aspect-[16/7]", title: "type-display-xl" },
-	large: { aspect: "aspect-[4/3]", title: "type-display-lg" },
-	small: { aspect: "aspect-[4/3] md:aspect-[4/5]", title: "type-display-md" },
+	// Masonry rhythm: image ratio varies by position.
+	masonry: ["aspect-[4/5]", "aspect-square", "aspect-[3/2]"],
 } as const;
 
 /** One news item as a contained card: the whole card is a single link. */
@@ -25,7 +25,7 @@ export function NewsCard({
 	className,
 }: {
 	post: NewsTilePost;
-	size: keyof typeof SIZES;
+	size: "lead" | "masonry";
 	index: number;
 	date: string;
 	excerptFallback: string;
@@ -34,20 +34,21 @@ export function NewsCard({
 	immediate?: boolean;
 	className?: string;
 }) {
-	const s = SIZES[size];
+	const aspect = size === "lead" ? SIZES.lead.aspect : SIZES.masonry[index % 3];
+	const titleClass = size === "lead" ? SIZES.lead.title : "type-display-md";
 	const ph = placeholderFor(index);
 	return (
 		<LocaleLink
 			href={`/news/${post.slug}`}
 			className={cn(
-				"tile card-lift group bg-white border-outline p-3 gap-5 flex flex-col rounded-lg border hover:no-underline hover:shadow-[0_12px_32px_-16px_rgb(23_39_65/0.35)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+				"tile card-lift group bg-white border-outline p-3 gap-5 flex break-inside-avoid flex-col rounded-lg border hover:no-underline hover:shadow-[0_12px_32px_-16px_rgb(23_39_65/0.35)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
 				className,
 			)}
 		>
 			<PhotoUnmask
 				immediate={immediate}
 				direction={index % 2 ? "left" : "up"}
-				className={cn("photo-zoom relative rounded-md", s.aspect)}
+				className={cn("photo-zoom relative rounded-md", aspect)}
 			>
 				<div className="inset-0 absolute">
 					{post.featuredImageUrl ? (
@@ -65,7 +66,7 @@ export function NewsCard({
 							colourway={ph.colourway}
 							kind={ph.kind}
 							columns={6}
-							rows={8}
+							rows={9}
 							trigger={immediate ? "load" : "view"}
 							className="size-full"
 						/>
@@ -79,10 +80,10 @@ export function NewsCard({
 						as="h2"
 						immediate
 						text={post.title}
-						className={cn(s.title, "text-balance")}
+						className={cn(titleClass, "text-balance")}
 					/>
 				) : (
-					<h3 className={cn(s.title, "text-balance")}>
+					<h3 className={cn(titleClass, "text-balance")}>
 						<span className="link-draw">{post.title}</span>
 					</h3>
 				)}

@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { PhotoUnmask } from "./PhotoUnmask";
 
 describe("PhotoUnmask", () => {
-	it("renders its children visible in SSR (no-JS shows the photo)", () => {
+	it("renders children with no JS-gated hidden state", () => {
 		const html = renderToStaticMarkup(
 			<PhotoUnmask direction="left">
 				<img alt="x" src="/a.jpg" />

@@ -44,9 +44,9 @@ export default async function EventsListPage(props: { params: Promise<{ locale: 
 						{items.map((event) => (
 							<div
 								key={event.id}
-								className="bg-ice-light flex flex-col overflow-hidden rounded-lg"
+								className="bg-white border-outline flex flex-col overflow-hidden rounded-lg border"
 							>
-								<div className="bg-ice relative aspect-[16/10] overflow-hidden">
+								<div className="bg-cream relative aspect-[16/10] overflow-hidden">
 									{event.coverImageUrl ? (
 										// biome-ignore lint/a11y/useAltText: name as alt
 										<img
@@ -55,13 +55,13 @@ export default async function EventsListPage(props: { params: Promise<{ locale: 
 											className="inset-0 absolute h-full w-full object-cover"
 										/>
 									) : (
-										<div className="inset-0 text-6xl text-ink/10 absolute flex items-center justify-center font-display">
+										<div className="inset-0 text-6xl text-plum/20 absolute flex items-center justify-center font-display">
 											R
 										</div>
 									)}
 								</div>
 								<div className="p-6 gap-2 flex flex-col">
-									<span className="type-label text-ink-variant">
+									<span className="type-label text-plum">
 										{event.startsAt
 											? new Intl.DateTimeFormat(activeLocale, {
 													dateStyle: "full",
@@ -77,7 +77,7 @@ export default async function EventsListPage(props: { params: Promise<{ locale: 
 					</div>
 				)}
 
-				<div className="gap-6 p-6 bg-ice-light flex flex-wrap items-center justify-between rounded-lg">
+				<div className="gap-6 p-6 bg-white border-outline flex flex-wrap items-center justify-between rounded-lg border">
 					<span className="type-display-md">{t("rsvpNote")}</span>
 					<JoinCtaLink cta={joinCta} className={v2Button({ variant: "primary" })}>
 						{joinCta.labelKey ? tRoot(joinCta.labelKey) : t("joinCta")}

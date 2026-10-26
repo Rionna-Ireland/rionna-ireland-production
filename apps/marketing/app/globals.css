@@ -1530,10 +1530,6 @@
 	--unmask-from: inset(0 0 0 100%);
 }
 
-.unmask {
-	transition: clip-path var(--dur-rise) var(--ease-out-editorial);
-}
-
 /* The quiet 2px reading line under the nav: needs a scroll timeline. */
 .reading-progress {
 	display: none;
@@ -1605,10 +1601,6 @@
 }
 
 @media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
-	.unmask:not([data-revealed]):not(.unmask-now) {
-		clip-path: var(--unmask-from);
-	}
-
 	.unmask-now {
 		animation: unmask var(--dur-rise) var(--ease-out-editorial) 200ms both;
 	}
@@ -1617,6 +1609,12 @@
 /* Parallax on grid photos, the reading line, the pull-quote rule and inline images. */
 @supports (animation-timeline: view()) {
 	@media (prefers-reduced-motion: no-preference) {
+		.unmask:not(.unmask-now) {
+			animation: unmask linear both;
+			animation-timeline: view();
+			animation-range: entry 0% entry 60%;
+		}
+
 		.article-body blockquote::before {
 			animation: rule-draw linear both;
 			animation-timeline: view();
@@ -1655,8 +1653,3 @@
 	}
 }
 
-@media (prefers-reduced-motion: reduce) {
-	.unmask {
-		transition: none;
-	}
-}

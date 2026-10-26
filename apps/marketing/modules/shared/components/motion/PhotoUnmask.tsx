@@ -1,14 +1,10 @@
-"use client";
-
 import { cn } from "@repo/ui";
-import { type ReactNode, useRef } from "react";
-
-import { useInView } from "./useInView";
+import type { ReactNode } from "react";
 
 /**
- * A clip-path wipe that uncovers the photo on first view. `immediate` plays at
- * page time (above the fold); otherwise the observer drives it. The hidden state
- * lives in globals.css behind scripting + no-reduced-motion, so no-JS sees the photo.
+ * A clip-path wipe that uncovers the photo. Pure CSS (globals.css): scroll-driven
+ * where view timelines exist, page-time for `immediate`; everywhere else (no JS,
+ * Reduce Motion, older browsers) there is no clipped state, the photo is visible.
  */
 export function PhotoUnmask({
 	direction = "up",
@@ -21,14 +17,8 @@ export function PhotoUnmask({
 	className?: string;
 	children: ReactNode;
 }) {
-	const ref = useRef<HTMLDivElement>(null);
-	const revealed = useInView(ref);
 	return (
-		<div
-			ref={ref}
-			className={cn("unmask", `unmask-${direction}`, immediate && "unmask-now", className)}
-			data-revealed={!immediate && revealed ? "" : undefined}
-		>
+		<div className={cn("unmask", `unmask-${direction}`, immediate && "unmask-now", className)}>
 			{children}
 		</div>
 	);
