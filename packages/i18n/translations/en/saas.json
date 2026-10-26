@@ -1086,6 +1086,57 @@
 			"installNoSetup": "You're in. No extra setup.",
 			"feedQuiet": "Your feed is quiet right now. Open the app for the latest."
 		},
+		"community": {
+			"title": "Community",
+			"chipsLabel": "Filter the feed",
+			"announcementKicker": "Announcement",
+			"announcementRead": "Read",
+			"announcementReadA11y": "Read {title}",
+			"featuredKicker": "Live Q&A · {when}",
+			"featuredKickerNoDate": "Live Q&A",
+			"anonymousAuthor": "Rionna member",
+			"role": {
+				"trainer": "Trainer",
+				"expert": "Expert",
+				"staff": "Staff"
+			},
+			"time": {
+				"justNow": "Just now",
+				"minutesAgo": "{count} min ago",
+				"hoursAgo": "{count} hours ago",
+				"daysAgo": "{count} days ago"
+			},
+			"like": "Like",
+			"unlike": "Unlike",
+			"likeCount": "{count, plural, one {# like} other {# likes}}",
+			"commentCount": "{count, plural, one {# comment} other {# comments}}",
+			"readStory": "Read the story",
+			"poll": {
+				"clubVote": "Club vote",
+				"stableVote": "Stable vote",
+				"closed": "Closed",
+				"hint": "Select an option to vote. You can change your mind while the vote is open.",
+				"saving": "Saving your vote…",
+				"votes": "{count, plural, one {# vote} other {# votes}}",
+				"percent": "{percent}%"
+			},
+			"empty": {
+				"defaultTitle": "Nothing new yet",
+				"defaultBody": "New updates from your live circles will appear here.",
+				"spaceTitle": "Nothing in {name} yet",
+				"spaceBody": "Check back soon.",
+				"horsesTitle": "Nothing from your horses yet",
+				"horsesBody": "Follow a horse to see its space here.",
+				"pollsTitle": "No polls right now",
+				"storiesTitle": "No stories yet"
+			},
+			"unavailableTitle": "Feed unavailable",
+			"unavailableBody": "We couldn't load the feed right now. Please try again shortly.",
+			"retry": "Try again",
+			"loadMore": "Load more",
+			"loadingMore": "Loading…",
+			"loadMoreFailed": "Couldn't load more posts."
+		},
 		"menu": {
 			"accountSettings": "Account settings",
 			"admin": "Admin",
