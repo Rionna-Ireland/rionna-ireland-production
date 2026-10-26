@@ -12,9 +12,14 @@ export function isWaitlistOnly(signupOpen: boolean = isPublicSignupOpen()): bool
 /**
  * Routes that stay reachable in waitlist-only mode: the waitlist itself, the
  * shareable `/waitlist?src=…` and unsubscribe pages, and the legal pages the
- * consent checkbox links to (GDPR transparency).
+ * consent checkbox links to (GDPR transparency), plus the client preview login.
  */
-const WAITLIST_ONLY_ALLOWED = [/^\/$/, /^\/waitlist(?:\/unsubscribe)?\/?$/, /^\/legal\/.+/];
+const WAITLIST_ONLY_ALLOWED = [
+	/^\/$/,
+	/^\/waitlist(?:\/unsubscribe)?\/?$/,
+	/^\/legal\/.+/,
+	/^\/preview\/?$/,
+];
 
 /** `pathname` may carry a locale prefix (`/de/legal/terms`); it is stripped first. */
 export function isAllowedInWaitlistMode(pathname: string, locales: readonly string[]): boolean {

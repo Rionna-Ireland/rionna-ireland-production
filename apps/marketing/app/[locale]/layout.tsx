@@ -9,7 +9,7 @@ import { ConsentProvider } from "@shared/components/ConsentProvider";
 import { Footer } from "@shared/components/Footer";
 import { NavBar } from "@shared/components/NavBar";
 import { getClubOrganization } from "@shared/lib/club";
-import { isWaitlistOnly } from "@shared/lib/waitlist-mode";
+import { isWaitlistView } from "@shared/lib/waitlist-view";
 import { getSiteJoinCta } from "@shared/lib/website";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages, setRequestLocale } from "next-intl/server";
@@ -65,7 +65,7 @@ export default async function MarketingLayout({
 	const consentCookie = cookieStore.get("consent");
 
 	// S12-09 / D39: one-page waitlist site until launch, so no site chrome.
-	const waitlistOnly = isWaitlistOnly();
+	const waitlistOnly = await isWaitlistView();
 	// Server-side so the client NavBar gets a plain serialisable CTA.
 	const joinCta = waitlistOnly ? null : await getSiteJoinCta();
 	const socialLinks =

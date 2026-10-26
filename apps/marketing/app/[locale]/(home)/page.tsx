@@ -6,7 +6,7 @@ import { FinalCtaSection } from "@home/components/FinalCtaSection";
 import { HeroSection } from "@home/components/HeroSection";
 import { HorsePreviewSection } from "@home/components/HorsePreviewSection";
 import { StatsSection } from "@home/components/StatsSection";
-import { isWaitlistOnly } from "@shared/lib/waitlist-mode";
+import { isWaitlistView } from "@shared/lib/waitlist-view";
 import { getWebsiteContent } from "@shared/lib/website";
 import { WaitlistLanding } from "@waitlist/components/WaitlistLanding";
 import { getTranslations, setRequestLocale } from "next-intl/server";
@@ -16,7 +16,7 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
 	setRequestLocale(locale);
 
 	// S12-09 / D39: until launch the waitlist is the whole site.
-	if (isWaitlistOnly() || config.wireframeMode) {
+	if ((await isWaitlistView()) || config.wireframeMode) {
 		return <WaitlistLanding />;
 	}
 

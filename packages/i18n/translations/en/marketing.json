@@ -354,5 +354,11 @@
 			"title": "Lorem ipsum dolor sit.",
 			"cta": "Become a member"
 		}
+	},
+	"preview": {
+		"title": "Preview the new site",
+		"password": "Password",
+		"submit": "Enter",
+		"error": "That password didn't work. Try again."
 	}
 }

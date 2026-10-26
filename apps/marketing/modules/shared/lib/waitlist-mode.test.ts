@@ -23,6 +23,7 @@ describe("isAllowedInWaitlistMode", () => {
 		"/de/",
 		"/de/waitlist/unsubscribe",
 		"/de/legal/cookie-policy",
+		"/preview",
 	])("allows %s", (path) => {
 		expect(isAllowedInWaitlistMode(path, LOCALES)).toBe(true);
 	});

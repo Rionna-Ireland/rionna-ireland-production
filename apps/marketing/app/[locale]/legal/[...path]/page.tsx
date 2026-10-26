@@ -8,7 +8,7 @@ import { MaskedText } from "@shared/components/motion/MaskedText";
 import { ReadingProgress } from "@shared/components/motion/ReadingProgress";
 import { Reveal } from "@shared/components/motion/Reveal";
 import { getActivePathFromUrlParam } from "@shared/lib/content";
-import { isWaitlistOnly } from "@shared/lib/waitlist-mode";
+import { isWaitlistView } from "@shared/lib/waitlist-view";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 export function generateStaticParams() {
@@ -50,7 +50,7 @@ export default async function LegalPage(props: { params: Promise<Params> }) {
 	const t = await getTranslations("waitlist");
 
 	// Waitlist-only mode keeps the original layout untouched.
-	if (isWaitlistOnly()) {
+	if (await isWaitlistView()) {
 		return (
 			// Waitlist-only mode: the body is plum, so legal copy sits on the cream
 			// estate theme where the prose colours stay readable.
