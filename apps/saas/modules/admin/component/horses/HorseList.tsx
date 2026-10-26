@@ -2,7 +2,7 @@
 
 import { useAdminOrganization } from "@admin/hooks/use-admin-organization";
 import { getAdminPath } from "@admin/lib/links";
-import { Spinner } from "@repo/ui";
+import { cn, Spinner } from "@repo/ui";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import { Card } from "@repo/ui/components/card";
@@ -34,11 +34,11 @@ import { parseAsInteger, parseAsString, useQueryState } from "nuqs";
 const ITEMS_PER_PAGE = 20;
 
 const STATUS_COLORS: Record<string, string> = {
-	PRE_TRAINING: "bg-blue-100 text-blue-800",
-	IN_TRAINING: "bg-green-100 text-green-800",
-	REHAB: "bg-amber-100 text-amber-800",
-	RETIRED: "bg-gray-100 text-gray-800",
-	SOLD: "bg-purple-100 text-purple-800",
+	PRE_TRAINING: "bg-ice-light text-ink",
+	IN_TRAINING: "bg-sage text-forest",
+	REHAB: "bg-cream text-plum",
+	RETIRED: "bg-surface-container text-ink-variant",
+	SOLD: "bg-lilac-light text-plum",
 };
 
 export function HorseList() {
@@ -60,7 +60,13 @@ export function HorseList() {
 		...orpc.admin.horses.list.queryOptions({
 			input: {
 				organizationId,
-				status: (statusFilter as "PRE_TRAINING" | "IN_TRAINING" | "REHAB" | "RETIRED" | "SOLD") || undefined,
+				status:
+					(statusFilter as
+						| "PRE_TRAINING"
+						| "IN_TRAINING"
+						| "REHAB"
+						| "RETIRED"
+						| "SOLD") || undefined,
 				limit: ITEMS_PER_PAGE,
 				offset: (currentPage - 1) * ITEMS_PER_PAGE,
 			},
@@ -128,7 +134,7 @@ export function HorseList() {
 				</Button>
 			</div>
 
-			<div className="mb-4 flex items-center gap-3">
+			<div className="mb-4 gap-3 flex items-center">
 				<Select
 					value={statusFilter || "all"}
 					onValueChange={(value) => {
@@ -148,15 +154,13 @@ export function HorseList() {
 							{t("admin.horses.status.IN_TRAINING")}
 						</SelectItem>
 						<SelectItem value="REHAB">{t("admin.horses.status.REHAB")}</SelectItem>
-						<SelectItem value="RETIRED">
-							{t("admin.horses.status.RETIRED")}
-						</SelectItem>
+						<SelectItem value="RETIRED">{t("admin.horses.status.RETIRED")}</SelectItem>
 						<SelectItem value="SOLD">{t("admin.horses.status.SOLD")}</SelectItem>
 					</SelectContent>
 				</Select>
 
 				{selectedIdsArray.length > 0 && (
-					<div className="flex gap-2">
+					<div className="gap-2 flex">
 						<Button
 							size="sm"
 							variant="outline"
@@ -204,9 +208,7 @@ export function HorseList() {
 										key={horse.id}
 										className="cursor-pointer"
 										onClick={() =>
-											router.push(
-												getAdminPath(`/horses/${horse.id}`),
-											)
+											router.push(getAdminPath(`/horses/${horse.id}`))
 										}
 									>
 										<TableCell
@@ -247,12 +249,15 @@ export function HorseList() {
 										<TableCell className="py-2">
 											<Badge
 												status="info"
-												className={
-													STATUS_COLORS[horse.status] ?? ""
-												}
+												className={cn(
+													"tracking-wide font-mono uppercase",
+													STATUS_COLORS[horse.status],
+												)}
 											>
 												{t(
-													`admin.horses.status.${horse.status}` as Parameters<typeof t>[0],
+													`admin.horses.status.${horse.status}` as Parameters<
+														typeof t
+													>[0],
 												)}
 											</Badge>
 										</TableCell>
@@ -261,14 +266,16 @@ export function HorseList() {
 										</TableCell>
 										<TableCell className="py-2">
 											{horse.publishedAt
-												? new Date(
-														horse.publishedAt,
-													).toLocaleDateString()
+												? new Date(horse.publishedAt).toLocaleDateString()
 												: "-"}
 										</TableCell>
 										<TableCell className="py-2">
 											{horse.circleSpaceId ? (
-												<Badge status={horse.inviteOnly ? "warning" : "success"}>
+												<Badge
+													status={
+														horse.inviteOnly ? "warning" : "success"
+													}
+												>
 													{horse.inviteOnly
 														? t("admin.community.inviteOnly")
 														: t("admin.community.open")}
@@ -282,9 +289,7 @@ export function HorseList() {
 												</Badge>
 											)}
 										</TableCell>
-										<TableCell className="py-2">
-											{horse.sortOrder}
-										</TableCell>
+										<TableCell className="py-2">{horse.sortOrder}</TableCell>
 									</TableRow>
 								);
 							})

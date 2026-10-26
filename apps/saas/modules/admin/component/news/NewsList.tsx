@@ -61,10 +61,7 @@ export function NewsList() {
 		"currentPage",
 		parseAsInteger.withDefault(1),
 	);
-	const [statusFilter, setStatusFilter] = useQueryState(
-		"status",
-		parseAsString.withDefault(""),
-	);
+	const [statusFilter, setStatusFilter] = useQueryState("status", parseAsString.withDefault(""));
 
 	const organizationId = orgId ?? "";
 
@@ -72,7 +69,10 @@ export function NewsList() {
 		orpc.news.admin.list.queryOptions({
 			input: {
 				organizationId,
-				status: (statusFilter === "draft" || statusFilter === "published" ? statusFilter : undefined),
+				status:
+					statusFilter === "draft" || statusFilter === "published"
+						? statusFilter
+						: undefined,
 				limit: ITEMS_PER_PAGE,
 				offset: (currentPage - 1) * ITEMS_PER_PAGE,
 			},
@@ -84,9 +84,7 @@ export function NewsList() {
 			{
 				accessorKey: "title",
 				header: t("admin.news.columns.title"),
-				cell: ({ row }) => (
-					<div className="font-medium">{row.original.title}</div>
-				),
+				cell: ({ row }) => <div className="font-medium">{row.original.title}</div>,
 			},
 			{
 				accessorKey: "author",
@@ -126,7 +124,7 @@ export function NewsList() {
 				header: t("admin.news.columns.notificationSent"),
 				cell: ({ row }) =>
 					row.original.notificationSentAt ? (
-						<BellIcon className="size-4 text-green-600" />
+						<BellIcon className="size-4 text-forest" />
 					) : null,
 			},
 		],
@@ -167,7 +165,9 @@ export function NewsList() {
 					<SelectContent>
 						<SelectItem value="all">{t("admin.news.filter.all")}</SelectItem>
 						<SelectItem value="draft">{t("admin.news.filter.draft")}</SelectItem>
-						<SelectItem value="published">{t("admin.news.filter.published")}</SelectItem>
+						<SelectItem value="published">
+							{t("admin.news.filter.published")}
+						</SelectItem>
 					</SelectContent>
 				</Select>
 			</div>
@@ -176,18 +176,20 @@ export function NewsList() {
 				<Table>
 					<TableHeader>
 						<TableRow>
-							{table.getHeaderGroups().map((headerGroup) =>
-								headerGroup.headers.map((header) => (
-									<TableHead key={header.id}>
-										{header.isPlaceholder
-											? null
-											: flexRender(
-													header.column.columnDef.header,
-													header.getContext(),
-												)}
-									</TableHead>
-								)),
-							)}
+							{table
+								.getHeaderGroups()
+								.map((headerGroup) =>
+									headerGroup.headers.map((header) => (
+										<TableHead key={header.id}>
+											{header.isPlaceholder
+												? null
+												: flexRender(
+														header.column.columnDef.header,
+														header.getContext(),
+													)}
+										</TableHead>
+									)),
+								)}
 						</TableRow>
 					</TableHeader>
 					<TableBody>
@@ -212,10 +214,7 @@ export function NewsList() {
 							))
 						) : (
 							<TableRow>
-								<TableCell
-									colSpan={columns.length}
-									className="h-24 text-center"
-								>
+								<TableCell colSpan={columns.length} className="h-24 text-center">
 									{isLoading ? (
 										<div className="flex h-full items-center justify-center">
 											<Spinner className="mr-2 size-4 text-primary" />

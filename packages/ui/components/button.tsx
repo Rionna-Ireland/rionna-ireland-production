@@ -7,22 +7,23 @@ import { cn } from "../lib";
 import { Spinner } from "./spinner";
 
 const buttonVariants = cva(
-	"flex items-center justify-center font-semibold enabled:cursor-pointer transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 [&>svg]:mr-1.5 [&>svg+svg]:hidden",
+	"flex items-center justify-center font-semibold enabled:cursor-pointer press focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 [&>svg]:mr-1.5 [&>svg+svg]:hidden",
 	{
 		variants: {
 			variant: {
-				primary: "bg-primary text-primary-foreground hover:bg-primary/80",
-				secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+				primary: "bg-primary text-primary-foreground hover:bg-label",
+				secondary: "border border-primary bg-white text-ink hover:bg-cream",
+				accent: "bg-lilac-light text-plum hover:bg-lilac",
 				outline: "border border-primary bg-transparent text-primary hover:bg-primary/10",
 				ghost: "text-foreground hover:bg-foreground/10 hover:text-foreground",
 				destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/80",
 				link: "text-primary underline-offset-4 hover:underline",
 			},
 			size: {
-				sm: "h-6 rounded-full px-3 text-xs",
-				md: "h-9 rounded-full px-4 text-sm",
-				lg: "h-12 rounded-full px-6 text-base",
-				icon: "size-8 rounded-full [&>svg]:m-0",
+				sm: "h-6 rounded-md px-3 text-xs",
+				md: "h-9 rounded-md px-4 text-sm",
+				lg: "h-[45px] rounded-lg px-[26px] text-[15px]",
+				icon: "size-8 rounded-md [&>svg]:m-0",
 			},
 		},
 		defaultVariants: {

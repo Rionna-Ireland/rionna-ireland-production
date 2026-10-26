@@ -8,8 +8,9 @@ import { getAdminPath } from "@admin/lib/links";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CircleTiptapRenderer } from "@member-hub/tiptap/CircleTiptapRenderer";
 import { localDocToHydrated } from "@member-hub/tiptap/local-doc";
-import { Badge } from "@repo/ui/components/badge";
 import { cn } from "@repo/ui";
+import { Alert } from "@repo/ui/components/alert";
+import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@repo/ui/components/card";
 import {
@@ -335,7 +336,10 @@ export function HorseUpdateForm({ memberPostId }: HorseUpdateFormProps) {
 
 							{/* Persistent, colour-coded audience banner — the "never mis-publish" guarantee */}
 							{horseId ? (
-								<div className="gap-3 border-blue-200 bg-blue-50 p-3 text-blue-900 dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-blue-100 flex items-center rounded-md border">
+								<Alert
+									variant="info"
+									className="gap-3 p-3 [&>svg]:size-5 [&>svg~*]:pl-0 flex items-center [&>svg]:static"
+								>
 									{photoUrl ? (
 										// biome-ignore lint/performance/noImgElement: simple admin preview
 										<img
@@ -353,7 +357,7 @@ export function HorseUpdateForm({ memberPostId }: HorseUpdateFormProps) {
 										— {horseName} ·{" "}
 										{t(`admin.updates.form.types.${updateType}`)}
 									</div>
-								</div>
+								</Alert>
 							) : (
 								<div className="p-3 text-sm rounded-md border border-dashed text-muted-foreground">
 									{t("admin.updates.form.chooseHorsePrompt")}
@@ -393,9 +397,10 @@ export function HorseUpdateForm({ memberPostId }: HorseUpdateFormProps) {
 									/>
 								</div>
 								{hasBody && deferredPreviewDoc ? (
-									<div className="mt-6 rounded-md border border-muted p-4">
-										<p className="mb-2 font-mono text-muted-foreground text-xs uppercase tracking-wide">
-											Member preview (approximate — media finalises on publish)
+									<div className="mt-6 p-4 rounded-md border border-muted">
+										<p className="mb-2 text-xs tracking-wide font-mono text-muted-foreground uppercase">
+											Member preview (approximate — media finalises on
+											publish)
 										</p>
 										<CircleTiptapRenderer
 											doc={localDocToHydrated(deferredPreviewDoc)}
@@ -428,14 +433,14 @@ export function HorseUpdateForm({ memberPostId }: HorseUpdateFormProps) {
 
 							{/* Fail-safe: publish failed — draft is saved, ask the admin to retry */}
 							{fallback && (
-								<div className="border-amber-300 bg-amber-50 p-4 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100 rounded-md border">
+								<Alert variant="warning">
 									<p className="font-medium">
 										{t("admin.updates.form.fallback.title")}
 									</p>
 									<p className="mt-1 text-sm">
 										{t("admin.updates.form.fallback.body")}
 									</p>
-								</div>
+								</Alert>
 							)}
 
 							{!isPublished && (

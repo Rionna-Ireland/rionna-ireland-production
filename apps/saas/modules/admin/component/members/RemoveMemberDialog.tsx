@@ -1,5 +1,6 @@
 "use client";
 
+import { Alert } from "@repo/ui/components/alert";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import {
@@ -84,8 +85,7 @@ export function RemoveMemberDialog({
 		);
 	}
 
-	const canSubmit =
-		confirmName.trim() === displayName.trim() && !removeMutation.isPending;
+	const canSubmit = confirmName.trim() === displayName.trim() && !removeMutation.isPending;
 
 	return (
 		<Dialog open={open} onOpenChange={handleOpenChange}>
@@ -99,7 +99,7 @@ export function RemoveMemberDialog({
 							</DialogDescription>
 						</DialogHeader>
 
-						<div className="gap-3 flex flex-col py-2 text-sm">
+						<div className="gap-3 py-2 text-sm flex flex-col">
 							<SummaryRow
 								label={t("admin.members.remove.stepStripe")}
 								result={summary.stripe}
@@ -120,9 +120,9 @@ export function RemoveMemberDialog({
 						{(summary.stripe === "failed" ||
 							summary.circle === "failed" ||
 							summary.app === "failed") && (
-							<p className="rounded-md bg-amber-50 p-3 text-amber-800 text-xs dark:bg-amber-950 dark:text-amber-200">
+							<Alert variant="warning" className="text-xs p-3">
 								{t("admin.members.remove.partialNote")}
-							</p>
+							</Alert>
 						)}
 
 						<div className="gap-2 flex flex-wrap">
@@ -162,22 +162,20 @@ export function RemoveMemberDialog({
 							<DialogTitle>
 								{t("admin.members.remove.title", { name: displayName })}
 							</DialogTitle>
-							<DialogDescription>
-								{t("admin.members.remove.intro")}
-							</DialogDescription>
+							<DialogDescription>{t("admin.members.remove.intro")}</DialogDescription>
 						</DialogHeader>
 
-						<ul className="ml-4 list-disc gap-1 flex flex-col py-2 text-muted-foreground text-sm">
+						<ul className="ml-4 gap-1 py-2 text-sm flex list-disc flex-col text-muted-foreground">
 							<li>{t("admin.members.remove.blastStripe")}</li>
 							<li>{t("admin.members.remove.blastCircle")}</li>
 							<li>{t("admin.members.remove.blastApp")}</li>
 						</ul>
 
-						<p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-amber-800 text-xs dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+						<Alert variant="warning" className="text-xs p-3">
 							{t("admin.members.remove.gdprNote")}
-						</p>
+						</Alert>
 
-						<div className="gap-1.5 flex flex-col py-1">
+						<div className="gap-1.5 py-1 flex flex-col">
 							<label htmlFor="confirm-remove-name" className="text-sm">
 								{t("admin.members.remove.confirmLabel", { name: displayName })}
 							</label>
@@ -227,7 +225,7 @@ function SummaryRow({
 	statusLabel: string;
 }) {
 	return (
-		<div className="items-center justify-between flex">
+		<div className="flex items-center justify-between">
 			<span>{label}</span>
 			<Badge status={stepBadge(result)}>{statusLabel}</Badge>
 		</div>

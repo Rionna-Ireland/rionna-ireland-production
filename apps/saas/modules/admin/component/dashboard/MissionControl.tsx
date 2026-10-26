@@ -75,16 +75,36 @@ export function MissionControl() {
 		{
 			key: "post",
 			actions: [
-				{ key: "horseUpdate", audience: members, href: "/updates/new", icon: MegaphoneIcon },
-				{ key: "announcement", audience: members, href: "/announcements/new", icon: UsersIcon },
+				{
+					key: "horseUpdate",
+					audience: members,
+					href: "/updates/new",
+					icon: MegaphoneIcon,
+				},
+				{
+					key: "announcement",
+					audience: members,
+					href: "/announcements/new",
+					icon: UsersIcon,
+				},
 				{
 					key: "charityStory",
 					audience: members,
 					href: "/announcements/new?audience=charity",
 					icon: HeartHandshakeIcon,
 				},
-				{ key: "insideTrack", audience: members, href: "/inside-track/new", icon: BookOpenIcon },
-				{ key: "news", audience: "public" as const, href: "/news/new", icon: NewspaperIcon },
+				{
+					key: "insideTrack",
+					audience: members,
+					href: "/inside-track/new",
+					icon: BookOpenIcon,
+				},
+				{
+					key: "news",
+					audience: "public" as const,
+					href: "/news/new",
+					icon: NewspaperIcon,
+				},
 			],
 		},
 		{
@@ -123,11 +143,11 @@ export function MissionControl() {
 					<Card key={tile.key}>
 						<CardContent className="gap-3 p-4 flex items-center">
 							<tile.icon
-								className={`size-5 ${tile.alert ? "text-amber-600" : "text-muted-foreground"}`}
+								className={`size-5 ${tile.alert ? "text-plum" : "text-muted-foreground"}`}
 							/>
 							<div>
 								<p
-									className={`font-semibold text-2xl ${tile.alert ? "text-amber-600" : ""}`}
+									className={`font-semibold text-2xl ${tile.alert ? "text-plum" : ""}`}
 								>
 									{tile.value ?? "—"}
 								</p>

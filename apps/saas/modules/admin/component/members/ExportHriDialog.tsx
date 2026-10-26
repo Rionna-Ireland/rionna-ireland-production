@@ -1,6 +1,7 @@
 "use client";
 
 import { downloadCsv } from "@admin/lib/download-csv";
+import { Alert } from "@repo/ui/components/alert";
 import { Button } from "@repo/ui/components/button";
 import {
 	Dialog,
@@ -120,11 +121,11 @@ export function ExportHriDialog({ organizationId, open, onOpenChange }: ExportHr
 					</div>
 
 					{result && result.notAcceptedCount > 0 && (
-						<p className="border-amber-200 bg-amber-50 p-3 text-amber-800 text-xs dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200 rounded-md border">
+						<Alert variant="warning" className="text-xs p-3">
 							{t("admin.members.hriExport.notAccepted", {
 								count: result.notAcceptedCount,
 							})}
-						</p>
+						</Alert>
 					)}
 					{result && (
 						<p className="text-sm text-muted-foreground">

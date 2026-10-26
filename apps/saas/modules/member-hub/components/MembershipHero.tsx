@@ -52,7 +52,7 @@ function StatusPill({ status, cancelAtPeriodEnd }: { status: string; cancelAtPer
 		<span
 			className={
 				cancelAtPeriodEnd
-					? "bg-amber-100 px-3 py-1 text-amber-950 text-xs tracking-wide inline-flex items-center rounded-full font-mono uppercase"
+					? "bg-cream px-3 py-1 text-plum text-xs tracking-wide inline-flex items-center rounded-full font-mono uppercase"
 					: isHealthy
 						? "px-3 py-1 text-xs tracking-wide inline-flex items-center rounded-full bg-rionna-green-100 font-mono text-rionna-green-950 uppercase"
 						: "px-3 py-1 text-xs tracking-wide inline-flex items-center rounded-full bg-rionna-pink-100 font-mono text-rionna-pink-950 uppercase"

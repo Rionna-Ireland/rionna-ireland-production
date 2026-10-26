@@ -1,15 +1,16 @@
 "use client";
 
 import { NovelEditor } from "@admin/component/novel-editor";
-import { POST_AS_CLUB, PostAsPicker } from "@admin/component/updates/PostAsPicker";
-import { useCircleVideoUpload } from "@admin/lib/circle-video-upload";
 import {
 	canPublishAnnouncement,
 	resolvePublishOutcome,
 } from "@admin/component/updates/composer-logic";
+import { POST_AS_CLUB, PostAsPicker } from "@admin/component/updates/PostAsPicker";
 import { useAdminOrganization } from "@admin/hooks/use-admin-organization";
+import { useCircleVideoUpload } from "@admin/lib/circle-video-upload";
 import { getAdminPath } from "@admin/lib/links";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Alert } from "@repo/ui/components/alert";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@repo/ui/components/card";
@@ -203,9 +204,7 @@ export function CommunityAnnouncementForm({
 			<Card>
 				<CardHeader className="gap-2 flex flex-row items-center justify-between">
 					<CardTitle>
-						{isEdit
-							? t(`${copy}.editTitle`)
-							: t(`${copy}.createTitle`)}
+						{isEdit ? t(`${copy}.editTitle`) : t(`${copy}.createTitle`)}
 					</CardTitle>
 					{isPublished && (
 						<Badge status="success">{t("admin.updates.form.publishedBadge")}</Badge>
@@ -215,7 +214,10 @@ export function CommunityAnnouncementForm({
 					<Form {...form}>
 						<form className="gap-6 grid grid-cols-1">
 							{/* Persistent audience banner — community-wide */}
-							<div className="gap-3 border-blue-200 bg-blue-50 p-3 text-blue-900 dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-blue-100 flex items-center rounded-md border">
+							<Alert
+								variant="info"
+								className="gap-3 p-3 [&>svg]:size-5 [&>svg~*]:pl-0 flex items-center [&>svg]:static"
+							>
 								<UsersIcon className="size-5 shrink-0" />
 								<div className="text-sm">
 									<span className="font-semibold tracking-wide uppercase">
@@ -223,7 +225,7 @@ export function CommunityAnnouncementForm({
 									</span>{" "}
 									— {t(`${copy}.audience`)}
 								</div>
-							</div>
+							</Alert>
 
 							<FormField
 								control={form.control}
@@ -281,14 +283,14 @@ export function CommunityAnnouncementForm({
 							)}
 
 							{fallback && (
-								<div className="border-amber-300 bg-amber-50 p-4 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100 rounded-md border">
+								<Alert variant="warning">
 									<p className="font-medium">
 										{t("admin.updates.form.fallback.title")}
 									</p>
 									<p className="mt-1 text-sm">
 										{t("admin.updates.form.fallback.body")}
 									</p>
-								</div>
+								</Alert>
 							)}
 
 							{!isPublished && (
