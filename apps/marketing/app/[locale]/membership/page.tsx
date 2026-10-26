@@ -101,12 +101,11 @@ export default async function MembershipPage(props: { params: Promise<{ locale: 
 						<InViewStage className="ticket text-white">
 							<div className="bg-welcome-navy p-8 md:p-10 gap-3 relative isolate flex flex-col overflow-hidden rounded-t-lg">
 								<PatternMosaic
-									colourway="iceTint"
-									kind="gem"
+									colourway="navy"
 									columns={2}
 									rows={4}
 									trigger="view"
-									className="inset-y-0 right-0 absolute -z-10 w-1/4 opacity-50"
+									className="inset-y-0 right-0 w-20 md:w-28 absolute -z-10 opacity-20"
 								/>
 								<span className="type-label text-lilac">{t("plan.title")}</span>
 								<div className="gap-3 flex flex-wrap items-baseline">
