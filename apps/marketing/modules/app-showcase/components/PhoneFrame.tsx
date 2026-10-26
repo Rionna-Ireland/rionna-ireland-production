@@ -1,7 +1,7 @@
 import { cn } from "@repo/ui";
 import Image from "next/image";
 
-/** CSS phone: ink bezel, soft highlight. The frames are full-page captures of varying height; assets are pre-cropped to 780x1550 as one phone screen. */
+/** CSS phone: ink bezel, soft highlight. The frames are real iOS simulator captures, 780x1696 (iPhone 17 Pro ratio). */
 export function PhoneFrame({
 	src,
 	alt,
@@ -18,11 +18,11 @@ export function PhoneFrame({
 	return (
 		<div
 			className={cn(
-				"bg-ink w-full rounded-[44px] p-[9px] shadow-[inset_0_0_0_1.5px_rgb(255_255_255/0.14),0_30px_60px_-24px_rgb(23_39_65/0.55)]",
+				"bg-ink w-full rounded-[48px] p-[9px] shadow-[inset_0_0_0_1.5px_rgb(255_255_255/0.14),0_30px_60px_-24px_rgb(23_39_65/0.55)]",
 				className,
 			)}
 		>
-			<div className="relative aspect-[780/1550] w-full overflow-hidden rounded-[35px]">
+			<div className="relative aspect-[780/1696] w-full overflow-hidden rounded-[39px]">
 				<Image
 					src={src}
 					alt={alt}

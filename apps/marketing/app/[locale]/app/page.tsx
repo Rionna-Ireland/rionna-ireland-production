@@ -43,7 +43,7 @@ export default async function AppPage(props: { params: Promise<{ locale: string 
 
 	const screen = (file: string, key: string) => ({ src: shot(file), alt: t(`screens.${key}`) });
 	const feature = (
-		key: "stables" | "community" | "events" | "paddock" | "notifications",
+		key: "stables" | "community" | "events" | "paddock",
 		tint: string,
 		screens: Feature["screens"],
 	): Feature => ({
@@ -56,23 +56,14 @@ export default async function AppPage(props: { params: Promise<{ locale: string 
 	});
 	const features = [
 		feature("stables", "var(--color-ice-light)", [
-			screen("06-stables", "stables"),
-			screen("07-horse-detail", "horseDetail"),
+			screen("02-stables", "stables"),
+			screen("03-horse", "horseDetail"),
 		]),
-		feature("community", "var(--color-lilac-light)", [
-			screen("10-community-feed", "communityFeed"),
-			screen("11-community-thread", "communityThread"),
-		]),
-		feature("events", "var(--color-ice)", [
-			screen("08-events", "events"),
-			screen("09-event-detail", "eventDetail"),
-		]),
+		feature("community", "var(--color-lilac-light)", [screen("05-community", "communityFeed")]),
+		feature("events", "var(--color-ice)", [screen("04-events", "events")]),
 		feature("paddock", "var(--color-sage)", [
-			screen("12-paddock", "paddock"),
-			screen("15-paddock-charity", "paddockCharity"),
-		]),
-		feature("notifications", "var(--color-lilac-light)", [
-			screen("17-notifications", "notifications"),
+			screen("07-paddock", "paddock"),
+			screen("08-charity", "paddockCharity"),
 		]),
 	];
 
@@ -109,7 +100,7 @@ export default async function AppPage(props: { params: Promise<{ locale: string 
 					<Reveal delayMs={400} className="mx-auto w-[min(18rem,70vw)]">
 						<PhoneFrame
 							priority
-							src={shot("05-home")}
+							src={shot("01-home")}
 							alt={t("screens.home")}
 							className="lg:rotate-3"
 						/>

@@ -107,7 +107,7 @@ export function FeatureScroller({ features }: { features: Feature[] }) {
 							</div>
 						))}
 						{/* Reserves the phone's height; screens are absolute. */}
-						<div aria-hidden="true" className="aspect-[780/1550] w-full" />
+						<div aria-hidden="true" className="aspect-[780/1696] w-full" />
 					</div>
 				</div>
 			</div>

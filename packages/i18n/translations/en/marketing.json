@@ -331,11 +331,6 @@
 				"label": "The Paddock",
 				"title": "Ut enim ad minim veniam.",
 				"body": "Lorem ipsum dolor sit amet, consectetur adipiscing elit sed do eiusmod tempor."
-			},
-			"notifications": {
-				"label": "Notifications",
-				"title": "Duis aute irure dolor.",
-				"body": "Lorem ipsum dolor sit amet, consectetur adipiscing elit sed do eiusmod tempor."
 			}
 		},
 		"screens": {
@@ -343,12 +338,9 @@
 			"stables": "Rionna app stables screen",
 			"horseDetail": "Rionna app horse detail screen",
 			"events": "Rionna app events screen",
-			"eventDetail": "Rionna app event detail screen",
 			"communityFeed": "Rionna app community feed",
-			"communityThread": "Rionna app community thread",
 			"paddock": "Rionna app paddock screen",
-			"paddockCharity": "Rionna app paddock charity screen",
-			"notifications": "Rionna app notifications screen"
+			"paddockCharity": "Rionna app paddock charity screen"
 		},
 		"closing": {
 			"eyebrow": "Join the club",
