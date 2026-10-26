@@ -1,8 +1,7 @@
+import { NewsCard } from "@news/components/NewsCard";
 import { NewsGrid } from "@news/components/NewsGrid";
-import { NewsLeadCard } from "@news/components/NewsLeadCard";
 import { MaskedText } from "@shared/components/motion/MaskedText";
 import { Reveal } from "@shared/components/motion/Reveal";
-import { SectionLabel } from "@shared/components/motion/SectionLabel";
 import { getClubNewsPosts } from "@shared/lib/club";
 import { redirectIfWireframeMode } from "@shared/lib/wireframe-mode";
 import { getLocale, getTranslations, setRequestLocale } from "next-intl/server";
@@ -39,9 +38,6 @@ export default async function NewsListPage(props: { params: Promise<{ locale: st
 		<div className="bg-page">
 			<section data-nav-tone="light" className="under-nav pb-10 md:pb-14">
 				<div className="gap-5 container flex flex-col">
-					<Reveal immediate>
-						<SectionLabel index={1} label={t("yard")} />
-					</Reveal>
 					<MaskedText
 						as="h1"
 						immediate
@@ -56,17 +52,26 @@ export default async function NewsListPage(props: { params: Promise<{ locale: st
 				</div>
 				{lead && (
 					<div className="mt-10 container">
-						<NewsLeadCard
+						<NewsCard
 							post={lead}
+							size="lead"
+							index={0}
+							immediate
 							date={formatDate(lead.publishedAt)}
-							readLabel={t("readStory")}
+							excerptFallback={t("excerpt")}
+							readLabel={t("read")}
 						/>
 					</div>
 				)}
 			</section>
 			{!lead && <p className="pb-20 text-ink-variant container">{t("empty")}</p>}
 			{rest.length > 0 && (
-				<NewsGrid index={2} label={t("more")} posts={rest} formatDate={formatDate} />
+				<NewsGrid
+					posts={rest}
+					formatDate={formatDate}
+					excerptFallback={t("excerpt")}
+					readLabel={t("read")}
+				/>
 			)}
 		</div>
 	);

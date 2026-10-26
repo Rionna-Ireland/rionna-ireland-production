@@ -127,12 +127,11 @@
 			"title": "News",
 			"description": "Race previews, results and stories from the yard."
 		},
-		"latest": "Latest story",
-		"more": "More stories",
 		"readStory": "Read the story",
 		"joinCta": "Join Rionna",
 		"heading": "News",
-		"yard": "From the yard"
+		"read": "Read",
+		"excerpt": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor."
 	},
 	"events": {
 		"eyebrow": "Club calendar",
