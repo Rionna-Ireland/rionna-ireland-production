@@ -51,14 +51,18 @@ export default async function RootLayout({ children }: PropsWithChildren) {
 	const messages = await getMessages();
 
 	return (
-		<html lang={locale} suppressHydrationWarning className={`${ppEiko.variable} ${plusJakarta.variable} ${ibmPlexMono.variable}`}>
+		<html
+			lang={locale}
+			suppressHydrationWarning
+			className={`${ppEiko.variable} ${plusJakarta.variable} ${ibmPlexMono.variable}`}
+		>
 			<body className={cn("min-h-screen bg-background text-foreground antialiased")}>
 				<NuqsAdapter>
 					<NextIntlClientProvider messages={messages}>
 						<ThemeProvider
 							attribute="class"
 							disableTransitionOnChange
-							enableSystem
+							enableSystem={false}
 							defaultTheme={config.defaultTheme}
 							themes={Array.from(config.enabledThemes)}
 						>

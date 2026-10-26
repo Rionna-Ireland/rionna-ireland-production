@@ -2,7 +2,6 @@ import { config } from "@config";
 import { cn, Logo } from "@repo/ui";
 import type { PropsWithChildren } from "react";
 
-import { ColorModeToggle } from "./ColorModeToggle";
 import { Footer } from "./Footer";
 import { LocaleSwitch } from "./LocaleSwitch";
 
@@ -21,7 +20,6 @@ export function AuthWrapper({
 
 						<div className="gap-2 flex items-center justify-end">
 							<LocaleSwitch />
-							<ColorModeToggle />
 						</div>
 					</div>
 				</div>
