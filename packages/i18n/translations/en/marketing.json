@@ -126,7 +126,14 @@
 		"meta": {
 			"title": "News",
 			"description": "Race previews, results and stories from the yard."
-		}
+		},
+		"latest": "Latest story",
+		"more": "More stories",
+		"readStory": "Read the story",
+		"joinCta": "Join Rionna",
+		"endTitle": "Lorem ipsum dolor sit amet.",
+		"heading": "News",
+		"yard": "From the yard"
 	},
 	"events": {
 		"eyebrow": "Club calendar",
@@ -139,7 +146,12 @@
 		"meta": {
 			"title": "Events",
 			"description": "Race days, stable visits and member gatherings at Rionna."
-		}
+		},
+		"calendar": "Calendar",
+		"prevMonth": "Previous month",
+		"nextMonth": "Next month",
+		"close": "Close",
+		"hasEvents": "Has events"
 	},
 	"home": {
 		"arrival": {

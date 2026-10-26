@@ -1,6 +1,14 @@
 import { LocaleLink } from "@i18n/routing";
+import { JoinCtaLink } from "@shared/components/JoinCtaLink";
+import { MaskedText } from "@shared/components/motion/MaskedText";
+import { PhotoUnmask } from "@shared/components/motion/PhotoUnmask";
+import { ReadingProgress } from "@shared/components/motion/ReadingProgress";
+import { Reveal } from "@shared/components/motion/Reveal";
+import { PatternMosaic } from "@shared/components/pattern/PatternMosaic";
+import { v2Button } from "@shared/components/ui/v2";
 import { getBaseUrl } from "@shared/lib/base-url";
 import { getClubNewsPostBySlug } from "@shared/lib/club";
+import { getSiteJoinCta } from "@shared/lib/website";
 import { redirectIfWireframeMode } from "@shared/lib/wireframe-mode";
 import { getLocale, getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
@@ -70,58 +78,92 @@ export default async function NewsDetailPage(props: { params: Promise<Params> })
 			}).format(new Date(post.publishedAt))
 		: "";
 
-	return (
-		<article data-nav-tone="light" className="under-nav bg-page pb-14 md:pb-[56px]">
-			<div className="max-w-3xl container">
-				<LocaleLink
-					href="/news"
-					className="text-sm text-ink-variant hover:text-ink hover:no-underline"
-				>
-					&larr; {t("back")}
-				</LocaleLink>
+	const tRoot = await getTranslations({ locale });
+	const joinCta = await getSiteJoinCta();
 
-				<header className="mt-8 gap-4 flex flex-col">
-					<span className="type-label text-ink-variant">{date}</span>
-					<h1 className="type-display-xl text-balance">{post.title}</h1>
-					{post.subtitle && (
-						<p className="text-xl text-ink-variant leading-relaxed">{post.subtitle}</p>
+	// One content column: title, byline, hero image and body all share this width.
+	const column = "max-w-4xl container";
+
+	return (
+		<article data-nav-tone="light" className="bg-page">
+			<ReadingProgress />
+			<div className="under-nav">
+				<div className={column}>
+					<Reveal immediate>
+						<LocaleLink
+							href="/news"
+							className="text-sm text-ink-variant hover:text-ink hover:no-underline"
+						>
+							&larr; {t("back")}
+						</LocaleLink>
+					</Reveal>
+
+					<header className="mt-8 gap-4 flex flex-col">
+						<Reveal immediate delayMs={100}>
+							<span className="type-label text-plum">{date}</span>
+						</Reveal>
+						<MaskedText
+							as="h1"
+							immediate
+							text={post.title}
+							className="type-display-xl text-balance"
+						/>
+						{post.subtitle && (
+							<Reveal immediate delayMs={400}>
+								<p className="text-xl text-ink-variant leading-relaxed">
+									{post.subtitle}
+								</p>
+							</Reveal>
+						)}
+						{post.author?.name && (
+							<Reveal immediate delayMs={500}>
+								<p className="type-label text-ink-muted">
+									{t("byline", { name: post.author.name })}
+								</p>
+							</Reveal>
+						)}
+					</header>
+				</div>
+
+				<div className={`${column} mt-10`}>
+					{post.featuredImageUrl ? (
+						<PhotoUnmask immediate direction="up" className="rounded-lg">
+							<div className="bg-ice relative aspect-[16/9] overflow-hidden rounded-lg">
+								{/* biome-ignore lint/a11y/useAltText: title as alt */}
+								<img
+									src={post.featuredImageUrl}
+									alt={post.title}
+									className="inset-0 absolute h-full w-full object-cover"
+								/>
+							</div>
+						</PhotoUnmask>
+					) : (
+						<PatternMosaic
+							colourway="lilac"
+							kind="quad"
+							columns={12}
+							rows={1}
+							className="rounded-lg"
+						/>
 					)}
-					{post.author?.name && (
-						<p className="type-label text-ink-muted">
-							{t("byline", { name: post.author.name })}
-						</p>
-					)}
-				</header>
+				</div>
 			</div>
 
-			{post.featuredImageUrl && (
-				<div className="max-w-5xl mt-10 container">
-					<div className="bg-ice relative aspect-[16/9] overflow-hidden rounded-lg">
-						{/* biome-ignore lint/a11y/useAltText: title as alt */}
-						<img
-							src={post.featuredImageUrl}
-							alt={post.title}
-							className="inset-0 absolute h-full w-full object-cover"
-						/>
-					</div>
-				</div>
-			)}
-
-			<div className="max-w-3xl mt-10 container">
+			<div className={`${column} mt-12`}>
 				<div
 					className={[
-						"prose prose-lg max-w-none text-ink prose-p:text-ink prose-p:leading-relaxed prose-li:text-ink",
+						"article-body drop-cap prose max-w-none text-ink prose-p:text-ink prose-li:text-ink",
+						"prose-p:text-[17px] prose-p:leading-[1.75] lg:prose-p:text-[19px] lg:prose-p:leading-8",
+						"prose-li:text-[17px] lg:prose-li:text-[19px]",
 						"prose-headings:font-display prose-headings:font-medium prose-headings:text-ink",
-						"prose-a:text-plum prose-strong:text-ink",
-						"prose-blockquote:border-l-[3px] prose-blockquote:border-plum prose-blockquote:py-1.5 prose-blockquote:pl-7",
+						"prose-a:text-plum prose-strong:text-ink prose-img:rounded-lg",
+						"prose-blockquote:py-1.5 prose-blockquote:pl-7",
 						"prose-blockquote:font-display prose-blockquote:font-light prose-blockquote:italic prose-blockquote:text-[34px] prose-blockquote:leading-[1.22] prose-blockquote:text-plum",
 						"[&_blockquote_p]:text-plum [&_blockquote_p]:before:content-none [&_blockquote_p]:after:content-none",
 					].join(" ")}
 					// biome-ignore lint/security/noDangerouslySetInnerHtml: sanitised by Novel on save
 					dangerouslySetInnerHTML={{ __html: post.contentHtml }}
 				/>
-
-				<p className="mt-10 text-lg text-ink-variant leading-relaxed">{t("appCta")}</p>
 
 				<div className="mt-10 pt-6 border-outline gap-4 flex flex-wrap items-center border-t">
 					<span className="type-label text-ink-variant">{t("share")}</span>
@@ -143,6 +185,28 @@ export default async function NewsDetailPage(props: { params: Promise<Params> })
 					</a>
 				</div>
 			</div>
+
+			<section
+				data-nav-tone="dark"
+				className="grain bg-plum mt-16 md:mt-24 py-16 text-white md:py-24 relative isolate overflow-hidden"
+			>
+				<PatternMosaic
+					colourway="lilac"
+					kind="ring"
+					columns={8}
+					rows={2}
+					trigger="view"
+					className="inset-x-0 top-0 absolute -z-10 opacity-40"
+				/>
+				<div className="gap-6 pt-8 container flex flex-wrap items-center justify-between">
+					<Reveal as="p" className="type-display-lg max-w-xl text-balance">
+						{t("appCta")}
+					</Reveal>
+					<JoinCtaLink cta={joinCta} className={v2Button({ variant: "onDark" })}>
+						{joinCta.labelKey ? tRoot(joinCta.labelKey) : t("joinCta")}
+					</JoinCtaLink>
+				</div>
+			</section>
 		</article>
 	);
 }

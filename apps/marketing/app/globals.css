@@ -1515,3 +1515,179 @@
 		transition: none;
 	}
 }
+
+/* ── S16-03 Events, News, Article ────────────────────────────────────────── */
+
+.unmask-up {
+	--unmask-from: inset(100% 0 0 0);
+}
+
+.unmask-down {
+	--unmask-from: inset(0 0 100% 0);
+}
+
+.unmask-left {
+	--unmask-from: inset(0 0 0 100%);
+}
+
+.unmask {
+	transition: clip-path var(--dur-rise) var(--ease-out-editorial);
+}
+
+/* The quiet 2px reading line under the nav: needs a scroll timeline. */
+.reading-progress {
+	display: none;
+}
+
+@media (hover: hover) {
+	.tile:hover .photo-zoom img {
+		transform: scale(1.03);
+	}
+}
+
+.tile:hover .link-draw,
+.tile:focus-visible .link-draw {
+	background-size: 100% 1px;
+}
+
+.link-draw {
+	-webkit-box-decoration-break: clone;
+	box-decoration-break: clone;
+}
+
+/* Drop cap on the first paragraph of the (CMS-rendered) body. */
+.drop-cap > p:first-of-type::first-letter {
+	float: left;
+	font-family: var(--font-display);
+	font-weight: 500;
+	font-size: 4.6em;
+	line-height: 0.82;
+	padding: 0.06em 0.1em 0 0;
+	color: var(--color-plum);
+}
+
+.article-body blockquote {
+	position: relative;
+	border-left: 0;
+}
+
+.article-body blockquote::before {
+	content: "";
+	position: absolute;
+	inset: 0 auto 0 0;
+	width: 3px;
+	background: var(--color-plum);
+	transform-origin: top;
+}
+
+@keyframes unmask {
+	from {
+		clip-path: var(--unmask-from);
+	}
+}
+
+@keyframes cal-slide-next {
+	from {
+		opacity: 0;
+		transform: translate3d(28px, 0, 0);
+	}
+}
+
+@keyframes cal-slide-prev {
+	from {
+		opacity: 0;
+		transform: translate3d(-28px, 0, 0);
+	}
+}
+
+@keyframes rule-draw {
+	from {
+		transform: scaleY(0);
+	}
+}
+
+@keyframes unmask-scroll {
+	from {
+		clip-path: inset(100% 0 0 0);
+	}
+}
+
+@keyframes photo-drift {
+	from {
+		transform: translate3d(0, -6%, 0);
+	}
+	to {
+		transform: translate3d(0, 6%, 0);
+	}
+}
+
+@keyframes reading-fill {
+	from {
+		transform: scaleX(0);
+	}
+}
+
+@media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
+	.unmask:not([data-revealed]):not(.unmask-now) {
+		clip-path: var(--unmask-from);
+	}
+
+	.unmask-now {
+		animation: unmask var(--dur-rise) var(--ease-out-editorial) 200ms both;
+	}
+
+	.cal-slide-next {
+		animation: cal-slide-next var(--dur-reveal) var(--ease-out-editorial) both;
+	}
+
+	.cal-slide-prev {
+		animation: cal-slide-prev var(--dur-reveal) var(--ease-out-editorial) both;
+	}
+}
+
+/* Parallax on grid photos, the reading line, the pull-quote rule and inline images. */
+@supports (animation-timeline: view()) {
+	@media (prefers-reduced-motion: no-preference) {
+		.drift {
+			animation: photo-drift linear both;
+			animation-timeline: view();
+			animation-range: cover 0% cover 100%;
+		}
+
+		.article-body blockquote::before {
+			animation: rule-draw linear both;
+			animation-timeline: view();
+			animation-range: entry 10% entry 90%;
+		}
+
+		.article-body img {
+			animation: unmask-scroll linear both;
+			animation-timeline: view();
+			animation-range: entry 0% entry 70%;
+		}
+
+		.reading-progress {
+			display: block;
+			position: fixed;
+			inset: 5.25rem 0 auto;
+			z-index: 40;
+			height: 2px;
+			background: var(--color-ice);
+			transform-origin: left;
+			animation: reading-fill linear both;
+			animation-timeline: scroll(root block);
+		}
+	}
+}
+
+@media print {
+	.reading-progress {
+		display: none;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.unmask {
+		transition: none;
+	}
+}
