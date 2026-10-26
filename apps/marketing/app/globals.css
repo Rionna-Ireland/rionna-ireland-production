@@ -1372,6 +1372,11 @@
 	inset: 0;
 	overflow: hidden;
 	opacity: 0;
+	will-change: opacity;
+}
+
+.cyc-layer .pc-face {
+	will-change: auto;
 }
 
 .cyc-layer:first-child {
@@ -1379,18 +1384,6 @@
 }
 
 @media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
-	.ch-bob,
-	.ch-bob .pc-star,
-	.ch-swap,
-	.cyc-layer {
-		animation-play-state: paused;
-		animation-iteration-count: infinite;
-	}
-
-	[data-playing] :is(.ch-bob, .ch-bob .pc-star, .ch-swap, .cyc-layer) {
-		animation-play-state: running;
-	}
-
 	.ch-bob {
 		animation: loop-bob var(--dur-loop-bob) ease-in-out calc(var(--k) * -1.7s) infinite
 			alternate;
@@ -1406,10 +1399,15 @@
 			backwards;
 	}
 
-	/* Four layers, one visible per step; layer k starts k steps into the cycle so layer 0 is shown at rest. */
+	/* Four layers, one visible per step; phases put layer 0 at 10% of its cycle (shown) and the rest hidden at rest. */
 	.cyc-layer {
 		animation: loop-cycle calc(var(--n) * var(--dur-loop-step)) ease-in-out
-			calc((var(--k) - var(--n)) * var(--dur-loop-step)) infinite;
+			calc((var(--k) - var(--n) * 1.1) * var(--dur-loop-step)) infinite;
+	}
+
+	/* After the shorthands and more specific, or the shorthand resets play-state to running. */
+	section:not([data-playing]) :is(.ch-bob, .ch-bob .pc-star, .ch-swap, .cyc-layer) {
+		animation-play-state: paused;
 	}
 }
 
@@ -1443,16 +1441,17 @@
 	}
 }
 
-/* Visible for a quarter of the cycle (n = 4), fading in over the tail of the previous layer. */
+/* n = 4: later layers stack on top and reach full opacity before the one beneath drops, so no brightness dip. */
 @keyframes loop-cycle {
 	0%,
-	21% {
+	24% {
 		opacity: 1;
 	}
-	25%,
-	96% {
+	28%,
+	94% {
 		opacity: 0;
 	}
+	98%,
 	100% {
 		opacity: 1;
 	}

@@ -113,7 +113,7 @@ export function Opener({
 	photoUrl?: string | null;
 }) {
 	return (
-		<PlayWhenVisible id="story" data-chapter data-nav-tone="light">
+		<PlayWhenVisible id="story" data-chapter="" data-nav-tone="light">
 			<PinnedStage
 				heightSvh={220}
 				stageClassName="grain bg-cream min-h-svh relative isolate flex items-center justify-center overflow-hidden"

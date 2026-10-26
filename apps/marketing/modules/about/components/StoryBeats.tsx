@@ -20,6 +20,16 @@ export function splitBeats(text: string): string[] {
 		.filter(Boolean);
 }
 
+/** Admin paragraphs first, topped up from the fallback copy to at least `min` beats (no duplicates). */
+export function composeBeats(adminText: string, fallbackText: string, min = 5): string[] {
+	const beats = splitBeats(adminText);
+	for (const extra of splitBeats(fallbackText)) {
+		if (beats.length >= min) break;
+		if (!beats.includes(extra)) beats.push(extra);
+	}
+	return beats;
+}
+
 /** One pinned beat per paragraph; words fill ink-muted to ink, a pattern chip follows the key phrase. */
 export function StoryBeats({ text, label, index }: { text: string; label: string; index: number }) {
 	const beats = splitBeats(text);

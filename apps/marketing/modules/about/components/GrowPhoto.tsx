@@ -16,7 +16,7 @@ export function GrowPhoto({
 	photoUrl?: string | null;
 }) {
 	return (
-		<PlayWhenVisible id="club" data-chapter data-nav-tone="dark">
+		<PlayWhenVisible id="club" data-chapter="" data-nav-tone="dark">
 			<PinnedStage
 				heightSvh={240}
 				stageClassName="bg-plum relative isolate flex flex-col justify-center overflow-hidden px-6 py-16"

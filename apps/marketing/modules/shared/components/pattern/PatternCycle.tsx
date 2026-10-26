@@ -29,7 +29,14 @@ export function PatternCycle({
 					className="cyc-layer"
 					style={{ "--k": i, "--n": patterns.length } as CSSProperties}
 				>
-					<PatternMosaic colourway={p.colourway} kind={p.kind} columns={4} rows={9} />
+					<PatternMosaic
+						colourway={p.colourway}
+						kind={p.kind}
+						columns={3}
+						rows={7}
+						trigger="load"
+						observe={false}
+					/>
 				</div>
 			))}
 		</div>

@@ -28,6 +28,7 @@ export function PatternMosaic({
 	columns = 4,
 	rows = 8,
 	trigger = "load",
+	observe = true,
 }: {
 	className?: string;
 	/** Harlequin colourway; default is the waitlist quilt. */
@@ -38,10 +39,13 @@ export function PatternMosaic({
 	rows?: number;
 	/** "view" holds the deal until the mosaic scrolls into view. */
 	trigger?: "load" | "view";
+	/** false: no IntersectionObserver (only valid with trigger="load"). */
+	observe?: boolean;
 }) {
 	const [joined, setJoined] = useState(false);
 	const ref = useRef<HTMLDivElement>(null);
-	const inView = useInView(ref);
+	const noRef = useRef<HTMLDivElement>(null);
+	const inView = useInView(observe ? ref : noRef);
 	const waiting = trigger === "view" && !inView;
 	const tile = colourway
 		? ({ kind, colourway, turn: 0 } as const)

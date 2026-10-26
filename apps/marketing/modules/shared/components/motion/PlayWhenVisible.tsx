@@ -15,7 +15,7 @@ export function PlayWhenVisible({
 	id?: string;
 	className?: string;
 	children: ReactNode;
-	"data-chapter"?: boolean;
+	"data-chapter"?: string;
 	"data-nav-tone"?: string;
 }) {
 	const ref = useRef<HTMLElement>(null);
