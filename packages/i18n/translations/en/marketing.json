@@ -21,7 +21,7 @@
 		"eyebrow": "About Rionna",
 		"title": "Opening the gates to a different kind of ownership.",
 		"description": "A modern, community-driven shared racehorse ownership club.",
-		"fallbackAbout": "Rionna is a shared racehorse ownership club built for a new generation of owners. We care as much about the horses as we do about the people following their journey, and for members who come from every corner of the racing world (and plenty who are brand new to it).\n\nWe believe ownership should feel personal, connected, and joyful. That the finish line isn't the only moment worth celebrating. That the sport gets better when it makes room for more voices.\n\nThis is the club we wanted to be part of. We hope you'll join us.",
+		"fallbackAbout": "Rionna is a shared racehorse ownership club built for a new generation of owners. We care as much about the horses as we do about the people following their journey: members who come from every corner of the racing world (and plenty who are brand new to it).\n\nWe believe ownership should feel personal, connected, and joyful. That the finish line isn't the only moment worth celebrating. That the sport gets better when it makes room for more voices.\n\nThis is the club we wanted to be part of. We hope you'll join us.",
 		"values": {
 			"openGates": {
 				"eyebrow": "Open the gates",
@@ -121,7 +121,7 @@
 		"horses": {
 			"eyebrow": "Our stable",
 			"title": "Meet the horses.",
-			"description": "Every member follows every horse, from the yard, through the race, to the post-run debrief.",
+			"description": "Every member follows every horse, from the yard to the race to the post-run debrief.",
 			"trainerLabel": "Trained by {name}",
 			"ctaMembership": "See the full stable"
 		},
