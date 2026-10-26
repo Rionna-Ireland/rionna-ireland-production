@@ -41,7 +41,10 @@ export async function HorsePreviewSection() {
 				className="type-display-lg max-w-3xl text-balance"
 			/>
 			{/* Horizontal film row: drag/trackpad scroll-snap; cards deal in when it enters view. */}
-			<DealRow className="deal-row gap-4 pt-2 pb-4 flex snap-x snap-mandatory overflow-x-auto">
+			<DealRow
+				ariaLabel={t("title")}
+				className="deal-row gap-4 pt-2 pb-4 flex snap-x snap-mandatory overflow-x-auto"
+			>
 				{horses.map((horse, i) => {
 					const photoUrl = firstPhotoUrl(horse.photos);
 					return (

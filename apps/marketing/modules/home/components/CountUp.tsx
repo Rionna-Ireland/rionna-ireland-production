@@ -1,13 +1,12 @@
 "use client";
 
 import { useInView } from "@shared/components/motion/useInView";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { parseStatValue } from "../lib/parseStatValue";
+import { runCount } from "../lib/runCount";
 
-const COUNT_MS = 1400; // --dur-deal; kept in sync by hand because rAF cannot read a CSS token cheaply
-
-// cubic-bezier(0.22, 1, 0.36, 1) (--ease-out-editorial) solved for y at progress t.
+// Duplicates --ease-out-editorial, cubic-bezier(0.22, 1, 0.36, 1) (rAF cannot read the token) solved for y at progress t.
 function easeOutEditorial(t: number): number {
 	const [x1, y1, x2, y2] = [0.22, 1, 0.36, 1];
 	const bez = (a: number, b: number, s: number) =>
@@ -21,8 +20,6 @@ function easeOutEditorial(t: number): number {
 	}
 	return bez(y1, y2, (lo + hi) / 2);
 }
-
-type Phase = "final" | "armed" | "counting" | "done";
 
 /**
  * One stat tile. SSR, no-JS, Reduce Motion and "already in view at hydration"
@@ -40,10 +37,11 @@ export function CountUp({
 	className?: string;
 	delayMs?: number;
 }) {
-	const parsed = parseStatValue(value);
+	const parsed = useMemo(() => parseStatValue(value), [value]);
 	const ref = useRef<HTMLDivElement>(null);
 	const digitsRef = useRef<HTMLSpanElement>(null);
-	const [phase, setPhase] = useState<Phase>("final");
+	const [armed, setArmed] = useState(false);
+	const [done, setDone] = useState(false);
 	const inView = useInView(ref);
 
 	// Decide before paint: below the fold at hydration -> hold at 0 until it scrolls in.
@@ -51,36 +49,35 @@ export function CountUp({
 		const el = ref.current;
 		if (!parsed || !el) return;
 		const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-		if (!reduce && el.getBoundingClientRect().top >= window.innerHeight) setPhase("armed");
-		// biome-ignore lint/correctness/useExhaustiveDependencies: decided once at hydration
-	}, []);
+		if (!reduce && el.getBoundingClientRect().top >= window.innerHeight) setArmed(true);
+	}, [parsed]);
 
+	// Starts once; only unmount (or a value change) cancels it. No setState before the loop runs.
 	useEffect(() => {
-		if (phase !== "armed" || !inView || !parsed) return;
+		if (!armed || !inView || !parsed) return;
 		const { prefix, number, decimals, suffix, grouping } = parsed;
 		const fmt = new Intl.NumberFormat("en-US", {
 			minimumFractionDigits: decimals,
 			maximumFractionDigits: decimals,
 			useGrouping: grouping,
 		});
-		let frame = 0;
-		let start = 0;
-		const tick = (now: number) => {
-			start ||= now + delayMs;
-			const t = Math.min(Math.max((now - start) / COUNT_MS, 0), 1);
-			if (digitsRef.current) {
-				digitsRef.current.textContent = `${prefix}${fmt.format(number * easeOutEditorial(t))}${suffix}`;
-			}
-			if (t < 1) frame = requestAnimationFrame(tick);
-			else setPhase("done");
-		};
-		setPhase("counting");
-		frame = requestAnimationFrame(tick);
-		return () => cancelAnimationFrame(frame);
-	}, [phase, inView, parsed, delayMs]);
+		const css = getComputedStyle(document.documentElement).getPropertyValue("--dur-deal");
+		return runCount({
+			durationMs: Number.parseFloat(css) || 1400,
+			delayMs,
+			ease: easeOutEditorial,
+			raf: requestAnimationFrame,
+			cancelRaf: cancelAnimationFrame,
+			onFrame: (e) => {
+				if (digitsRef.current)
+					digitsRef.current.textContent = `${prefix}${fmt.format(number * e)}${suffix}`;
+			},
+			onDone: () => setDone(true),
+		});
+	}, [armed, inView, parsed, delayMs]);
 
-	// While armed/counting React must not overwrite the rAF-written text with the final value.
-	const hold = phase === "armed" || phase === "counting";
+	// While armed and not done React must not overwrite the rAF-written text.
+	const hold = armed && !done;
 	const zero = parsed ? `${parsed.prefix}${(0).toFixed(parsed.decimals)}${parsed.suffix}` : value;
 
 	return (

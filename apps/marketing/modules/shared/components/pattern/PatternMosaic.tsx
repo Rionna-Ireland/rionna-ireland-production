@@ -4,7 +4,7 @@ import { cn } from "@repo/ui";
 import { type CSSProperties, useEffect, useRef, useState } from "react";
 
 import { useInView } from "../motion/useInView";
-import { type Colourway, CELEBRATION_TILE, PatternTile, QUILT_TILE } from "./tiles";
+import { type Colourway, type TileKind, CELEBRATION_TILE, PatternTile, QUILT_TILE } from "./tiles";
 
 /** Fired by WaitlistForm on a successful join: the quilt's spurs light up. */
 export const WAITLIST_JOINED_EVENT = "rionna:waitlist-joined";
@@ -24,6 +24,7 @@ export function dealDelay(index: number, columns: number, stepMs = 90): number {
 export function PatternMosaic({
 	className,
 	colourway,
+	kind = "harlequin",
 	columns = 4,
 	rows = 8,
 	trigger = "load",
@@ -31,6 +32,8 @@ export function PatternMosaic({
 	className?: string;
 	/** Harlequin colourway; default is the waitlist quilt. */
 	colourway?: Colourway;
+	/** Tile kind when a colourway is set. */
+	kind?: TileKind;
 	columns?: number;
 	rows?: number;
 	/** "view" holds the deal until the mosaic scrolls into view. */
@@ -41,7 +44,7 @@ export function PatternMosaic({
 	const inView = useInView(ref);
 	const waiting = trigger === "view" && !inView;
 	const tile = colourway
-		? ({ kind: "harlequin", colourway, turn: 0 } as const)
+		? ({ kind, colourway, turn: 0 } as const)
 		: joined
 			? CELEBRATION_TILE
 			: QUILT_TILE;

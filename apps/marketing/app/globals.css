@@ -981,15 +981,9 @@ main[data-nav-space]:has([data-hero-under-nav]) {
 	transition: transform var(--dur-reveal) var(--ease-out-editorial);
 }
 
-/* Ring-tile card corner: spurs turn when the card is hovered. */
-.tile-corner .pc-star {
-	transform-box: fill-box;
-	transform-origin: center;
-	transition: rotate var(--dur-deal) var(--ease-out-editorial);
-}
-
+/* Why-join pattern panel: ring spurs turn when the card is hovered. */
 @media (hover: hover) {
-	.card-lift:hover .tile-corner .pc-star {
+	.card-lift:hover .pc-star {
 		rotate: 22.5deg;
 	}
 }
@@ -1007,12 +1001,6 @@ main[data-nav-space]:has([data-hero-under-nav]) {
 	.deal-row[data-revealed] .deal-card {
 		animation: pc-deal var(--dur-deal) var(--ease-out-editorial) backwards;
 		animation-delay: calc(var(--i, 0) * var(--step-deal) * 2);
-	}
-
-	/* Corner tile deals in with its card's reveal. */
-	.reveal[data-revealed] .tile-corner {
-		animation: pc-deal var(--dur-deal) var(--ease-out-editorial) backwards;
-		animation-delay: calc(var(--reveal-delay, 0ms) + 200ms);
 	}
 }
 
