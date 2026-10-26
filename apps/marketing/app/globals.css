@@ -422,7 +422,11 @@
 }
 
 .press {
-	transition: transform var(--dur-press) var(--ease-out-press);
+	transition:
+		transform var(--dur-press) var(--ease-out-press),
+		background-color var(--dur-hover) var(--ease-out-press),
+		border-color var(--dur-hover) var(--ease-out-press),
+		color var(--dur-hover) var(--ease-out-press);
 }
 
 .press:active {
@@ -554,7 +558,103 @@
 	.press,
 	.link-draw,
 	.card-lift,
-	.photo-zoom img {
+	.photo-zoom img,
+	.nav-glass,
+	.nav-glass::before,
+	.nav-glass::after,
+	.nav-glass-inner {
 		transition: none;
 	}
+
+	.page-enter {
+		animation: none;
+	}
+}
+
+/* ── S16-02 B: floating glass nav + page enter ──────────────────────────── */
+
+/* Two tinted layers crossfade (opacity only) when the tone under the bar changes. */
+.nav-glass {
+	--ring: var(--color-ink);
+	position: relative;
+	isolation: isolate;
+	border-radius: var(--radius-lg, 0.75rem);
+	outline: 1px solid var(--color-outline);
+	box-shadow: 0 8px 24px -12px rgb(23 39 65 / 0.18);
+	color: var(--color-ink);
+	transition: color var(--dur-hover) var(--ease-out-editorial);
+}
+
+.nav-glass::before,
+.nav-glass::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	z-index: -1;
+	border-radius: inherit;
+	pointer-events: none;
+	backdrop-filter: blur(24px) saturate(1.4);
+	transition: opacity var(--dur-hover) var(--ease-out-editorial);
+}
+
+/* light glass: paper ~55%, 1px white/70 inner top highlight */
+.nav-glass::before {
+	background: color-mix(in srgb, var(--color-paper) 55%, transparent);
+	box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.7);
+}
+
+/* dark glass: ink ~55%, 1px white/30 inner top highlight */
+.nav-glass::after {
+	background: color-mix(in srgb, var(--color-ink) 55%, transparent);
+	box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.3);
+	opacity: 0;
+}
+
+.nav-glass[data-tone="dark"] {
+	--ring: var(--color-lilac);
+	color: #fff;
+}
+
+.nav-glass[data-tone="dark"]::before {
+	opacity: 0;
+}
+
+.nav-glass[data-tone="dark"]::after {
+	opacity: 1;
+}
+
+/* Home keeps the 2px ice top edge from the reference. */
+.nav-glass[data-edge="ice"] {
+	border-top: 2px solid var(--color-ice);
+}
+
+@supports not (backdrop-filter: blur(1px)) {
+	.nav-glass::before {
+		background: color-mix(in srgb, var(--color-paper) 90%, transparent);
+	}
+
+	.nav-glass::after {
+		background: color-mix(in srgb, var(--color-ink) 90%, transparent);
+	}
+}
+
+/* Contracts ~8% once past the first screen (transform only). */
+.nav-glass-inner {
+	transform-origin: top center;
+	transition: transform var(--dur-hover) var(--ease-out-editorial);
+}
+
+.nav-glass[data-scrolled="true"] .nav-glass-inner {
+	transform: scale(0.92);
+}
+
+@keyframes page-enter {
+	from {
+		opacity: 0;
+		transform: translateY(8px);
+	}
+}
+
+.page-enter {
+	animation: page-enter 300ms var(--ease-out-editorial) both;
 }

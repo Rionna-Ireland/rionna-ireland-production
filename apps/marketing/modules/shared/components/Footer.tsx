@@ -7,7 +7,7 @@ import { getTranslations } from "next-intl/server";
 type SocialLinks = { instagram?: string; twitter?: string; facebook?: string; website?: string };
 
 const colHead = "type-label text-[10px] text-lilac";
-const link = "block text-[13px] text-ice hover:text-white hover:no-underline";
+const link = "link-draw block w-fit text-[13px] text-ice hover:text-white hover:no-underline";
 
 export async function Footer({ socialLinks }: { socialLinks?: SocialLinks }) {
 	const t = await getTranslations();
@@ -84,6 +84,9 @@ export async function Footer({ socialLinks }: { socialLinks?: SocialLinks }) {
 					<LocaleLink href="/#horses" className={link}>
 						{t("common.footer.ourHorses")}
 					</LocaleLink>
+					<LocaleLink href="/events" className={link}>
+						{t("common.menu.events")}
+					</LocaleLink>
 					<LocaleLink href="/news" className={link}>
 						{t("common.menu.news")}
 					</LocaleLink>
@@ -94,8 +97,8 @@ export async function Footer({ socialLinks }: { socialLinks?: SocialLinks }) {
 					<LocaleLink href="/membership" className={link}>
 						{t("common.menu.join")}
 					</LocaleLink>
-					<LocaleLink href="/events" className={link}>
-						{t("common.menu.events")}
+					<LocaleLink href="/app" className={link}>
+						{t("common.menu.theApp")}
 					</LocaleLink>
 				</div>
 

@@ -17,7 +17,7 @@ export async function HeroSection() {
 	const { hero } = content;
 
 	return (
-		<section className="bg-welcome-navy text-white">
+		<section data-nav-tone="dark" className="bg-welcome-navy text-white">
 			<div className="gap-10 py-16 lg:grid-cols-2 lg:items-center lg:py-[72px] container grid">
 				<div className="gap-5 flex flex-col">
 					<span className="type-label text-lilac">{hero.eyebrow ?? t("eyebrow")}</span>

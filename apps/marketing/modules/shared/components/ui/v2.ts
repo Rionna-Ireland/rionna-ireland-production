@@ -22,7 +22,7 @@ export function v2Button({
 	size?: keyof typeof sizes;
 }): string {
 	return cn(
-		"font-semibold inline-flex shrink-0 items-center justify-center whitespace-nowrap transition-colors hover:no-underline",
+		"press font-semibold inline-flex shrink-0 items-center justify-center whitespace-nowrap hover:no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
 		variants[variant],
 		sizes[size],
 	);

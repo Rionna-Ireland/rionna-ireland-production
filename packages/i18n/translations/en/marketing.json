@@ -191,7 +191,11 @@
 			"events": "Events",
 			"contact": "Contact",
 			"login": "Sign in",
-			"join": "Join"
+			"join": "Join",
+			"faq": "FAQ",
+			"journal": "Journal",
+			"becomeMember": "Become a member",
+			"theApp": "The app"
 		},
 		"aria": {
 			"menu": "Menu",

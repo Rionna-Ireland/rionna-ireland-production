@@ -11,7 +11,9 @@ import type { JoinCta } from "@shared/lib/join-url";
 import { MenuIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import NextLink from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+
+import { type NavTone, type ToneSection, toneAt } from "./nav-tone";
 
 export function NavBar({ joinCta }: { joinCta: JoinCta }) {
 	const t = useTranslations();
@@ -26,10 +28,10 @@ export function NavBar({ joinCta }: { joinCta: JoinCta }) {
 	const menuItems: { label: string; href: string }[] = config.wireframeMode
 		? [{ label: t("common.menu.membership"), href: "/membership" }]
 		: [
+				{ label: t("common.menu.membership"), href: "/membership" },
 				{ label: t("common.menu.about"), href: "/about" },
-				{ label: t("common.menu.horses"), href: "/#horses" },
-				{ label: t("common.menu.news"), href: "/news" },
-				{ label: t("common.menu.events"), href: "/events" },
+				{ label: t("common.menu.faq"), href: "/membership#faq" },
+				{ label: t("common.menu.journal"), href: "/news" },
 			];
 
 	const isMenuItemActive = (href: string) =>
@@ -38,100 +40,156 @@ export function NavBar({ joinCta }: { joinCta: JoinCta }) {
 	// Signup mode lands on the Join page (/membership), whose own CTA goes to SaaS signup.
 	const navJoinCta: JoinCta =
 		joinCta.mode === "signup" ? { ...joinCta, href: "/membership", external: false } : joinCta;
-	const joinLabel = joinCta.labelKey ? t(joinCta.labelKey) : t("common.menu.join");
+	const joinLabel = joinCta.labelKey
+		? t(joinCta.labelKey)
+		: joinCta.mode === "signup"
+			? t("common.menu.becomeMember")
+			: t("common.menu.join");
+
+	const navRef = useRef<HTMLElement>(null);
+	const [tone, setTone] = useState<NavTone>("light");
+	const [scrolled, setScrolled] = useState(false);
+
+	// Tone follows the [data-nav-tone] section under the bar's centre; rAF-throttled.
+	useEffect(() => {
+		let frame = 0;
+		const update = () => {
+			frame = 0;
+			const nav = navRef.current;
+			if (!nav) return;
+			const navRect = nav.getBoundingClientRect();
+			const sections: ToneSection[] = Array.from(
+				document.querySelectorAll<HTMLElement>("[data-nav-tone]"),
+			).map((el) => {
+				const r = el.getBoundingClientRect();
+				return {
+					top: r.top,
+					bottom: r.bottom,
+					tone: el.dataset.navTone === "dark" ? "dark" : "light",
+				};
+			});
+			setTone(toneAt(sections, navRect.top + navRect.height / 2));
+			setScrolled(window.scrollY > window.innerHeight);
+		};
+		const schedule = () => {
+			if (!frame) frame = requestAnimationFrame(update);
+		};
+		update();
+		window.addEventListener("scroll", schedule, { passive: true });
+		window.addEventListener("resize", schedule);
+		return () => {
+			window.removeEventListener("scroll", schedule);
+			window.removeEventListener("resize", schedule);
+			if (frame) cancelAnimationFrame(frame);
+		};
+	}, [localePathname]);
+
+	const dark = tone === "dark";
 
 	return (
-		<nav
-			className="top-0 border-outline bg-white/90 backdrop-blur sticky z-50 w-full border-b"
-			data-test="navigation"
-		>
-			<div className="container">
-				<div className="gap-6 py-4 lg:py-5 flex items-center justify-between">
-					<LocaleLink
-						href="/"
-						className="text-ink block hover:no-underline"
-						aria-label={config.appName}
-					>
-						<Wordmark className="h-6 w-auto" />
-					</LocaleLink>
+		<div className="top-3 px-3 pt-3 sticky z-50">
+			<nav
+				ref={navRef}
+				className="nav-glass container"
+				data-tone={tone}
+				data-scrolled={scrolled}
+				data-edge={localePathname === "/" ? "ice" : undefined}
+				data-test="navigation"
+			>
+				<div className="nav-glass-inner">
+					<div className="gap-6 py-3 lg:py-3.5 flex items-center justify-between">
+						<LocaleLink
+							href="/"
+							className="block hover:no-underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
+							aria-label={config.appName}
+						>
+							<Wordmark className="h-6 w-auto" />
+						</LocaleLink>
 
-					<div className="lg:flex hidden items-center gap-[30px]">
-						{menuItems.map((menuItem) => (
-							<LocaleLink
-								key={menuItem.href}
-								href={menuItem.href}
-								className={cn(
-									"text-sm font-medium text-ink-variant hover:text-ink hover:no-underline",
-									isMenuItemActive(menuItem.href) && "text-ink",
-								)}
-								prefetch
+						<div className="lg:flex hidden items-center gap-[30px]">
+							{menuItems.map((menuItem) => (
+								<LocaleLink
+									key={menuItem.href}
+									href={menuItem.href}
+									className={cn(
+										"link-draw text-sm font-medium opacity-75 hover:no-underline hover:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring",
+										isMenuItemActive(menuItem.href) && "opacity-100",
+									)}
+									prefetch
+								>
+									{menuItem.label}
+								</LocaleLink>
+							))}
+							{config.saasUrl && (
+								<NextLink
+									href={config.saasUrl}
+									className="link-draw text-sm font-medium hover:no-underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
+									prefetch
+								>
+									{t("common.menu.login")}
+								</NextLink>
+							)}
+							<JoinCtaLink
+								cta={navJoinCta}
+								className={v2Button({ variant: dark ? "onDark" : "primary" })}
 							>
-								{menuItem.label}
-							</LocaleLink>
-						))}
-						{config.saasUrl && (
-							<NextLink
-								href={config.saasUrl}
-								className="text-sm font-medium text-ink hover:no-underline"
-								prefetch
-							>
-								{t("common.menu.login")}
-							</NextLink>
-						)}
-						<JoinCtaLink cta={navJoinCta} className={v2Button({ variant: "primary" })}>
-							{joinLabel}
-						</JoinCtaLink>
-					</div>
+								{joinLabel}
+							</JoinCtaLink>
+						</div>
 
-					<Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-						<SheetTrigger asChild>
-							<button
-								type="button"
-								className="size-10 border-outline text-ink lg:hidden flex items-center justify-center rounded-lg border"
-								aria-label={t("common.aria.menu")}
-							>
-								<MenuIcon className="size-5" />
-							</button>
-						</SheetTrigger>
-						<SheetContent className="bg-paper w-[280px]" side="right">
-							<SheetTitle className="sr-only">{t("common.aria.menu")}</SheetTitle>
-							<div className="gap-1 px-2 pt-6 flex flex-col items-start">
-								{menuItems.map((menuItem) => (
-									<LocaleLink
-										key={menuItem.href}
-										href={menuItem.href}
+						<Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+							<SheetTrigger asChild>
+								<button
+									type="button"
+									className="size-10 lg:hidden flex items-center justify-center rounded-lg border border-current/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+									aria-label={t("common.aria.menu")}
+								>
+									<MenuIcon className="size-5" />
+								</button>
+							</SheetTrigger>
+							<SheetContent className="bg-paper w-[280px]" side="right">
+								<SheetTitle className="sr-only">{t("common.aria.menu")}</SheetTitle>
+								<div className="gap-1 px-2 pt-6 flex flex-col items-start">
+									{menuItems.map((menuItem) => (
+										<LocaleLink
+											key={menuItem.href}
+											href={menuItem.href}
+											onClick={() => setMobileMenuOpen(false)}
+											className={cn(
+												"py-2 text-base font-medium text-ink-variant block hover:no-underline",
+												isMenuItemActive(menuItem.href) && "text-ink",
+											)}
+											prefetch
+										>
+											{menuItem.label}
+										</LocaleLink>
+									))}
+									{config.saasUrl && (
+										<NextLink
+											href={config.saasUrl}
+											className="py-2 text-base font-medium text-ink block hover:no-underline"
+											onClick={() => setMobileMenuOpen(false)}
+											prefetch
+										>
+											{t("common.menu.login")}
+										</NextLink>
+									)}
+									<JoinCtaLink
+										cta={navJoinCta}
 										onClick={() => setMobileMenuOpen(false)}
 										className={cn(
-											"py-2 text-base font-medium text-ink-variant block hover:no-underline",
-											isMenuItemActive(menuItem.href) && "text-ink",
+											v2Button({ variant: "primary" }),
+											"mt-4 w-full",
 										)}
-										prefetch
 									>
-										{menuItem.label}
-									</LocaleLink>
-								))}
-								{config.saasUrl && (
-									<NextLink
-										href={config.saasUrl}
-										className="py-2 text-base font-medium text-ink block hover:no-underline"
-										onClick={() => setMobileMenuOpen(false)}
-										prefetch
-									>
-										{t("common.menu.login")}
-									</NextLink>
-								)}
-								<JoinCtaLink
-									cta={navJoinCta}
-									onClick={() => setMobileMenuOpen(false)}
-									className={cn(v2Button({ variant: "primary" }), "mt-4 w-full")}
-								>
-									{joinLabel}
-								</JoinCtaLink>
-							</div>
-						</SheetContent>
-					</Sheet>
+										{joinLabel}
+									</JoinCtaLink>
+								</div>
+							</SheetContent>
+						</Sheet>
+					</div>
 				</div>
-			</div>
-		</nav>
+			</nav>
+		</div>
 	);
 }
