@@ -1065,13 +1065,13 @@
 				"hint": "Has no effect while public signup is closed."
 			},
 			"placeholder": {
-				"heroEyebrow": "Modern shared racehorse ownership",
-				"heroTitle": "Open the gates. Own the moments.",
-				"heroSubtitle": "A modern racehorse ownership club built around a stable full of Flat and National Hunt horses, and a community of people who love being close to the action.",
+				"heroEyebrow": "Lorem ipsum dolor sit amet",
+				"heroTitle": "Open the gates",
+				"heroSubtitle": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua, ut enim ad minim veniam quis nostrud.",
 				"membershipPrice": "€45",
 				"membershipInterval": "per month",
 				"membershipNote": "Billed monthly. Cancel any time from your account.",
-				"storyTitle": "Opening the gates to a different kind of ownership."
+				"storyTitle": "Lorem ipsum dolor sit amet."
 			},
 			"moveUp": "Move up",
 			"moveDown": "Move down",

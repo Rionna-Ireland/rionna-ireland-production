@@ -6,18 +6,36 @@ import { describe, expect, it } from "vitest";
 const dir = resolve(import.meta.dirname, "../../../../../packages/i18n/translations/en");
 const read = (f: string) => JSON.parse(readFileSync(resolve(dir, f), "utf8"));
 
-function hits(node: unknown, path = ""): string[] {
-	if (typeof node === "string") return node.includes("—") ? [path] : [];
+function hits(node: unknown, bad: (s: string) => boolean, path = ""): string[] {
+	if (typeof node === "string") return bad(node) ? [path] : [];
 	if (node && typeof node === "object")
-		return Object.entries(node).flatMap(([k, v]) => hits(v, path ? `${path}.${k}` : k));
+		return Object.entries(node).flatMap(([k, v]) => hits(v, bad, path ? `${path}.${k}` : k));
 	return [];
 }
+const emDash = (s: string) => s.includes("—");
+const ownership = (s: string) => /\bown(er|ers|ership)\b/i.test(s);
+const lorem = (s: string) => /lorem/i.test(s);
 
 describe("copy rules: no em dashes in user-facing copy", () => {
 	it("marketing.json has none", () => {
-		expect(hits(read("marketing.json"))).toEqual([]);
+		expect(hits(read("marketing.json"), emDash)).toEqual([]);
 	});
 	it("saas.json admin.website.placeholder has none", () => {
-		expect(hits(read("saas.json").admin.website.placeholder)).toEqual([]);
+		expect(hits(read("saas.json").admin.website.placeholder, emDash)).toEqual([]);
+	});
+});
+
+describe("copy rules: no ownership wording", () => {
+	it("marketing.json has none", () => {
+		expect(hits(read("marketing.json"), ownership)).toEqual([]);
+	});
+	it("saas.json admin.website.placeholder has none", () => {
+		expect(hits(read("saas.json").admin.website.placeholder, ownership)).toEqual([]);
+	});
+});
+
+describe("copy rules: waitlist is live, never lorem", () => {
+	it("waitlist keys contain no lorem", () => {
+		expect(hits(read("marketing.json").waitlist, lorem)).toEqual([]);
 	});
 });
