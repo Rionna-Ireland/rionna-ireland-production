@@ -38,7 +38,8 @@ export async function HeroEventCard({ event }: { event: PublicClubEvent }) {
 				)}
 				<div className="min-w-0 gap-1 flex flex-1 flex-col">
 					<span className="type-label text-lilac">{t("nextEvent")}</span>
-					<span className="type-display-md line-clamp-2">{event.name}</span>
+					{/* No line-clamp: its overflow clip cuts PP Eiko descenders at this leading. */}
+					<span className="type-display-md text-balance">{event.name}</span>
 					{date && <span className="text-sm text-white/70">{date}</span>}
 				</div>
 				<span className="size-10 bg-white text-ink flex shrink-0 items-center justify-center rounded-full">

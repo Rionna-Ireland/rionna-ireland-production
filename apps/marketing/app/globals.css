@@ -256,9 +256,12 @@
 	display: inline-block;
 	overflow: hidden;
 	vertical-align: top;
-	/* Room for descenders inside the clip. */
-	padding-bottom: 0.25em;
-	margin-bottom: -0.25em;
+	/* Room for PP Eiko's deep descenders (p, g, q) inside the clip, even at leading below 1. */
+	padding-bottom: 0.4em;
+	margin-bottom: -0.4em;
+	/* Side room for overhangs (italic f/g/j/y, a word-final g under negative tracking). */
+	padding-inline: 0.15em;
+	margin-inline: -0.15em;
 }
 
 .mask-word > span {
@@ -366,7 +369,7 @@
 	}
 
 	.mask-word > span {
-		transform: translate3d(0, 130%, 0);
+		transform: translate3d(0, calc(100% + 0.5em), 0);
 	}
 
 	[data-revealed] .mask-word > span {
@@ -744,7 +747,7 @@
 
 @keyframes hero-word {
 	from {
-		transform: translate3d(0, 130%, 0);
+		transform: translate3d(0, calc(100% + 0.5em), 0);
 	}
 	to {
 		transform: none;
