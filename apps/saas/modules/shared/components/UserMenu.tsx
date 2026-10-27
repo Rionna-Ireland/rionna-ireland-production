@@ -16,8 +16,6 @@ import { HomeIcon, LogOutIcon, MoreVerticalIcon, SettingsIcon } from "lucide-rea
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 
-import { ColorModeToggle } from "./ColorModeToggle";
-
 export function UserMenu({ showUserName }: { showUserName?: boolean }) {
 	const t = useTranslations();
 	const { user } = useSession();
@@ -68,17 +66,6 @@ export function UserMenu({ showUserName }: { showUserName?: boolean }) {
 					{name}
 					<span className="font-normal text-xs block opacity-70">{email}</span>
 				</DropdownMenuLabel>
-
-				<DropdownMenuSeparator />
-
-				{/* Color mode selection */}
-				<DropdownMenuItem
-					className="gap-4 flex items-center justify-between hover:bg-transparent focus:bg-transparent"
-					onSelect={(e) => e.preventDefault()}
-				>
-					<span>{t("app.userMenu.colorMode")}</span>
-					<ColorModeToggle />
-				</DropdownMenuItem>
 
 				<DropdownMenuSeparator />
 

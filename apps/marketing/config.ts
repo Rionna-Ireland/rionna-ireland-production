@@ -5,6 +5,6 @@ export const config = {
 	docsUrl: process.env.NEXT_PUBLIC_DOCS_URL as string | undefined,
 	saasUrl: process.env.NEXT_PUBLIC_SAAS_URL as string | undefined,
 	wireframeMode: process.env.NEXT_PUBLIC_WIREFRAME_MODE === "true",
-	enabledThemes: ["light", "dark"],
+	enabledThemes: ["light"],
 	defaultTheme: "light",
 } as const satisfies MarketingConfig;

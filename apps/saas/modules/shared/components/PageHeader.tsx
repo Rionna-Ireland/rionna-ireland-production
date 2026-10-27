@@ -13,8 +13,8 @@ export function PageHeader({
 }) {
 	return (
 		<div className={cn("mb-8", className)}>
-			<h2 className="font-medium text-2xl lg:text-3xl">{title}</h2>
-			<p className="opacity-60">{subtitle}</p>
+			<h2 className="type-display-md">{title}</h2>
+			{subtitle && <p className="mt-1 text-ink-variant">{subtitle}</p>}
 		</div>
 	);
 }

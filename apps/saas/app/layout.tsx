@@ -15,11 +15,11 @@ import type { PropsWithChildren } from "react";
 
 const ppEiko = localFont({
 	src: [
-		{ path: "../public/fonts/PPEiko-Thin.otf", weight: "100", style: "normal" },
-		{ path: "../public/fonts/PPEiko-LightItalic.otf", weight: "300", style: "italic" },
-		{ path: "../public/fonts/PPEiko-Medium.otf", weight: "500", style: "normal" },
-		{ path: "../public/fonts/PPEiko-Heavy.otf", weight: "800", style: "normal" },
-		{ path: "../public/fonts/PPEiko-BlackItalic.otf", weight: "900", style: "italic" },
+		{ path: "../public/fonts/PPEiko-Thin.woff2", weight: "100", style: "normal" },
+		{ path: "../public/fonts/PPEiko-LightItalic.woff2", weight: "300", style: "italic" },
+		{ path: "../public/fonts/PPEiko-Medium.woff2", weight: "500", style: "normal" },
+		{ path: "../public/fonts/PPEiko-Heavy.woff2", weight: "800", style: "normal" },
+		{ path: "../public/fonts/PPEiko-BlackItalic.woff2", weight: "900", style: "italic" },
 	],
 	variable: "--font-display",
 });
@@ -51,14 +51,19 @@ export default async function RootLayout({ children }: PropsWithChildren) {
 	const messages = await getMessages();
 
 	return (
-		<html lang={locale} suppressHydrationWarning className={`${ppEiko.variable} ${plusJakarta.variable} ${ibmPlexMono.variable}`}>
+		<html
+			lang={locale}
+			suppressHydrationWarning
+			className={`${ppEiko.variable} ${plusJakarta.variable} ${ibmPlexMono.variable}`}
+		>
 			<body className={cn("min-h-screen bg-background text-foreground antialiased")}>
 				<NuqsAdapter>
 					<NextIntlClientProvider messages={messages}>
 						<ThemeProvider
 							attribute="class"
 							disableTransitionOnChange
-							enableSystem
+							enableSystem={false}
+							forcedTheme="light"
 							defaultTheme={config.defaultTheme}
 							themes={Array.from(config.enabledThemes)}
 						>

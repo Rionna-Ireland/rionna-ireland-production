@@ -61,7 +61,7 @@ export function CreateOrganizationForm({ defaultName }: { defaultName?: string }
 
 	return (
 		<div className="max-w-md mx-auto w-full">
-			<h1 className="font-bold text-xl md:text-2xl">{t("organizations.createForm.title")}</h1>
+			<h1 className="type-display-md">{t("organizations.createForm.title")}</h1>
 			<p className="mt-2 mb-6 text-foreground/60">{t("organizations.createForm.subtitle")}</p>
 
 			<Form {...form}>

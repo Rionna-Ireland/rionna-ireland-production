@@ -1,5 +1,6 @@
 import { AnalyticsScript } from "@analytics";
 import { config } from "@config";
+import { ARRIVAL_INLINE_SCRIPT } from "@home/components/arrival-logic";
 import { config as i18nConfig } from "@i18n/config";
 import { cn } from "@repo/ui";
 import { ClientProviders } from "@shared/components/ClientProviders";
@@ -7,7 +8,9 @@ import { ConsentBanner } from "@shared/components/ConsentBanner";
 import { ConsentProvider } from "@shared/components/ConsentProvider";
 import { Footer } from "@shared/components/Footer";
 import { NavBar } from "@shared/components/NavBar";
-import { isWaitlistOnly } from "@shared/lib/waitlist-mode";
+import { getClubOrganization } from "@shared/lib/club";
+import { isWaitlistView } from "@shared/lib/waitlist-view";
+import { getSiteJoinCta } from "@shared/lib/website";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages, setRequestLocale } from "next-intl/server";
 import { ThemeProvider } from "next-themes";
@@ -18,11 +21,8 @@ import type { PropsWithChildren } from "react";
 
 const ppEiko = localFont({
 	src: [
-		{ path: "../../public/fonts/PPEiko-Thin.otf", weight: "100", style: "normal" },
-		{ path: "../../public/fonts/PPEiko-LightItalic.otf", weight: "300", style: "italic" },
-		{ path: "../../public/fonts/PPEiko-Medium.otf", weight: "500", style: "normal" },
-		{ path: "../../public/fonts/PPEiko-Heavy.otf", weight: "800", style: "normal" },
-		{ path: "../../public/fonts/PPEiko-BlackItalic.otf", weight: "900", style: "italic" },
+		{ path: "../../public/fonts/PPEiko-LightItalic.woff2", weight: "300", style: "italic" },
+		{ path: "../../public/fonts/PPEiko-Medium.woff2", weight: "500", style: "normal" },
 	],
 	variable: "--font-display",
 });
@@ -65,7 +65,13 @@ export default async function MarketingLayout({
 	const consentCookie = cookieStore.get("consent");
 
 	// S12-09 / D39: one-page waitlist site until launch, so no site chrome.
-	const waitlistOnly = isWaitlistOnly();
+	const waitlistOnly = await isWaitlistView();
+	// Server-side so the client NavBar gets a plain serialisable CTA.
+	const joinCta = waitlistOnly ? null : await getSiteJoinCta();
+	const socialLinks =
+		waitlistOnly || config.wireframeMode
+			? undefined
+			: (await getClubOrganization()).metadata.contact?.socialLinks;
 
 	return (
 		<html
@@ -79,6 +85,12 @@ export default async function MarketingLayout({
 				waitlistOnly && "bg-[#57385A]",
 			)}
 		>
+			<head>
+				{/* The waitlist has no arrival; don't mark it seen for a later preview visit. */}
+				{!waitlistOnly && (
+					<script dangerouslySetInnerHTML={{ __html: ARRIVAL_INLINE_SCRIPT }} />
+				)}
+			</head>
 			<body
 				className={cn(
 					"min-h-screen bg-background text-foreground antialiased",
@@ -91,16 +103,16 @@ export default async function MarketingLayout({
 							<ThemeProvider
 								attribute="class"
 								disableTransitionOnChange
-								enableSystem={!config.wireframeMode}
-								forcedTheme={config.wireframeMode ? "light" : undefined}
+								enableSystem={false}
+								forcedTheme="light"
 								defaultTheme={config.defaultTheme}
 								themes={Array.from(config.enabledThemes)}
 							>
-								{!waitlistOnly && <NavBar />}
+								{joinCta && <NavBar joinCta={joinCta} />}
 
 								<main className="min-h-screen">{children}</main>
 
-								{!waitlistOnly && <Footer />}
+								{!waitlistOnly && <Footer socialLinks={socialLinks} />}
 
 								{!config.wireframeMode && (
 									<>

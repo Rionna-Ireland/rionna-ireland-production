@@ -5,6 +5,8 @@ import { useEventCoverUpload } from "@admin/lib/event-cover-upload";
 import { getAdminPath } from "@admin/lib/links";
 import { useHydrateOnce } from "@admin/lib/use-hydrate-once";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { EVENT_TYPES, type EventTypeValue } from "@repo/api/modules/events/lib/event-types";
+import { Alert } from "@repo/ui/components/alert";
 import { Button } from "@repo/ui/components/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@repo/ui/components/card";
 import {
@@ -36,8 +38,6 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-
-import { EVENT_TYPES, type EventTypeValue } from "@repo/api/modules/events/lib/event-types";
 
 const LOCATION_TYPES = ["tbd", "virtual", "in_person"] as const;
 
@@ -372,7 +372,10 @@ export function EventForm({ eventId }: EventFormProps) {
 									render={({ field }) => (
 										<FormItem>
 											<FormLabel>{t("admin.events.form.type")}</FormLabel>
-											<Select value={field.value} onValueChange={field.onChange}>
+											<Select
+												value={field.value}
+												onValueChange={field.onChange}
+											>
 												<FormControl>
 													<SelectTrigger>
 														<SelectValue />
@@ -387,7 +390,7 @@ export function EventForm({ eventId }: EventFormProps) {
 												</SelectContent>
 											</Select>
 											{isEdit && field.value === "QA" && (
-												<p className="text-muted-foreground text-sm">
+												<p className="text-sm text-muted-foreground">
 													{existingEvent?.questionsPostId
 														? t("admin.events.form.questionsReady")
 														: t("admin.events.form.questionsPending")}
@@ -477,14 +480,14 @@ export function EventForm({ eventId }: EventFormProps) {
 								)}
 
 								{fallback && (
-									<div className="border-amber-300 bg-amber-50 p-4 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100 rounded-md border">
+									<Alert variant="warning">
 										<p className="font-medium">
 											{t("admin.events.fallback.title")}
 										</p>
 										<p className="mt-1 text-sm">
 											{t("admin.events.fallback.body")}
 										</p>
-									</div>
+									</Alert>
 								)}
 
 								<div className="flex justify-end">

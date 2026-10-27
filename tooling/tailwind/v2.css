@@ -1,0 +1,180 @@
+/* Design V2 shared tokens and utilities (S16-01 marketing, Task 12 saas). Imported after @repo/tailwind-config/theme.css by both apps. */
+/*
+ * S16-01 Design V2 (mirrors rionna-mobile global.css). Light only. Colour
+ * names give bg-ink, text-plum, etc.; the shadcn variables below are
+ * remapped here (shared by marketing and saas), not in theme.css.
+ */
+@theme {
+	--color-ink: #172741;
+	--color-ink-variant: #4e5a74;
+	--color-ink-muted: #78839c;
+	--color-label: #374b6c;
+	--color-paper: #fbfaf7;
+	--color-cream: #eeeadf;
+	--color-lilac: #cca1d0;
+	--color-lilac-light: #f2d6f4;
+	--color-plum: #3a243c;
+	--color-plum-mid: #57385a;
+	--color-navy-deep: #0f1b30;
+	--color-ice: #b9d8e1;
+	--color-ice-light: #daedf3;
+	--color-sage: #d4dcce;
+	--color-forest: #043f29;
+	--color-surface-container: #f1eee7;
+	--color-outline: #1727411f;
+}
+
+@layer base {
+	:root {
+		--background: #fbfaf7;
+		--foreground: #172741;
+		--card: #ffffff;
+		--card-foreground: #172741;
+		--popover: #ffffff;
+		--popover-foreground: #172741;
+		--primary: #172741;
+		--primary-foreground: #ffffff;
+		--secondary: #eeeadf;
+		--secondary-foreground: #172741;
+		--muted: #eeeadf;
+		--muted-foreground: #4e5a74;
+		--accent: #f2d6f4;
+		--accent-foreground: #3a243c;
+		--border: #1727411f;
+		--input: #1727411f;
+		--ring: #172741;
+		--radius: 0.5rem;
+	}
+}
+
+@utility bg-page {
+	background-color: #fbfaf7;
+	background-image: linear-gradient(to bottom, #eeeadf 0%, rgb(204 161 208 / 0.1) 100%);
+}
+
+@utility bg-page-ice {
+	background-color: #fbfaf7;
+	background-image: linear-gradient(to bottom, #eeeadf 0%, rgb(185 216 225 / 0.15) 100%);
+}
+
+@utility bg-welcome-navy {
+	background-color: #172741;
+	background-image: linear-gradient(to bottom, #0f1b30 0%, #172741 60%, #374b6c 100%);
+}
+
+@utility bg-card-plum-glow {
+	background-image: radial-gradient(
+		ellipse farthest-side at center,
+		#57385a 0%,
+		rgb(87 56 90 / 0.9) 49%,
+		rgb(87 56 90 / 0) 100%
+	);
+}
+
+@utility bg-card-sage-glow {
+	background-image: radial-gradient(
+		ellipse farthest-side at center,
+		#d4dcce 0%,
+		rgb(212 220 206 / 0.9) 49%,
+		rgb(212 220 206 / 0.75) 82%,
+		rgb(212 220 206 / 0) 100%
+	);
+}
+
+@utility bg-photo-scrim {
+	background-image: linear-gradient(
+		to bottom,
+		rgb(15 27 48 / 0.7) 0%,
+		rgb(15 27 48 / 0.35) 35%,
+		rgb(15 27 48 / 0.1) 60%,
+		rgb(15 27 48 / 0.8) 100%
+	);
+}
+
+@utility type-display-xl {
+	font-family: var(--font-display);
+	font-weight: 500;
+	letter-spacing: -0.01em;
+	font-size: 44px;
+	line-height: 46px;
+	@media (min-width: 768px) {
+		font-size: 60px;
+		line-height: 64px;
+	}
+}
+
+@utility type-display-lg {
+	font-family: var(--font-display);
+	font-weight: 500;
+	letter-spacing: -0.01em;
+	font-size: 34px;
+	line-height: 38px;
+	@media (min-width: 768px) {
+		font-size: 44px;
+		line-height: 48px;
+	}
+}
+
+@utility type-display-md {
+	font-family: var(--font-display);
+	font-weight: 500;
+	letter-spacing: -0.01em;
+	font-size: 26px;
+	line-height: 30px;
+	@media (min-width: 768px) {
+		font-size: 32px;
+		line-height: 36px;
+	}
+}
+
+@utility type-label {
+	font-family: var(--font-mono);
+	text-transform: uppercase;
+	letter-spacing: 0.16em;
+	font-size: 11px;
+	font-weight: 500;
+}
+
+/*
+ * S16-02 A1 motion tokens. Values come from the waitlist; .pc-* and .wl-*
+ * below use them with unchanged values.
+ */
+@layer base {
+	:root {
+		--ease-out-editorial: cubic-bezier(0.22, 1, 0.36, 1);
+		--ease-out-press: cubic-bezier(0.16, 1, 0.3, 1);
+		--dur-press: 120ms;
+		--dur-hover: 300ms;
+		--dur-reveal: 700ms;
+		--dur-rise: 1200ms;
+		--dur-deal: 1400ms;
+		--dur-mark: 1800ms;
+		--dur-unmask: 900ms;
+		--dur-loop-bob: 9s;
+		--dur-loop-turn: 7s;
+		--dur-loop-swap: 8s;
+		--step-deal: 90ms;
+		--step-rise: 80ms;
+	}
+}
+
+/* Layered so `transition-*` utilities on the same element win. */
+@layer components {
+	.press {
+		transition:
+			transform var(--dur-press) var(--ease-out-press),
+			background-color var(--dur-hover) var(--ease-out-press),
+			border-color var(--dur-hover) var(--ease-out-press),
+			color var(--dur-hover) var(--ease-out-press);
+	}
+
+	.press:active {
+		transform: scale(0.98);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.press {
+			transition: none;
+		}
+	}
+}

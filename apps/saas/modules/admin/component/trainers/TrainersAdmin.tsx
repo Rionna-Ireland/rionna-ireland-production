@@ -20,6 +20,7 @@ import {
 	TableRow,
 } from "@repo/ui/components/table";
 import { toastError, toastSuccess } from "@repo/ui/components/toast";
+import { PageHeader } from "@shared/components/PageHeader";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
@@ -134,13 +135,14 @@ export function TrainersAdmin() {
 	const trainers = trainersQuery.data ?? [];
 
 	return (
-		<div className="flex flex-col gap-4">
-			<div>
-				<h2 className="text-lg font-semibold">{t("admin.trainers.title")}</h2>
-				<p className="text-sm text-muted-foreground">{t("admin.trainers.subtitle")}</p>
-			</div>
+		<div className="gap-4 flex flex-col">
+			<PageHeader
+				title={t("admin.trainers.title")}
+				subtitle={t("admin.trainers.subtitle")}
+				className="mb-0"
+			/>
 			{trainersQuery.isLoading || rosterQuery.isLoading ? (
-				<div className="flex justify-center py-12">
+				<div className="py-12 flex justify-center">
 					<Spinner className="size-5" />
 				</div>
 			) : trainers.length === 0 ? (

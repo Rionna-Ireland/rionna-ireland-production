@@ -2,7 +2,8 @@
 	"contact": {
 		"eyebrow": "Get in touch",
 		"title": "Say hello",
-		"description": "Questions about membership, the app, or what life inside the club is really like? We're here. Drop us a line and we'll get back to you.",
+		"hello": "Say hello.",
+		"description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore. Ut enim ad minim veniam, quis nostrud exercitation.",
 		"emailLabel": "Email",
 		"phoneLabel": "Phone",
 		"addressLabel": "Address",
@@ -12,157 +13,221 @@
 			"name": "Name",
 			"notifications": {
 				"error": "We couldn't send your message. Please try again in a moment.",
-				"success": "Thanks — your message is on its way. We'll be back to you soon."
+				"success": "Thanks, your message is on its way. We'll be back to you soon."
 			},
 			"submit": "Send message"
+		},
+		"meta": {
+			"title": "Contact",
+			"description": "Questions about Rionna? Get in touch and we will get back to you."
 		}
 	},
 	"about": {
 		"eyebrow": "About Rionna",
-		"title": "Opening the gates to a different kind of ownership.",
-		"description": "A modern, community-driven shared racehorse ownership club.",
-		"fallbackAbout": "Rionna is a shared racehorse ownership club built for a new generation of owners. We care as much about the horses as we do about the people following their journey — members who come from every corner of the racing world (and plenty who are brand new to it).\n\nWe believe ownership should feel personal, connected, and joyful. That the finish line isn't the only moment worth celebrating. That the sport gets better when it makes room for more voices.\n\nThis is the club we wanted to be part of. We hope you'll join us.",
+		"title": "Lorem ipsum dolor sit amet.",
+		"description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit sed do.",
+		"intro": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+		"fallbackBeats": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.\n\nVoluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.\n\nSed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis.\n\nNemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt.\n\nNeque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore.",
+		"fallbackAbout": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat, duis aute irure dolor in reprehenderit.\n\nVoluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus error sit voluptatem.\n\nNemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet.",
 		"values": {
 			"openGates": {
 				"eyebrow": "Open the gates",
-				"title": "Room for more voices.",
-				"description": "Ownership has never been more accessible. We're breaking down the cultural, financial, and emotional barriers that kept racing feeling closed off."
+				"title": "Lorem ipsum dolor.",
+				"description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua, ut enim ad minim veniam quis."
 			},
 			"leadWithCare": {
 				"eyebrow": "Lead with care",
-				"title": "Horse first, always.",
-				"description": "Welfare is the baseline — from the yard through retirement — and the same care shapes how we look after our members."
+				"title": "Consectetur adipiscing elit.",
+				"description": "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur, excepteur sint occaecat cupidatat."
 			},
 			"findJoy": {
 				"eyebrow": "Find the joy in it",
-				"title": "Share the moments.",
-				"description": "Parade ring nerves, the roar in the stands, a winner in the yard at dawn. Ownership is the excuse — the shared moments are the point."
+				"title": "Sed do eiusmod.",
+				"description": "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip. Ex ea commodo consequat, duis aute irure dolor in reprehenderit."
 			}
 		},
-		"cta": "Become a member"
+		"cta": "Become a member",
+		"chapters": {
+			"story": "Our story",
+			"why": "Why we exist",
+			"club": "The club",
+			"people": "The people",
+			"believe": "What we believe"
+		},
+		"caption": "Lorem ipsum dolor sit amet, consectetur adipiscing.",
+		"close": {
+			"eyebrow": "Join us",
+			"title": "Open the gates"
+		},
+		"storyLabel": "Our story",
+		"peopleLabel": "The people",
+		"meta": {
+			"title": "About",
+			"description": "Rionna is a racing club for a new generation. Meet the people and the ideas behind it."
+		}
 	},
 	"membership": {
 		"eyebrow": "Membership",
-		"title": "Join the club.",
-		"description": "One membership. All the horses, all the races, the community, the moments. No tiers, no small print, cancel any time.",
+		"title": "Lorem ipsum dolor.",
+		"description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor, ut labore et dolore magna aliqua enim.",
 		"plan": {
 			"title": "Full membership",
 			"price": "€45",
 			"interval": "per month",
-			"priceNote": "Billed monthly. Cancel any time from your account.",
+			"priceNote": "Lorem ipsum dolor sit amet, consectetur adipiscing elit sed.",
 			"features": {
-				"stables": "Track every horse in the stable — bios, photos, trainer notes",
-				"liveRaceData": "Live entries, declarations, and results powered by Timeform",
-				"community": "Private members' community — posts, polls, trainer Q&A, events",
-				"pushAlerts": "Real-time push alerts when horses are declared or run",
-				"trainerUpdates": "Trainer updates straight from the yard",
-				"exclusiveNews": "Members-only news, interviews, and behind-the-scenes content"
+				"stables": "Lorem ipsum dolor sit amet, consectetur adipiscing elit sed do",
+				"liveRaceData": "Sed do eiusmod tempor incididunt ut labore et dolore magna",
+				"community": "Ut enim ad minim veniam, quis nostrud exercitation ullamco",
+				"pushAlerts": "Duis aute irure dolor in reprehenderit in voluptate",
+				"trainerUpdates": "Excepteur sint occaecat cupidatat non proident",
+				"exclusiveNews": "Sunt in culpa qui officia deserunt mollit anim id est"
 			},
 			"cta": "Join now"
 		},
 		"faq": {
-			"title": "Questions?",
+			"title": "Lorem ipsum?",
 			"items": {
 				"whatIncluded": {
-					"question": "What's included with a membership?",
-					"answer": "Everything. Access to the mobile app (Stables, Pulse, Community), real-time push alerts, members-only news, and the full Circle community. No tiered plans to navigate."
+					"question": "Lorem ipsum dolor sit amet consectetur?",
+					"answer": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation."
 				},
 				"howToCancel": {
-					"question": "How do I cancel?",
-					"answer": "From the website account page — one click, no calls, no forms. Your membership stays active until the end of the billing period."
+					"question": "Sed do eiusmod tempor?",
+					"answer": "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident."
 				},
 				"tierChanges": {
-					"question": "Are there different membership tiers?",
-					"answer": "Not for now. One flat membership for everyone, which keeps the community simple and the ownership experience consistent."
+					"question": "Ut enim ad minim veniam quis?",
+					"answer": "Sunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque."
 				},
 				"appSupport": {
-					"question": "Which devices does the app work on?",
-					"answer": "iOS and Android, from the App Store and Play Store. Billing stays on the website — nothing goes through Apple or Google."
+					"question": "Nemo enim ipsam voluptatem?",
+					"answer": "Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt."
 				}
 			}
 		},
 		"wireframe": {
 			"badge": "Preview build",
 			"cta": "Join now"
+		},
+		"meta": {
+			"title": "Membership",
+			"description": "One flat membership for the whole club. See what is included and how to join."
 		}
 	},
 	"news": {
-		"eyebrow": "News",
-		"title": "The latest from the yard.",
-		"description": "Race previews, results, interviews, and stories from the stable.",
-		"empty": "No posts yet — check back soon.",
+		"description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor.",
+		"empty": "No posts yet. Check back soon.",
 		"back": "Back to news",
 		"byline": "By {name}",
-		"share": "Share"
+		"share": "Share",
+		"appCta": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore.",
+		"meta": {
+			"title": "News",
+			"description": "Race previews, results and stories from the yard."
+		},
+		"joinCta": "Join Rionna",
+		"heading": "News",
+		"read": "Read",
+		"excerpt": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor."
 	},
 	"events": {
 		"eyebrow": "Club calendar",
 		"title": "Events",
-		"description": "Race days, stable visits and member gatherings — see what's coming up at Rionna.",
-		"empty": "No upcoming events right now — check back soon.",
-		"membersOnly": "Members' event — join to see the details.",
-		"joinCta": "Join to RSVP"
+		"description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt.",
+		"empty": "No upcoming events right now. Check back soon.",
+		"membersOnly": "Members' event. Join to see the details.",
+		"joinCta": "Join to RSVP",
+		"rsvpNote": "Members RSVP in the app.",
+		"meta": {
+			"title": "Events",
+			"description": "Race days, stable visits and member gatherings at Rionna."
+		}
 	},
 	"home": {
+		"arrival": {
+			"tagline": "Open the gates"
+		},
 		"hero": {
-			"eyebrow": "Modern shared racehorse ownership",
-			"title": "Open the gates. Own the moments.",
-			"subtitle": "A modern racehorse ownership club built around a stable full of Flat and National Hunt horses — and a community of people who love being close to the action.",
+			"eyebrow": "Lorem ipsum dolor sit amet",
+			"title": "Open the gates",
+			"subtitle": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua, ut enim ad minim veniam quis nostrud.",
 			"joinCta": "Become a member",
 			"learnMoreCta": "Learn more",
+			"horsesCta": "Meet the horses",
+			"nextEvent": "Next event",
+			"allEvents": "See all events",
 			"membersNote": "Already a member?",
 			"signInLink": "Sign in"
 		},
 		"horses": {
 			"eyebrow": "Our stable",
-			"title": "Meet the horses.",
-			"description": "Every member follows every horse — from the yard, through the race, to the post-run debrief.",
+			"title": "Lorem ipsum dolor.",
+			"description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore.",
 			"trainerLabel": "Trained by {name}",
 			"ctaMembership": "See the full stable"
 		},
 		"features": {
 			"eyebrow": "Inside the club",
-			"title": "Everything members get.",
-			"description": "Ownership, made present. The tools and the moments that make it feel live.",
+			"title": "Lorem ipsum dolor sit.",
+			"description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit sed do eiusmod.",
 			"stables": {
-				"title": "Our Stables",
-				"description": "Photos, bios, trainer updates, race history — the full profile of every horse in the club, always up to date."
+				"title": "Lorem ipsum",
+				"description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
 			},
 			"pulse": {
-				"title": "Pulse dashboard",
-				"description": "What's next, what just happened. Declarations, results, and the latest news in one place when you open the app."
+				"title": "Dolor sit amet",
+				"description": "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat duis aute."
 			},
 			"community": {
-				"title": "Members' community",
-				"description": "Private discussion for every horse, trainer Q&A, events, and the conversations you'd only get sitting together at the track."
+				"title": "Consectetur elit",
+				"description": "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur, excepteur sint occaecat cupidatat."
 			},
 			"alerts": {
-				"title": "Real-time alerts",
-				"description": "Push notifications the moment a horse is declared, a result is in, or a trainer drops an update."
+				"title": "Sed do eiusmod",
+				"description": "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
 			}
 		},
 		"news": {
 			"eyebrow": "Latest news",
-			"title": "From the yard.",
+			"title": "Lorem ipsum dolor.",
 			"viewAll": "View all"
+		},
+		"whyJoin": {
+			"eyebrow": "Why join"
+		},
+		"aboutTeaser": {
+			"eyebrow": "About Rionna",
+			"more": "More about us"
 		},
 		"finalCta": {
 			"eyebrow": "Join the club",
-			"title": "Ownership, made personal.",
-			"description": "One flat membership. All the horses, all the races, all the moments.",
+			"title": "Lorem ipsum dolor sit.",
+			"description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit sed do eiusmod tempor.",
 			"cta": "Become a member"
 		}
 	},
+	"legal": {
+		"lastUpdated": "Last updated",
+		"toc": "On this page"
+	},
 	"notFound": {
 		"code": "404",
-		"title": "Page not found",
+		"title": "Off the course.",
 		"goToDashboard": "Go to dashboard",
 		"goToHomepage": "Go to homepage"
 	},
 	"common": {
+		"consent": {
+			"message": "We use essential cookies to keep the site running and optional ones to help us make it better. You can change your mind any time.",
+			"decline": "Decline",
+			"allow": "Allow"
+		},
 		"footer": {
-			"tagline": "A modern shared racehorse ownership club. Open the gates. Own the moments.",
-			"explore": "Explore",
+			"tagline": "A racing club for a new generation. Open the gates.",
+			"club": "Club",
+			"membership": "Membership",
+			"ourHorses": "Our horses",
 			"legal": "Legal",
 			"privacyPolicy": "Privacy policy",
 			"termsAndConditions": "Terms and conditions",
@@ -171,12 +236,16 @@
 		},
 		"menu": {
 			"about": "About",
+			"horses": "Horses",
 			"membership": "Membership",
 			"news": "News",
 			"events": "Events",
 			"contact": "Contact",
 			"login": "Sign in",
-			"join": "Join"
+			"join": "Join",
+			"becomeMember": "Become a member",
+			"theApp": "The app",
+			"app": "App"
 		},
 		"aria": {
 			"menu": "Menu",
@@ -195,7 +264,7 @@
 		"joinCta": "Join the waitlist",
 		"meta": {
 			"title": "Join the waitlist",
-			"description": "Rionna is a shared racehorse ownership club. Leave your details and we'll email you when the app launches."
+			"description": "Rionna is a racing club for a new generation. Leave your details and we'll email you when the app launches."
 		},
 		"eyebrow": "Rionna · Coming soon",
 		"headline": "Be first <em>through the gate</em>.",
@@ -238,5 +307,63 @@
 			"error": "Something went wrong. Please try again.",
 			"rejoin": "Join the waitlist again"
 		}
+	},
+	"appPage": {
+		"meta": {
+			"title": "The app",
+			"description": "The Rionna app puts your club in your pocket: horses, events, community and the paddock in one place."
+		},
+		"hero": {
+			"eyebrow": "The Rionna app",
+			"title": "Lorem ipsum dolor sit amet.",
+			"subtitle": "Lorem ipsum dolor sit amet, consectetur adipiscing elit sed do eiusmod."
+		},
+		"badges": {
+			"ios": "Download on the App Store",
+			"android": "Get it on Google Play",
+			"comingSoon": "COMING SOON"
+		},
+		"features": {
+			"stables": {
+				"label": "Stables",
+				"title": "Lorem ipsum dolor sit.",
+				"body": "Lorem ipsum dolor sit amet, consectetur adipiscing elit sed do eiusmod tempor."
+			},
+			"community": {
+				"label": "Community",
+				"title": "Consectetur adipiscing elit.",
+				"body": "Lorem ipsum dolor sit amet, consectetur adipiscing elit sed do eiusmod tempor."
+			},
+			"events": {
+				"label": "Events",
+				"title": "Sed do eiusmod tempor.",
+				"body": "Lorem ipsum dolor sit amet, consectetur adipiscing elit sed do eiusmod tempor."
+			},
+			"paddock": {
+				"label": "The Paddock",
+				"title": "Ut enim ad minim veniam.",
+				"body": "Lorem ipsum dolor sit amet, consectetur adipiscing elit sed do eiusmod tempor."
+			}
+		},
+		"screens": {
+			"home": "Rionna app home screen",
+			"stables": "Rionna app stables screen",
+			"horseDetail": "Rionna app horse detail screen",
+			"events": "Rionna app events screen",
+			"communityFeed": "Rionna app community feed",
+			"paddock": "Rionna app paddock screen",
+			"paddockCharity": "Rionna app paddock charity screen"
+		},
+		"closing": {
+			"eyebrow": "Join the club",
+			"title": "Lorem ipsum dolor sit.",
+			"cta": "Become a member"
+		}
+	},
+	"preview": {
+		"title": "Preview the new site",
+		"password": "Password",
+		"submit": "Enter",
+		"error": "That password didn't work. Try again."
 	}
 }

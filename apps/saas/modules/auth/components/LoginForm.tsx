@@ -91,8 +91,8 @@ export function LoginForm() {
 
 	return (
 		<div>
-			<h1 className="font-bold text-xl md:text-2xl">{t("auth.login.title")}</h1>
-			<p className="mt-1 mb-6 text-foreground/60">{t("auth.login.subtitle")}</p>
+			<h1 className="type-display-md">{t("auth.login.title")}</h1>
+			<p className="mt-1 mb-6 text-ink-variant">{t("auth.login.subtitle")}</p>
 
 			{invitationId && <OrganizationInvitationAlert className="mb-6" />}
 
@@ -171,9 +171,7 @@ export function LoginForm() {
 
 			{authConfig.enableSignup && (
 				<div className="mt-6 text-sm text-center">
-					<span className="text-foreground/60">
-						{t("auth.login.dontHaveAnAccount")}{" "}
-					</span>
+					<span className="text-foreground/60">{t("auth.login.dontHaveAnAccount")} </span>
 					<Link href={withQuery("/signup", Object.fromEntries(searchParams.entries()))}>
 						{t("auth.login.createAnAccount")}
 						<ArrowRightIcon className="ml-1 size-4 inline align-middle" />

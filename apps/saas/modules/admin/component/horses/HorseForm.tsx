@@ -35,9 +35,9 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { HorseWellbeingCard } from "./HorseWellbeingCard";
 import { PhotoGallery } from "./PhotoGallery";
 import { ProviderHorseSearch } from "./ProviderHorseSearch";
-import { HorseWellbeingCard } from "./HorseWellbeingCard";
 import { ResultsFieldSize } from "./ResultsFieldSize";
 import { TrainerLocationField } from "./TrainerLocationField";
 import { TrainerModal } from "./TrainerModal";
@@ -367,14 +367,14 @@ export function HorseForm({ horseId }: HorseFormProps) {
 		const hoursSinceSync = (Date.now() - lastSync.getTime()) / (1000 * 60 * 60);
 		if (hoursSinceSync < 24) {
 			return (
-				<span className="gap-1 text-sm text-green-600 flex items-center">
+				<span className="gap-1 text-sm text-forest flex items-center">
 					<CircleIcon className="size-2 fill-current" />
 					{t("admin.horses.form.syncStatusLinked")}
 				</span>
 			);
 		}
 		return (
-			<span className="gap-1 text-sm text-amber-600 flex items-center">
+			<span className="gap-1 text-sm text-plum flex items-center">
 				<CircleIcon className="size-2 fill-current" />
 				{t("admin.horses.form.syncStatusStale")}
 			</span>
@@ -398,7 +398,7 @@ export function HorseForm({ horseId }: HorseFormProps) {
 		if (!isEdit) return null;
 		if (horse?.circleSpaceId) {
 			return (
-				<span className="gap-1 text-sm text-green-600 flex items-center">
+				<span className="gap-1 text-sm text-forest flex items-center">
 					<CircleIcon className="size-2 fill-current" />
 					{t("admin.horses.form.circleSpace.active")}
 				</span>
@@ -406,7 +406,7 @@ export function HorseForm({ horseId }: HorseFormProps) {
 		}
 		if (horse?.circleSpaceStatus === "provisioning_failed") {
 			return (
-				<div className="gap-2 text-sm text-amber-600 flex items-center">
+				<div className="gap-2 text-sm text-plum flex items-center">
 					<CircleIcon className="size-2 fill-current" />
 					{t("admin.horses.form.circleSpace.failed")}
 					<Button
@@ -763,7 +763,9 @@ export function HorseForm({ horseId }: HorseFormProps) {
 
 							{/* S13-10: Horse facts (profile line, foaled) */}
 							<div>
-								<h3 className="mb-1 font-medium">{t("admin.horses.facts.title")}</h3>
+								<h3 className="mb-1 font-medium">
+									{t("admin.horses.facts.title")}
+								</h3>
 								<p className="mb-3 text-sm text-muted-foreground">
 									{t("admin.horses.facts.hint")}
 								</p>
@@ -773,7 +775,9 @@ export function HorseForm({ horseId }: HorseFormProps) {
 										name="colour"
 										render={({ field }) => (
 											<FormItem>
-												<FormLabel>{t("admin.horses.facts.colour")}</FormLabel>
+												<FormLabel>
+													{t("admin.horses.facts.colour")}
+												</FormLabel>
 												<FormControl>
 													<Input list="horse-colour-options" {...field} />
 												</FormControl>
@@ -798,7 +802,9 @@ export function HorseForm({ horseId }: HorseFormProps) {
 												<Select
 													value={field.value || "none"}
 													onValueChange={(value) =>
-														field.onChange(value === "none" ? "" : value)
+														field.onChange(
+															value === "none" ? "" : value,
+														)
 													}
 												>
 													<FormControl>
@@ -808,13 +814,21 @@ export function HorseForm({ horseId }: HorseFormProps) {
 													</FormControl>
 													<SelectContent>
 														<SelectItem value="none">-</SelectItem>
-														{(["FILLY", "COLT", "MARE", "GELDING", "STALLION"] as const).map(
-															(sex) => (
-																<SelectItem key={sex} value={sex}>
-																	{t(`admin.horses.facts.sexes.${sex}`)}
-																</SelectItem>
-															),
-														)}
+														{(
+															[
+																"FILLY",
+																"COLT",
+																"MARE",
+																"GELDING",
+																"STALLION",
+															] as const
+														).map((sex) => (
+															<SelectItem key={sex} value={sex}>
+																{t(
+																	`admin.horses.facts.sexes.${sex}`,
+																)}
+															</SelectItem>
+														))}
 													</SelectContent>
 												</Select>
 												<FormDescription>
@@ -829,7 +843,9 @@ export function HorseForm({ horseId }: HorseFormProps) {
 										name="foaledOn"
 										render={({ field }) => (
 											<FormItem>
-												<FormLabel>{t("admin.horses.facts.foaledOn")}</FormLabel>
+												<FormLabel>
+													{t("admin.horses.facts.foaledOn")}
+												</FormLabel>
 												<FormControl>
 													<Input type="date" {...field} />
 												</FormControl>
@@ -845,7 +861,9 @@ export function HorseForm({ horseId }: HorseFormProps) {
 										name="foaledPlace"
 										render={({ field }) => (
 											<FormItem>
-												<FormLabel>{t("admin.horses.facts.foaledPlace")}</FormLabel>
+												<FormLabel>
+													{t("admin.horses.facts.foaledPlace")}
+												</FormLabel>
 												<FormControl>
 													<Input placeholder="Co. Meath" {...field} />
 												</FormControl>
@@ -961,7 +979,9 @@ export function HorseForm({ horseId }: HorseFormProps) {
 				</CardContent>
 			</Card>
 
-			{isEdit && horseId && <HorseWellbeingCard horseId={horseId} wellbeing={horse?.wellbeing ?? null} />}
+			{isEdit && horseId && (
+				<HorseWellbeingCard horseId={horseId} wellbeing={horse?.wellbeing ?? null} />
+			)}
 
 			{isEdit && horseId && <ResultsFieldSize horseId={horseId} />}
 

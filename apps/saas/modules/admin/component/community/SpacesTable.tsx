@@ -1,6 +1,7 @@
 "use client";
 
 import { useAdminOrganization } from "@admin/hooks/use-admin-organization";
+import { Alert } from "@repo/ui/components/alert";
 import { Badge } from "@repo/ui/components/badge";
 import { Card } from "@repo/ui/components/card";
 import { Spinner } from "@repo/ui/components/spinner";
@@ -134,7 +135,7 @@ export function SpacesTable() {
 	if (isLoading) {
 		return (
 			<Card className="p-6">
-				<div className="flex items-center justify-center py-12">
+				<div className="py-12 flex items-center justify-center">
 					<Spinner className="mr-2 size-4 text-primary" />
 					{t("admin.community.loading")}
 				</div>
@@ -147,9 +148,9 @@ export function SpacesTable() {
 			<h3 className="mb-4 font-semibold text-lg">{t("admin.community.spaces.title")}</h3>
 
 			{data && !data.circleReachable && (
-				<div className="mb-4 rounded-md border border-amber-300 bg-amber-50 p-3 text-amber-900 text-sm">
+				<Alert variant="warning" className="mb-4 text-sm p-3">
 					{t("admin.community.circleUnavailable")}
-				</div>
+				</Alert>
 			)}
 
 			<div className="rounded-md border">
@@ -159,7 +160,9 @@ export function SpacesTable() {
 							<TableHead>{t("admin.community.spaces.columns.name")}</TableHead>
 							<TableHead>{t("admin.community.spaces.columns.group")}</TableHead>
 							<TableHead>{t("admin.community.spaces.columns.horse")}</TableHead>
-							<TableHead>{t("admin.community.spaces.columns.memberPosting")}</TableHead>
+							<TableHead>
+								{t("admin.community.spaces.columns.memberPosting")}
+							</TableHead>
 							<TableHead>{t("admin.community.spaces.columns.showChip")}</TableHead>
 							<TableHead>{t("admin.community.spaces.columns.autoJoin")}</TableHead>
 						</TableRow>
@@ -184,8 +187,12 @@ export function SpacesTable() {
 												setSettings.isPending &&
 												setSettings.variables?.spaceId === space.id
 											}
-											onCheckedChange={(checked) => onToggle(space.id, checked)}
-											aria-label={t("admin.community.spaces.columns.memberPosting")}
+											onCheckedChange={(checked) =>
+												onToggle(space.id, checked)
+											}
+											aria-label={t(
+												"admin.community.spaces.columns.memberPosting",
+											)}
 										/>
 									</TableCell>
 									<TableCell className="py-2">
@@ -198,8 +205,12 @@ export function SpacesTable() {
 													setSettings.isPending &&
 													setSettings.variables?.spaceId === space.id
 												}
-												onCheckedChange={(checked) => onToggleChip(space.id, checked)}
-												aria-label={t("admin.community.spaces.columns.showChip")}
+												onCheckedChange={(checked) =>
+													onToggleChip(space.id, checked)
+												}
+												aria-label={t(
+													"admin.community.spaces.columns.showChip",
+												)}
 											/>
 										)}
 									</TableCell>
@@ -213,8 +224,12 @@ export function SpacesTable() {
 													setSettings.isPending &&
 													setSettings.variables?.spaceId === space.id
 												}
-												onCheckedChange={(checked) => onToggleAutoJoin(space.id, checked)}
-												aria-label={t("admin.community.spaces.columns.autoJoin")}
+												onCheckedChange={(checked) =>
+													onToggleAutoJoin(space.id, checked)
+												}
+												aria-label={t(
+													"admin.community.spaces.columns.autoJoin",
+												)}
 											/>
 										)}
 									</TableCell>

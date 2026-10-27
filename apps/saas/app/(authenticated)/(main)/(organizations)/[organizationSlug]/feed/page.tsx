@@ -1,7 +1,8 @@
 import { getActiveOrganization } from "@auth/lib/server";
-import { CircleFeedList } from "@member-hub/components/CircleFeedList";
+import { config } from "@config";
+import { CommunityFeed } from "@member-hub/components/community/CommunityFeed";
 import { getMemberFeed } from "@repo/api/modules/circle/procedures/get-member-feed";
-import { PageHeader } from "@shared/components/PageHeader";
+import { listFeedChips } from "@repo/api/modules/community/procedures/list-feed-chips";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 
@@ -14,7 +15,7 @@ export async function generateMetadata({
 }) {
 	const { organizationSlug } = await params;
 	const activeOrganization = await getActiveOrganization(organizationSlug);
-	return { title: activeOrganization ? `Feed · ${activeOrganization.name}` : "Feed" };
+	return { title: activeOrganization ? `Community · ${activeOrganization.name}` : "Community" };
 }
 
 export default async function MemberFeedPage({
@@ -28,34 +29,27 @@ export default async function MemberFeedPage({
 		return notFound();
 	}
 
-	const result = await getMemberFeed.callable({ context: { headers: await headers() } })({
-		organizationId: activeOrganization.id,
-		page: 1,
-		perPage: PER_PAGE,
-	});
+	const callable = { context: { headers: await headers() } };
+	const [initialFeed, initialChips] = await Promise.all([
+		getMemberFeed.callable(callable)({
+			organizationId: activeOrganization.id,
+			page: 1,
+			perPage: PER_PAGE,
+		}),
+		// Chips are optional chrome: a failure renders the feed without them.
+		listFeedChips
+			.callable(callable)({ organizationId: activeOrganization.id })
+			.catch(() => null),
+	]);
 
 	return (
-		<div>
-			<PageHeader title="Feed" />
-
-			{!result.ok ? (
-				<p className="text-muted-foreground">
-					We couldn't load your feed right now. Please try again shortly.
-				</p>
-			) : result.items.length === 0 ? (
-				<p className="text-muted-foreground">
-					Your feed is quiet right now — open the app for the latest.
-				</p>
-			) : (
-				<CircleFeedList
-					organizationId={activeOrganization.id}
-					basePath={`/${organizationSlug}`}
-					initialItems={result.items}
-					initialPage={result.page}
-					initialHasNextPage={result.hasNextPage}
-					perPage={PER_PAGE}
-				/>
-			)}
-		</div>
+		<CommunityFeed
+			organizationId={activeOrganization.id}
+			basePath={`/${organizationSlug}`}
+			perPage={PER_PAGE}
+			marketingUrl={config.marketingUrl}
+			initialFeed={initialFeed}
+			initialChips={initialChips}
+		/>
 	);
 }

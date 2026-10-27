@@ -1,18 +1,31 @@
 "use client";
 
 import { useAdminOrganization } from "@admin/hooks/use-admin-organization";
-import { orpc } from "@shared/lib/orpc-query-utils";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@repo/ui/components/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@repo/ui/components/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@repo/ui/components/table";
+import {
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from "@repo/ui/components/table";
 import { toastError, toastSuccess } from "@repo/ui/components/toast";
+import { PageHeader } from "@shared/components/PageHeader";
+import { orpc } from "@shared/lib/orpc-query-utils";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
+import {
+	type CharityFormValues,
+	formatEuro,
+	toCharityFormValues,
+	toCharityPayload,
+} from "./charity-form-values";
 import { CharityComputedCard } from "./CharityComputedCard";
 import { CharityForm } from "./CharityForm";
-import { type CharityFormValues, formatEuro, toCharityFormValues, toCharityPayload } from "./charity-form-values";
 
 function shownTotal(config: { manualOverrideCents: number | null }, computedTotalCents: number) {
 	return config.manualOverrideCents ?? computedTotalCents;
@@ -45,7 +58,10 @@ export function CharityPage() {
 	};
 	const onChange = async (values: CharityFormValues) => {
 		try {
-			const result = await change.mutateAsync({ organizationId, ...toCharityPayload(values) });
+			const result = await change.mutateAsync({
+				organizationId,
+				...toCharityPayload(values),
+			});
 			if (!result.ok) throw new Error("not ok");
 			await refresh();
 			setChanging(false);
@@ -56,13 +72,14 @@ export function CharityPage() {
 	};
 
 	if (!organizationId) return null;
-	if (isLoading || !data) return <div className="text-muted-foreground text-sm">{t("admin.charity.loading")}</div>;
+	if (isLoading || !data)
+		return <div className="text-sm text-muted-foreground">{t("admin.charity.loading")}</div>;
 
 	const { current, history, computed } = data;
 
 	return (
 		<div className="space-y-6">
-			<h1 className="text-2xl font-semibold">{t("admin.charity.title")}</h1>
+			<PageHeader title={t("admin.charity.title")} className="mb-0" />
 
 			{current && computed ? (
 				<CharityComputedCard
@@ -72,7 +89,7 @@ export function CharityPage() {
 					percentage={Number(current.percentage)}
 				/>
 			) : (
-				<p className="text-muted-foreground text-sm">{t("admin.charity.empty")}</p>
+				<p className="text-sm text-muted-foreground">{t("admin.charity.empty")}</p>
 			)}
 
 			{current && !changing ? (
@@ -91,7 +108,9 @@ export function CharityPage() {
 							<CardTitle>{t("admin.charity.current.changeTitle")}</CardTitle>
 						</CardHeader>
 						<CardContent className="space-y-3">
-							<p className="text-muted-foreground text-sm">{t("admin.charity.current.changeHelp")}</p>
+							<p className="text-sm text-muted-foreground">
+								{t("admin.charity.current.changeHelp")}
+							</p>
 							<Button variant="outline" onClick={() => setChanging(true)}>
 								{t("admin.charity.current.change")}
 							</Button>
@@ -101,8 +120,14 @@ export function CharityPage() {
 			) : (
 				<CharityForm
 					organizationId={organizationId}
-					title={current ? t("admin.charity.current.changeTitle") : t("admin.charity.current.title")}
-					submitLabel={current ? t("admin.charity.form.startNew") : t("admin.charity.form.save")}
+					title={
+						current
+							? t("admin.charity.current.changeTitle")
+							: t("admin.charity.current.title")
+					}
+					submitLabel={
+						current ? t("admin.charity.form.startNew") : t("admin.charity.form.save")
+					}
 					isPending={change.isPending || save.isPending}
 					onSubmit={current ? onChange : onSave}
 					onCancel={current ? () => setChanging(false) : undefined}
@@ -115,15 +140,23 @@ export function CharityPage() {
 				</CardHeader>
 				<CardContent>
 					{history.length === 0 ? (
-						<p className="text-muted-foreground text-sm">{t("admin.charity.history.empty")}</p>
+						<p className="text-sm text-muted-foreground">
+							{t("admin.charity.history.empty")}
+						</p>
 					) : (
 						<Table>
 							<TableHeader>
 								<TableRow>
 									<TableHead>{t("admin.charity.history.columns.name")}</TableHead>
-									<TableHead>{t("admin.charity.history.columns.period")}</TableHead>
-									<TableHead>{t("admin.charity.history.columns.percentage")}</TableHead>
-									<TableHead>{t("admin.charity.history.columns.total")}</TableHead>
+									<TableHead>
+										{t("admin.charity.history.columns.period")}
+									</TableHead>
+									<TableHead>
+										{t("admin.charity.history.columns.percentage")}
+									</TableHead>
+									<TableHead>
+										{t("admin.charity.history.columns.total")}
+									</TableHead>
 								</TableRow>
 							</TableHeader>
 							<TableBody>
@@ -132,11 +165,20 @@ export function CharityPage() {
 										<TableCell>{row.charityName}</TableCell>
 										<TableCell>
 											{new Date(row.startDate).toLocaleDateString()} –{" "}
-											{row.endedAt ? new Date(row.endedAt).toLocaleDateString() : ""}
+											{row.endedAt
+												? new Date(row.endedAt).toLocaleDateString()
+												: ""}
 										</TableCell>
 										<TableCell>{Number(row.percentage)}%</TableCell>
 										<TableCell>
-											{formatEuro(row.manualOverrideCents ?? Math.floor((row.stripeRevenueCents * Number(row.percentage)) / 100))}
+											{formatEuro(
+												row.manualOverrideCents ??
+													Math.floor(
+														(row.stripeRevenueCents *
+															Number(row.percentage)) /
+															100,
+													),
+											)}
 										</TableCell>
 									</TableRow>
 								))}

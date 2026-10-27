@@ -1,17 +1,26 @@
-import { LocaleLink } from "@i18n/routing";
-import { Button } from "@repo/ui/components/button";
+import { Close } from "@about/components/Close";
+import { GrowPhoto } from "@about/components/GrowPhoto";
+import { Opener } from "@about/components/Opener";
+import { People } from "@about/components/People";
+import { StoryBeats, composeBeats } from "@about/components/StoryBeats";
+import { Values } from "@about/components/Values";
+import { ChapterRail } from "@shared/components/motion/ChapterRail";
+import { chapterNumbering } from "@shared/components/motion/chapters";
 import { getClubOrganization } from "@shared/lib/club";
+import { getSiteJoinCta, getWebsiteContent } from "@shared/lib/website";
 import { redirectIfWireframeMode } from "@shared/lib/wireframe-mode";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 export async function generateMetadata(props: { params: Promise<{ locale: string }> }) {
 	const { locale } = await props.params;
-	const t = await getTranslations({ locale, namespace: "about" });
+	const t = await getTranslations({ locale, namespace: "about.meta" });
 	return {
 		title: t("title"),
 		description: t("description"),
 	};
 }
+
+const VALUE_KEYS = ["openGates", "leadWithCare", "findJoy"] as const;
 
 export default async function AboutPage(props: { params: Promise<{ locale: string }> }) {
 	const { locale } = await props.params;
@@ -19,43 +28,70 @@ export default async function AboutPage(props: { params: Promise<{ locale: strin
 	redirectIfWireframeMode(locale);
 
 	const t = await getTranslations({ locale, namespace: "about" });
-	const club = await getClubOrganization();
+	const [club, { content }, joinCta] = await Promise.all([
+		getClubOrganization(),
+		getWebsiteContent(),
+		getSiteJoinCta(),
+	]);
+	const { about } = content;
 
-	const aboutText = club.metadata.contact?.aboutText ?? t("fallbackAbout");
+	const rawAbout = club.metadata.contact?.aboutText;
+	const adminText = typeof rawAbout === "string" ? rawAbout.trim() : "";
+	const aboutText = composeBeats(adminText, t("fallbackBeats")).join("\n\n");
+
+	const chapters = chapterNumbering(about.founders.length > 0);
+	const label = (id: string) => t(`chapters.${id}` as "chapters.story");
+	const railChapters = [
+		...chapters.map((c) => ({ id: c.id, label: label(c.id) })),
+		{ id: "close", label: t("close.title") },
+	];
+	const ch = (id: string) => chapters.find((c) => c.id === id);
+	const [story, why, club_, people, believe] = ["story", "why", "club", "people", "believe"].map(
+		ch,
+	);
 
 	return (
-		<div className="container py-16 md:py-24">
-			<div className="max-w-3xl">
-				<span className="font-mono text-xs tracking-[0.22em] uppercase text-foreground/70">
-					{t("eyebrow")}
-				</span>
-				<h1 className="mt-4 font-display font-medium text-5xl md:text-6xl lg:text-7xl leading-tight">
-					{t("title")}
-				</h1>
-				<p className="mt-6 text-lg md:text-xl text-foreground/70 leading-relaxed whitespace-pre-line">
-					{aboutText}
-				</p>
-			</div>
-
-			<div className="mt-16 gap-6 md:grid-cols-3 grid">
-				{["openGates", "leadWithCare", "findJoy"].map((key) => (
-					<div key={key} className="rounded-3xl border p-8 bg-card">
-						<span className="font-mono text-[10px] tracking-[0.2em] uppercase text-foreground/60">
-							{t(`values.${key}.eyebrow`)}
-						</span>
-						<h3 className="mt-3 font-display font-medium text-2xl">
-							{t(`values.${key}.title`)}
-						</h3>
-						<p className="mt-3 text-foreground/70">{t(`values.${key}.description`)}</p>
-					</div>
-				))}
-			</div>
-
-			<div className="mt-16">
-				<Button size="lg" variant="primary" asChild>
-					<LocaleLink href="/membership">{t("cta")}</LocaleLink>
-				</Button>
-			</div>
+		<div className="bg-page">
+			<ChapterRail chapters={railChapters} />
+			{story && (
+				<Opener
+					label={label(story.id)}
+					index={story.index}
+					title={about.storyTitle ?? t("title")}
+					intro={t("intro")}
+					photoUrl={about.photoUrl}
+				/>
+			)}
+			{why && <StoryBeats text={aboutText} label={label(why.id)} index={why.index} />}
+			{club_ && (
+				<GrowPhoto
+					label={label(club_.id)}
+					index={club_.index}
+					caption={t("caption")}
+					photoUrl={about.photoUrl}
+				/>
+			)}
+			{people && (
+				<People founders={about.founders} label={label(people.id)} index={people.index} />
+			)}
+			{believe && (
+				<Values
+					label={label(believe.id)}
+					index={believe.index}
+					cards={VALUE_KEYS.map((key) => ({
+						key,
+						eyebrow: t(`values.${key}.eyebrow`),
+						title: t(`values.${key}.title`),
+						description: t(`values.${key}.description`),
+					}))}
+				/>
+			)}
+			<Close
+				eyebrow={t("close.eyebrow")}
+				title={t("close.title")}
+				ctaLabel={t("cta")}
+				joinCta={joinCta}
+			/>
 		</div>
 	);
 }

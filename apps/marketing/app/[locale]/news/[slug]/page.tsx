@@ -1,6 +1,13 @@
 import { LocaleLink } from "@i18n/routing";
+import { JoinCtaLink } from "@shared/components/JoinCtaLink";
+import { MaskedText } from "@shared/components/motion/MaskedText";
+import { PhotoUnmask } from "@shared/components/motion/PhotoUnmask";
+import { ReadingProgress } from "@shared/components/motion/ReadingProgress";
+import { Reveal } from "@shared/components/motion/Reveal";
+import { v2Button } from "@shared/components/ui/v2";
 import { getBaseUrl } from "@shared/lib/base-url";
 import { getClubNewsPostBySlug } from "@shared/lib/club";
+import { getSiteJoinCta } from "@shared/lib/website";
 import { redirectIfWireframeMode } from "@shared/lib/wireframe-mode";
 import { getLocale, getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
@@ -62,71 +69,100 @@ export default async function NewsDetailPage(props: { params: Promise<Params> })
 	const encodedUrl = encodeURIComponent(shareUrl);
 	const encodedTitle = encodeURIComponent(post.title);
 
-	return (
-		<article className="py-16 md:py-24">
-			<div className="container max-w-3xl">
-				<LocaleLink
-					href="/news"
-					className="font-mono text-xs tracking-[0.2em] uppercase text-foreground/60 hover:text-foreground"
-				>
-					&larr; {t("back")}
-				</LocaleLink>
+	const date = post.publishedAt
+		? new Intl.DateTimeFormat(activeLocale, {
+				day: "numeric",
+				month: "long",
+				year: "numeric",
+			}).format(new Date(post.publishedAt))
+		: "";
 
-				<header className="mt-8">
-					<span className="font-mono text-[10px] tracking-[0.2em] uppercase text-foreground/60">
-						{post.publishedAt
-							? new Intl.DateTimeFormat(activeLocale, {
-									day: "2-digit",
-									month: "long",
-									year: "numeric",
-								}).format(new Date(post.publishedAt))
-							: ""}
-					</span>
-					<h1 className="mt-3 font-display font-medium text-4xl md:text-5xl lg:text-6xl leading-tight text-balance">
-						{post.title}
-					</h1>
-					{post.subtitle && (
-						<p className="mt-4 text-xl text-foreground/70 leading-relaxed">
-							{post.subtitle}
-						</p>
-					)}
-					{post.author?.name && (
-						<p className="mt-6 font-mono text-xs tracking-[0.2em] uppercase text-foreground/60">
-							{t("byline", { name: post.author.name })}
-						</p>
-					)}
-				</header>
+	const tRoot = await getTranslations({ locale });
+	const joinCta = await getSiteJoinCta();
+
+	// One content column: title, byline, hero image and body all share this width.
+	const column = "max-w-4xl container";
+
+	return (
+		<article data-nav-tone="light" className="bg-page">
+			<ReadingProgress />
+			<div className="under-nav">
+				<div className={column}>
+					<Reveal immediate>
+						<LocaleLink
+							href="/news"
+							className="text-sm text-ink-variant hover:text-ink hover:no-underline"
+						>
+							&larr; {t("back")}
+						</LocaleLink>
+					</Reveal>
+
+					<header className="mt-8 gap-4 flex flex-col">
+						<Reveal immediate delayMs={100}>
+							<span className="type-label text-plum">{date}</span>
+						</Reveal>
+						<MaskedText
+							as="h1"
+							immediate
+							text={post.title}
+							className="type-display-xl text-balance"
+						/>
+						{post.subtitle && (
+							<Reveal immediate delayMs={400}>
+								<p className="text-xl text-ink-variant leading-relaxed">
+									{post.subtitle}
+								</p>
+							</Reveal>
+						)}
+						{post.author?.name && (
+							<Reveal immediate delayMs={500}>
+								<p className="type-label text-ink-muted">
+									{t("byline", { name: post.author.name })}
+								</p>
+							</Reveal>
+						)}
+					</header>
+				</div>
+
+				<div className={`${column} mt-10`}>
+					{post.featuredImageUrl ? (
+						<PhotoUnmask immediate direction="up" className="rounded-lg">
+							<div className="bg-ice relative aspect-[16/9] overflow-hidden rounded-lg">
+								{/* biome-ignore lint/a11y/useAltText: title as alt */}
+								<img
+									src={post.featuredImageUrl}
+									alt={post.title}
+									className="inset-0 absolute h-full w-full object-cover"
+								/>
+							</div>
+						</PhotoUnmask>
+					) : null}
+				</div>
 			</div>
 
-			{post.featuredImageUrl && (
-				<div className="container max-w-5xl mt-12">
-					<div className="aspect-[16/9] relative overflow-hidden rounded-3xl bg-[#DAEDF3]">
-						{/* biome-ignore lint/a11y/useAltText: title as alt */}
-						<img
-							src={post.featuredImageUrl}
-							alt={post.title}
-							className="absolute inset-0 h-full w-full object-cover"
-						/>
-					</div>
-				</div>
-			)}
-
-			<div className="container max-w-3xl mt-12">
+			<div className={`${column} mt-12`}>
 				<div
-					className="prose prose-neutral dark:prose-invert max-w-none prose-headings:font-display prose-headings:font-medium"
+					className={[
+						"article-body drop-cap prose max-w-none text-ink prose-p:text-ink prose-li:text-ink",
+						"prose-p:text-[17px] prose-p:leading-[1.75] lg:prose-p:text-[19px] lg:prose-p:leading-8",
+						"prose-li:text-[17px] lg:prose-li:text-[19px]",
+						"prose-headings:font-display prose-headings:font-medium prose-headings:text-ink",
+						"prose-a:text-plum prose-strong:text-ink prose-img:rounded-lg",
+						"prose-blockquote:py-1.5 prose-blockquote:pl-7",
+						"prose-blockquote:font-display prose-blockquote:font-light prose-blockquote:italic prose-blockquote:text-[34px] prose-blockquote:leading-[1.22] prose-blockquote:text-plum",
+						"[&_blockquote_p]:text-plum [&_blockquote_p]:before:content-none [&_blockquote_p]:after:content-none",
+					].join(" ")}
 					// biome-ignore lint/security/noDangerouslySetInnerHtml: sanitised by Novel on save
 					dangerouslySetInnerHTML={{ __html: post.contentHtml }}
 				/>
 
-				<div className="mt-16 pt-8 border-t gap-4 flex items-center flex-wrap">
-					<span className="font-mono text-xs tracking-[0.2em] uppercase text-foreground/60">
-						{t("share")}
-					</span>
+				<div className="mt-10 pt-6 border-outline gap-4 flex flex-wrap items-center border-t">
+					<span className="type-label text-ink-variant">{t("share")}</span>
 					<a
 						href={`https://twitter.com/intent/tweet?url=${encodedUrl}&text=${encodedTitle}`}
 						target="_blank"
 						rel="noreferrer"
-						className="text-sm underline underline-offset-4"
+						className="text-sm text-plum underline underline-offset-4"
 					>
 						Twitter
 					</a>
@@ -134,12 +170,26 @@ export default async function NewsDetailPage(props: { params: Promise<Params> })
 						href={`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`}
 						target="_blank"
 						rel="noreferrer"
-						className="text-sm underline underline-offset-4"
+						className="text-sm text-plum underline underline-offset-4"
 					>
 						Facebook
 					</a>
 				</div>
 			</div>
+
+			<section
+				data-nav-tone="dark"
+				className="grain bg-plum mt-16 md:mt-24 py-16 text-white md:py-24 relative isolate overflow-hidden"
+			>
+				<div className="gap-6 container flex flex-wrap items-center justify-between">
+					<Reveal as="p" className="type-display-lg max-w-xl text-balance">
+						{t("appCta")}
+					</Reveal>
+					<JoinCtaLink cta={joinCta} className={v2Button({ variant: "onDark" })}>
+						{joinCta.labelKey ? tRoot(joinCta.labelKey) : t("joinCta")}
+					</JoinCtaLink>
+				</div>
+			</section>
 		</article>
 	);
 }

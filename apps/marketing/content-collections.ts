@@ -65,6 +65,8 @@ const legalPages = defineCollection({
 		title: z.string(),
 		/** S12-10: legal copy version (terms.md must match CURRENT_TERMS_VERSION). */
 		version: z.string().optional(),
+		/** Shown as "Last updated" (mono) on the legal page. */
+		updated: z.string().optional(),
 		content: z.string(),
 	}),
 	transform: async (document, context) => {

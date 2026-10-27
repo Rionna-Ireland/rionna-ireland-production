@@ -12,13 +12,23 @@ export function isWaitlistOnly(signupOpen: boolean = isPublicSignupOpen()): bool
 /**
  * Routes that stay reachable in waitlist-only mode: the waitlist itself, the
  * shareable `/waitlist?src=…` and unsubscribe pages, and the legal pages the
- * consent checkbox links to (GDPR transparency).
+ * consent checkbox links to (GDPR transparency), plus the client preview login.
  */
-const WAITLIST_ONLY_ALLOWED = [/^\/$/, /^\/waitlist(?:\/unsubscribe)?\/?$/, /^\/legal\/.+/];
+const WAITLIST_ONLY_ALLOWED = [
+	/^\/$/,
+	/^\/waitlist(?:\/unsubscribe)?\/?$/,
+	/^\/legal\/.+/,
+	/^\/preview\/?$/,
+];
 
 /** `pathname` may carry a locale prefix (`/de/legal/terms`); it is stripped first. */
 export function isAllowedInWaitlistMode(pathname: string, locales: readonly string[]): boolean {
 	const [, first, ...rest] = pathname.split("/");
 	const path = first && locales.includes(first) ? `/${rest.join("/")}` : pathname;
 	return WAITLIST_ONLY_ALLOWED.some((pattern) => pattern.test(path));
+}
+
+/** Static media dirs under `public/`; gated with the pages, but never locale-rewritten. */
+export function isStaticMediaPath(pathname: string): boolean {
+	return /^\/(hero|patterns|app-screens|store-badges|media)\//.test(pathname);
 }

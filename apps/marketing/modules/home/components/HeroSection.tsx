@@ -1,52 +1,115 @@
-import { config } from "@config";
-import { LocaleLink } from "@i18n/routing";
-import { Button } from "@repo/ui/components/button";
+import { JoinCtaLink } from "@shared/components/JoinCtaLink";
+import { MaskedText } from "@shared/components/motion/MaskedText";
+import { PatternMosaic } from "@shared/components/pattern/PatternMosaic";
+import { v2Button } from "@shared/components/ui/v2";
+import { getClubEvents, type PublicClubEvent } from "@shared/lib/club";
+import { getSiteJoinCta, getWebsiteContent } from "@shared/lib/website";
 import { ArrowRightIcon } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { getTranslations } from "next-intl/server";
+import type { CSSProperties } from "react";
 
-export function HeroSection() {
-	const t = useTranslations("home.hero");
+import { heroWordStepMs } from "../lib/hero-timing";
+import { pickNextEvent } from "../lib/next-event";
+import { HeroEventCard } from "./HeroEventCard";
+import { HeroMedia } from "./HeroMedia";
+
+// shortcut: temporary hero clip until the club supplies footage; upload via Admin → Website → Hero video, then delete public/hero/
+const TEMP_HERO = { videoUrl: "/hero/temp-hero.mp4", imageUrl: "/hero/temp-hero.webp" };
+
+async function readNextEvent(): Promise<PublicClubEvent | null> {
+	try {
+		const { items } = await getClubEvents();
+		return pickNextEvent(items, new Date());
+	} catch {
+		return null;
+	}
+}
+
+export async function HeroSection() {
+	const [t, tRoot, { content, featuredHorses }, joinCta, nextEvent] = await Promise.all([
+		getTranslations("home.hero"),
+		getTranslations(),
+		getWebsiteContent(),
+		getSiteJoinCta(),
+		readNextEvent(),
+	]);
+	const { hero } = content;
+	const title = hero.title ?? t("title");
+	// Admin video (+poster) -> admin image alone -> temporary clip.
+	const media = hero.videoUrl
+		? { videoUrl: hero.videoUrl, imageUrl: hero.imageUrl }
+		: hero.imageUrl
+			? { videoUrl: undefined, imageUrl: hero.imageUrl }
+			: TEMP_HERO;
 
 	return (
-		<section className="relative overflow-hidden">
-			<div className="absolute -top-32 -left-32 size-[520px] rounded-full bg-[#F2D6F4] blur-3xl opacity-70 dark:opacity-30" />
-			<div className="absolute -bottom-32 -right-32 size-[460px] rounded-full bg-[#DAEDF3] blur-3xl opacity-70 dark:opacity-30" />
-
-			<div className="container relative z-10 py-20 md:py-28 lg:py-36">
-				<div className="max-w-4xl">
-					<span className="font-mono text-xs tracking-[0.22em] uppercase text-foreground/70">
-						{t("eyebrow")}
-					</span>
-					<h1 className="mt-6 font-display font-medium text-5xl md:text-6xl lg:text-7xl xl:text-8xl leading-[0.95] text-foreground text-balance">
-						{t("title")}
-					</h1>
-					<p className="mt-6 max-w-2xl text-lg md:text-xl text-foreground/70 leading-relaxed">
-						{t("subtitle")}
-					</p>
-					<div className="mt-10 flex flex-wrap gap-3">
-						<Button size="lg" variant="primary" asChild>
-							<LocaleLink href="/membership">
-								{t("joinCta")}
-								<ArrowRightIcon className="ml-2 size-4" />
-							</LocaleLink>
-						</Button>
-						<Button size="lg" variant="ghost" asChild>
-							<LocaleLink href="/about">{t("learnMoreCta")}</LocaleLink>
-						</Button>
-					</div>
-
-					{config.saasUrl && (
-						<p className="mt-8 font-mono text-xs tracking-[0.18em] uppercase text-foreground/50">
-							{t("membersNote")}{" "}
-							<a
-								href={config.saasUrl}
-								className="underline underline-offset-4 hover:text-foreground"
-							>
-								{t("signInLink")}
-							</a>
-						</p>
+		<section
+			data-nav-tone="dark"
+			className="hero lg:min-h-svh lg:grid-cols-[45fr_20fr_35fr] bg-welcome-navy text-white grid"
+		>
+			<div className="grain px-6 pt-32 pb-12 lg:px-12 lg:pb-16 lg:min-h-0 relative isolate flex min-h-[60svh] flex-col justify-end bg-[#0f1b30]">
+				<span className="type-label hero-rise mb-6 text-lilac">
+					{hero.eyebrow ?? t("eyebrow")}
+				</span>
+				<MaskedText
+					as="h1"
+					text={title}
+					style={
+						{
+							"--hero-step": `${heroWordStepMs(title.split(/\s+/).filter(Boolean).length)}ms`,
+						} as CSSProperties
+					}
+					className="hero-title lg:text-[clamp(4.5rem,6.4vw,7.5rem)] font-display text-[clamp(3.5rem,14vw,6rem)] leading-[0.92] tracking-[-0.02em] text-balance"
+				/>
+				<p
+					className="hero-rise mt-8 max-w-md text-lg text-white/80"
+					style={{ "--n": 1 } as never}
+				>
+					{hero.subtitle ?? t("subtitle")}
+				</p>
+				<div
+					className="hero-rise mt-8 gap-3.5 flex flex-wrap"
+					style={{ "--n": 2 } as never}
+				>
+					<JoinCtaLink
+						cta={joinCta}
+						className={`group ${v2Button({ variant: "accent" })}`}
+					>
+						{joinCta.labelKey ? tRoot(joinCta.labelKey) : t("joinCta")}
+						<ArrowRightIcon className="ml-2 size-4 group-hover:translate-x-1 transition-transform duration-(--dur-hover)" />
+					</JoinCtaLink>
+					{featuredHorses.length > 0 && (
+						<a href="#horses" className={v2Button({ variant: "ghostOnDark" })}>
+							{t("horsesCta")}
+						</a>
 					)}
 				</div>
+			</div>
+
+			<div className="hero-strip lg:aspect-auto bg-ink relative aspect-[4/5] overflow-hidden">
+				<div className="hero-drift inset-x-0 top-0 absolute h-[108%]">
+					<HeroMedia
+						imageUrl={media.imageUrl}
+						videoUrl={media.videoUrl}
+						// Unoptimized: admin media is remote; the temp clip must not bypass the preview gate via /_next/image.
+						unoptimized
+					/>
+				</div>
+				{/* Unmask curtain: sits over the already-painted poster, so the poster stays the LCP. */}
+				<div
+					aria-hidden="true"
+					className="hero-strip-cover inset-0 bg-welcome-navy absolute"
+				/>
+			</div>
+
+			<div className="bg-welcome-navy relative min-h-[28rem] overflow-hidden">
+				<PatternMosaic
+					colourway="navy"
+					columns={4}
+					rows={10}
+					className="hero-pattern inset-0 absolute"
+				/>
+				{nextEvent && <HeroEventCard event={nextEvent} />}
 			</div>
 		</section>
 	);

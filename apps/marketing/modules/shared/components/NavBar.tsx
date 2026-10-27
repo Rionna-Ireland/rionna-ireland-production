@@ -2,201 +2,202 @@
 
 import { config } from "@config";
 import { LocaleLink, useLocalePathname } from "@i18n/routing";
-import { cn, Logo } from "@repo/ui";
-import { Button } from "@repo/ui/components/button";
+import { cn } from "@repo/ui";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@repo/ui/components/sheet";
-import { ColorModeToggle } from "@shared/components/ColorModeToggle";
-import { LocaleSwitch } from "@shared/components/LocaleSwitch";
-import { getJoinCta } from "@shared/lib/join-url";
+import { Wordmark } from "@shared/components/brand/Wordmark";
+import { JoinCtaLink } from "@shared/components/JoinCtaLink";
+import { v2Button } from "@shared/components/ui/v2";
+import type { JoinCta } from "@shared/lib/join-url";
 import { MenuIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import NextLink from "next/link";
-import { Suspense, useEffect, useState } from "react";
-import { useDebounceCallback } from "usehooks-ts";
+import { useEffect, useRef, useState } from "react";
 
-export function NavBar() {
+import { type NavTone, type ToneSection, toneAt } from "./nav-tone";
+
+export function NavBar({ joinCta }: { joinCta: JoinCta }) {
 	const t = useTranslations();
 	const localePathname = useLocalePathname();
 
-	// S12-09 / D39: while signup is closed "Join" goes to the waitlist.
-	const joinCta = getJoinCta();
-
 	const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-	const [isTop, setIsTop] = useState(true);
 
-	const handleMobileMenuClose = () => {
+	useEffect(() => {
 		setMobileMenuOpen(false);
-	};
-
-	const debouncedScrollHandler = useDebounceCallback(
-		() => {
-			setIsTop(window.scrollY <= 10);
-		},
-		150,
-		{
-			maxWait: 150,
-		},
-	);
-
-	useEffect(() => {
-		window.addEventListener("scroll", debouncedScrollHandler);
-		debouncedScrollHandler();
-		return () => {
-			window.removeEventListener("scroll", debouncedScrollHandler);
-		};
-	}, [debouncedScrollHandler]);
-
-	useEffect(() => {
-		handleMobileMenuClose();
 	}, [localePathname]);
 
-	const menuItems: {
-		label: string;
-		href: string;
-	}[] = config.wireframeMode
-		? [
-				{
-					label: t("common.menu.membership"),
-					href: "/membership",
-				},
-			]
+	const menuItems: { label: string; href: string }[] = config.wireframeMode
+		? [{ label: t("common.menu.membership"), href: "/membership" }]
 		: [
-				{
-					label: t("common.menu.about"),
-					href: "/about",
-				},
-				{
-					label: t("common.menu.membership"),
-					href: "/membership",
-				},
-				{
-					label: t("common.menu.news"),
-					href: "/news",
-				},
-				{
-					label: t("common.menu.events"),
-					href: "/events",
-				},
-				{
-					label: t("common.menu.contact"),
-					href: "/contact",
-				},
+				{ label: t("common.menu.about"), href: "/about" },
+				{ label: t("common.menu.news"), href: "/news" },
+				{ label: t("common.menu.events"), href: "/events" },
+				{ label: t("common.menu.app"), href: "/app" },
 			];
 
-	const isMenuItemActive = (href: string) => localePathname.startsWith(href);
+	const isMenuItemActive = (href: string) =>
+		!href.includes("#") && localePathname.startsWith(href);
+
+	// Signup mode lands on the Join page (/membership), whose own CTA goes to SaaS signup.
+	const navJoinCta: JoinCta =
+		joinCta.mode === "signup" ? { ...joinCta, href: "/membership", external: false } : joinCta;
+	const joinLabel = joinCta.labelKey
+		? t(joinCta.labelKey)
+		: joinCta.mode === "signup"
+			? t("common.menu.becomeMember")
+			: t("common.menu.join");
+
+	const navRef = useRef<HTMLElement>(null);
+	const [tone, setTone] = useState<NavTone>("light");
+
+	// Tone follows the [data-nav-tone] section under the bar's centre; rAF-throttled.
+	useEffect(() => {
+		let frame = 0;
+		const update = () => {
+			frame = 0;
+			const nav = navRef.current;
+			if (!nav) return;
+			const navRect = nav.getBoundingClientRect();
+			const sections: ToneSection[] = Array.from(
+				document.querySelectorAll<HTMLElement>("[data-nav-tone]"),
+			).map((el) => {
+				const r = el.getBoundingClientRect();
+				return {
+					top: r.top,
+					bottom: r.bottom,
+					tone: el.dataset.navTone === "dark" ? "dark" : "light",
+				};
+			});
+			setTone(toneAt(sections, navRect.top + navRect.height / 2));
+		};
+		const schedule = () => {
+			if (!frame) frame = requestAnimationFrame(update);
+		};
+		update();
+		window.addEventListener("scroll", schedule, { passive: true });
+		window.addEventListener("resize", schedule);
+		return () => {
+			window.removeEventListener("scroll", schedule);
+			window.removeEventListener("resize", schedule);
+			if (frame) cancelAnimationFrame(frame);
+		};
+	}, [localePathname]);
+
+	const dark = tone === "dark";
 
 	return (
-		<nav
-			className={cn("top-0 sticky z-50 w-full bg-background transition-shadow duration-200", {
-				"border-b": !isTop,
-			})}
-			data-test="navigation"
-		>
-			<div className="container">
-				<div
-					className={cn(
-						"gap-6 flex items-center justify-stretch transition-[padding] duration-200",
-						!isTop ? "py-4" : "py-6",
-					)}
-				>
-					<div className="flex flex-1 justify-start">
+		<div className="inset-x-3 top-3 pointer-events-none fixed z-50">
+			<nav
+				ref={navRef}
+				className="nav-glass pointer-events-auto container"
+				data-tone={tone}
+				data-edge={localePathname === "/" ? "ice" : undefined}
+				data-test="navigation"
+			>
+				<div>
+					<div className="gap-2 sm:gap-6 py-3 lg:py-3.5 flex items-center justify-between">
 						<LocaleLink
 							href="/"
-							className="block hover:no-underline active:no-underline"
+							className="block hover:no-underline focus-visible:outline-2 focus-visible:outline-offset-4"
+							aria-label={config.appName}
 						>
-							<Logo />
+							<Wordmark className="h-5 sm:h-6 w-auto shrink-0" />
 						</LocaleLink>
-					</div>
 
-					<div className="lg:flex hidden flex-1 items-center justify-center">
-						{menuItems.map((menuItem) => (
-							<LocaleLink
-								key={menuItem.href}
-								href={menuItem.href}
-								className={cn(
-									"px-3 py-2 font-medium text-sm block shrink-0 text-foreground/80",
-									isMenuItemActive(menuItem.href)
-										? "font-bold text-foreground"
-										: "",
-								)}
-								prefetch
+						<div className="lg:flex hidden items-center gap-[30px]">
+							{menuItems.map((menuItem) => (
+								<LocaleLink
+									key={menuItem.href}
+									href={menuItem.href}
+									className={cn(
+										"link-draw text-sm font-medium opacity-75 hover:no-underline hover:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-4",
+										isMenuItemActive(menuItem.href) && "opacity-100",
+									)}
+									prefetch
+								>
+									{menuItem.label}
+								</LocaleLink>
+							))}
+							{config.saasUrl && (
+								<NextLink
+									href={config.saasUrl}
+									className="link-draw text-sm font-medium hover:no-underline focus-visible:outline-2 focus-visible:outline-offset-4"
+									prefetch
+								>
+									{t("common.menu.login")}
+								</NextLink>
+							)}
+							<JoinCtaLink
+								cta={navJoinCta}
+								className={v2Button({ variant: dark ? "onDark" : "primary" })}
 							>
-								{menuItem.label}
-							</LocaleLink>
-						))}
-					</div>
+								{joinLabel}
+							</JoinCtaLink>
+						</div>
 
-					<div className="gap-3 flex flex-1 items-center justify-end">
-						{!config.wireframeMode && <ColorModeToggle />}
-						<Suspense>
-							<LocaleSwitch />
-						</Suspense>
-
-						<Sheet
-							open={mobileMenuOpen}
-							onOpenChange={(open) => setMobileMenuOpen(open)}
+						<JoinCtaLink
+							cta={navJoinCta}
+							className={cn(
+								v2Button({ variant: dark ? "onDark" : "primary", size: "md" }),
+								"lg:hidden ml-auto",
+							)}
 						>
+							<span className="sm:hidden">{t("common.menu.join")}</span>
+							<span className="sm:inline hidden">{joinLabel}</span>
+						</JoinCtaLink>
+
+						<Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
 							<SheetTrigger asChild>
-								<Button
-									className="lg:hidden"
-									size="icon"
-									variant="secondary"
+								<button
+									type="button"
+									className="size-11 lg:hidden flex shrink-0 items-center justify-center rounded-lg border border-current/20 focus-visible:outline-2 focus-visible:outline-offset-2"
 									aria-label={t("common.aria.menu")}
 								>
-									<MenuIcon className="size-4" />
-								</Button>
+									<MenuIcon className="size-5" />
+								</button>
 							</SheetTrigger>
-							<SheetContent className="w-[280px]" side="right">
-								<SheetTitle />
-								<div className="flex flex-col items-start justify-center">
+							<SheetContent className="bg-paper w-[280px]" side="right">
+								<SheetTitle className="sr-only">{t("common.aria.menu")}</SheetTitle>
+								<div className="gap-1 px-2 pt-6 flex flex-col items-start">
 									{menuItems.map((menuItem) => (
 										<LocaleLink
 											key={menuItem.href}
 											href={menuItem.href}
-											onClick={handleMobileMenuClose}
+											onClick={() => setMobileMenuOpen(false)}
 											className={cn(
-												"px-3 py-2 font-medium text-base block shrink-0 text-foreground/80",
-												isMenuItemActive(menuItem.href)
-													? "font-bold text-foreground"
-													: "",
+												"py-2 text-base font-medium text-ink-variant block hover:no-underline",
+												isMenuItemActive(menuItem.href) && "text-ink",
 											)}
 											prefetch
 										>
 											{menuItem.label}
 										</LocaleLink>
 									))}
-
 									{config.saasUrl && (
 										<NextLink
 											href={config.saasUrl}
-											className="px-3 py-2 text-base block"
-											onClick={handleMobileMenuClose}
+											className="py-2 text-base font-medium text-ink block hover:no-underline"
+											onClick={() => setMobileMenuOpen(false)}
 											prefetch
 										>
 											{t("common.menu.login")}
 										</NextLink>
 									)}
+									<JoinCtaLink
+										cta={navJoinCta}
+										onClick={() => setMobileMenuOpen(false)}
+										className={cn(
+											v2Button({ variant: "primary" }),
+											"mt-4 w-full",
+										)}
+									>
+										{joinLabel}
+									</JoinCtaLink>
 								</div>
 							</SheetContent>
 						</Sheet>
-
-						{config.saasUrl && (
-							<Button className="lg:flex hidden" asChild variant="ghost">
-								<NextLink href={config.saasUrl} prefetch>
-									{t("common.menu.login")}
-								</NextLink>
-							</Button>
-						)}
-						<Button className="lg:flex hidden" asChild variant="primary">
-							{joinCta.mode === "waitlist" ? (
-								<LocaleLink href={joinCta.href}>{t("waitlist.joinCta")}</LocaleLink>
-							) : (
-								<LocaleLink href="/membership">{t("common.menu.join")}</LocaleLink>
-							)}
-						</Button>
 					</div>
 				</div>
-			</div>
-		</nav>
+			</nav>
+		</div>
 	);
 }

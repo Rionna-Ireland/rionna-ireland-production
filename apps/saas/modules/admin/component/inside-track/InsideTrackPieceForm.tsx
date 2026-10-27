@@ -9,6 +9,7 @@ import { useAdminOrganization } from "@admin/hooks/use-admin-organization";
 import { useCircleVideoUpload } from "@admin/lib/circle-video-upload";
 import { getAdminPath } from "@admin/lib/links";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Alert } from "@repo/ui/components/alert";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@repo/ui/components/card";
@@ -204,10 +205,13 @@ export function InsideTrackPieceForm({ memberPostId }: InsideTrackPieceFormProps
 					<Form {...form}>
 						<form className="gap-6 grid grid-cols-1">
 							{/* Persistent audience banner — Inside Track is educational content, all members */}
-							<div className="gap-3 border-blue-200 bg-blue-50 p-3 text-blue-900 dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-blue-100 flex items-center rounded-md border">
+							<Alert
+								variant="info"
+								className="gap-3 p-3 [&>svg]:size-5 [&>svg~*]:pl-0 flex items-center [&>svg]:static"
+							>
 								<GraduationCapIcon className="size-5 shrink-0" />
 								<div className="text-sm">{t("admin.insideTrack.audience")}</div>
-							</div>
+							</Alert>
 
 							<FormField
 								control={form.control}
@@ -257,14 +261,14 @@ export function InsideTrackPieceForm({ memberPostId }: InsideTrackPieceFormProps
 							)}
 
 							{fallback && (
-								<div className="border-amber-300 bg-amber-50 p-4 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100 rounded-md border">
+								<Alert variant="warning">
 									<p className="font-medium">
 										{t("admin.updates.form.fallback.title")}
 									</p>
 									<p className="mt-1 text-sm">
 										{t("admin.updates.form.fallback.body")}
 									</p>
-								</div>
+								</Alert>
 							)}
 
 							{!isPublished && (

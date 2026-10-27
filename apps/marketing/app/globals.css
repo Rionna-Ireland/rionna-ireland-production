@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "@repo/tailwind-config/theme.css";
+@import "@repo/tailwind-config/v2.css";
 @import "@repo/tailwind-config/tailwind-animate.css";
 
 @plugin "@tailwindcss/typography";
@@ -45,6 +46,7 @@
 	.theme-estate,
 	.dark .theme-estate {
 		color-scheme: light;
+		--radius: 0.75rem;
 
 		--background: #fcf9f2; /* surface */
 		--foreground: #1c1c18; /* on-surface */
@@ -93,6 +95,7 @@
 	.theme-estate-night,
 	.dark .theme-estate-night {
 		color-scheme: dark;
+		--radius: 0.75rem;
 
 		--background: #57385a;
 		--foreground: #eeeadf;
@@ -147,7 +150,7 @@
 
 /* On load (and the join ripple) each tile settles in, diagonal by diagonal. */
 .pc-face {
-	animation: pc-deal 1400ms cubic-bezier(0.22, 1, 0.36, 1) both;
+	animation: pc-deal var(--dur-deal) var(--ease-out-editorial) both;
 	animation-delay: var(--delay, 0ms);
 	transform-origin: center;
 	will-change: transform, opacity;
@@ -157,7 +160,7 @@
 .pc-face .pc-star {
 	transform-box: fill-box;
 	transform-origin: center;
-	transition: rotate 1400ms cubic-bezier(0.22, 1, 0.36, 1);
+	transition: rotate var(--dur-deal) var(--ease-out-editorial);
 }
 
 .pc-slot:hover .pc-star {
@@ -177,7 +180,11 @@
 
 /* ── S12-09 waitlist panel ──────────────────────────────────────────────── */
 
-/* Film-grain over the plum so the flat colour reads as printed paper. */
+/*
+ * Film-grain so flat colour reads as printed paper. `.grain` needs a
+ * positioned parent that makes a stacking context (e.g. relative + isolate).
+ */
+.grain::after,
 .wl-panel::after {
 	content: "";
 	position: absolute;
@@ -189,22 +196,23 @@
 	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
+.mark-settle,
 .wl-mark {
-	animation: wl-mark 1800ms cubic-bezier(0.22, 1, 0.36, 1) 200ms both;
+	animation: wl-mark var(--dur-mark) var(--ease-out-editorial) 200ms both;
 	will-change: transform, opacity;
 }
 
 .wl-rise {
-	animation: wl-rise 1200ms cubic-bezier(0.22, 1, 0.36, 1) both;
+	animation: wl-rise var(--dur-rise) var(--ease-out-editorial) both;
 	will-change: transform, opacity;
 	animation-delay: calc(var(--d, 0ms) + 250ms);
 }
 
 .wl-cta {
 	transition:
-		background-color 300ms ease,
-		color 300ms ease,
-		transform 300ms cubic-bezier(0.16, 1, 0.3, 1);
+		background-color var(--dur-hover) ease,
+		color var(--dur-hover) ease,
+		transform var(--dur-hover) var(--ease-out-press);
 }
 
 .wl-cta:hover {
@@ -235,15 +243,1264 @@
 	}
 }
 
+/* ── S16-02 shared motion utilities ─────────────────────────────────────── */
+
+.reveal {
+	transition:
+		opacity var(--dur-reveal) var(--ease-out-editorial) var(--reveal-delay, 0ms),
+		transform var(--dur-reveal) var(--ease-out-editorial) var(--reveal-delay, 0ms);
+}
+
+/* Words slide up out of a mask; revealed by [data-revealed] on self or ancestor. */
+.mask-word {
+	display: inline-block;
+	overflow: hidden;
+	vertical-align: top;
+	/* Room for descenders inside the clip. */
+	padding-bottom: 0.25em;
+	margin-bottom: -0.25em;
+}
+
+.mask-word > span {
+	display: inline-block;
+	transition: transform var(--dur-rise) var(--ease-out-editorial)
+		calc(var(--reveal-delay, 0ms) + var(--i, 0) * var(--step-rise));
+}
+
+/* Underline draws in from the left on hover/focus. */
+.link-draw {
+	background-image: linear-gradient(currentColor, currentColor);
+	background-repeat: no-repeat;
+	background-position: 0 100%;
+	background-size: 0 1px;
+	transition: background-size var(--dur-hover) var(--ease-out-press);
+	-webkit-box-decoration-break: clone;
+	box-decoration-break: clone;
+}
+
+.link-draw:hover,
+.link-draw:focus-visible {
+	background-size: 100% 1px;
+}
+
+.card-lift {
+	transition: transform var(--dur-hover) var(--ease-out-press);
+}
+
+.photo-zoom {
+	overflow: hidden;
+}
+
+.photo-zoom img {
+	transition: transform var(--dur-deal) var(--ease-out-editorial);
+}
+
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+	.card-lift:hover {
+		transform: translateY(-0.25rem);
+	}
+
+	.card-lift:hover .photo-zoom img,
+	.photo-zoom:hover img {
+		transform: scale(1.03);
+	}
+}
+
+/*
+ * Static pattern textures, each repeating one library cell (p1 harlequin, p3 quad, p7 submark quad, p8 half-drop).
+ * Painted on ::before behind content, so text over it is unaffected; dial it
+ * with --texture-opacity. Needs no positioned parent: the rule sets one, in
+ * the components layer so Tailwind position utilities still win.
+ */
+@layer components {
+	.texture-p1,
+	.texture-p3,
+	.texture-p7,
+	.texture-p8 {
+		position: relative;
+		isolation: isolate;
+	}
+
+	.texture-p1::before,
+	.texture-p3::before,
+	.texture-p7::before,
+	.texture-p8::before {
+		content: "";
+		position: absolute;
+		inset: 0;
+		z-index: -1;
+		pointer-events: none;
+		opacity: var(--texture-opacity, 1);
+		background-repeat: repeat;
+	}
+
+	.texture-p1::before {
+		background-image: url("/patterns/cell-1.svg");
+		background-size: 152px 176px;
+	}
+
+	.texture-p3::before {
+		background-image: url("/patterns/cell-7.svg");
+		background-size: 154px 154px;
+	}
+
+	.texture-p7::before {
+		background-image: url("/patterns/cell-5.svg");
+		background-size: 200px 200px;
+	}
+
+	.texture-p8::before {
+		background-image: url("/patterns/cell-6.svg");
+		background-size: 420px 214px;
+	}
+}
+
+/*
+ * Hide-before-reveal. Gated so content is never hidden without JS or under
+ * Reduce Motion.
+ */
+@media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
+	.reveal:not([data-revealed]) {
+		opacity: 0;
+		transform: translate3d(0, 16px, 0);
+	}
+
+	.mask-word > span {
+		transform: translate3d(0, 130%, 0);
+	}
+
+	[data-revealed] .mask-word > span {
+		transform: none;
+	}
+
+	/* PatternMosaic trigger="view": hold the deal until in view. */
+	.pc-wait {
+		animation-play-state: paused;
+	}
+}
+
 @media (prefers-reduced-motion: reduce) {
 	.pc-face,
 	.wl-mark,
+	.mark-settle,
 	.wl-rise {
 		animation: none;
 	}
 
 	.pc-face .pc-star,
-	.wl-cta {
+	.wl-cta,
+	.reveal,
+	.mask-word > span,
+	.link-draw,
+	.card-lift,
+	.photo-zoom img,
+	.stat-hairline,
+	.nav-glass,
+	.nav-glass::before,
+	.nav-glass::after {
 		transition: none;
+	}
+
+	.page-enter {
+		animation: none;
+	}
+}
+
+/* ── S16-02 B: floating glass nav + page enter ──────────────────────────── */
+
+/* Two tinted layers crossfade (opacity only) when the tone under the bar changes. */
+.nav-glass {
+	position: relative;
+	isolation: isolate;
+	border-radius: var(--radius-lg, 0.75rem);
+	outline: 1px solid var(--color-outline);
+	box-shadow: 0 8px 24px -12px rgb(23 39 65 / 0.18);
+	color: var(--color-ink);
+	--nav-outline: var(--color-ink);
+	transition: color var(--dur-hover) var(--ease-out-editorial);
+}
+
+.nav-glass::before,
+.nav-glass::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	z-index: -1;
+	border-radius: inherit;
+	pointer-events: none;
+	backdrop-filter: blur(24px) saturate(1.4);
+	transition: opacity var(--dur-hover) var(--ease-out-editorial);
+}
+
+/* light glass: paper ~55%, 1px white/70 inner top highlight */
+.nav-glass::before {
+	background: color-mix(in srgb, var(--color-paper) 55%, transparent);
+	box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.7);
+}
+
+/* dark glass: ink ~55%, 1px white/30 inner top highlight */
+.nav-glass::after {
+	background: color-mix(in srgb, var(--color-ink) 55%, transparent);
+	box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.3);
+	opacity: 0;
+}
+
+.nav-glass[data-tone="dark"] {
+	--nav-outline: var(--color-lilac);
+	color: #fff;
+}
+
+.nav-glass[data-tone="dark"]::before {
+	opacity: 0;
+}
+
+.nav-glass[data-tone="dark"]::after {
+	opacity: 1;
+}
+
+/* Home keeps the 2px ice top edge from the reference. */
+.nav-glass[data-edge="ice"] {
+	border-top: 2px solid var(--color-ice);
+}
+
+@supports not (backdrop-filter: blur(1px)) {
+	.nav-glass::before {
+		background: color-mix(in srgb, var(--color-paper) 90%, transparent);
+	}
+
+	.nav-glass::after {
+		background: color-mix(in srgb, var(--color-ink) 90%, transparent);
+	}
+}
+
+/* No translate: it would expose a body-coloured strip above full-bleed tops. */
+@keyframes page-enter {
+	from {
+		opacity: 0;
+	}
+}
+
+.page-enter {
+	/* backwards, not both: no retained transform, so fixed/sticky descendants work */
+	animation: page-enter 300ms var(--ease-out-editorial) backwards;
+}
+
+.nav-glass :focus-visible {
+	outline-color: var(--nav-outline);
+}
+
+:root {
+	--nav-space: 6.5rem;
+}
+
+/* First sections run to y=0 behind the glass nav and carry their own clearance. */
+.under-nav {
+	padding-top: calc(var(--nav-space) + var(--section-pad, 3.5rem));
+}
+
+/* ── S16-02 C0: home arrival (CSS-only; timeline in ms from t=0) ─────────── */
+
+:root {
+	/* The hero timeline adds this to its delays (Task 5). */
+	--arrival-offset: 2100ms;
+}
+
+:root[data-arrival="seen"],
+:root[data-arrival="skip"] {
+	--arrival-offset: 0ms;
+}
+
+:root[data-arrival="seen"] .arrival {
+	display: none;
+}
+
+/* Settled (non-animated) state is the finished lockup, so `skip` can drop animations. */
+.arrival {
+	animation: arrival-lift 600ms var(--ease-out-editorial) 2100ms forwards;
+}
+
+.arrival-content {
+	animation: arrival-drift 600ms var(--ease-out-editorial) 2100ms both;
+}
+
+.arrival-stroke {
+	stroke-dasharray: 1;
+	animation:
+		arrival-draw 900ms var(--ease-out-editorial) backwards,
+		arrival-fade 300ms linear 900ms forwards;
+}
+
+.arrival-fill-rect {
+	transform-box: fill-box;
+	animation: arrival-flood 300ms var(--ease-out-editorial) 900ms backwards;
+}
+
+.arrival-mark {
+	animation: arrival-slide 500ms var(--ease-out-editorial) 1100ms backwards;
+}
+
+.arrival-letters {
+	clip-path: inset(0 0 0 17.7%);
+	animation: arrival-wipe 500ms var(--ease-out-editorial) 1100ms backwards;
+}
+
+.arrival-tagline {
+	font-weight: 300;
+	font-style: italic;
+	color: #cca1d0;
+	animation: arrival-rise 450ms var(--ease-out-editorial) 1450ms backwards;
+}
+
+:root[data-arrival="skip"] .arrival {
+	animation: arrival-lift-fast 300ms var(--ease-out-editorial) forwards;
+}
+
+:root[data-arrival="skip"] .arrival-content {
+	animation: arrival-drift 300ms var(--ease-out-editorial) both;
+}
+
+:root[data-arrival="skip"] .arrival-content * {
+	animation: none;
+}
+
+/* A transformed/animated ancestor would trap the fixed overlay (wrong size, under the nav). */
+.page-enter:has(.arrival) {
+	animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.arrival {
+		display: none;
+	}
+
+	:root {
+		--arrival-offset: 0ms;
+	}
+}
+
+@keyframes arrival-draw {
+	from {
+		stroke-dashoffset: 1;
+	}
+	to {
+		stroke-dashoffset: 0;
+	}
+}
+
+@keyframes arrival-fade {
+	to {
+		opacity: 0;
+	}
+}
+
+@keyframes arrival-flood {
+	from {
+		transform: translateY(100%);
+	}
+}
+
+@keyframes arrival-slide {
+	from {
+		transform: translateX(232.5%);
+	}
+}
+
+@keyframes arrival-wipe {
+	from {
+		clip-path: inset(0 100% 0 17.7%);
+	}
+}
+
+@keyframes arrival-rise {
+	from {
+		opacity: 0;
+		transform: translateY(12px);
+	}
+}
+
+@keyframes arrival-drift {
+	to {
+		opacity: 0;
+		transform: translateY(-24px);
+	}
+}
+
+@keyframes arrival-lift {
+	from {
+		clip-path: inset(0 0 0 0);
+	}
+	to {
+		clip-path: inset(0 0 100% 0);
+		visibility: hidden;
+		pointer-events: none;
+	}
+}
+
+@keyframes arrival-lift-fast {
+	0% {
+		clip-path: inset(0 0 0 0);
+	}
+	99% {
+		opacity: 1;
+	}
+	100% {
+		clip-path: inset(0 0 100% 0);
+		opacity: 0;
+		visibility: hidden;
+		pointer-events: none;
+	}
+}
+
+/* ── S16-02 C1: home hero opening choreography (starts as the arrival curtain lifts) ── */
+
+.hero-drift {
+	will-change: transform;
+}
+
+/* Hidden unless the motion block below arms it, so no-JS and Reduce Motion never lose the poster. */
+.hero-strip-cover {
+	visibility: hidden;
+}
+
+@media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
+	/* Strip unmask, top to bottom: the cover shrinks away over the painted poster. */
+	.hero-strip-cover {
+		visibility: visible;
+		clip-path: inset(0);
+		animation: hero-unmask var(--dur-unmask) var(--ease-out-editorial) var(--arrival-offset)
+			forwards;
+	}
+
+	.hero-poster {
+		animation: hero-poster-settle var(--dur-mark) var(--ease-out-editorial)
+			var(--arrival-offset) backwards;
+	}
+
+	/* Headline words: an animation (not the reveal transition) so it syncs to page time, not hydration. */
+	.hero-title .mask-word > span {
+		animation: hero-word var(--dur-reveal) var(--ease-out-editorial)
+			calc(var(--arrival-offset) + 100ms + var(--i, 0) * var(--hero-step, 0ms)) both;
+	}
+
+	.hero-rise {
+		animation: hero-rise var(--dur-reveal) var(--ease-out-editorial)
+			calc(var(--arrival-offset) + 300ms + var(--n, 0) * var(--step-rise)) backwards;
+	}
+
+	.hero-card {
+		animation: hero-card var(--dur-reveal) var(--ease-out-editorial)
+			calc(var(--arrival-offset) + 900ms) backwards;
+	}
+
+	.hero-pattern .pc-face {
+		animation-delay: calc(var(--arrival-offset) + 200ms + var(--delay, 0ms));
+	}
+
+	/* Spurs light up once as the deal wave passes (same delay as their tile). */
+	.hero-pattern .pc-star {
+		animation: hero-spur var(--dur-deal) var(--ease-out-editorial)
+			calc(var(--arrival-offset) + 200ms + var(--delay, 0ms)) backwards;
+	}
+
+	/* Home nav only (data-edge=ice), and only while the arrival plays. */
+	:root:not([data-arrival="seen"], [data-arrival="skip"]) .nav-glass[data-edge="ice"] {
+		animation: hero-nav var(--dur-reveal) var(--ease-out-editorial)
+			calc(var(--arrival-offset) + 900ms) backwards;
+	}
+}
+
+/* The only scroll-linked motion on the site: the strip drifts up ~8% as the hero scrolls away. */
+@supports (animation-timeline: scroll()) {
+	@media (prefers-reduced-motion: no-preference) {
+		.hero-drift {
+			animation: hero-drift linear both;
+			animation-timeline: scroll(root);
+			animation-range: 0 100svh;
+		}
+	}
+}
+
+@keyframes hero-unmask {
+	to {
+		clip-path: inset(100% 0 0 0);
+		visibility: hidden;
+	}
+}
+
+@keyframes hero-poster-settle {
+	from {
+		transform: scale(1.08);
+	}
+}
+
+@keyframes ch-word {
+	from {
+		transform: translate3d(0, 0.35em, 0);
+	}
+	to {
+		transform: none;
+	}
+}
+
+@keyframes hero-word {
+	from {
+		transform: translate3d(0, 130%, 0);
+	}
+	to {
+		transform: none;
+	}
+}
+
+@keyframes hero-rise {
+	from {
+		transform: translate3d(0, 16px, 0);
+	}
+}
+
+@keyframes hero-card {
+	from {
+		opacity: 0;
+		transform: translate3d(0, 24px, 0);
+	}
+}
+
+@keyframes hero-drift {
+	to {
+		transform: translate3d(0, -7.4%, 0);
+	}
+}
+
+@keyframes hero-spur {
+	40% {
+		fill: var(--color-ice, #b9d8e1);
+	}
+}
+
+@keyframes hero-nav {
+	from {
+		opacity: 0;
+		transform: translate3d(0, -8px, 0);
+	}
+}
+
+/* ── S16-02 C1b/C2/C3: home flow ────────────────────────────────────────── */
+
+/* The next section covers the hero; rounded top over the (always overlapped) hero edge. */
+.home-flow {
+	position: relative;
+	z-index: 10;
+	margin-top: -2rem;
+	border-radius: 2rem 2rem 0 0;
+	background: var(--color-paper);
+	overflow: clip;
+}
+
+@media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
+	.home-hero {
+		position: sticky;
+		top: 0;
+		z-index: 0;
+	}
+}
+
+/* Stat hairline draws left to right as its count finishes. */
+.stat-hairline {
+	transform-origin: left;
+	transition: transform var(--dur-reveal) var(--ease-out-editorial);
+}
+
+/* Why-join pattern panel: ring spurs turn when the card is hovered. */
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+	.card-lift:hover .pc-star {
+		rotate: 22.5deg;
+	}
+}
+
+.deal-row {
+	perspective: 1200px;
+}
+
+@media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
+	/* Horse cards deal in diagonally (index x step-deal x 2), like the mosaic tiles. */
+	.deal-row:not([data-revealed]) .deal-card {
+		opacity: 0;
+	}
+
+	.deal-row[data-revealed] .deal-card {
+		animation: pc-deal var(--dur-deal) var(--ease-out-editorial) backwards;
+		animation-delay: calc(var(--i, 0) * var(--step-deal) * 2);
+	}
+}
+
+/* About statement: each word fills from muted to ink as it scrolls through. */
+@supports (animation-timeline: view()) {
+	@media (prefers-reduced-motion: no-preference) {
+		.fill-word {
+			animation: fill-word linear both;
+			animation-timeline: view();
+			animation-range: entry 25% entry 100%;
+		}
+	}
+}
+
+@keyframes fill-word {
+	from {
+		opacity: 0.22;
+	}
+}
+
+/* ── S16-02 E: /app scroll-told features ─────────────────────────────────── */
+
+/* Stacked by default: every row carries its own tint and phone. */
+.fs-row {
+	background: var(--tint);
+	/* Full-bleed band from inside the container. */
+	box-shadow: 0 0 0 100vmax var(--tint);
+	clip-path: inset(0 -100vmax);
+}
+
+.fs-sticky,
+.fs-tint {
+	display: none;
+}
+
+.fs-screen {
+	isolation: isolate;
+	position: absolute;
+	inset: 0;
+	opacity: 0;
+	transform: translate3d(0, 24px, 0);
+	transition:
+		opacity var(--dur-reveal) var(--ease-out-editorial),
+		transform var(--dur-reveal) var(--ease-out-editorial);
+}
+
+.fs-screen.is-active {
+	opacity: 1;
+	transform: none;
+}
+
+.fs-back {
+	position: absolute;
+	top: 0;
+	left: 0;
+	z-index: -1;
+	rotate: 6deg;
+	translate: 22% 2%;
+	opacity: 0.85;
+}
+
+/* Scroll-told only where there is room, motion is allowed and JS runs. */
+@media (min-width: 64rem) and (prefers-reduced-motion: no-preference) and (scripting: enabled) {
+	.fs-sticky {
+		display: flex;
+	}
+
+	.fs-tint {
+		display: block;
+		transition: opacity var(--dur-rise) var(--ease-out-editorial);
+	}
+
+	.fs-row {
+		background: transparent;
+		box-shadow: none;
+		clip-path: none;
+	}
+
+	.fs-inline {
+		display: none;
+	}
+}
+
+/* ── S16-03 About scrollytelling ─────────────────────────────────────────── */
+
+/* Static composition first: every chapter is a normal section with all content visible. */
+.pin-stage {
+	position: relative;
+}
+
+.ch-card {
+	position: absolute;
+	width: min(var(--s), 30vw);
+}
+
+.ch-rule {
+	transform-origin: top;
+}
+
+.ch-caption {
+	text-wrap: balance;
+}
+
+.people-view {
+	overflow-x: auto;
+	scroll-snap-type: x mandatory;
+	scrollbar-width: none;
+}
+
+.people-card:nth-child(even) {
+	margin-top: 3rem;
+}
+
+.chip {
+	position: relative;
+	display: inline-block;
+	width: 1.9em;
+	height: 0.8em;
+	margin-inline: 0.15em;
+	vertical-align: middle;
+	overflow: hidden;
+	border-radius: 999px;
+}
+
+.chip > div {
+	position: absolute;
+	inset-inline: 0;
+	top: 50%;
+	translate: 0 -50%;
+}
+
+/* Cards stack as they scroll; plain flow under Reduce Motion. */
+@media (prefers-reduced-motion: no-preference) {
+	.stack-card {
+		position: sticky;
+		top: calc(var(--nav-space) + var(--i) * 1.25rem);
+		min-height: 60svh;
+	}
+}
+
+/* Scroll-driven chapters: only where view timelines exist and motion is allowed. */
+@supports (animation-timeline: view()) {
+	@media (prefers-reduced-motion: no-preference) {
+		.pin:not(.pin-wide) {
+			height: min(var(--pin-h), 150svh);
+			view-timeline: --stage block;
+		}
+
+		.pin:not(.pin-wide) > .pin-stage {
+			position: sticky;
+			top: 0;
+			height: 100svh;
+			min-height: 0;
+			padding-block: 0;
+		}
+
+		.ch-card,
+		.ch-headline,
+		.ch-rule,
+		.beat,
+		.beat-word,
+		.chip .pc-star,
+		.ch-photo,
+		.ch-photo::after,
+		.ch-label,
+		.ch-caption,
+		.ch-frame,
+		.people-track {
+			animation-timing-function: linear;
+			animation-fill-mode: both;
+			animation-timeline: --stage;
+			animation-range: contain 0% contain 100%;
+		}
+
+		.ch-card {
+			animation-name: ch-fly;
+		}
+
+		.ch-headline {
+			animation-name: ch-grey;
+			animation-range: contain 5% contain 70%;
+		}
+
+		.ch-rule {
+			animation-name: ch-draw;
+			animation-range: contain 50% contain 100%;
+		}
+
+		.beat-word {
+			animation-name: fill-word;
+			animation-range: contain calc(var(--w) * 1%) contain calc(var(--w) * 1% + 12%);
+		}
+
+		.beat {
+			animation-name: beat-out;
+			animation-range: contain 85% contain 100%;
+		}
+
+		.chip .pc-star {
+			animation-name: chip-turn;
+			animation-range: contain 0% contain 70%;
+		}
+
+		.ch-frame {
+			animation-name: ch-frame;
+		}
+
+		.ch-photo {
+			position: absolute;
+			inset: 0;
+			aspect-ratio: auto;
+			max-width: none;
+			margin: 0;
+			border-radius: 0;
+			animation-name: ch-grow;
+			animation-range: contain 0% contain 70%;
+		}
+
+		.ch-photo::after {
+			content: "";
+			position: absolute;
+			inset: 0;
+			background: linear-gradient(
+				to top,
+				color-mix(in oklab, var(--color-plum) 75%, transparent),
+				transparent 50%
+			);
+			animation-name: ch-scrim;
+			animation-range: contain 40% contain 70%;
+		}
+
+		.ch-label {
+			position: absolute;
+			top: calc(var(--nav-space) + 1rem);
+			left: 1.5rem;
+			z-index: 3;
+			animation-name: ch-label-out;
+			animation-range: contain 15% contain 45%;
+		}
+
+		.ch-caption {
+			position: absolute;
+			left: 1.5rem;
+			bottom: 2.5rem;
+			z-index: 3;
+			margin: 0;
+			max-width: min(36rem, 80vw);
+			animation-name: ch-rise;
+			animation-range: contain 70% contain 90%;
+		}
+	}
+
+	@media (prefers-reduced-motion: no-preference) and (min-width: 64rem) {
+		.pin-wide {
+			height: var(--pin-h);
+			view-timeline: --stage block;
+		}
+
+		.pin-wide > .pin-stage {
+			position: sticky;
+			top: 0;
+			height: 100svh;
+		}
+
+		.people-view {
+			overflow: clip;
+			scroll-snap-type: none;
+		}
+
+		.people-track {
+			animation-name: people-slide;
+			animation-range: contain 5% contain 95%;
+		}
+	}
+
+	@media (prefers-reduced-motion: no-preference) and (min-width: 48rem) {
+		.pin:not(.pin-wide) {
+			height: var(--pin-h);
+		}
+	}
+}
+
+@keyframes ch-fly {
+	70% {
+		opacity: 1;
+	}
+	to {
+		opacity: 0;
+		transform: translate3d(calc(var(--dx) * 1vw), calc(var(--dy) * 1vh), 0)
+			scale(calc(1 + var(--depth) * 1.4));
+	}
+}
+
+@keyframes ch-grey {
+	to {
+		opacity: 0.3;
+	}
+}
+
+@keyframes ch-draw {
+	from {
+		transform: scaleY(0);
+	}
+}
+
+@keyframes beat-out {
+	to {
+		opacity: 0;
+		transform: translate3d(0, -6vh, 0);
+	}
+}
+
+@keyframes chip-turn {
+	to {
+		rotate: 22.5deg;
+	}
+}
+
+@keyframes ch-frame {
+	from {
+		transform: scale(1.1);
+	}
+	to {
+		opacity: 0.2;
+		transform: scale(0.9);
+	}
+}
+
+@keyframes ch-grow {
+	from {
+		clip-path: inset(calc(50% - 14vmin) calc(50% - 14vmin) round 1rem);
+	}
+	to {
+		clip-path: inset(0 round 0);
+	}
+}
+
+@keyframes ch-scrim {
+	from {
+		opacity: 0;
+	}
+}
+
+@keyframes ch-label-out {
+	to {
+		opacity: 0;
+	}
+}
+
+@keyframes ch-rise {
+	from {
+		opacity: 0;
+		transform: translate3d(0, 40px, 0);
+	}
+}
+
+@keyframes people-slide {
+	to {
+		transform: translate3d(min(0px, calc(100vw - 100%)), 0, 0);
+	}
+}
+
+/*
+ * Ruling 16: ambient loops, About only. Static composition by default; loops run
+ * only with JS + motion allowed, and only while the section is on screen
+ * (PlayWhenVisible sets [data-playing]). transform / opacity / rotate only, on
+ * inner elements so the scroll-driven `.ch-card` fly-out stays untouched.
+ */
+.ch-swap {
+	opacity: 0;
+}
+
+@media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
+	.ch-bob {
+		animation: loop-bob var(--dur-loop-bob) ease-in-out calc(var(--k) * -1.7s) infinite
+			alternate;
+	}
+
+	.ch-bob .pc-star {
+		animation: loop-turn var(--dur-loop-turn) ease-in-out calc(var(--k) * -0.9s) infinite
+			alternate;
+	}
+
+	.ch-swap {
+		animation: loop-swap var(--dur-loop-swap) ease-in-out calc(var(--k) * 1.1s) infinite
+			backwards;
+	}
+
+	/* After the shorthands and more specific, or the shorthand resets play-state to running. */
+	section:not([data-playing]) :is(.ch-bob, .ch-bob .pc-star, .ch-swap) {
+		animation-play-state: paused;
+	}
+}
+
+@keyframes loop-bob {
+	from {
+		transform: translate3d(0, -0.4rem, 0) rotate(-1.5deg);
+	}
+	to {
+		transform: translate3d(0, 0.4rem, 0) rotate(1.5deg);
+	}
+}
+
+@keyframes loop-turn {
+	to {
+		rotate: 22.5deg;
+	}
+}
+
+@keyframes loop-swap {
+	0%,
+	35% {
+		opacity: 0;
+	}
+	45%,
+	80% {
+		opacity: 1;
+	}
+	90%,
+	100% {
+		opacity: 0;
+	}
+}
+
+/* Opener headline: a page-time animation (not the hydration-gated reveal) so it paints at t=0. */
+@media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
+	/* Words are painted (unclipped) at t=0 so the h1 can be LCP, and still rise with the stagger. */
+	.ch-title .mask-word {
+		overflow: visible;
+	}
+
+	.ch-title .mask-word > span {
+		animation: ch-word var(--dur-reveal) var(--ease-out-editorial)
+			calc(var(--reveal-delay, 0ms) + var(--i, 0) * var(--step-rise)) both;
+	}
+
+	/* Above-the-fold Reveal: page-time rise, never hidden before hydration. */
+	.ch-rise {
+		animation: ch-rise var(--dur-reveal) var(--ease-out-editorial)
+			calc(var(--reveal-delay, 0ms) + var(--n, 0) * var(--step-rise)) both;
+	}
+}
+
+@media print {
+	.pin,
+	.pin-wide {
+		height: auto !important;
+	}
+
+	.pin-stage {
+		position: static !important;
+		height: auto !important;
+	}
+
+	.ch-card,
+	.ch-headline,
+	.ch-rule,
+	.beat,
+	.beat-word,
+	.chip .pc-star,
+	.ch-photo,
+	.ch-photo::after,
+	.ch-label,
+	.ch-caption,
+	.ch-frame,
+	.people-track {
+		animation: none;
+	}
+}
+
+/* ── S16-03 Membership: ticket, check draw, FAQ plus ─────────────────────── */
+
+.draw-check path {
+	stroke-dasharray: 1;
+	stroke-dashoffset: 0;
+}
+
+.faq-plus {
+	position: relative;
+	flex-shrink: 0;
+	width: 1rem;
+	height: 1rem;
+	margin-left: 1rem;
+	transition: rotate var(--dur-hover) var(--ease-out-editorial);
+}
+
+.faq-plus::before,
+.faq-plus::after {
+	content: "";
+	position: absolute;
+	inset: auto 0;
+	top: calc(50% - 0.75px);
+	height: 1.5px;
+	background: currentColor;
+}
+
+.faq-plus::after {
+	rotate: 90deg;
+}
+
+.faq-trigger[data-state="open"] .faq-plus {
+	rotate: 45deg;
+}
+
+@media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
+	.ticket:not([data-revealed]) .draw-check path {
+		stroke-dashoffset: 1;
+	}
+
+	.ticket[data-revealed] .draw-check path {
+		transition: stroke-dashoffset var(--dur-reveal) var(--ease-out-editorial)
+			calc(var(--i, 0) * var(--step-rise));
+	}
+
+	.ticket[data-revealed] .ticket-arrow {
+		animation: ticket-nudge var(--dur-reveal) var(--ease-out-editorial) 1000ms 1;
+	}
+}
+
+@keyframes ticket-nudge {
+	40% {
+		transform: translate3d(0.4rem, 0, 0);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.faq-plus {
+		transition: none;
+	}
+}
+
+/* ── S16-03 Events, News, Article ────────────────────────────────────────── */
+
+.unmask-up {
+	--unmask-from: inset(100% 0 0 0);
+}
+
+.unmask-down {
+	--unmask-from: inset(0 0 100% 0);
+}
+
+.unmask-left {
+	--unmask-from: inset(0 0 0 100%);
+}
+
+/* The quiet 2px reading line under the nav: needs a scroll timeline. */
+.reading-progress {
+	display: none;
+}
+
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+	.tile:hover .photo-zoom img {
+		transform: scale(1.03);
+	}
+}
+
+.tile:hover .link-draw,
+.tile:focus-visible .link-draw {
+	background-size: 100% 1px;
+}
+
+/* Drop cap on the first paragraph of the (CMS-rendered) body. */
+.drop-cap > p:first-of-type::first-letter {
+	float: left;
+	font-family: var(--font-display);
+	font-weight: 500;
+	font-size: 4.6em;
+	line-height: 0.82;
+	padding: 0.06em 0.1em 0 0;
+	color: var(--color-plum);
+}
+
+.article-body blockquote {
+	position: relative;
+	border-left: 0;
+}
+
+.article-body blockquote::before {
+	content: "";
+	position: absolute;
+	inset: 0 auto 0 0;
+	width: 3px;
+	background: var(--color-plum);
+	transform-origin: top;
+}
+
+@keyframes unmask {
+	from {
+		clip-path: var(--unmask-from);
+	}
+}
+
+@keyframes rule-draw {
+	from {
+		transform: scaleY(0);
+	}
+}
+
+@keyframes unmask-scroll {
+	from {
+		clip-path: inset(100% 0 0 0);
+	}
+}
+
+@keyframes reading-fill {
+	from {
+		transform: scaleX(0);
+	}
+}
+
+@media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
+	.unmask-now {
+		animation: unmask var(--dur-rise) var(--ease-out-editorial) both;
+	}
+}
+
+/* Scroll-linked entry for grid photos, the reading line, the pull-quote rule and inline images. */
+@supports (animation-timeline: view()) {
+	@media (prefers-reduced-motion: no-preference) {
+		.unmask:not(.unmask-now) {
+			animation: unmask linear both;
+			animation-timeline: view();
+			animation-range: entry 0% entry 60%;
+		}
+
+		.article-body blockquote::before {
+			animation: rule-draw linear both;
+			animation-timeline: view();
+			animation-range: entry 10% entry 90%;
+		}
+
+		.article-body img {
+			animation: unmask-scroll linear both;
+			animation-timeline: view();
+			animation-range: entry 0% entry 70%;
+		}
+
+		.reading-progress {
+			display: block;
+			position: fixed;
+			inset: 4.75rem 0 auto;
+			z-index: 40;
+			height: 2px;
+			background: var(--color-ice);
+			transform-origin: left;
+			animation: reading-fill linear both;
+			animation-timeline: scroll(root block);
+		}
+
+		@media (min-width: 48rem) {
+			.reading-progress {
+				top: 5.25rem;
+			}
+		}
+	}
+}
+
+@media print {
+	.reading-progress {
+		display: none;
+	}
+}
+
+/* Cookie banner: fades in; Reduce Motion gets the same fade, no movement. */
+@media (prefers-reduced-motion: no-preference) {
+	.consent-banner {
+		animation: consent-in var(--dur-reveal) var(--ease-out-editorial) backwards;
+	}
+}
+
+@keyframes consent-in {
+	from {
+		opacity: 0;
 	}
 }

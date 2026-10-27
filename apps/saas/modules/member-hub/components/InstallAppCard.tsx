@@ -2,88 +2,88 @@
 
 import { useActiveOrganization } from "@organizations/hooks/use-active-organization";
 import { parseOrgMetadata } from "@repo/database/types";
-import Image from "next/image";
-
-// Official store badge URLs. These are the standard public assets Apple
-// and Google publish for store-link badges.
-const APPLE_BADGE_SRC =
-	"https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg";
-const GOOGLE_BADGE_SRC =
-	"https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png";
+import { useTranslations } from "next-intl";
+import type { ReactNode } from "react";
 
 export function InstallAppCard() {
+	const t = useTranslations("app.memberHub.installApp");
 	const { activeOrganization } = useActiveOrganization();
-	const clubName = activeOrganization?.name ?? "the club";
 	const rawMetadata =
 		(activeOrganization?.metadata as unknown as string | null | undefined) ?? null;
 	const metadata =
-		typeof rawMetadata === "string"
-			? parseOrgMetadata(rawMetadata)
-			: (rawMetadata ?? {});
-	const appLinks = metadata.appLinks ?? {};
-	const { iosUrl, androidUrl } = appLinks;
-	const hasAny = Boolean(iosUrl || androidUrl);
-
-	if (!hasAny) {
-		return (
-			<section className="rounded-2xl bg-card p-6 md:p-10 shadow-sm">
-				<p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
-					APP LAUNCHING SOON
-				</p>
-				<h3 className="mt-3 font-display text-2xl md:text-3xl text-foreground leading-tight">
-					The {clubName} app is in final testing.
-				</h3>
-				<p className="mt-3 text-foreground/75 max-w-2xl">
-					We'll email you the moment it's live on the App Store and Play Store.
-				</p>
-			</section>
-		);
-	}
+		typeof rawMetadata === "string" ? parseOrgMetadata(rawMetadata) : (rawMetadata ?? {});
+	const iosUrl = metadata.appLinks?.iosUrl?.trim();
+	const androidUrl = metadata.appLinks?.androidUrl?.trim();
+	const comingSoon = (
+		<span className="mt-2 type-label text-xs text-ink-variant">{t("comingSoon")}</span>
+	);
 
 	return (
-		<section className="rounded-2xl bg-card p-6 md:p-10 shadow-sm">
-			<p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
-				GET THE APP
+		<section className="p-6 md:p-10 rounded-xl border bg-card">
+			<p className="text-xs tracking-wider font-mono text-muted-foreground uppercase">
+				{t("eyebrow")}
 			</p>
-			<h3 className="mt-3 font-display text-2xl md:text-3xl text-foreground leading-tight">
-				Our Stables, Pulse, and Community live in the app.
+			<h3 className="mt-3 text-2xl md:text-3xl leading-tight font-display text-foreground">
+				{t("title")}
 			</h3>
 
-			<div className="mt-6 flex flex-wrap items-center gap-3">
-				{iosUrl ? (
-					<a href={iosUrl} target="_blank" rel="noreferrer" aria-label="Download on the App Store">
-						<Image
-							src={APPLE_BADGE_SRC}
-							alt="Download on the App Store"
-							width={160}
-							height={48}
-							unoptimized
+			<div className="mt-6 gap-x-5 gap-y-3 flex flex-wrap items-start">
+				<div className="flex flex-col items-start">
+					<StoreBadge href={iosUrl} className="inline-block">
+						<img
+							src="/store-badges/app-store-black.svg"
+							alt={t("altIos")}
+							width={120}
+							height={40}
+							className="h-10 w-auto"
 						/>
-					</a>
-				) : null}
-				{androidUrl ? (
-					<a href={androidUrl} target="_blank" rel="noreferrer" aria-label="Get it on Google Play">
-						<Image
-							src={GOOGLE_BADGE_SRC}
-							alt="Get it on Google Play"
-							width={180}
-							height={54}
-							unoptimized
+					</StoreBadge>
+					{!iosUrl && comingSoon}
+				</div>
+				<div className="flex flex-col items-start">
+					{/* Google's PNG carries padding: 60px tall shows a 40px badge. */}
+					<StoreBadge href={androidUrl} className="-my-2.5 -mx-2.5 inline-block">
+						<img
+							src="/store-badges/google-play.png"
+							alt={t("altAndroid")}
+							width={155}
+							height={60}
+							className="h-[60px] w-auto"
 						/>
-					</a>
-				) : null}
+					</StoreBadge>
+					{!androidUrl && comingSoon}
+				</div>
 			</div>
 
 			<div className="mt-8">
-				<p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
-					HOW IT WORKS
+				<p className="text-xs tracking-wider font-mono text-muted-foreground uppercase">
+					{t("howTitle")}
 				</p>
-				<ol className="mt-3 space-y-2 text-foreground/85 list-decimal list-inside">
-					<li>Install the app from the store.</li>
-					<li>Sign in with the same email you used here.</li>
-					<li>You're in — no extra setup.</li>
+				<ol className="mt-3 space-y-2 list-inside list-decimal text-foreground/85">
+					<li>{t("step1")}</li>
+					<li>{t("step2")}</li>
+					<li>{t("step3")}</li>
 				</ol>
 			</div>
 		</section>
+	);
+}
+
+/** Links to the store listing once Organization.metadata.appLinks has it; until then the badge is shown unlinked. */
+function StoreBadge({
+	href,
+	className,
+	children,
+}: {
+	href?: string;
+	className: string;
+	children: ReactNode;
+}) {
+	return href ? (
+		<a href={href} target="_blank" rel="noopener" className={className}>
+			{children}
+		</a>
+	) : (
+		<span className={className}>{children}</span>
 	);
 }

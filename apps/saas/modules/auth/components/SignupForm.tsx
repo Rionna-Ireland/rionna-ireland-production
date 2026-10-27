@@ -135,8 +135,8 @@ export function SignupForm({ prefillEmail }: { prefillEmail?: string }) {
 
 	return (
 		<div>
-			<h1 className="font-bold text-xl md:text-2xl">{t("auth.signup.title")}</h1>
-			<p className="mt-1 mb-6 text-foreground/60">{t("auth.signup.message")}</p>
+			<h1 className="type-display-md">{t("auth.signup.title")}</h1>
+			<p className="mt-1 mb-6 text-ink-variant">{t("auth.signup.message")}</p>
 
 			{awaitingVerification ? (
 				<Alert variant="success">

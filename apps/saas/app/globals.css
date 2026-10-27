@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 @import "@repo/tailwind-config/theme.css";
+@import "@repo/tailwind-config/v2.css";
 @import "@repo/tailwind-config/tailwind-animate.css";
 
 @source "../../../packages/ui/components";

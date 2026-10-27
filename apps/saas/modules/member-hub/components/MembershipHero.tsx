@@ -7,6 +7,7 @@ import { toastError } from "@repo/ui/components/toast";
 import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { ArrowRightIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 const HEALTHY_STATUSES = new Set(["active", "trialing"]);
 
@@ -52,7 +53,7 @@ function StatusPill({ status, cancelAtPeriodEnd }: { status: string; cancelAtPer
 		<span
 			className={
 				cancelAtPeriodEnd
-					? "bg-amber-100 px-3 py-1 text-amber-950 text-xs tracking-wide inline-flex items-center rounded-full font-mono uppercase"
+					? "bg-cream px-3 py-1 text-plum text-xs tracking-wide inline-flex items-center rounded-full font-mono uppercase"
 					: isHealthy
 						? "px-3 py-1 text-xs tracking-wide inline-flex items-center rounded-full bg-rionna-green-100 font-mono text-rionna-green-950 uppercase"
 						: "px-3 py-1 text-xs tracking-wide inline-flex items-center rounded-full bg-rionna-pink-100 font-mono text-rionna-pink-950 uppercase"
@@ -64,6 +65,7 @@ function StatusPill({ status, cancelAtPeriodEnd }: { status: string; cancelAtPer
 }
 
 export function MembershipHero() {
+	const t = useTranslations();
 	const { user } = useSession();
 	const { activeOrganization } = useActiveOrganization();
 	const clubName = activeOrganization?.name ?? "the club";
@@ -77,7 +79,7 @@ export function MembershipHero() {
 
 	const onManageBilling = async () => {
 		if (!summary?.purchaseId) {
-			toastError("We couldn't open the billing portal — please refresh and try again.");
+			toastError(t("app.memberHub.billingPortalRefresh"));
 			return;
 		}
 		try {
@@ -87,7 +89,7 @@ export function MembershipHero() {
 			});
 			window.location.assign(customerPortalLink);
 		} catch {
-			toastError("We couldn't open the billing portal — please try again in a moment.");
+			toastError(t("app.memberHub.billingPortalRetry"));
 		}
 	};
 
@@ -107,7 +109,7 @@ export function MembershipHero() {
 			: `Your membership stays active until ${accessEndLabel}.`
 		: isHealthy
 			? `You're a member of ${clubName}.`
-			: "There's an issue with your membership — let's get it sorted.";
+			: t("app.memberHub.membershipIssue");
 
 	const amountLabel =
 		summary?.amount != null
@@ -123,7 +125,7 @@ export function MembershipHero() {
 	const memberSinceRow = formatDate(summary?.memberSince);
 
 	return (
-		<section className="p-6 md:p-10 shadow-sm rounded-2xl bg-card">
+		<section className="p-6 md:p-10 rounded-xl border bg-card">
 			<div className="gap-4 flex items-start justify-between">
 				<p className="text-xs tracking-wider font-mono text-muted-foreground uppercase">
 					{eyebrow}
