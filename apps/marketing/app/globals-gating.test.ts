@@ -24,7 +24,7 @@ function hidingRules() {
 				if (
 					/(^|[;\s])opacity:\s*0;/.test(body) ||
 					/clip-path:\s*inset\(100%/.test(body) ||
-					/translate3d\(0,\s*130%/.test(body)
+					/translate3d\(0,\s*(130%|calc\(100% \+)/.test(body)
 				) {
 					out.push({ selector: top.head, chain: stack.map((s) => s.head) });
 				}
