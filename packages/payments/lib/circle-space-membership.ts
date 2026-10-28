@@ -36,6 +36,27 @@ export interface SyncCircleSpaceMembershipResult {
 const FAIL: SyncCircleSpaceMembershipResult = { ok: false };
 const OK: SyncCircleSpaceMembershipResult = { ok: true };
 
+/**
+ * Stamps the HorseFollow row as joined so the daily reconcile skips it
+ * (S8-04 incremental). Best-effort: a failed stamp only means the reconcile
+ * re-asserts this follow once more, so it must never turn a successful join
+ * into a FAIL. `updateMany` is a no-op when no follow row exists (e.g. the
+ * like-retry join path for an unfollowed horse).
+ */
+async function markFollowJoined(userId: string, horseId: string, logCtx: Record<string, unknown>) {
+	try {
+		await db.horseFollow.updateMany({
+			where: { userId, horseId },
+			data: { circleJoinedAt: new Date(), circleJoinAttempts: 0 },
+		});
+	} catch (error) {
+		logger.warn("[Circle] Space membership sync: failed to stamp circleJoinedAt", {
+			...logCtx,
+			error: error instanceof Error ? error.message : String(error),
+		});
+	}
+}
+
 export async function syncCircleSpaceMembership(
 	params: SyncCircleSpaceMembershipParams,
 ): Promise<SyncCircleSpaceMembershipResult> {
@@ -89,6 +110,7 @@ export async function syncCircleSpaceMembership(
 				logger.warn("[Circle] Space membership sync (admin API) failed", { ...logCtx, reason: outcome.reason });
 				return FAIL;
 			}
+			if (action === "join") await markFollowJoined(userId, horseId, logCtx);
 			return OK;
 		}
 
@@ -129,6 +151,7 @@ export async function syncCircleSpaceMembership(
 			return FAIL;
 		}
 
+		if (action === "join") await markFollowJoined(userId, horseId, logCtx);
 		return OK;
 	} catch (error) {
 		logger.warn("[Circle] Space membership sync: unexpected error", {

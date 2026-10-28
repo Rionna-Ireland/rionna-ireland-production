@@ -2,23 +2,26 @@
  * Standing horse-space membership reconciliation (S8-04 §3).
  *
  * Heals silent join failures (`syncCircleSpaceMembership` never throws and
- * never retries — S8-04 §Context) and any future drift between the app's
- * `HorseFollow` rows and Circle space membership, without diffing: every
- * `HorseFollow` row gets a re-asserted `join` call. Joining an
- * already-joined space is idempotent from the caller's perspective (the
- * helper treats non-2xx as a warn-and-continue), so this is safe to run
- * daily against every follow in the org.
+ * never retries — S8-04 §Context). Incremental: only `HorseFollow` rows
+ * with no successful join stamped (`circleJoinedAt` null) and fewer than
+ * `MAX_JOIN_ATTEMPTS` failed attempts get a re-asserted `join`. With horse
+ * auto-follow on, every member follows every public horse, so re-asserting
+ * every follow daily was O(members × horses) Circle calls and outgrew the
+ * cron's `maxDuration`; steady state is now ~0 calls. Drift made directly
+ * in Circle (a member removed from a space by hand) is not detected, since
+ * the stamp is never cleared by Circle-side changes.
  *
- * At single-club scale this is O(follows) ≈ low hundreds of Circle calls/day
- * — comfortably inside quota (the member token cache means ~1 mint per
- * member, not per call). The membership pass itself makes no DB writes.
+ * Each failed attempt increments `circleJoinAttempts` (its only DB write
+ * besides the visibility mirror below); a success stamps `circleJoinedAt`
+ * inside the helper. Because successes are stamped as they happen, a run
+ * killed mid-sweep resumes where it left off on the next run.
  *
  * Also re-asserts Circle space visibility (S9-05): for every org horse with
  * an active space, `circleSpaceVisibility` (the DB mirror) is diffed against
  * `Horse.inviteOnly` — the source of truth — and any mismatch is corrected
  * Circle-first (`setSpaceVisibility`) before the mirror is written, counted
- * in `visibilityFixed`. This is the pass's one source of DB writes, and it
- * heals both `update-horse`'s Circle-first failures (mirror left stale) and
+ * in `visibilityFixed`. This heals both `update-horse`'s Circle-first
+ * failures (mirror left stale) and
  * any manual/out-of-band drift in Circle itself. Historic mirror rows may
  * carry the legacy `"member_public"` value; any value other than `"private"`
  * is treated as public when diffing.
@@ -53,6 +56,13 @@ import { runBounded } from "../../../circle/lib/run-bounded";
 
 const CONCURRENCY = 5;
 
+/**
+ * Failed reconcile attempts after which a follow stops being retried. Bounds
+ * the daily Circle work if a join fails permanently (e.g. Circle answers a
+ * re-join with a non-2xx). A later successful join from any path resets it.
+ */
+export const MAX_JOIN_ATTEMPTS = 5;
+
 export interface ReconcileSpaceMembershipsSummary {
 	orgsProcessed: number;
 	orgsSkippedDisabled: number;
@@ -71,6 +81,22 @@ export interface ReconcileSpaceMembershipsSummary {
 interface Candidate {
 	userId: string;
 	horseId: string;
+}
+
+async function recordFailedAttempt(candidate: Candidate): Promise<void> {
+	try {
+		await db.horseFollow.updateMany({
+			where: { userId: candidate.userId, horseId: candidate.horseId },
+			data: { circleJoinAttempts: { increment: 1 } },
+		});
+	} catch (error) {
+		logger.warn("[Circle] Space membership reconcile: failed to record join attempt", {
+			surface: "circle.space_membership_reconcile",
+			userId: candidate.userId,
+			horseId: candidate.horseId,
+			error: error instanceof Error ? error.message : String(error),
+		});
+	}
 }
 
 export async function reconcileSpaceMemberships(): Promise<ReconcileSpaceMembershipsSummary> {
@@ -161,8 +187,16 @@ export async function reconcileSpaceMemberships(): Promise<ReconcileSpaceMembers
 		}
 		orgsProcessed++;
 
+		// Incremental: only follows that have never had a successful join
+		// stamped (`circleJoinedAt`, set by `syncCircleSpaceMembership`) and
+		// haven't exhausted their retry budget. Already-joined follows cost
+		// nothing, so a steady-state run makes ~0 Circle calls.
 		const follows = await db.horseFollow.findMany({
-			where: { organizationId: org.id },
+			where: {
+				organizationId: org.id,
+				circleJoinedAt: null,
+				circleJoinAttempts: { lt: MAX_JOIN_ATTEMPTS },
+			},
 			select: { userId: true, horseId: true },
 		});
 		totalFollows += follows.length;
@@ -214,9 +248,11 @@ export async function reconcileSpaceMemberships(): Promise<ReconcileSpaceMembers
 						joined++;
 					} else {
 						failed++;
+						await recordFailedAttempt(candidate);
 					}
 				} catch (error) {
 					failed++;
+					await recordFailedAttempt(candidate);
 					logger.warn("[Circle] Space membership reconcile: join threw unexpectedly", {
 						surface: "circle.space_membership_reconcile",
 						organizationId: org.id,
