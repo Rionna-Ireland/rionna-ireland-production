@@ -23,6 +23,8 @@ import { logger } from "@repo/logs";
 import { MAX_BATCH_SIZE, getTemplate, sendRawEmailBatch } from "@repo/mail";
 import { getBaseUrl } from "@repo/utils";
 
+import { memberAudienceWhere } from "../members/lib/membership-status";
+
 export interface NewsNotificationResult {
 	total: number;
 	sent: number;
@@ -48,7 +50,7 @@ export async function sendNewsNotificationEmails(post: {
 	}
 
 	const members = await db.member.findMany({
-		where: { organizationId: post.organizationId },
+		where: memberAudienceWhere(post.organizationId),
 		include: {
 			user: {
 				select: {

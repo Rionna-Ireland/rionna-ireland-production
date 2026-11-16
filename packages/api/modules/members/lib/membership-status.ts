@@ -38,3 +38,13 @@ export function activeMemberWhere(organizationId?: string) {
 		},
 	};
 }
+
+/** Who receives member news and pushes: paying members plus staff, who hold no Purchase (W-16). */
+export function memberAudienceWhere(organizationId: string) {
+	return {
+		OR: [
+			activeMemberWhere(organizationId),
+			{ organizationId, user: { role: { in: ["admin", "platformAdmin"] } } },
+		],
+	};
+}
