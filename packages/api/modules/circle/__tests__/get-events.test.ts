@@ -137,7 +137,7 @@ describe("getEvents", () => {
 	});
 
 	it("returns configured:true with empty events when the member has no circleMemberId (paywall)", async () => {
-		mockMemberFindFirst.mockResolvedValue(null);
+		mockMemberFindFirst.mockResolvedValue({ circleMemberId: null }); // paying, Circle not provisioned
 		const fetchSpy = routeFetch();
 		vi.stubGlobal("fetch", fetchSpy);
 
@@ -167,7 +167,7 @@ describe("getEvents", () => {
 		// Membership gate must be checked BEFORE the cache is consulted — even
 		// though the cache key includes userId, the gate itself must never be
 		// skippable via a warm cache entry.
-		mockMemberFindFirst.mockResolvedValue(null);
+		mockMemberFindFirst.mockResolvedValue({ circleMemberId: null }); // paying, Circle not provisioned
 		const second = await call(getEvents, { organizationId: ORG_ID, scope: "upcoming" }, ctx);
 
 		expect(second).toEqual({ ok: true, configured: true, events: [] });

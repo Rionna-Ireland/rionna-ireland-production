@@ -7,9 +7,12 @@ const { mockGetSession, mockGetPublishedHorseById, mockGetFollowedHorseIds } = v
 	mockGetFollowedHorseIds: vi.fn(),
 }));
 
+const mockPaidMember = vi.hoisted(() => vi.fn(async (): Promise<{ id: string } | null> => ({ id: "m-1" })));
 vi.mock("@repo/auth", () => ({ auth: { api: { getSession: mockGetSession } } }));
 
 vi.mock("@repo/database", () => ({
+	// memberProcedure gate (W-04): the caller is a paying member.
+	db: { member: { findFirst: mockPaidMember } },
 	getPublishedHorseById: mockGetPublishedHorseById,
 }));
 
@@ -29,6 +32,15 @@ beforeEach(() => {
 });
 
 describe("getPublishedHorse (S9-05 invite-only gating)", () => {
+	it("refuses a free signup with membership_inactive (W-04)", async () => {
+		mockPaidMember.mockResolvedValueOnce(null);
+		await expect(call(getPublishedHorse, { horseId: "h-1" }, ctx)).rejects.toMatchObject({
+			code: "FORBIDDEN",
+			data: { reason: "membership_inactive" },
+		});
+		expect(mockGetPublishedHorseById).not.toHaveBeenCalled();
+	});
+
 	it("returns an open horse regardless of follow state", async () => {
 		mockGetPublishedHorseById.mockResolvedValue({
 			id: "h-1",

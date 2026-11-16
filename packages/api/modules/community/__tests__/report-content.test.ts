@@ -94,12 +94,13 @@ describe("community.reportContent", () => {
 		expect(mockNotifyAdminsOfReport).not.toHaveBeenCalled();
 	});
 
-	it("returns ok:false for a non-member", async () => {
+	it("refuses cancelled and non-members (W-04)", async () => {
 		mockMemberFindFirst.mockResolvedValue(null);
 
-		const result = await call(reportContent, baseInput, ctx);
-
-		expect(result).toEqual({ ok: false });
+		await expect(call(reportContent, baseInput, ctx)).rejects.toMatchObject({
+			code: "FORBIDDEN",
+			data: { reason: "membership_inactive" },
+		});
 		expect(mockCreateModerationFlag).not.toHaveBeenCalled();
 		expect(mockNotifyAdminsOfReport).not.toHaveBeenCalled();
 	});

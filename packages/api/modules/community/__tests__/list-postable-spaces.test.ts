@@ -157,8 +157,8 @@ describe("community.listPostableSpaces", () => {
 		expect(mockWriteMemberSpacesCache).toHaveBeenCalledWith("u1", "org1", SPACES);
 	});
 
-	it("returns empty for a non-member", async () => {
-		mockMemberFindFirst.mockResolvedValue(null);
+	it("returns empty for a member not yet in Circle", async () => {
+		mockMemberFindFirst.mockResolvedValue({ circleMemberId: null }); // paying, Circle not provisioned
 		expect(await call(listPostableSpaces, { organizationId: "org1" }, ctx)).toEqual({
 			ok: true,
 			spaces: [],
@@ -176,7 +176,7 @@ describe("community.listPostableSpaces", () => {
 			ok: true,
 			spaces: [],
 		});
-		expect(mockMemberFindFirst).not.toHaveBeenCalled();
+		expect(mockMemberFindFirst).toHaveBeenCalledTimes(1); // memberProcedure gate only
 		expect(mockGetMemberToken).not.toHaveBeenCalled();
 	});
 

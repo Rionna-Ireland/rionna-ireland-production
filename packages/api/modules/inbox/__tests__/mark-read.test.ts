@@ -10,7 +10,7 @@ const { mockGetSession, mockMemberFindUnique, mockItemUpdateMany } = vi.hoisted(
 vi.mock("@repo/auth", () => ({ auth: { api: { getSession: mockGetSession } } }));
 vi.mock("@repo/database", () => ({
 	db: {
-		member: { findUnique: mockMemberFindUnique },
+		member: { findFirst: mockMemberFindUnique },
 		inboxItem: { updateMany: mockItemUpdateMany },
 	},
 }));
@@ -38,10 +38,9 @@ describe("inbox.markRead", () => {
 		expect(result).toEqual({ ok: true });
 	});
 
-	it("returns ok:false and skips the update for non-members", async () => {
+	it("refuses cancelled and non-members (W-04)", async () => {
 		mockMemberFindUnique.mockResolvedValue(null);
-		const result = await call(markRead, { organizationId: "org1", id: "i1" }, ctx);
-		expect(result).toEqual({ ok: false });
+		await expect(call(markRead, { organizationId: "org1", id: "i1" }, ctx)).rejects.toMatchObject({ code: "FORBIDDEN", data: { reason: "membership_inactive" } });
 		expect(mockItemUpdateMany).not.toHaveBeenCalled();
 	});
 });
@@ -56,10 +55,9 @@ describe("inbox.markAllRead", () => {
 		expect(result).toEqual({ ok: true });
 	});
 
-	it("returns ok:false and skips the update for non-members", async () => {
+	it("refuses cancelled and non-members (W-04)", async () => {
 		mockMemberFindUnique.mockResolvedValue(null);
-		const result = await call(markAllRead, { organizationId: "org1" }, ctx);
-		expect(result).toEqual({ ok: false });
+		await expect(call(markAllRead, { organizationId: "org1" }, ctx)).rejects.toMatchObject({ code: "FORBIDDEN", data: { reason: "membership_inactive" } });
 		expect(mockItemUpdateMany).not.toHaveBeenCalled();
 	});
 });

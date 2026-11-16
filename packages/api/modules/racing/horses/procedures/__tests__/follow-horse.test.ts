@@ -102,9 +102,11 @@ describe("input organizationId (web dashboard — session has no active org)", (
 			{ horseId: "h-1", organizationId: "org-1" },
 			ctx,
 		);
-		expect(mockMemberFindFirst).toHaveBeenCalledWith(
-			expect.objectContaining({ where: { organizationId: "org-1", userId: "u-1" } }),
-		);
+		// memberProcedure checks paying membership in the input org (W-04).
+		expect(mockMemberFindFirst.mock.calls[0][0].where).toMatchObject({
+			userId: "u-1",
+			organizationId: "org-1",
+		});
 		expect(mockUpsert).toHaveBeenCalledWith({
 			where: { userId_horseId: { userId: "u-1", horseId: "h-1" } },
 			create: { organizationId: "org-1", userId: "u-1", horseId: "h-1" },

@@ -4,7 +4,7 @@ import { logger } from "@repo/logs";
 import { createCircleService, getCircleHeadlessApiBaseUrl } from "@repo/payments/lib/circle";
 import { z } from "zod";
 
-import { protectedProcedure } from "../../../orpc/procedures";
+import { memberProcedure } from "../../../orpc/procedures";
 import { onPostCommented } from "../../inbox/activity-hooks";
 import { recordAutoBlock } from "../../moderation/record-auto-block";
 import { recordBlock } from "../../moderation/record-block";
@@ -29,7 +29,7 @@ export interface AddPostCommentResult {
  * usually means the post has `is_comments_enabled:false` (S7-03 A1 lesson),
  * not a token problem.
  */
-export const addPostComment = protectedProcedure
+export const addPostComment = memberProcedure
 	.route({
 		method: "POST",
 		path: "/circle/post-comment",

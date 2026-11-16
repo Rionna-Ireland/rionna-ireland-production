@@ -1,7 +1,7 @@
 import { db, getCurrentCharityConfig, getPollForOrg, getPublishedCharityStories, parseOrgMetadata } from "@repo/database";
 import { z } from "zod";
 
-import { protectedProcedure } from "../../../orpc/procedures";
+import { memberProcedure } from "../../../orpc/procedures";
 import { getCircleStoryTeasers } from "../lib/circle-story-teasers";
 import { type CharityStoryTeaser, type CharityView, toCharityView } from "../lib/charity-view";
 
@@ -24,7 +24,7 @@ async function resolveLinkedPollId(args: { organizationId: string; pollId: strin
 	return poll.id;
 }
 
-export const getForMember = protectedProcedure
+export const getForMember = memberProcedure
 	.route({ method: "GET", path: "/charity", tags: ["Charity"], summary: "Charity impact for the member" })
 	.input(z.object({ organizationId: z.string() }))
 	.handler(async ({ input, context: { user } }): Promise<CharityForMemberResult> => {

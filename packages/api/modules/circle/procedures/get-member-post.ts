@@ -4,11 +4,11 @@ import { logger } from "@repo/logs";
 import { createCircleService, getCircleHeadlessApiBaseUrl } from "@repo/payments/lib/circle";
 import { z } from "zod";
 
-import { protectedProcedure } from "../../../orpc/procedures";
+import { memberProcedure } from "../../../orpc/procedures";
 import { enrichPosts } from "../lib/author-identity";
 import { type CirclePostDetail, objectValue, toPostDetail } from "../lib/parse-post";
 
-export const getMemberPost = protectedProcedure
+export const getMemberPost = memberProcedure
 	.route({
 		method: "GET",
 		path: "/circle/member-post",

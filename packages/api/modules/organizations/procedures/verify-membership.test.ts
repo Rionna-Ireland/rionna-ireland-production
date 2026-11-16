@@ -1,6 +1,8 @@
 import { call } from "@orpc/server";
 import { describe, expect, it, vi } from "vitest";
 
+// orpc/procedures imports db (memberProcedure); the real client needs DATABASE_URL.
+vi.mock("@repo/database", () => ({ db: {} }));
 vi.mock("@repo/auth", () => ({
 	auth: {
 		api: { getSession: vi.fn() },

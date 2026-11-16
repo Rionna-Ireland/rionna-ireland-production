@@ -7,9 +7,10 @@ const { mockGetSession, mockGetPublishedHorses, mockGetPublishedHorseById, mockH
 	mockGetPublishedHorseById: vi.fn(),
 	mockHorseFollowFindMany: vi.fn(),
 }));
+const mockPaidMember = vi.hoisted(() => vi.fn(async (): Promise<{ id: string } | null> => ({ id: "m-1" })));
 vi.mock("@repo/auth", () => ({ auth: { api: { getSession: mockGetSession } } }));
 vi.mock("@repo/database", () => ({
-	db: { horseFollow: { findMany: mockHorseFollowFindMany } },
+	db: { member: { findFirst: mockPaidMember }, horseFollow: { findMany: mockHorseFollowFindMany } },
 	getPublishedHorses: mockGetPublishedHorses,
 	getPublishedHorseById: mockGetPublishedHorseById,
 }));

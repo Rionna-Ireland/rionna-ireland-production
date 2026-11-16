@@ -108,8 +108,12 @@ describe("polls.vote", () => {
 		expect(await call(votePoll, INPUT, ctx)).toEqual({ ok: false, reason: "not_found" });
 		expect(mockGetPollForOrg).toHaveBeenCalledWith({ organizationId: "org1", pollId: "p1" });
 	});
-	it("rejects non-members", async () => {
+	it("rejects cancelled and non-members (W-04)", async () => {
 		mockMemberFindFirst.mockResolvedValue(null);
-		expect(await call(votePoll, INPUT, ctx)).toEqual({ ok: false, reason: "not_member" });
+		await expect(call(votePoll, INPUT, ctx)).rejects.toMatchObject({
+			code: "FORBIDDEN",
+			data: { reason: "membership_inactive" },
+		});
+		expect(mockUpsertPollVote).not.toHaveBeenCalled();
 	});
 });

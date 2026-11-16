@@ -163,7 +163,7 @@ describe("rsvpEvent", () => {
 	});
 
 	it("no circleMemberId returns not_a_member without fetching", async () => {
-		mockMemberFindFirst.mockResolvedValue(null);
+		mockMemberFindFirst.mockResolvedValue({ circleMemberId: null }); // paying, Circle not provisioned
 		const fetchSpy = routeFetch();
 		vi.stubGlobal("fetch", fetchSpy);
 

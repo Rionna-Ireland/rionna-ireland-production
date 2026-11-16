@@ -2,11 +2,11 @@ import { ORPCError } from "@orpc/client";
 import { getPublishedHorseById } from "@repo/database";
 import { z } from "zod";
 
-import { protectedProcedure } from "../../../../orpc/procedures";
+import { memberProcedure } from "../../../../orpc/procedures";
 import { withHorseFacts } from "../lib/horse-facts";
 import { getFollowedHorseIds } from "../lib/horse-follows";
 
-export const getPublishedHorse = protectedProcedure
+export const getPublishedHorse = memberProcedure
 	.route({
 		method: "GET",
 		path: "/horses/{horseId}",

@@ -47,9 +47,9 @@ describe("paddock.listOffers", () => {
 		});
 		expect(mockListActiveOffers).toHaveBeenCalledWith(expect.objectContaining({ organizationId: "org1" }));
 	});
-	it("returns empty for a non-member", async () => {
+	it("refuses cancelled and non-members (W-04)", async () => {
 		mockMemberFindFirst.mockResolvedValue(null);
-		expect(await call(listOffers, { organizationId: "org1" }, ctx)).toEqual({ ok: true, offers: [] });
+		await expect(call(listOffers, { organizationId: "org1" }, ctx)).rejects.toMatchObject({ code: "FORBIDDEN", data: { reason: "membership_inactive" } });
 		expect(mockListActiveOffers).not.toHaveBeenCalled();
 	});
 	it("returns empty when features.paddock is false", async () => {

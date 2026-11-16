@@ -10,7 +10,7 @@ const { mockGetSession, mockMemberFindUnique, mockMemberUpdate } = vi.hoisted(()
 vi.mock("@repo/auth", () => ({ auth: { api: { getSession: mockGetSession } } }));
 vi.mock("@repo/database", () => ({
 	db: {
-		member: { findUnique: mockMemberFindUnique, update: mockMemberUpdate },
+		member: { findFirst: mockMemberFindUnique, updateMany: mockMemberUpdate },
 	},
 }));
 vi.mock("@repo/logs", () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
@@ -30,16 +30,15 @@ describe("inbox.markSeen", () => {
 	it("resets the unseen badge count", async () => {
 		const result = await call(markSeen, { organizationId: "org1" }, ctx);
 		expect(mockMemberUpdate).toHaveBeenCalledWith({
-			where: { organizationId_userId: { organizationId: "org1", userId: "u1" } },
+			where: { organizationId: "org1", userId: "u1" },
 			data: { inboxUnseenCount: 0 },
 		});
 		expect(result).toEqual({ ok: true });
 	});
 
-	it("returns ok:false and skips the update for non-members", async () => {
+	it("refuses cancelled and non-members (W-04)", async () => {
 		mockMemberFindUnique.mockResolvedValue(null);
-		const result = await call(markSeen, { organizationId: "org1" }, ctx);
-		expect(result).toEqual({ ok: false });
+		await expect(call(markSeen, { organizationId: "org1" }, ctx)).rejects.toMatchObject({ code: "FORBIDDEN", data: { reason: "membership_inactive" } });
 		expect(mockMemberUpdate).not.toHaveBeenCalled();
 	});
 });

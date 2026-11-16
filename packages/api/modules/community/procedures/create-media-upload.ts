@@ -5,7 +5,7 @@ import { checkRateLimit } from "@repo/utils/lib/rate-limit";
 import { z } from "zod";
 
 import { assertSafeFilename } from "../../../lib/upload-validation";
-import { protectedProcedure } from "../../../orpc/procedures";
+import { memberProcedure } from "../../../orpc/procedures";
 import {
 	MEDIA_UPLOADS_PER_HOUR,
 	POST_IMAGE_CONTENT_TYPES,
@@ -23,7 +23,7 @@ const VIDEO_TYPES: readonly string[] = POST_VIDEO_CONTENT_TYPES;
  * (S15-01): the bytes go phone → Circle, never through our server or storage.
  * The returned `mediaToken` proves to `createPost` that this member got this blob from us.
  */
-export const createMediaUpload = protectedProcedure
+export const createMediaUpload = memberProcedure
 	.route({
 		method: "POST",
 		path: "/community/media-upload",

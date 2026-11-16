@@ -4,7 +4,7 @@ import { logger } from "@repo/logs";
 import { createCircleService, getCircleHeadlessApiBaseUrl } from "@repo/payments/lib/circle";
 import { z } from "zod";
 
-import { protectedProcedure } from "../../../orpc/procedures";
+import { memberProcedure } from "../../../orpc/procedures";
 import { invalidateEventsCacheForMember } from "../lib/events-cache";
 
 export type RsvpEventResult =
@@ -17,7 +17,7 @@ export type RsvpEventResult =
  * "already not going" is the requested state. Invalidate the member's
  * events cache on success so the toggle reads back correctly.
  */
-export const rsvpEvent = protectedProcedure
+export const rsvpEvent = memberProcedure
 	.route({
 		method: "POST",
 		path: "/circle/events/rsvp",

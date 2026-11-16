@@ -381,7 +381,7 @@ describe("getInsideTrack", () => {
 				insideTrack: { spaceId: SPACE_ID, pinnedPostIds: ["p1"] },
 			},
 		});
-		mockMemberFindFirst.mockResolvedValue(null);
+		mockMemberFindFirst.mockResolvedValue({ circleMemberId: null }); // paying, Circle not provisioned
 		const fetchSpy = routeFetch();
 		vi.stubGlobal("fetch", fetchSpy);
 
@@ -416,7 +416,8 @@ describe("getInsideTrack", () => {
 			// fetch) are saved. Skipping these on a cache hit would let an unpaid
 			// user ride a warm cache straight to members-only content (D36).
 			expect(mockOrgFindUnique).toHaveBeenCalledTimes(1);
-			expect(mockMemberFindFirst).toHaveBeenCalledTimes(1);
+			// memberProcedure gate + the circleMemberId lookup.
+			expect(mockMemberFindFirst).toHaveBeenCalledTimes(2);
 		});
 
 		it("does not leak cached org content to a user with no member row (paywall bypass regression)", async () => {
@@ -437,7 +438,7 @@ describe("getInsideTrack", () => {
 			// A second, unpaid user (no Member row / no circleMemberId) hits the
 			// same warm cache and must still get the memberless empty shape — never
 			// the cached members-only pinned/latest content.
-			mockMemberFindFirst.mockResolvedValue(null);
+			mockMemberFindFirst.mockResolvedValue({ circleMemberId: null }); // paying, Circle not provisioned
 			const second = await call(getInsideTrack, { organizationId: ORG_ID }, ctx);
 
 			expect(second).toEqual({ ok: true, configured: true, pinned: [], latest: [] });

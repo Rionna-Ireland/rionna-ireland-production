@@ -1,3 +1,4 @@
+import { db } from "@repo/database";
 import { ACTIVE_SUBSCRIPTION_STATUSES } from "@repo/payments/lib/helper";
 
 export type MembershipStatus = "active" | "past_due" | "cancelled" | "none";
@@ -47,4 +48,21 @@ export function memberAudienceWhere(organizationId: string) {
 			{ organizationId, user: { role: { in: ["admin", "platformAdmin"] } } },
 		],
 	};
+}
+
+/**
+ * W-04: may this user see member content? Club and platform admins are staff
+ * and pass (as in the web (main) layout); everyone else needs a paying Member
+ * row. One query. Shared by memberProcedure and the image proxy.
+ */
+export async function hasMemberAccess(
+	user: { id: string; role?: string | null },
+	organizationId?: string,
+): Promise<boolean> {
+	if (user.role === "admin" || user.role === "platformAdmin") return true;
+	const member = await db.member.findFirst({
+		where: { userId: user.id, ...activeMemberWhere(organizationId) },
+		select: { id: true },
+	});
+	return member !== null;
 }

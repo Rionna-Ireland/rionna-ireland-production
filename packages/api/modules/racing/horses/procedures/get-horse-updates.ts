@@ -2,7 +2,7 @@ import { ORPCError } from "@orpc/client";
 import { db, listPublishedHorseUpdates } from "@repo/database";
 import { z } from "zod";
 
-import { protectedProcedure } from "../../../../orpc/procedures";
+import { memberProcedure } from "../../../../orpc/procedures";
 import { canAccessHorse } from "../lib/horse-access";
 import { bodyTextFromJson } from "../lib/member-post-body-text";
 
@@ -12,7 +12,7 @@ import { bodyTextFromJson } from "../lib/member-post-body-text";
  * MemberPosts (audienceType "horse") from the admin's "Horse updates" tab;
  * this returns the published ones for a single horse, newest first.
  */
-export const getHorseUpdatesProcedure = protectedProcedure
+export const getHorseUpdatesProcedure = memberProcedure
 	.route({
 		method: "GET",
 		path: "/horses/{horseId}/updates",

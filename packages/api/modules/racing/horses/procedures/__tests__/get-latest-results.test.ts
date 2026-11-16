@@ -7,9 +7,14 @@ const { mockGetSession, mockGetLatestResults, mockGetAccessibleHorseWhere } = vi
 	mockGetAccessibleHorseWhere: vi.fn(),
 }));
 
+const mockPaidMember = vi.hoisted(() =>
+	vi.fn(async (): Promise<{ id: string } | null> => ({ id: "m-1" })),
+);
 vi.mock("@repo/auth", () => ({ auth: { api: { getSession: mockGetSession } } }));
 
 vi.mock("@repo/database", () => ({
+	// memberProcedure gate (W-04): the caller is a paying member.
+	db: { member: { findFirst: mockPaidMember } },
 	getLatestResults: mockGetLatestResults,
 }));
 

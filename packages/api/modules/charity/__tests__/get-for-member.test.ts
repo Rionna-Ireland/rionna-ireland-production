@@ -87,7 +87,7 @@ describe("charity.getForMember", () => {
 	});
 	it("returns null for non-members and when features.paddock is false", async () => {
 		mockMemberFindFirst.mockResolvedValue(null);
-		expect(await call(getForMember, { organizationId: "org1" }, ctx)).toEqual({ ok: true, charity: null });
+		await expect(call(getForMember, { organizationId: "org1" }, ctx)).rejects.toMatchObject({ code: "FORBIDDEN", data: { reason: "membership_inactive" } });
 		mockMemberFindFirst.mockResolvedValue({ id: "m1" });
 		mockOrgFindUnique.mockResolvedValue({ id: "org1", metadata: JSON.stringify({ features: { paddock: false } }) });
 		expect(await call(getForMember, { organizationId: "org1" }, ctx)).toEqual({ ok: true, charity: null });

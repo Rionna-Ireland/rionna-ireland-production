@@ -13,6 +13,8 @@ const { mockGetSession, mockGetSignedUploadUrl, mockGetPublicUrl } = vi.hoisted(
 	mockGetPublicUrl: vi.fn(),
 }));
 
+// orpc/procedures imports db (memberProcedure); the real client needs DATABASE_URL.
+vi.mock("@repo/database", () => ({ db: {} }));
 vi.mock("@repo/auth", () => ({ auth: { api: { getSession: mockGetSession } } }));
 
 vi.mock("@repo/storage", () => ({

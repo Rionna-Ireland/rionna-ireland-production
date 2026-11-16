@@ -89,10 +89,12 @@ describe("polls.listActive", () => {
 		expect(result.polls[0].results).toEqual({ total: 2, byOption: { o1: 2, o2: 0 } });
 		expect(result.polls[0].myVoteOptionId).toBe("o1");
 	});
-	it("fails open to an empty list for non-members", async () => {
+	it("refuses cancelled and non-members (W-04)", async () => {
 		mockMemberFindFirst.mockResolvedValue(null);
-		const result = await call(listActivePolls, { organizationId: "org1" }, ctx);
-		expect(result).toEqual({ ok: true, polls: [] });
+		await expect(call(listActivePolls, { organizationId: "org1" }, ctx)).rejects.toMatchObject({
+			code: "FORBIDDEN",
+			data: { reason: "membership_inactive" },
+		});
 		expect(mockGetVisiblePolls).not.toHaveBeenCalled();
 	});
 	it("returns nothing when the org has polls switched off", async () => {

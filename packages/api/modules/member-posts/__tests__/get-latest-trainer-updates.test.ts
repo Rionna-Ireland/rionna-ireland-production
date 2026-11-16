@@ -69,9 +69,9 @@ describe("getLatestTrainerUpdatesProcedure", () => {
 			ctx,
 		);
 
-		expect(mockMemberFindFirst).toHaveBeenCalledWith({
-			where: { organizationId: "org-1", userId: "user-1" },
-			select: { id: true },
+		expect(mockMemberFindFirst.mock.calls[0][0].where).toMatchObject({
+			organizationId: "org-1",
+			userId: "user-1",
 		});
 		expect(mockGetAccessibleHorseWhere).toHaveBeenCalledWith({
 			organizationId: "org-1",

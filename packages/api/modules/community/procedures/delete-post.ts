@@ -3,7 +3,7 @@ import { logger } from "@repo/logs";
 import { createCircleService, getCircleHeadlessApiBaseUrl } from "@repo/payments/lib/circle";
 import { z } from "zod";
 
-import { protectedProcedure } from "../../../orpc/procedures";
+import { memberProcedure } from "../../../orpc/procedures";
 import { invalidateMemberFeedCache } from "../../circle/lib/member-feed-cache";
 import type { DeletePostResult } from "../lib/types";
 
@@ -12,7 +12,7 @@ import type { DeletePostResult } from "../lib/types";
  * `CommunityPost` row (not Circle's) before any Circle call is made — see
  * `delete-post-comment.ts` for the fetch/err handling shape this mirrors.
  */
-export const deletePost = protectedProcedure
+export const deletePost = memberProcedure
 	.route({
 		method: "POST",
 		path: "/community/posts/delete",

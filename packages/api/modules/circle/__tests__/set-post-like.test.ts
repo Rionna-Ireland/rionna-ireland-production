@@ -232,7 +232,7 @@ describe("setPostLike", () => {
 	});
 
 	it("returns ok:false when the member has no circleMemberId", async () => {
-		mockMemberFindFirst.mockResolvedValue(null);
+		mockMemberFindFirst.mockResolvedValue({ circleMemberId: null }); // paying, Circle not provisioned
 		vi.stubGlobal("fetch", vi.fn());
 		const res = await call(
 			setPostLike,

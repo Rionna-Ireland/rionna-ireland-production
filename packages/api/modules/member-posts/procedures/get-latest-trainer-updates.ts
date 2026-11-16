@@ -1,8 +1,7 @@
-import { ORPCError } from "@orpc/client";
-import { db, listLatestTrainerUpdates } from "@repo/database";
+import { listLatestTrainerUpdates } from "@repo/database";
 import { z } from "zod";
 
-import { protectedProcedure } from "../../../orpc/procedures";
+import { memberProcedure } from "../../../orpc/procedures";
 import { getAccessibleHorseWhere } from "../../racing/horses/lib/horse-access";
 import { bodyTextFromJson } from "../../racing/horses/lib/member-post-body-text";
 
@@ -12,7 +11,7 @@ import { bodyTextFromJson } from "../../racing/horses/lib/member-post-body-text"
  * MemberPost (source of truth since S8-01 A2) instead of the legacy
  * dedicated Circle space, which nothing writes to anymore.
  */
-export const getLatestTrainerUpdatesProcedure = protectedProcedure
+export const getLatestTrainerUpdatesProcedure = memberProcedure
 	.route({
 		method: "GET",
 		path: "/member-posts/trainer-updates",
@@ -26,14 +25,6 @@ export const getLatestTrainerUpdatesProcedure = protectedProcedure
 		}),
 	)
 	.handler(async ({ input, context }) => {
-		const member = await db.member.findFirst({
-			where: { organizationId: input.organizationId, userId: context.user.id },
-			select: { id: true },
-		});
-		if (!member) {
-			throw new ORPCError("FORBIDDEN", { message: "Not a member of this organization" });
-		}
-
 		const horseWhere = await getAccessibleHorseWhere({
 			organizationId: input.organizationId,
 			userId: context.user.id,
