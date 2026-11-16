@@ -20,3 +20,21 @@ export function deriveMembershipStatus(statuses: (string | null)[]): MembershipS
 	if (present.some((s) => ENDED_STATUSES.has(s))) return "cancelled";
 	return "none";
 }
+
+/**
+ * Prisma `where` for a Member who counts as paying: their user holds an
+ * active, trialing or past_due Purchase in the org. The same rule as
+ * deriveMembershipStatus returning "active" or "past_due". Used by
+ * memberProcedure, the news/push audiences and the Circle reconcile sweeps.
+ * Without an organizationId it matches any org (D37: one club).
+ */
+export function activeMemberWhere(organizationId?: string) {
+	return {
+		organizationId,
+		user: {
+			purchases: {
+				some: { organizationId, status: { in: [...ACTIVE_SUBSCRIPTION_STATUSES] } },
+			},
+		},
+	};
+}

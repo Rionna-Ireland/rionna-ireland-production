@@ -31,6 +31,7 @@ export async function POST(request: Request) {
 		{
 			provisioned: number;
 			deactivated: number;
+			reactivated: number;
 			errors: number;
 			horseSpacesProvisioned: number;
 			horseSpaceErrors: number;
