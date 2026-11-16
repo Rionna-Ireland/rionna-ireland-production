@@ -1,10 +1,4 @@
-import {
-	db,
-	getInvitationById,
-	getPurchasesByUserId,
-	getUserByEmail,
-	getUserById,
-} from "@repo/database";
+import { db, getPurchasesByUserId, getUserByEmail, getUserById } from "@repo/database";
 import { config as i18nConfig, type Locale } from "@repo/i18n";
 import { logger } from "@repo/logs";
 import { sendEmail } from "@repo/mail";
@@ -19,7 +13,6 @@ import { parse as parseCookies } from "cookie";
 
 import { config } from "./config";
 import { apiErrorLogFields } from "./lib/api-error-log";
-import { updateSeatsInOrganizationSubscription } from "./lib/organization";
 import { assertSignupAllowed } from "./lib/signup-guard";
 import {
 	assertTermsAccepted,
@@ -103,31 +96,6 @@ export const auth = betterAuth({
 		},
 	},
 	hooks: {
-		after: createAuthMiddleware(async (ctx) => {
-			if (ctx.path.startsWith("/organization/accept-invitation")) {
-				const { invitationId } = ctx.body;
-
-				if (!invitationId) {
-					return;
-				}
-
-				const invitation = await getInvitationById(invitationId);
-
-				if (!invitation) {
-					return;
-				}
-
-				await updateSeatsInOrganizationSubscription(invitation.organizationId);
-			} else if (ctx.path.startsWith("/organization/remove-member")) {
-				const { organizationId } = ctx.body;
-
-				if (!organizationId) {
-					return;
-				}
-
-				await updateSeatsInOrganizationSubscription(organizationId);
-			}
-		}),
 		before: createAuthMiddleware(async (ctx) => {
 			// S12-09 / D39: while public signup is closed, only emails with a pending
 			// invitation may sign up. Runs before the endpoint, so nothing is created.
@@ -309,8 +277,6 @@ export const auth = betterAuth({
 		},
 	},
 });
-
-export * from "./lib/organization";
 
 export type Session = typeof auth.$Infer.Session;
 
