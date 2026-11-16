@@ -4,7 +4,7 @@ import { logger } from "@repo/logs";
 import { createCircleService, getCircleHeadlessApiBaseUrl } from "@repo/payments/lib/circle";
 import { z } from "zod";
 
-import { protectedProcedure } from "../../../orpc/procedures";
+import { memberProcedure } from "../../../orpc/procedures";
 import { enrichComments } from "../lib/author-identity";
 import { extractComments, type PostComment } from "../lib/parse-comment";
 import { objectValue } from "../lib/parse-post";
@@ -26,7 +26,7 @@ export interface GetPostCommentsResult {
  * page of 60 covers v1 volumes). Fail-safe: any Circle/network problem returns
  * `ok:false` with an empty list rather than throwing.
  */
-export const getPostComments = protectedProcedure
+export const getPostComments = memberProcedure
 	.route({
 		method: "GET",
 		path: "/circle/post-comments",

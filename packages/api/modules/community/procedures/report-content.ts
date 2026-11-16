@@ -2,7 +2,7 @@ import { createModerationFlag, db } from "@repo/database";
 import { logger } from "@repo/logs";
 import { z } from "zod";
 
-import { protectedProcedure } from "../../../orpc/procedures";
+import { memberProcedure } from "../../../orpc/procedures";
 import { excerptOf } from "../../moderation/excerpt";
 import { EXCERPT_CHARS, MAX_NOTE_CHARS } from "../lib/limits";
 import { notifyAdminsOfReport } from "../lib/notify-admins-of-report";
@@ -38,7 +38,7 @@ const inputSchema = z
  * no admin email; every other successful report fans out one email per
  * club admin/owner (fire-and-forget, never blocks the response).
  */
-export const reportContent = protectedProcedure
+export const reportContent = memberProcedure
 	.route({
 		method: "POST",
 		path: "/community/report",

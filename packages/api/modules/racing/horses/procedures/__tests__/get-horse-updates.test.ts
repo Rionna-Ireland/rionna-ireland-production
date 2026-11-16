@@ -9,10 +9,11 @@ const { mockGetSession, mockFindFirst, mockListPublishedHorseUpdates, mockGetFol
 		mockGetFollowedHorseIds: vi.fn(),
 	}));
 
+const mockPaidMember = vi.hoisted(() => vi.fn(async (): Promise<{ id: string } | null> => ({ id: "m-1" })));
 vi.mock("@repo/auth", () => ({ auth: { api: { getSession: mockGetSession } } }));
 
 vi.mock("@repo/database", () => ({
-	db: { horse: { findFirst: mockFindFirst } },
+	db: { member: { findFirst: mockPaidMember }, horse: { findFirst: mockFindFirst } },
 	listPublishedHorseUpdates: mockListPublishedHorseUpdates,
 }));
 

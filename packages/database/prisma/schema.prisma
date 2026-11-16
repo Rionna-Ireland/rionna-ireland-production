@@ -269,7 +269,8 @@ model Purchase {
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
-  @@index([subscriptionId])
+  @@index([userId])
+  @@index([organizationId, status])
   @@map("purchase")
 }
 
@@ -871,6 +872,8 @@ model StripeEventLog {
   id          String   @id
   type        String
   processedAt DateTime @default(now())
+  // S17-02 (W-08): null = claimed but not finished; a stale claim can be re-taken.
+  completedAt DateTime?
 
   @@index([type, processedAt])
   @@map("stripe_event_log")

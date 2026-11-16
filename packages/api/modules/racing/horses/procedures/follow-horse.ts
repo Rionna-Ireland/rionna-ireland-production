@@ -2,7 +2,7 @@ import { ORPCError } from "@orpc/client";
 import { db } from "@repo/database";
 import { z } from "zod";
 
-import { protectedProcedure } from "../../../../orpc/procedures";
+import { memberProcedure } from "../../../../orpc/procedures";
 import { invalidateMemberFeedCache } from "../../../circle/lib/member-feed-cache";
 import { followHorse, unfollowHorse } from "../lib/horse-follows";
 
@@ -17,9 +17,8 @@ const input = z.object({
 });
 
 /**
- * Resolves the org (input first, session fallback) and — because the input
- * value is caller-supplied — verifies the caller is a member of that org and
- * the horse belongs to it.
+ * Resolves the org (input first, session fallback, the same org memberProcedure
+ * checked membership in) and verifies the horse belongs to it.
  */
 async function resolveFollowRef(
 	i: z.infer<typeof input>,
@@ -28,14 +27,6 @@ async function resolveFollowRef(
 	const organizationId = i.organizationId ?? context.session.activeOrganizationId;
 	if (!organizationId) {
 		throw new ORPCError("BAD_REQUEST", { message: "No active organization" });
-	}
-
-	const member = await db.member.findFirst({
-		where: { organizationId, userId: context.user.id },
-		select: { id: true },
-	});
-	if (!member) {
-		throw new ORPCError("FORBIDDEN", { message: "Not a member of this organization" });
 	}
 
 	const horse = await db.horse.findFirst({
@@ -54,7 +45,7 @@ async function resolveFollowRef(
 	};
 }
 
-export const followHorseProcedure = protectedProcedure
+export const followHorseProcedure = memberProcedure
 	.route({
 		method: "POST",
 		path: "/horses/{horseId}/follow",
@@ -81,7 +72,7 @@ export const followHorseProcedure = protectedProcedure
 		return { ok: true as const, isFollowing: true as const };
 	});
 
-export const unfollowHorseProcedure = protectedProcedure
+export const unfollowHorseProcedure = memberProcedure
 	.route({
 		method: "DELETE",
 		path: "/horses/{horseId}/follow",

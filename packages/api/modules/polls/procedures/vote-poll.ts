@@ -1,16 +1,16 @@
-import { db, getPollForOrg, upsertPollVote } from "@repo/database";
+import { getPollForOrg, upsertPollVote } from "@repo/database";
 import { z } from "zod";
 
-import { protectedProcedure } from "../../../orpc/procedures";
+import { memberProcedure } from "../../../orpc/procedures";
 import { invalidateMemberFeedCache } from "../../circle/lib/member-feed-cache";
 import { buildPollCards } from "../lib/build-poll-cards";
 import { type PollCardData, resolvePollStatus } from "../lib/poll-view";
 
 export type VotePollResult =
 	| { ok: true; poll: PollCardData }
-	| { ok: false; reason: "not_found" | "closed" | "invalid_option" | "not_member" };
+	| { ok: false; reason: "not_found" | "closed" | "invalid_option" };
 
-export const votePoll = protectedProcedure
+export const votePoll = memberProcedure
 	.route({
 		method: "POST",
 		path: "/polls/vote",
@@ -19,11 +19,6 @@ export const votePoll = protectedProcedure
 	})
 	.input(z.object({ organizationId: z.string(), pollId: z.string(), optionId: z.string() }))
 	.handler(async ({ input, context: { user } }): Promise<VotePollResult> => {
-		const member = await db.member.findFirst({
-			where: { userId: user.id, organizationId: input.organizationId },
-			select: { id: true },
-		});
-		if (!member) return { ok: false, reason: "not_member" };
 		const poll = await getPollForOrg({
 			organizationId: input.organizationId,
 			pollId: input.pollId,

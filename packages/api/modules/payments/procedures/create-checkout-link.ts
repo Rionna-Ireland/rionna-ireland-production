@@ -3,11 +3,13 @@ import { db, getOrganizationById } from "@repo/database";
 import { logger } from "@repo/logs";
 import {
 	createCheckoutLink as createCheckoutLinkFn,
+	createCustomerPortalLink,
 	findPriceByPlanId,
 	getCustomerIdFromEntity,
 	getProviderPriceIdByPlanId,
 	type PlanId,
 } from "@repo/payments";
+import { ACTIVE_SUBSCRIPTION_STATUSES } from "@repo/payments/lib/helper";
 import { z } from "zod";
 
 import { localeMiddleware } from "../../../orpc/middleware/locale-middleware";
@@ -59,6 +61,32 @@ export const createCheckoutLink = protectedProcedure
 						message:
 							"This account is already a member of another club. Please use a different email to join a new club.",
 					});
+				}
+			}
+
+			// W-10: one live subscription per user. A second click goes to billing instead.
+			const activePurchase = await db.purchase.findFirst({
+				where: {
+					userId: user.id,
+					type: "SUBSCRIPTION",
+					status: { in: [...ACTIVE_SUBSCRIPTION_STATUSES] },
+				},
+				select: { customerId: true, subscriptionId: true },
+			});
+			if (activePurchase) {
+				try {
+					const portalLink = await createCustomerPortalLink({
+						customerId: activePurchase.customerId,
+						subscriptionId: activePurchase.subscriptionId ?? undefined,
+						redirectUrl: safeRedirectUrl,
+					});
+					if (!portalLink) {
+						throw new ORPCError("INTERNAL_SERVER_ERROR");
+					}
+					return { checkoutLink: portalLink };
+				} catch (e) {
+					logger.error(e);
+					throw new ORPCError("INTERNAL_SERVER_ERROR");
 				}
 			}
 

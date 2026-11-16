@@ -5,7 +5,7 @@ import { createCommunityPost, db, parseOrgMetadata } from "@repo/database";
 import { createCircleService, serializeNovelDocToCircle } from "@repo/payments/lib/circle";
 import { z } from "zod";
 
-import { protectedProcedure } from "../../../orpc/procedures";
+import { memberProcedure } from "../../../orpc/procedures";
 import { invalidateMemberFeedCache } from "../../circle/lib/member-feed-cache";
 import { onMemberPostCreated } from "../../inbox/activity-hooks";
 import { fetchImageBytes } from "../../member-posts/lib/fetch-image-bytes";
@@ -39,7 +39,7 @@ const inputSchema = z
  * Circle write — see the handler-order comments below; the tests assert
  * `circle.createPost` was never called on a failure path.
  */
-export const createPost = protectedProcedure
+export const createPost = memberProcedure
 	.route({
 		method: "POST",
 		path: "/community/posts",

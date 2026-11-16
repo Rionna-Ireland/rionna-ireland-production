@@ -4,7 +4,7 @@ import { logger } from "@repo/logs";
 import { createCircleService, getCircleHeadlessApiBaseUrl } from "@repo/payments/lib/circle";
 import { z } from "zod";
 
-import { protectedProcedure } from "../../../orpc/procedures";
+import { memberProcedure } from "../../../orpc/procedures";
 import { buildPollCards } from "../../polls/lib/build-poll-cards";
 import { getSpacePollFeedItems } from "../../polls/lib/merge-space-polls";
 import { CLOSED_POLL_VISIBLE_MS } from "../../polls/lib/poll-view";
@@ -47,7 +47,7 @@ const MAX_SPACES = 30;
  * the latest posts from each (`/spaces/{id}/posts`, the same endpoint `getMemberPost`
  * uses), which works for any member who can see spaces (incl. public spaces).
  */
-export const getMemberFeed = protectedProcedure
+export const getMemberFeed = memberProcedure
 	.route({
 		method: "GET",
 		path: "/circle/member-feed",

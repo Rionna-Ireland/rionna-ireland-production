@@ -1,7 +1,7 @@
 import { db } from "@repo/database";
 import { z } from "zod";
 
-import { protectedProcedure } from "../../../orpc/procedures";
+import { memberProcedure } from "../../../orpc/procedures";
 import { type InboxDeepLink, type InboxIcon, type InboxKind, isInboxKind, KIND_META, presentInboxItem } from "../kinds";
 import { decodeCursor, encodeCursor } from "../lib/cursor";
 
@@ -33,16 +33,10 @@ const EMPTY_RESULT: InboxListResult = { items: [], nextCursor: null };
  * rendered at read time via `presentInboxItem` so one bulk regroup update on
  * write fits every row.
  */
-export const listInbox = protectedProcedure
+export const listInbox = memberProcedure
 	.route({ method: "GET", path: "/inbox", tags: ["Inbox"], summary: "List the member's notification centre items" })
 	.input(z.object({ organizationId: z.string(), cursor: z.string().optional() }))
 	.handler(async ({ input, context: { user } }): Promise<InboxListResult> => {
-		const member = await db.member.findUnique({
-			where: { organizationId_userId: { organizationId: input.organizationId, userId: user.id } },
-			select: { id: true },
-		});
-		if (!member) return EMPTY_RESULT;
-
 		// A cursor that fails to decode is malformed input, not "no cursor" —
 		// return empty rather than silently restarting at page 1.
 		const cursor = input.cursor ? decodeCursor(input.cursor) : null;

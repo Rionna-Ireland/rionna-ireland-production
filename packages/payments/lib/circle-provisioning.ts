@@ -226,28 +226,32 @@ export async function deactivateCircleMember(member: {
 
 /**
  * Reactivate a member in Circle.
- * Called when subscription transitions from canceled to active.
+ * Called on re-subscribe and from the reconcile sweep. Returns true when
+ * reactivated, false when it failed (left for the next reconcile tick).
  */
-export async function reactivateCircleMember(member: {
-	id: string;
-	circleMemberId: string;
-}): Promise<void> {
+export async function reactivateCircleMember(
+	member: {
+		id: string;
+		circleMemberId: string;
+	},
+	subscriptionId: string,
+): Promise<boolean> {
 	const dbMember = await db.member.findUnique({
 		where: { id: member.id },
 		include: { organization: true },
 	});
-	if (!dbMember?.organization?.slug) return;
+	if (!dbMember?.organization?.slug) return false;
 
 	const user = await db.user.findUnique({ where: { id: dbMember.userId } });
-	if (!user) return;
+	if (!user) return false;
 
 	const service = createCircleService(dbMember.organization.slug);
 	const outcome = await service.reactivateMember({
 		email: user.email,
 		name: user.name ?? user.email,
 		ssoUserId: user.id,
-		// Stable across retries so Circle deduplicates reactivation requests.
-		idempotencyKey: `reactivate-${member.id}`,
+		// Stable across retries of one subscription, new for each re-subscribe (W-05).
+		idempotencyKey: `reactivate-${member.id}-${subscriptionId}`,
 	});
 
 	if (!outcome.ok) {
@@ -259,7 +263,7 @@ export async function reactivateCircleMember(member: {
 			reason: outcome.reason,
 			retriable: outcome.retriable,
 		});
-		return;
+		return false;
 	}
 
 	await db.member.update({
@@ -271,6 +275,8 @@ export async function reactivateCircleMember(member: {
 		memberId: member.id,
 		circleMemberId: member.circleMemberId,
 	});
+
+	return true;
 }
 
 /**

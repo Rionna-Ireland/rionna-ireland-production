@@ -22,9 +22,9 @@ import {
 } from "@repo/payments/lib/circle";
 import { z } from "zod";
 
-import { protectedProcedure } from "../../../orpc/procedures";
+import { memberProcedure } from "../../../orpc/procedures";
 
-export const getSessionToken = protectedProcedure
+export const getSessionToken = memberProcedure
 	.route({
 		method: "POST",
 		path: "/circle/session-token",

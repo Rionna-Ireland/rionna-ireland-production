@@ -1,3 +1,4 @@
+import { hasMemberAccess } from "@repo/api/modules/members/lib/membership-status";
 import { auth } from "@repo/auth";
 import { getSignedUrl } from "@repo/storage";
 import { config as storageConfig } from "@repo/storage/config";
@@ -34,6 +35,15 @@ export const GET = async (req: Request, { params }: { params: Promise<{ path: st
 	const session = await auth.api.getSession({ headers: req.headers });
 	if (!session) {
 		return new Response("Unauthorized", { status: 401 });
+	}
+
+	// W-04: club media (member posts, updates) is for paying members and staff;
+	// avatars stay session-only.
+	if (
+		bucket === "media" &&
+		!(await hasMemberAccess(session.user, session.session.activeOrganizationId ?? undefined))
+	) {
+		return new Response("Forbidden", { status: 403 });
 	}
 
 	const signedUrl = await getSignedUrl(filePath, {

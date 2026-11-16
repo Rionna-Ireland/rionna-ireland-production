@@ -3,7 +3,7 @@ import { db } from "@repo/database";
 import { logger } from "@repo/logs";
 import { z } from "zod";
 
-import { protectedProcedure } from "../../../orpc/procedures";
+import { memberProcedure } from "../../../orpc/procedures";
 import { enrichComments } from "../../circle/lib/author-identity";
 import { canPinAnswers, fetchPostComment } from "../../circle/lib/pinned-answer";
 import { onAnswerPinned } from "../../inbox/activity-hooks";
@@ -26,7 +26,7 @@ async function requirePinner(organizationId: string, userId: string) {
  * pin). Role-gated; the comment must belong to the post, verified through
  * Circle's post-scoped comment route, never the client's say-so.
  */
-export const pinAnswer = protectedProcedure
+export const pinAnswer = memberProcedure
 	.route({
 		method: "POST",
 		path: "/community/posts/{postId}/pinned-answer",
@@ -85,7 +85,7 @@ export const pinAnswer = protectedProcedure
 		return { ok: true as const };
 	});
 
-export const unpinAnswer = protectedProcedure
+export const unpinAnswer = memberProcedure
 	.route({
 		method: "DELETE",
 		path: "/community/posts/{postId}/pinned-answer",

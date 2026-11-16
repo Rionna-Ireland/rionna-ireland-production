@@ -12,10 +12,13 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockGetSession, mockGetSignedUrl } = vi.hoisted(() => ({
+const { mockGetSession, mockGetSignedUrl, mockMemberFindFirst } = vi.hoisted(() => ({
 	mockGetSession: vi.fn(),
 	mockGetSignedUrl: vi.fn(),
+	mockMemberFindFirst: vi.fn(),
 }));
+
+vi.mock("@repo/database", () => ({ db: { member: { findFirst: mockMemberFindFirst } } }));
 
 vi.mock("@repo/auth", () => ({
 	auth: { api: { getSession: mockGetSession } },
@@ -45,6 +48,7 @@ beforeEach(() => {
 	vi.clearAllMocks();
 	mockGetSession.mockResolvedValue({ user: { id: "u1" }, session: { id: "s1" } });
 	mockGetSignedUrl.mockResolvedValue("https://signed.test/x.png");
+	mockMemberFindFirst.mockResolvedValue({ id: "m1" });
 	vi.stubGlobal(
 		"fetch",
 		vi.fn().mockResolvedValue({
@@ -76,6 +80,38 @@ describe("image proxy GET", () => {
 			bucket: "media",
 			expiresIn: 3600,
 		});
+	});
+
+	it("returns 403 on the media bucket for a cancelled or free user (W-04)", async () => {
+		mockMemberFindFirst.mockResolvedValue(null);
+
+		const res = await GET(makeReq(), params(["media", "org1", "member-posts", "x.png"]));
+
+		expect(res.status).toBe(403);
+		expect(mockMemberFindFirst.mock.calls[0][0].where).toMatchObject({ userId: "u1" });
+		expect(mockGetSignedUrl).not.toHaveBeenCalled();
+		expect(fetch).not.toHaveBeenCalled();
+	});
+
+	it("lets club admins read media without a Purchase", async () => {
+		mockGetSession.mockResolvedValue({
+			user: { id: "a1", role: "admin" },
+			session: { id: "s1" },
+		});
+		mockMemberFindFirst.mockResolvedValue(null);
+
+		const res = await GET(makeReq(), params(["media", "org1", "member-posts", "x.png"]));
+
+		expect(res.status).toBe(200);
+	});
+
+	it("keeps avatars session-only, with no membership check", async () => {
+		mockMemberFindFirst.mockResolvedValue(null);
+
+		const res = await GET(makeReq(), params(["avatars", "u2.png"]));
+
+		expect(res.status).toBe(200);
+		expect(mockMemberFindFirst).not.toHaveBeenCalled();
 	});
 
 	it("also gates the avatars bucket", async () => {

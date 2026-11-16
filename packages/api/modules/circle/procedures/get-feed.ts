@@ -7,10 +7,10 @@ import {
 } from "@repo/payments/lib/circle";
 import { z } from "zod";
 
-import { protectedProcedure } from "../../../orpc/procedures";
+import { memberProcedure } from "../../../orpc/procedures";
 import { extractPosts, objectValue, toFeedItem } from "../lib/parse-post";
 
-export const getFeed = protectedProcedure
+export const getFeed = memberProcedure
 	.route({
 		method: "GET",
 		path: "/circle/feed",

@@ -1,9 +1,9 @@
 import { z } from "zod";
 
-import { protectedProcedure } from "../../../orpc/procedures";
+import { memberProcedure } from "../../../orpc/procedures";
 import { clampBadge, readUnseenCount } from "../../inbox/procedures/get-badge-count";
 
-export const getNotificationBadgeCount = protectedProcedure
+export const getNotificationBadgeCount = memberProcedure
 	.route({
 		method: "GET",
 		path: "/circle/notification-badge-count",

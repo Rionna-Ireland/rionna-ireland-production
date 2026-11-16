@@ -193,7 +193,7 @@ export type PushLogScalarFieldEnum = z.infer<typeof PushLogScalarFieldEnumSchema
 
 // File: StripeEventLogScalarFieldEnum.schema.ts
 
-export const StripeEventLogScalarFieldEnumSchema = z.enum(['id', 'type', 'processedAt'])
+export const StripeEventLogScalarFieldEnumSchema = z.enum(['id', 'type', 'processedAt', 'completedAt'])
 
 export type StripeEventLogScalarFieldEnum = z.infer<typeof StripeEventLogScalarFieldEnumSchema>;
 
@@ -954,6 +954,7 @@ export const StripeEventLogSchema = z.object({
   id: z.string(),
   type: z.string(),
   processedAt: z.date(),
+  completedAt: z.date().nullish(),
 });
 
 export type StripeEventLogType = z.infer<typeof StripeEventLogSchema>;

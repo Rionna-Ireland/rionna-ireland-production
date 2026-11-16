@@ -4,7 +4,7 @@ import { logger } from "@repo/logs";
 import { createCircleService, getCircleHeadlessApiBaseUrl } from "@repo/payments/lib/circle";
 import { z } from "zod";
 
-import { protectedProcedure } from "../../../orpc/procedures";
+import { memberProcedure } from "../../../orpc/procedures";
 import { invalidateMemberFeedCache } from "../lib/member-feed-cache";
 
 export interface DeletePostCommentResult {
@@ -15,7 +15,7 @@ export interface DeletePostCommentResult {
  * Delete the member's own comment. Circle enforces ownership server-side
  * (`policies.can_destroy`); the UI only shows the affordance on own comments.
  */
-export const deletePostComment = protectedProcedure
+export const deletePostComment = memberProcedure
 	.route({
 		method: "POST",
 		path: "/circle/post-comment-delete",

@@ -179,7 +179,7 @@ describe("getPostComments", () => {
 		);
 
 		mockGetMemberToken.mockResolvedValue({ ok: true, data: { accessToken: "jwt" } });
-		mockMemberFindFirst.mockResolvedValue(null);
+		mockMemberFindFirst.mockResolvedValue({ circleMemberId: null }); // paying, Circle not provisioned
 		expect((await call(getPostComments, { organizationId: ORG_ID, postId: "1" }, ctx)).ok).toBe(
 			false,
 		);

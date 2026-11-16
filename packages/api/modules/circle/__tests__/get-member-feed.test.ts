@@ -314,7 +314,7 @@ describe("getMemberFeed (spaces aggregation)", () => {
 	});
 
 	it("returns ok:true items:[] when the member has no circleMemberId", async () => {
-		mockMemberFindFirst.mockResolvedValue(null);
+		mockMemberFindFirst.mockResolvedValue({ circleMemberId: null }); // paying, Circle not provisioned
 		vi.stubGlobal("fetch", routeFetch());
 		const res = await call(
 			getMemberFeed,
@@ -322,6 +322,16 @@ describe("getMemberFeed (spaces aggregation)", () => {
 			ctx,
 		);
 		expect(res).toMatchObject({ ok: true, items: [] });
+	});
+
+	it("refuses a cancelled member before touching Circle (W-04)", async () => {
+		mockMemberFindFirst.mockResolvedValue(null);
+		const fetchSpy = routeFetch();
+		vi.stubGlobal("fetch", fetchSpy);
+		await expect(
+			call(getMemberFeed, { organizationId: ORG_ID, page: 1, perPage: 15 }, ctx),
+		).rejects.toMatchObject({ code: "FORBIDDEN", data: { reason: "membership_inactive" } });
+		expect(fetchSpy).not.toHaveBeenCalled();
 	});
 });
 

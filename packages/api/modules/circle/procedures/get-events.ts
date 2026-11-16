@@ -2,7 +2,7 @@ import { ORPCError } from "@orpc/server";
 import { db, parseOrgMetadata } from "@repo/database";
 import { z } from "zod";
 
-import { protectedProcedure } from "../../../orpc/procedures";
+import { memberProcedure } from "../../../orpc/procedures";
 import { type TypedClubEventsResult, loadMemberEvents } from "../lib/load-member-events";
 
 /**
@@ -12,7 +12,7 @@ import { type TypedClubEventsResult, loadMemberEvents } from "../lib/load-member
  * Fail-open on Circle problems. Tense comes from Circle's `past_events`
  * flag; ordering is ours (soonest-first upcoming, newest-first past).
  */
-export const getEvents = protectedProcedure
+export const getEvents = memberProcedure
 	.route({
 		method: "GET",
 		path: "/circle/events",

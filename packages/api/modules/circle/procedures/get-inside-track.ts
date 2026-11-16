@@ -4,7 +4,7 @@ import { logger } from "@repo/logs";
 import { createCircleService, getCircleHeadlessApiBaseUrl } from "@repo/payments/lib/circle";
 import { z } from "zod";
 
-import { protectedProcedure } from "../../../orpc/procedures";
+import { memberProcedure } from "../../../orpc/procedures";
 import { loadInsideTrackDurations, applyVideoDurations } from "../lib/inside-track-meta";
 import { readInsideTrackCache, writeInsideTrackCache } from "../lib/inside-track-cache";
 import { type MemberFeedItem, extractPosts, objectValue, toFeedItem } from "../lib/parse-post";
@@ -119,7 +119,7 @@ async function pruneConfirmedDeletedPins(
  * contract: never throws on Circle problems. Cached per-org for 60s (the
  * response is identical for every member).
  */
-export const getInsideTrack = protectedProcedure
+export const getInsideTrack = memberProcedure
 	.route({
 		method: "GET",
 		path: "/circle/inside-track",

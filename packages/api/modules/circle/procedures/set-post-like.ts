@@ -5,7 +5,7 @@ import { createCircleService, getCircleHeadlessApiBaseUrl } from "@repo/payments
 import { syncCircleSpaceMembership } from "@repo/payments/lib/circle-space-membership";
 import { z } from "zod";
 
-import { protectedProcedure } from "../../../orpc/procedures";
+import { memberProcedure } from "../../../orpc/procedures";
 import { onPostLiked } from "../../inbox/activity-hooks";
 import { invalidateMemberFeedCache } from "../lib/member-feed-cache";
 
@@ -33,7 +33,7 @@ const LOGGED_BODY_LENGTH = 500;
  * before giving up. Non-horse spaces (or no `spaceId`) get the unchanged
  * fail-safe `ok:false`.
  */
-export const setPostLike = protectedProcedure
+export const setPostLike = memberProcedure
 	.route({
 		method: "POST",
 		path: "/circle/post-like",

@@ -1,7 +1,7 @@
 import { db } from "@repo/database";
 import { z } from "zod";
 
-import { protectedProcedure } from "../../../orpc/procedures";
+import { memberProcedure } from "../../../orpc/procedures";
 
 /** Shared by inbox.badgeCount and the legacy Circle badge route. Returns the raw, uncapped count. */
 export async function readUnseenCount(userId: string, organizationId: string): Promise<number> {
@@ -17,7 +17,7 @@ export function clampBadge(count: number): number {
 	return Math.max(0, Math.min(99, count));
 }
 
-export const getBadgeCount = protectedProcedure
+export const getBadgeCount = memberProcedure
 	.route({ method: "GET", path: "/inbox/badge-count", tags: ["Inbox"], summary: "Unseen notification count for the app badge" })
 	.input(z.object({ organizationId: z.string() }))
 	.handler(async ({ input, context: { user } }) => ({ count: await readUnseenCount(user.id, input.organizationId) }));

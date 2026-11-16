@@ -18,6 +18,9 @@ const {
 	mockOrgFindUnique,
 	mockMemberFindManyUnprovisioned,
 	mockMemberFindManyStale,
+	mockMemberFindManyDeactivated,
+	mockReactivateMember,
+	mockReactivateCircleMember,
 	mockMemberUpdate,
 	mockHorseFindMany,
 	mockCreateMember,
@@ -30,6 +33,9 @@ const {
 	mockOrgFindUnique: vi.fn(),
 	mockMemberFindManyUnprovisioned: vi.fn(),
 	mockMemberFindManyStale: vi.fn(),
+	mockMemberFindManyDeactivated: vi.fn(),
+	mockReactivateMember: vi.fn(),
+	mockReactivateCircleMember: vi.fn(),
 	mockMemberUpdate: vi.fn(),
 	mockHorseFindMany: vi.fn(),
 	mockCreateMember: vi.fn(),
@@ -50,6 +56,9 @@ vi.mock("@repo/database", () => ({
 				// Route to the correct mock based on the query shape
 				if (args.where?.circleMemberId === null) {
 					return mockMemberFindManyUnprovisioned(args);
+				}
+				if (args.where?.circleStatus === "deactivated") {
+					return mockMemberFindManyDeactivated(args);
 				}
 				return mockMemberFindManyStale(args);
 			}),
@@ -84,11 +93,15 @@ vi.mock("@repo/payments/lib/circle", () => ({
 	createCircleService: vi.fn(() => ({
 		createMember: mockCreateMember,
 		deactivateMember: mockDeactivateMember,
-		reactivateMember: vi.fn(),
+		reactivateMember: mockReactivateMember,
 		deleteMember: vi.fn(),
 		getMemberToken: vi.fn(),
 		listSpaces: mockListSpaces,
 	})),
+}));
+
+vi.mock("@repo/payments/lib/circle-provisioning", () => ({
+	reactivateCircleMember: mockReactivateCircleMember,
 }));
 
 // ──────────────────────────────────────────────
@@ -135,6 +148,7 @@ describe("reconcileCircleMembers", () => {
 		mockOrgFindUnique.mockResolvedValue(ORG);
 		mockMemberFindManyUnprovisioned.mockResolvedValue([]);
 		mockMemberFindManyStale.mockResolvedValue([]);
+		mockMemberFindManyDeactivated.mockResolvedValue([]);
 		mockMemberUpdate.mockResolvedValue({});
 		mockHorseFindMany.mockResolvedValue([]);
 		mockListSpaces.mockResolvedValue({ ok: true, data: [] });
@@ -143,7 +157,7 @@ describe("reconcileCircleMembers", () => {
 	it("returns zeros when no members need reconciliation", async () => {
 		const result = await reconcileCircleMembers(ORG_ID);
 
-		expect(result).toEqual({ provisioned: 0, deactivated: 0, errors: 0 });
+		expect(result).toEqual({ provisioned: 0, deactivated: 0, reactivated: 0, errors: 0 });
 	});
 
 	it("returns zeros when organization not found", async () => {
@@ -151,7 +165,7 @@ describe("reconcileCircleMembers", () => {
 
 		const result = await reconcileCircleMembers("non-existent");
 
-		expect(result).toEqual({ provisioned: 0, deactivated: 0, errors: 0 });
+		expect(result).toEqual({ provisioned: 0, deactivated: 0, reactivated: 0, errors: 0 });
 		expect(mockLoggerWarn).toHaveBeenCalledWith(
 			"[Reconciliation] Organization not found or missing slug",
 			expect.objectContaining({ organizationId: "non-existent" }),
@@ -335,6 +349,49 @@ describe("reconcileCircleMembers", () => {
 		});
 	});
 
+	describe("reactivating deactivated members with an active Purchase (W-05)", () => {
+		const deactivated = {
+			id: "m3",
+			userId: "u3",
+			circleMemberId: "c-3",
+			circleStatus: "deactivated",
+			user: { purchases: [{ subscriptionId: "sub_3" }] },
+		};
+
+		it("reactivates through reactivateCircleMember with the active subscription id", async () => {
+			mockMemberFindManyDeactivated.mockResolvedValue([deactivated]);
+			mockReactivateCircleMember.mockResolvedValue(true);
+
+			const result = await reconcileCircleMembers(ORG_ID);
+
+			expect(mockMemberFindManyDeactivated.mock.calls[0][0].where).toEqual({
+				organizationId: ORG_ID,
+				circleStatus: "deactivated",
+				circleMemberId: { not: null },
+				user: {
+					purchases: {
+						some: { organizationId: ORG_ID, status: { in: ["active", "trialing", "past_due"] } },
+					},
+				},
+			});
+			expect(mockReactivateCircleMember).toHaveBeenCalledWith(
+				{ id: "m3", circleMemberId: "c-3" },
+				"sub_3",
+			);
+			expect(mockReactivateMember).not.toHaveBeenCalled();
+			expect(result).toEqual({ provisioned: 0, deactivated: 0, reactivated: 1, errors: 0 });
+		});
+
+		it("counts a failed reactivation as an error", async () => {
+			mockMemberFindManyDeactivated.mockResolvedValue([deactivated]);
+			mockReactivateCircleMember.mockResolvedValue(false);
+
+			const result = await reconcileCircleMembers(ORG_ID);
+
+			expect(result).toEqual({ provisioned: 0, deactivated: 0, reactivated: 0, errors: 1 });
+		});
+	});
+
 	describe("per-member resilience", () => {
 		it("continues provisioning remaining members when one fails (outcome)", async () => {
 			const members = [
@@ -513,7 +570,7 @@ describe("reconcileCircleMembers", () => {
 
 			const result = await reconcileCircleMembers(ORG_ID);
 
-			expect(result).toEqual({ provisioned: 1, deactivated: 1, errors: 0 });
+			expect(result).toEqual({ provisioned: 1, deactivated: 1, reactivated: 0, errors: 0 });
 		});
 	});
 });

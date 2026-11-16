@@ -1,10 +1,10 @@
 import { getLatestResults } from "@repo/database";
 import { z } from "zod";
 
-import { protectedProcedure } from "../../../../orpc/procedures";
+import { memberProcedure } from "../../../../orpc/procedures";
 import { getAccessibleHorseWhere } from "../lib/horse-access";
 
-export const getLatestResultsProcedure = protectedProcedure
+export const getLatestResultsProcedure = memberProcedure
 	.route({
 		method: "GET",
 		path: "/horses/latest-results",

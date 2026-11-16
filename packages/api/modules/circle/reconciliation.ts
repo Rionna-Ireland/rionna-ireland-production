@@ -4,9 +4,10 @@
  * Safety net that runs daily to catch anything the Stripe webhook
  * hot path missed (D9: "No heroic retry logic in the webhook hot path").
  *
- * Two sweeps per organization:
+ * Three sweeps per organization:
  * 1. Provision: active Purchase but no circleMemberId → create in Circle
  * 2. Deactivate: canceled/expired Purchase but circleStatus = "active" → remove from Circle
+ * 3. Reactivate: active Purchase but circleStatus = "deactivated" → restore in Circle (W-05)
  *
  * Each member is processed independently — one failure doesn't block others.
  *
@@ -17,13 +18,15 @@ import { db, parseOrgMetadata } from "@repo/database";
 import { logger } from "@repo/logs";
 import { createCircleService } from "@repo/payments/lib/circle";
 import { provisionHorseSpace } from "@repo/payments/lib/circle-horse-provisioning";
+import { reactivateCircleMember } from "@repo/payments/lib/circle-provisioning";
 
 import { getHorseSpaceIds } from "../community/lib/horse-space-ids";
 import { resolveAutoJoinSpaceIds } from "../community/lib/resolve-auto-join-space-ids";
+import { activeMemberWhere } from "../members/lib/membership-status";
 
 export async function reconcileCircleMembers(
 	organizationId: string,
-): Promise<{ provisioned: number; deactivated: number; errors: number }> {
+): Promise<{ provisioned: number; deactivated: number; reactivated: number; errors: number }> {
 	const org = await db.organization.findUnique({
 		where: { id: organizationId },
 	});
@@ -32,7 +35,7 @@ export async function reconcileCircleMembers(
 			surface: "circle.reconciliation",
 			organizationId,
 		});
-		return { provisioned: 0, deactivated: 0, errors: 0 };
+		return { provisioned: 0, deactivated: 0, reactivated: 0, errors: 0 };
 	}
 
 	const circle = createCircleService(org.slug);
@@ -56,22 +59,12 @@ export async function reconcileCircleMembers(
 
 	let provisioned = 0;
 	let deactivated = 0;
+	let reactivated = 0;
 	let errors = 0;
 
 	// 1. Active Purchase but no circleMemberId → provision
 	const unprovisionedMembers = await db.member.findMany({
-		where: {
-			organizationId,
-			circleMemberId: null,
-			user: {
-				purchases: {
-					some: {
-						organizationId,
-						status: { in: ["active", "trialing", "past_due"] },
-					},
-				},
-			},
-		},
+		where: { ...activeMemberWhere(organizationId), circleMemberId: null },
 		include: { user: true },
 	});
 
@@ -230,7 +223,48 @@ export async function reconcileCircleMembers(
 		}
 	}
 
-	return { provisioned, deactivated, errors };
+	// 3. Active Purchase but circleStatus = "deactivated" → reactivate (W-05)
+	const deactivatedMembers = await db.member.findMany({
+		where: {
+			...activeMemberWhere(organizationId),
+			circleStatus: "deactivated",
+			circleMemberId: { not: null },
+		},
+		include: {
+			user: {
+				select: {
+					purchases: {
+						where: activeMemberWhere(organizationId).user.purchases.some,
+						select: { subscriptionId: true },
+						take: 1,
+					},
+				},
+			},
+		},
+	});
+
+	for (const member of deactivatedMembers) {
+		try {
+			// Same helper (and idempotency key) as the webhook path; it logs failures itself.
+			const ok = await reactivateCircleMember(
+				{ id: member.id, circleMemberId: member.circleMemberId! },
+				member.user.purchases[0]?.subscriptionId ?? "unknown",
+			);
+			if (ok) reactivated++;
+			else errors++;
+		} catch (error) {
+			errors++;
+			logger.error("[Reconciliation] Failed to reactivate member", {
+				surface: "circle.reconciliation",
+				memberId: member.id,
+				userId: member.userId,
+				orgId: organizationId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
+	return { provisioned, deactivated, reactivated, errors };
 }
 
 /**

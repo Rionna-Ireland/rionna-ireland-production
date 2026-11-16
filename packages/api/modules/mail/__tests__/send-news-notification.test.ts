@@ -95,6 +95,29 @@ describe("sendNewsNotificationEmails", () => {
 		expect(messages[0]).toMatchObject({ subject: "New post", html: "<p>hi</p>", text: "hi" });
 	});
 
+	it("only queries paying members or staff, so a cancelled member is excluded (W-16)", async () => {
+		mockMemberFindMany.mockResolvedValue([]);
+
+		await sendNewsNotificationEmails(POST);
+
+		expect(mockMemberFindMany.mock.calls[0][0].where).toEqual({
+			OR: [
+				{
+					organizationId: "org1",
+					user: {
+						purchases: {
+							some: {
+								organizationId: "org1",
+								status: { in: ["active", "trialing", "past_due"] },
+							},
+						},
+					},
+				},
+				{ organizationId: "org1", user: { role: { in: ["admin", "platformAdmin"] } } },
+			],
+		});
+	});
+
 	it("excludes members who opted out of news post emails", async () => {
 		mockMemberFindMany.mockResolvedValue([
 			...members(1),

@@ -1,3 +1,4 @@
+import { db } from "@repo/database";
 import { ACTIVE_SUBSCRIPTION_STATUSES } from "@repo/payments/lib/helper";
 
 export type MembershipStatus = "active" | "past_due" | "cancelled" | "none";
@@ -19,4 +20,49 @@ export function deriveMembershipStatus(statuses: (string | null)[]): MembershipS
 	if (present.includes("past_due")) return "past_due";
 	if (present.some((s) => ENDED_STATUSES.has(s))) return "cancelled";
 	return "none";
+}
+
+/**
+ * Prisma `where` for a Member who counts as paying: their user holds an
+ * active, trialing or past_due Purchase in the org. The same rule as
+ * deriveMembershipStatus returning "active" or "past_due". Used by
+ * memberProcedure, the news/push audiences and the Circle reconcile sweeps.
+ * Without an organizationId it matches any org (D37: one club).
+ */
+export function activeMemberWhere(organizationId?: string) {
+	return {
+		organizationId,
+		user: {
+			purchases: {
+				some: { organizationId, status: { in: [...ACTIVE_SUBSCRIPTION_STATUSES] } },
+			},
+		},
+	};
+}
+
+/** Who receives member news and pushes: paying members plus staff, who hold no Purchase (W-16). */
+export function memberAudienceWhere(organizationId: string) {
+	return {
+		OR: [
+			activeMemberWhere(organizationId),
+			{ organizationId, user: { role: { in: ["admin", "platformAdmin"] } } },
+		],
+	};
+}
+
+/**
+ * W-04: may this user see member content? Club and platform admins are staff
+ * and pass (as in the web (main) layout); everyone else needs a paying Member
+ * row. One query. Shared by memberProcedure and the image proxy.
+ */
+export async function hasMemberAccess(
+	user: { id: string; role?: string | null },
+	organizationId?: string,
+): Promise<boolean> {
+	if (user.role === "admin" || user.role === "platformAdmin") return true;
+	const member = await db.member.findFirst({
+		where: { userId: user.id, ...activeMemberWhere(organizationId) },
+		select: { id: true },
+	});
+	return member !== null;
 }

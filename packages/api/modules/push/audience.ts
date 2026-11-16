@@ -10,6 +10,7 @@
 import { db } from "@repo/database";
 import type { PushTriggerType } from "@repo/database";
 
+import { memberAudienceWhere } from "../members/lib/membership-status";
 import { resolveHorseFollowerUserIds } from "./horse-follower-filter";
 
 export interface AudienceToken {
@@ -75,7 +76,7 @@ export async function getAudienceTokens(request: AudienceRequest): Promise<Audie
 			user: {
 				pushEnabled: true,
 				members: {
-					some: { organizationId: request.organizationId },
+					some: memberAudienceWhere(request.organizationId),
 				},
 				...(request.targetUserId ? { id: request.targetUserId } : {}),
 			},

@@ -106,8 +106,8 @@ describe("community.listFeedChips", () => {
 		expect(mockWriteMemberSpacesCache).toHaveBeenCalledWith("u1", "org1", SPACES);
 	});
 
-	it("returns the fixed chips for a non-member without calling Circle", async () => {
-		mockMemberFindFirst.mockResolvedValue(null);
+	it("returns the fixed chips for a member not yet in Circle without calling Circle", async () => {
+		mockMemberFindFirst.mockResolvedValue({ circleMemberId: null }); // paying, Circle not provisioned
 		expect(await call(listFeedChips, { organizationId: "org1" }, ctx)).toEqual({
 			ok: true,
 			chips: [

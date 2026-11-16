@@ -17,7 +17,13 @@ const {
 	mockGetOrganizationById,
 	mockHasPendingInvitation,
 	mockCreateCheckoutLinkFn,
+	mockPurchaseFindFirst,
+	mockCreatePortalLinkFn,
+	mockLogger,
 } = vi.hoisted(() => ({
+	mockPurchaseFindFirst: vi.fn(),
+	mockCreatePortalLinkFn: vi.fn(),
+	mockLogger: { info: vi.fn(), error: vi.fn() },
 	mockGetSession: vi.fn(),
 	mockMemberFindFirst: vi.fn(),
 	mockLegalFindFirst: vi.fn(),
@@ -35,14 +41,16 @@ vi.mock("@repo/database", () => ({
 	db: {
 		member: { findFirst: mockMemberFindFirst },
 		legalAcceptance: { findFirst: mockLegalFindFirst },
+		purchase: { findFirst: mockPurchaseFindFirst },
 	},
 	getOrganizationById: mockGetOrganizationById,
 }));
 
-vi.mock("@repo/logs", () => ({ logger: { info: vi.fn(), error: vi.fn() } }));
+vi.mock("@repo/logs", () => ({ logger: mockLogger }));
 
 vi.mock("@repo/payments", () => ({
 	createCheckoutLink: mockCreateCheckoutLinkFn,
+	createCustomerPortalLink: mockCreatePortalLinkFn,
 	findPriceByPlanId: vi.fn(() => ({ amount: 10 })),
 	getCustomerIdFromEntity: vi.fn(async () => null),
 	getProviderPriceIdByPlanId: vi.fn(() => "price_1"),
@@ -90,6 +98,38 @@ beforeEach(() => {
 	}));
 	mockGetOrganizationById.mockResolvedValue({ id: ORG_ID, members: [] });
 	mockCreateCheckoutLinkFn.mockResolvedValue("https://checkout.example/1");
+	mockPurchaseFindFirst.mockResolvedValue(null);
+});
+
+describe("createCheckoutLink — existing active subscription (W-10)", () => {
+	it("returns the billing portal instead of a second checkout", async () => {
+		process.env.NEXT_PUBLIC_PUBLIC_SIGNUP_OPEN = "true";
+		mockPurchaseFindFirst.mockResolvedValue({ customerId: "cus_1", subscriptionId: "sub_1" });
+		mockCreatePortalLinkFn.mockResolvedValue("https://portal.example/1");
+
+		await expect(call(createCheckoutLink, INPUT, ctx)).resolves.toEqual({
+			checkoutLink: "https://portal.example/1",
+		});
+		expect(mockPurchaseFindFirst.mock.calls[0][0].where).toEqual({
+			userId: "u1",
+			type: "SUBSCRIPTION",
+			status: { in: ["active", "trialing", "past_due"] },
+		});
+		expect(mockCreatePortalLinkFn).toHaveBeenCalledWith(
+			expect.objectContaining({ customerId: "cus_1", subscriptionId: "sub_1" }),
+		);
+		expect(mockCreateCheckoutLinkFn).not.toHaveBeenCalled();
+	});
+
+	it("logs and returns INTERNAL_SERVER_ERROR when the portal link fails", async () => {
+		mockPurchaseFindFirst.mockResolvedValue({ customerId: "cus_1", subscriptionId: "sub_1" });
+		mockCreatePortalLinkFn.mockRejectedValue(new Error("stripe down"));
+
+		await expect(call(createCheckoutLink, INPUT, ctx)).rejects.toMatchObject({
+			code: "INTERNAL_SERVER_ERROR",
+		});
+		expect(mockLogger.error).toHaveBeenCalled();
+	});
 });
 
 afterEach(() => {

@@ -2,7 +2,7 @@ import { db, parseOrgMetadata } from "@repo/database";
 import { createCircleService } from "@repo/payments/lib/circle";
 import { z } from "zod";
 
-import { protectedProcedure } from "../../../orpc/procedures";
+import { memberProcedure } from "../../../orpc/procedures";
 import { fetchMemberSpaces, getMemberSpacesCached, writeMemberSpacesCache } from "../lib/member-spaces";
 import { isHorseSpace, isMemberPostingAllowed, isPostableForMember } from "../lib/space-settings";
 import type { ListPostableSpacesResult } from "../lib/types";
@@ -15,7 +15,7 @@ import type { ListPostableSpacesResult } from "../lib/types";
  * has opted it in via `metadata.circle.spaces[id].memberPosting` (opt-in, not
  * opt-out — see `lib/space-settings.ts`).
  */
-export const listPostableSpaces = protectedProcedure
+export const listPostableSpaces = memberProcedure
 	.route({
 		method: "GET",
 		path: "/community/postable-spaces",

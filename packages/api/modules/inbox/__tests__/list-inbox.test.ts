@@ -11,7 +11,7 @@ const { mockGetSession, mockMemberFindUnique, mockItemFindMany, mockUserFindMany
 vi.mock("@repo/auth", () => ({ auth: { api: { getSession: mockGetSession } } }));
 vi.mock("@repo/database", () => ({
 	db: {
-		member: { findUnique: mockMemberFindUnique },
+		member: { findFirst: mockMemberFindUnique },
 		inboxItem: { findMany: mockItemFindMany },
 		user: { findMany: mockUserFindMany },
 	},
@@ -106,10 +106,10 @@ describe("inbox.list", () => {
 		expect(mockItemFindMany).not.toHaveBeenCalled();
 	});
 
-	it("drops rows with unknown kinds and returns empty for non-members", async () => {
+	it("drops rows with unknown kinds and refuses cancelled and non-members (W-04)", async () => {
 		mockItemFindMany.mockResolvedValue([row(0, { kind: "retired_kind" })]);
 		expect((await call(listInbox, { organizationId: "org1" }, ctx)).items).toEqual([]);
 		mockMemberFindUnique.mockResolvedValue(null);
-		expect(await call(listInbox, { organizationId: "org1" }, ctx)).toEqual({ items: [], nextCursor: null });
+		await expect(call(listInbox, { organizationId: "org1" }, ctx)).rejects.toMatchObject({ code: "FORBIDDEN", data: { reason: "membership_inactive" } });
 	});
 });

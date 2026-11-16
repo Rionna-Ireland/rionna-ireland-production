@@ -312,7 +312,7 @@ describe("getAudienceTokens", () => {
 		expect(tokens).toHaveLength(1);
 	});
 
-	it("passes pushEnabled and org membership filters to DB query", async () => {
+	it("passes pushEnabled and paying-member (or staff) filters (W-16) to DB query", async () => {
 		mockFindMany.mockResolvedValue([]);
 
 		await getAudienceTokens({
@@ -325,7 +325,25 @@ describe("getAudienceTokens", () => {
 				user: {
 					pushEnabled: true,
 					members: {
-						some: { organizationId: "org-1" },
+						some: {
+							OR: [
+								{
+									organizationId: "org-1",
+									user: {
+										purchases: {
+											some: {
+												organizationId: "org-1",
+												status: { in: ["active", "trialing", "past_due"] },
+											},
+										},
+									},
+								},
+								{
+									organizationId: "org-1",
+									user: { role: { in: ["admin", "platformAdmin"] } },
+								},
+							],
+						},
 					},
 				},
 			},
@@ -351,7 +369,7 @@ describe("getAudienceTokens", () => {
 				user: {
 					pushEnabled: true,
 					members: {
-						some: { organizationId: "org-1" },
+						some: expect.objectContaining({ OR: expect.any(Array) }),
 					},
 					id: "user-99",
 				},

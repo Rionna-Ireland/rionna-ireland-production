@@ -9,7 +9,8 @@ const { mockGetSession, mockMemberFindUnique } = vi.hoisted(() => ({
 vi.mock("@repo/auth", () => ({ auth: { api: { getSession: mockGetSession } } }));
 vi.mock("@repo/database", () => ({
 	db: {
-		member: { findUnique: mockMemberFindUnique },
+		// memberProcedure gate (W-04): the caller is a paying member.
+		member: { findFirst: async () => ({ id: "m1" }), findUnique: mockMemberFindUnique },
 	},
 }));
 vi.mock("@repo/logs", () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));

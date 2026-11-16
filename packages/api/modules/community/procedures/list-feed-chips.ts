@@ -2,7 +2,7 @@ import { db, parseOrgMetadata } from "@repo/database";
 import { createCircleService } from "@repo/payments/lib/circle";
 import { z } from "zod";
 
-import { protectedProcedure } from "../../../orpc/procedures";
+import { memberProcedure } from "../../../orpc/procedures";
 import { buildFeedChips } from "../lib/build-feed-chips";
 import { getHorseSpaceIds } from "../lib/horse-space-ids";
 import { fetchMemberSpaces, getMemberSpacesCached, writeMemberSpacesCache } from "../lib/member-spaces";
@@ -21,7 +21,7 @@ const FIXED_CHIPS_FOR_NON_MEMBER: ListFeedChipsResult["chips"] = [
  * kill-switch check here, only the `features.news`/`features.polls` gates
  * `buildFeedChips` applies.
  */
-export const listFeedChips = protectedProcedure
+export const listFeedChips = memberProcedure
 	.route({
 		method: "GET",
 		path: "/community/feed-chips",
