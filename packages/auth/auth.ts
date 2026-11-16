@@ -21,6 +21,9 @@ import {
 	SIGNUP_PATH,
 } from "./lib/terms-acceptance";
 
+// Stripe refuses to cancel these again; trying would block account deletion forever.
+const ENDED_SUBSCRIPTION_STATUSES = new Set(["canceled", "incomplete_expired", "rejected_d29"]);
+
 const getLocaleFromRequest = (request?: Request) => {
 	const cookies = parseCookies(request?.headers.get("cookie") ?? "");
 	return (cookies[i18nConfig.localeCookieName] as Locale) ?? i18nConfig.defaultLocale;
@@ -137,7 +140,11 @@ export const auth = betterAuth({
 			beforeDelete: async (user) => {
 				const purchases = await getPurchasesByUserId(user.id);
 				for (const purchase of purchases) {
-					if (purchase.type === "SUBSCRIPTION" && purchase.subscriptionId) {
+					if (
+						purchase.type === "SUBSCRIPTION" &&
+						purchase.subscriptionId &&
+						!ENDED_SUBSCRIPTION_STATUSES.has(purchase.status ?? "")
+					) {
 						await cancelSubscription(purchase.subscriptionId);
 					}
 				}
