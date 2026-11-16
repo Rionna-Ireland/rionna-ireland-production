@@ -132,6 +132,16 @@ describe("user deletion cascade", () => {
 		expect(mockDeleteCircleMember).toHaveBeenCalledWith("circle_1");
 		expect(store.user).toHaveLength(0);
 	});
+
+	it("keeps the user and their session when Stripe cancellation fails", async () => {
+		const headers = await sessionHeaders(USER_ID);
+		mockCancelSubscription.mockRejectedValueOnce(new Error("stripe down"));
+
+		await expect(auth.api.deleteUser({ headers, body: {} })).rejects.toThrow("stripe down");
+
+		expect(store.user).toHaveLength(1);
+		expect(store.session).toHaveLength(1);
+	});
 });
 
 describe("organization creation", () => {
