@@ -8,10 +8,19 @@ import { memoryAdapter } from "better-auth/adapters/memory";
 import { makeSignature } from "better-auth/crypto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { store, mockCancelSubscription, mockDeleteCircleMember, mockDb } = vi.hoisted(() => ({
+const {
+	store,
+	mockCancelSubscription,
+	mockDeleteCircleMember,
+	mockSetSubscriptionSeats,
+	mockGetPurchasesByUserId,
+	mockDb,
+} = vi.hoisted(() => ({
 	store: {} as Record<string, Record<string, unknown>[]>,
 	mockCancelSubscription: vi.fn(),
 	mockDeleteCircleMember: vi.fn(),
+	mockSetSubscriptionSeats: vi.fn(),
+	mockGetPurchasesByUserId: vi.fn(),
 	mockDb: { member: { findMany: vi.fn() } },
 }));
 
@@ -21,14 +30,16 @@ vi.mock("better-auth/adapters/prisma", () => ({
 
 vi.mock("@repo/database", () => ({
 	db: mockDb,
-	getInvitationById: vi.fn(),
-	getOrganizationWithPurchasesAndMembersCount: vi.fn(),
+	getInvitationById: vi.fn(async () => ({ id: "inv_1", organizationId: "org_club" })),
+	getOrganizationWithPurchasesAndMembersCount: vi.fn(async () => ({
+		id: "org_club",
+		membersCount: 300,
+		purchases: [{ type: "SUBSCRIPTION", subscriptionId: "sub_victim" }],
+	})),
 	getPurchasesByOrganizationId: vi.fn(async () => [
 		{ id: "p_other", type: "SUBSCRIPTION", subscriptionId: "sub_other" },
 	]),
-	getPurchasesByUserId: vi.fn(async () => [
-		{ id: "p_1", type: "SUBSCRIPTION", subscriptionId: "sub_1" },
-	]),
+	getPurchasesByUserId: mockGetPurchasesByUserId,
 	getUserByEmail: vi.fn(),
 	getUserById: vi.fn(async () => null),
 }));
@@ -36,7 +47,7 @@ vi.mock("@repo/database", () => ({
 vi.mock("@repo/payments", () => ({
 	cancelSubscription: mockCancelSubscription,
 	deleteCircleMember: mockDeleteCircleMember,
-	setSubscriptionSeats: vi.fn(),
+	setSubscriptionSeats: mockSetSubscriptionSeats,
 }));
 
 vi.mock("@repo/logs", () => ({
@@ -95,10 +106,13 @@ beforeEach(() => {
 		name: "Member",
 		email: "member@example.com",
 		emailVerified: true,
-		role: "member",
+		role: "user",
 		createdAt: new Date(),
 		updatedAt: new Date(),
 	});
+	mockGetPurchasesByUserId.mockResolvedValue([
+		{ id: "p_1", type: "SUBSCRIPTION", subscriptionId: "sub_1", status: "active" },
+	]);
 	mockDb.member.findMany.mockResolvedValue([
 		{ id: "member_1", userId: USER_ID, organizationId: ORG_ID, circleMemberId: "circle_1" },
 	]);
@@ -117,6 +131,25 @@ describe("unauthenticated delete requests", () => {
 
 		expect(res.ok).toBe(false);
 		expect(mockCancelSubscription).not.toHaveBeenCalled();
+	});
+});
+
+describe("unauthenticated organization requests", () => {
+	it("POST /organization/remove-member with an organizationId changes no seats", async () => {
+		const res = await post("/organization/remove-member", {
+			organizationId: ORG_ID,
+			memberIdOrEmail: "anyone@example.com",
+		});
+
+		expect(res.ok).toBe(false);
+		expect(mockSetSubscriptionSeats).not.toHaveBeenCalled();
+	});
+
+	it("POST /organization/accept-invitation with an invitationId changes no seats", async () => {
+		const res = await post("/organization/accept-invitation", { invitationId: "inv_1" });
+
+		expect(res.ok).toBe(false);
+		expect(mockSetSubscriptionSeats).not.toHaveBeenCalled();
 	});
 });
 
@@ -142,15 +175,58 @@ describe("user deletion cascade", () => {
 		expect(store.user).toHaveLength(1);
 		expect(store.session).toHaveLength(1);
 	});
+
+	it("skips ended subscriptions so a lapsed member can still delete their account", async () => {
+		const headers = await sessionHeaders(USER_ID);
+		mockGetPurchasesByUserId.mockResolvedValue([
+			{ id: "p_1", type: "SUBSCRIPTION", subscriptionId: "sub_canceled", status: "canceled" },
+			{
+				id: "p_2",
+				type: "SUBSCRIPTION",
+				subscriptionId: "sub_expired",
+				status: "incomplete_expired",
+			},
+			{ id: "p_3", type: "SUBSCRIPTION", subscriptionId: "sub_d29", status: "rejected_d29" },
+			{ id: "p_4", type: "SUBSCRIPTION", subscriptionId: "sub_unpaid", status: "unpaid" },
+		]);
+		// Stripe rejects cancelling a subscription that is already cancelled.
+		mockCancelSubscription.mockImplementation(async (id: string) => {
+			if (id !== "sub_unpaid") throw new Error(`${id} is already canceled`);
+		});
+
+		await auth.api.deleteUser({ headers, body: {} });
+
+		expect(mockCancelSubscription).toHaveBeenCalledTimes(1);
+		expect(mockCancelSubscription).toHaveBeenCalledWith("sub_unpaid");
+		expect(store.user).toHaveLength(0);
+	});
 });
 
-describe("organization creation", () => {
-	it("rejects a user with role member", async () => {
+describe("organization creation and deletion", () => {
+	it("rejects org creation by a staff admin", async () => {
+		store.user[0].role = "admin";
 		const headers = await sessionHeaders(USER_ID);
 
 		await expect(
 			auth.api.createOrganization({ headers, body: { name: "Phish", slug: "phish" } }),
 		).rejects.toMatchObject({ status: "FORBIDDEN" });
 		expect(store.organization).toHaveLength(0);
+	});
+
+	it("rejects org deletion by an authenticated owner", async () => {
+		store.organization.push({ id: ORG_ID, name: "Club", slug: "club", createdAt: new Date() });
+		store.member.push({
+			id: "member_1",
+			organizationId: ORG_ID,
+			userId: USER_ID,
+			role: "owner",
+			createdAt: new Date(),
+		});
+		const headers = await sessionHeaders(USER_ID);
+
+		await expect(
+			auth.api.deleteOrganization({ headers, body: { organizationId: ORG_ID } }),
+		).rejects.toMatchObject({ status: "NOT_FOUND" });
+		expect(store.organization).toHaveLength(1);
 	});
 });
