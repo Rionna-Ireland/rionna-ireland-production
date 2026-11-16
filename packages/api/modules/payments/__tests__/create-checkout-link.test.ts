@@ -19,9 +19,11 @@ const {
 	mockCreateCheckoutLinkFn,
 	mockPurchaseFindFirst,
 	mockCreatePortalLinkFn,
+	mockLogger,
 } = vi.hoisted(() => ({
 	mockPurchaseFindFirst: vi.fn(),
 	mockCreatePortalLinkFn: vi.fn(),
+	mockLogger: { info: vi.fn(), error: vi.fn() },
 	mockGetSession: vi.fn(),
 	mockMemberFindFirst: vi.fn(),
 	mockLegalFindFirst: vi.fn(),
@@ -44,7 +46,7 @@ vi.mock("@repo/database", () => ({
 	getOrganizationById: mockGetOrganizationById,
 }));
 
-vi.mock("@repo/logs", () => ({ logger: { info: vi.fn(), error: vi.fn() } }));
+vi.mock("@repo/logs", () => ({ logger: mockLogger }));
 
 vi.mock("@repo/payments", () => ({
 	createCheckoutLink: mockCreateCheckoutLinkFn,
@@ -117,6 +119,16 @@ describe("createCheckoutLink — existing active subscription (W-10)", () => {
 			expect.objectContaining({ customerId: "cus_1", subscriptionId: "sub_1" }),
 		);
 		expect(mockCreateCheckoutLinkFn).not.toHaveBeenCalled();
+	});
+
+	it("logs and returns INTERNAL_SERVER_ERROR when the portal link fails", async () => {
+		mockPurchaseFindFirst.mockResolvedValue({ customerId: "cus_1", subscriptionId: "sub_1" });
+		mockCreatePortalLinkFn.mockRejectedValue(new Error("stripe down"));
+
+		await expect(call(createCheckoutLink, INPUT, ctx)).rejects.toMatchObject({
+			code: "INTERNAL_SERVER_ERROR",
+		});
+		expect(mockLogger.error).toHaveBeenCalled();
 	});
 });
 

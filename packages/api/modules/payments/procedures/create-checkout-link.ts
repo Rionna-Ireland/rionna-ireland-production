@@ -74,15 +74,20 @@ export const createCheckoutLink = protectedProcedure
 				select: { customerId: true, subscriptionId: true },
 			});
 			if (activePurchase) {
-				const portalLink = await createCustomerPortalLink({
-					customerId: activePurchase.customerId,
-					subscriptionId: activePurchase.subscriptionId ?? undefined,
-					redirectUrl: safeRedirectUrl,
-				});
-				if (!portalLink) {
+				try {
+					const portalLink = await createCustomerPortalLink({
+						customerId: activePurchase.customerId,
+						subscriptionId: activePurchase.subscriptionId ?? undefined,
+						redirectUrl: safeRedirectUrl,
+					});
+					if (!portalLink) {
+						throw new ORPCError("INTERNAL_SERVER_ERROR");
+					}
+					return { checkoutLink: portalLink };
+				} catch (e) {
+					logger.error(e);
 					throw new ORPCError("INTERNAL_SERVER_ERROR");
 				}
-				return { checkoutLink: portalLink };
 			}
 
 			// S12-09 / D39: while public signup is closed, "role-less" accounts (a
