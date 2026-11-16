@@ -1,11 +1,4 @@
-import {
-	db,
-	getInvitationById,
-	getPurchasesByOrganizationId,
-	getPurchasesByUserId,
-	getUserByEmail,
-	getUserById,
-} from "@repo/database";
+import { db, getPurchasesByUserId, getUserByEmail, getUserById } from "@repo/database";
 import { config as i18nConfig, type Locale } from "@repo/i18n";
 import { logger } from "@repo/logs";
 import { sendEmail } from "@repo/mail";
@@ -20,7 +13,6 @@ import { parse as parseCookies } from "cookie";
 
 import { config } from "./config";
 import { apiErrorLogFields } from "./lib/api-error-log";
-import { updateSeatsInOrganizationSubscription } from "./lib/organization";
 import { assertSignupAllowed } from "./lib/signup-guard";
 import {
 	assertTermsAccepted,
@@ -28,6 +20,9 @@ import {
 	recordSignupTermsAcceptance,
 	SIGNUP_PATH,
 } from "./lib/terms-acceptance";
+
+// Stripe refuses to cancel these again; trying would block account deletion forever.
+const ENDED_SUBSCRIPTION_STATUSES = new Set(["canceled", "incomplete_expired", "rejected_d29"]);
 
 const getLocaleFromRequest = (request?: Request) => {
 	const cookies = parseCookies(request?.headers.get("cookie") ?? "");
@@ -104,31 +99,6 @@ export const auth = betterAuth({
 		},
 	},
 	hooks: {
-		after: createAuthMiddleware(async (ctx) => {
-			if (ctx.path.startsWith("/organization/accept-invitation")) {
-				const { invitationId } = ctx.body;
-
-				if (!invitationId) {
-					return;
-				}
-
-				const invitation = await getInvitationById(invitationId);
-
-				if (!invitation) {
-					return;
-				}
-
-				await updateSeatsInOrganizationSubscription(invitation.organizationId);
-			} else if (ctx.path.startsWith("/organization/remove-member")) {
-				const { organizationId } = ctx.body;
-
-				if (!organizationId) {
-					return;
-				}
-
-				await updateSeatsInOrganizationSubscription(organizationId);
-			}
-		}),
 		before: createAuthMiddleware(async (ctx) => {
 			// S12-09 / D39: while public signup is closed, only emails with a pending
 			// invitation may sign up. Runs before the endpoint, so nothing is created.
@@ -137,59 +107,6 @@ export const auth = betterAuth({
 				// S12-10: the sign-up form sends acceptedTermsVersion; refuse without it.
 				assertTermsAccepted(ctx.body);
 				return;
-			}
-
-			if (
-				ctx.path.startsWith("/delete-user") ||
-				ctx.path.startsWith("/organization/delete")
-			) {
-				const userId = ctx.context.session?.session.userId;
-				const { organizationId } = ctx.body;
-
-				if (userId || organizationId) {
-					const purchases = organizationId
-						? await getPurchasesByOrganizationId(organizationId)
-						: // oxlint-disable-next-line typescript/no-non-null-assertion -- This is a valid case
-							await getPurchasesByUserId(userId!);
-					const subscriptions = purchases.filter(
-						(purchase) =>
-							purchase.type === "SUBSCRIPTION" && purchase.subscriptionId !== null,
-					);
-
-					if (subscriptions.length > 0) {
-						for (const subscription of subscriptions) {
-							await cancelSubscription(
-								// oxlint-disable-next-line typescript/no-non-null-assertion -- This is a valid case
-								subscription.subscriptionId!,
-							);
-						}
-					}
-				}
-
-				// S1-04: Cascade user deletion to Circle member deletion
-				if (userId) {
-					const members = await db.member.findMany({
-						where: { userId },
-					});
-					for (const member of members) {
-						if (member.circleMemberId) {
-							try {
-								await deleteCircleMember(member.circleMemberId);
-							} catch (error) {
-								logger.error(
-									"Failed to delete Circle member during user deletion",
-									{
-										userId,
-										memberId: member.id,
-										circleMemberId: member.circleMemberId,
-										error:
-											error instanceof Error ? error.message : String(error),
-									},
-								);
-							}
-						}
-					}
-				}
 			}
 		}),
 	},
@@ -217,6 +134,39 @@ export const auth = betterAuth({
 		},
 		deleteUser: {
 			enabled: true,
+			// W-02: runs with the authenticated user before any row is deleted, so a
+			// Stripe failure aborts the deletion cleanly (databaseHooks.user.delete
+			// runs after sessions and accounts are already gone, outside a transaction).
+			beforeDelete: async (user) => {
+				const purchases = await getPurchasesByUserId(user.id);
+				for (const purchase of purchases) {
+					if (
+						purchase.type === "SUBSCRIPTION" &&
+						purchase.subscriptionId &&
+						!ENDED_SUBSCRIPTION_STATUSES.has(purchase.status ?? "")
+					) {
+						await cancelSubscription(purchase.subscriptionId);
+					}
+				}
+
+				// S1-04: Cascade user deletion to Circle member deletion
+				const members = await db.member.findMany({ where: { userId: user.id } });
+				for (const member of members) {
+					if (!member.circleMemberId) {
+						continue;
+					}
+					try {
+						await deleteCircleMember(member.circleMemberId);
+					} catch (error) {
+						logger.error("Failed to delete Circle member during user deletion", {
+							userId: user.id,
+							memberId: member.id,
+							circleMemberId: member.circleMemberId,
+							error: error instanceof Error ? error.message : String(error),
+						});
+					}
+				}
+			},
 		},
 		changeEmail: {
 			enabled: true,
@@ -297,6 +247,10 @@ export const auth = betterAuth({
 			},
 		}),
 		organization({
+			// W-03 / W-01: orgs are created by platform admins via db (platform create-org)
+			// and never deleted through better-auth.
+			allowUserToCreateOrganization: (user) => user.role === "platformAdmin",
+			disableOrganizationDeletion: true,
 			sendInvitationEmail: async ({ email, id, organization }, request) => {
 				const locale = getLocaleFromRequest(request);
 				const existingUser = await getUserByEmail(email);
@@ -330,8 +284,6 @@ export const auth = betterAuth({
 		},
 	},
 });
-
-export * from "./lib/organization";
 
 export type Session = typeof auth.$Infer.Session;
 
