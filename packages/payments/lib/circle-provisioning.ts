@@ -226,7 +226,8 @@ export async function deactivateCircleMember(member: {
 
 /**
  * Reactivate a member in Circle.
- * Called on re-subscribe and from the reconcile sweep.
+ * Called on re-subscribe and from the reconcile sweep. Returns true when
+ * reactivated, false when it failed (left for the next reconcile tick).
  */
 export async function reactivateCircleMember(
 	member: {
@@ -234,15 +235,15 @@ export async function reactivateCircleMember(
 		circleMemberId: string;
 	},
 	subscriptionId: string,
-): Promise<void> {
+): Promise<boolean> {
 	const dbMember = await db.member.findUnique({
 		where: { id: member.id },
 		include: { organization: true },
 	});
-	if (!dbMember?.organization?.slug) return;
+	if (!dbMember?.organization?.slug) return false;
 
 	const user = await db.user.findUnique({ where: { id: dbMember.userId } });
-	if (!user) return;
+	if (!user) return false;
 
 	const service = createCircleService(dbMember.organization.slug);
 	const outcome = await service.reactivateMember({
@@ -262,7 +263,7 @@ export async function reactivateCircleMember(
 			reason: outcome.reason,
 			retriable: outcome.retriable,
 		});
-		return;
+		return false;
 	}
 
 	await db.member.update({
@@ -274,6 +275,8 @@ export async function reactivateCircleMember(
 		memberId: member.id,
 		circleMemberId: member.circleMemberId,
 	});
+
+	return true;
 }
 
 /**

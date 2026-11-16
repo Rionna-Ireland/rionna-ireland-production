@@ -18,6 +18,7 @@ import { db, parseOrgMetadata } from "@repo/database";
 import { logger } from "@repo/logs";
 import { createCircleService } from "@repo/payments/lib/circle";
 import { provisionHorseSpace } from "@repo/payments/lib/circle-horse-provisioning";
+import { reactivateCircleMember } from "@repo/payments/lib/circle-provisioning";
 
 import { getHorseSpaceIds } from "../community/lib/horse-space-ids";
 import { resolveAutoJoinSpaceIds } from "../community/lib/resolve-auto-join-space-ids";
@@ -232,8 +233,6 @@ export async function reconcileCircleMembers(
 		include: {
 			user: {
 				select: {
-					email: true,
-					name: true,
 					purchases: {
 						where: activeMemberWhere(organizationId).user.purchases.some,
 						select: { subscriptionId: true },
@@ -246,40 +245,13 @@ export async function reconcileCircleMembers(
 
 	for (const member of deactivatedMembers) {
 		try {
-			const outcome = await circle.reactivateMember({
-				email: member.user.email,
-				name: member.user.name ?? member.user.email,
-				ssoUserId: member.userId,
-				// Same key as the webhook path, so the two never double-send.
-				idempotencyKey: `reactivate-${member.id}-${member.user.purchases[0]?.subscriptionId}`,
-			});
-
-			if (!outcome.ok) {
-				errors++;
-				logger.error("[Reconciliation] Failed to reactivate member", {
-					surface: "circle.reconciliation",
-					memberId: member.id,
-					userId: member.userId,
-					orgId: organizationId,
-					reason: outcome.reason,
-					retriable: outcome.retriable,
-				});
-				continue;
-			}
-
-			await db.member.update({
-				where: { id: member.id },
-				data: { circleStatus: "active" },
-			});
-
-			reactivated++;
-			logger.info("[Reconciliation] Reactivated Circle member", {
-				surface: "circle.reconciliation",
-				memberId: member.id,
-				userId: member.userId,
-				orgId: organizationId,
-				circleMemberId: member.circleMemberId,
-			});
+			// Same helper (and idempotency key) as the webhook path; it logs failures itself.
+			const ok = await reactivateCircleMember(
+				{ id: member.id, circleMemberId: member.circleMemberId! },
+				member.user.purchases[0]?.subscriptionId ?? "unknown",
+			);
+			if (ok) reactivated++;
+			else errors++;
 		} catch (error) {
 			errors++;
 			logger.error("[Reconciliation] Failed to reactivate member", {

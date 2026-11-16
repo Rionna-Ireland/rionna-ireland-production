@@ -20,6 +20,7 @@ const {
 	mockMemberFindManyStale,
 	mockMemberFindManyDeactivated,
 	mockReactivateMember,
+	mockReactivateCircleMember,
 	mockMemberUpdate,
 	mockHorseFindMany,
 	mockCreateMember,
@@ -34,6 +35,7 @@ const {
 	mockMemberFindManyStale: vi.fn(),
 	mockMemberFindManyDeactivated: vi.fn(),
 	mockReactivateMember: vi.fn(),
+	mockReactivateCircleMember: vi.fn(),
 	mockMemberUpdate: vi.fn(),
 	mockHorseFindMany: vi.fn(),
 	mockCreateMember: vi.fn(),
@@ -96,6 +98,10 @@ vi.mock("@repo/payments/lib/circle", () => ({
 		getMemberToken: vi.fn(),
 		listSpaces: mockListSpaces,
 	})),
+}));
+
+vi.mock("@repo/payments/lib/circle-provisioning", () => ({
+	reactivateCircleMember: mockReactivateCircleMember,
 }));
 
 // ──────────────────────────────────────────────
@@ -344,17 +350,17 @@ describe("reconcileCircleMembers", () => {
 	});
 
 	describe("reactivating deactivated members with an active Purchase (W-05)", () => {
-		it("reactivates in Circle with a per-subscription idempotency key", async () => {
-			mockMemberFindManyDeactivated.mockResolvedValue([
-				{
-					id: "m3",
-					userId: "u3",
-					circleMemberId: "c-3",
-					circleStatus: "deactivated",
-					user: { email: "u3@test.com", name: "User 3", purchases: [{ subscriptionId: "sub_3" }] },
-				},
-			]);
-			mockReactivateMember.mockResolvedValue({ ok: true, data: undefined });
+		const deactivated = {
+			id: "m3",
+			userId: "u3",
+			circleMemberId: "c-3",
+			circleStatus: "deactivated",
+			user: { purchases: [{ subscriptionId: "sub_3" }] },
+		};
+
+		it("reactivates through reactivateCircleMember with the active subscription id", async () => {
+			mockMemberFindManyDeactivated.mockResolvedValue([deactivated]);
+			mockReactivateCircleMember.mockResolvedValue(true);
 
 			const result = await reconcileCircleMembers(ORG_ID);
 
@@ -368,33 +374,20 @@ describe("reconcileCircleMembers", () => {
 					},
 				},
 			});
-			expect(mockReactivateMember).toHaveBeenCalledWith({
-				email: "u3@test.com",
-				name: "User 3",
-				ssoUserId: "u3",
-				idempotencyKey: "reactivate-m3-sub_3",
-			});
-			expect(mockMemberUpdate).toHaveBeenCalledWith({
-				where: { id: "m3" },
-				data: { circleStatus: "active" },
-			});
+			expect(mockReactivateCircleMember).toHaveBeenCalledWith(
+				{ id: "m3", circleMemberId: "c-3" },
+				"sub_3",
+			);
+			expect(mockReactivateMember).not.toHaveBeenCalled();
 			expect(result).toEqual({ provisioned: 0, deactivated: 0, reactivated: 1, errors: 0 });
 		});
 
-		it("counts a failed reactivation as an error and leaves the member deactivated", async () => {
-			mockMemberFindManyDeactivated.mockResolvedValue([
-				{
-					id: "m3",
-					userId: "u3",
-					circleMemberId: "c-3",
-					user: { email: "u3@test.com", name: null, purchases: [{ subscriptionId: "sub_3" }] },
-				},
-			]);
-			mockReactivateMember.mockResolvedValue({ ok: false, reason: "server_error", retriable: true });
+		it("counts a failed reactivation as an error", async () => {
+			mockMemberFindManyDeactivated.mockResolvedValue([deactivated]);
+			mockReactivateCircleMember.mockResolvedValue(false);
 
 			const result = await reconcileCircleMembers(ORG_ID);
 
-			expect(mockMemberUpdate).not.toHaveBeenCalled();
 			expect(result).toEqual({ provisioned: 0, deactivated: 0, reactivated: 0, errors: 1 });
 		});
 	});
