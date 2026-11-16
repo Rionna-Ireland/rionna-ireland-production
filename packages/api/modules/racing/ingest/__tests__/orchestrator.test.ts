@@ -48,6 +48,7 @@ vi.mock("@repo/database", () => ({
       findFirst: (...args: unknown[]) => mockRaceEntryFindFirst(...args),
       upsert: (...args: unknown[]) => mockRaceEntryUpsert(...args),
       update: (...args: unknown[]) => mockRaceEntryUpdate(...args),
+      findMany: async () => [],
     },
   },
 }));

@@ -78,7 +78,11 @@ export async function checkForResults(
 
 					await handleStatusTransition(
 						organizationId,
-						{ id: raceEntry.horse.id, name: raceEntry.horse.name, photos: raceEntry.horse.photos },
+						{
+							id: raceEntry.horse.id,
+							name: raceEntry.horse.name,
+							photos: raceEntry.horse.photos,
+						},
 						{
 							id: race.id,
 							name: race.name,
@@ -142,5 +146,40 @@ export async function checkForResults(
 		} catch (error) {
 			logger.error(`Result check failed for race ${race.id}`, { error });
 		}
+	}
+
+	// W-11: a race drops off the racecards after midnight, so ingest-horse stops
+	// retrying a failed result post. Retry it here for recent races; the push
+	// marker is already set, so handleStatusTransition only re-attempts the post.
+	const CIRCLE_RETRY_WINDOW_MS = 3 * 24 * 60 * 60 * 1000;
+	const ranEntries = await db.raceEntry.findMany({
+		where: {
+			organizationId,
+			status: "RAN",
+			race: { postTime: { gte: new Date(now.getTime() - CIRCLE_RETRY_WINDOW_MS) } },
+		},
+		include: {
+			horse: true,
+			jockey: true,
+			race: { include: { meeting: { include: { course: true } } } },
+		},
+	});
+	for (const entry of ranEntries) {
+		const markers = (entry.notifiedStates as string[] | null) ?? [];
+		if (!markers.includes("RAN") || markers.includes("circle:RAN")) continue;
+		await handleStatusTransition(
+			organizationId,
+			{ id: entry.horse.id, name: entry.horse.name, photos: entry.horse.photos },
+			{
+				id: entry.race.id,
+				name: entry.race.name,
+				postTime: entry.race.postTime,
+				courseName: entry.race.meeting.course.name,
+				distanceFurlongs: entry.race.distanceFurlongs ?? null,
+				goingDescription: entry.race.goingDescription ?? null,
+			},
+			{ ...entry, jockeyName: entry.jockey?.name ?? null },
+			"RAN",
+		);
 	}
 }
