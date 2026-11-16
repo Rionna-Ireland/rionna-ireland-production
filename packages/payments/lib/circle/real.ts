@@ -13,7 +13,7 @@ import { createClient } from "@circleco/headless-server-sdk";
 import { logger } from "@repo/logs";
 
 import { tiptapDocToTrixBody } from "./event-body";
-import { circleFetch } from "./fetch";
+import { CIRCLE_FETCH_TIMEOUT_MS, circleFetch } from "./fetch";
 import {
 	applyNotificationsCursor,
 	classifyStatus,
@@ -320,10 +320,20 @@ export class RealCircleService implements CircleService {
 			refresh_token: string;
 			access_token_expires_at: string;
 		};
-		try {
-			result = await this.headlessClient.getMemberAPITokenFromCommunityMemberId(
-				Number(circleMemberId),
+		// The SDK takes no AbortSignal: race it so a slow Circle can't hold the
+		// request (the SDK call itself may still finish later).
+		let timeout: ReturnType<typeof setTimeout> | undefined;
+		const deadline = new Promise<never>((_resolve, reject) => {
+			timeout = setTimeout(
+				() => reject(new Error("Circle member token mint timed out")),
+				CIRCLE_FETCH_TIMEOUT_MS,
 			);
+		});
+		try {
+			result = await Promise.race([
+				this.headlessClient.getMemberAPITokenFromCommunityMemberId(Number(circleMemberId)),
+				deadline,
+			]);
 		} catch (err) {
 			// The Headless SDK throws on any failure — HTTP, network, parse.
 			// We can't reliably classify beyond "retriable server-side failure"
@@ -344,6 +354,8 @@ export class RealCircleService implements CircleService {
 				reason,
 			});
 			return { ok: false, reason, retriable, raw: err };
+		} finally {
+			clearTimeout(timeout);
 		}
 
 		logger.info("[Circle] Minted member token", { circleMemberId });
