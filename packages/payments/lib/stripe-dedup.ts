@@ -1,6 +1,7 @@
 import { db } from "@repo/database";
 
 // A claim this old with no completedAt belongs to a killed function (W-08).
+// shortcut: 5-minute stale window assumes the webhook route's maxDuration (60s) stays well under it; raise it if maxDuration grows.
 const STALE_CLAIM_MS = 5 * 60 * 1000;
 
 /**
