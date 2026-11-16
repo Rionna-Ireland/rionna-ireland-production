@@ -13,6 +13,7 @@ import { createClient } from "@circleco/headless-server-sdk";
 import { logger } from "@repo/logs";
 
 import { tiptapDocToTrixBody } from "./event-body";
+import { circleFetch } from "./fetch";
 import {
 	applyNotificationsCursor,
 	classifyStatus,
@@ -118,7 +119,7 @@ export class RealCircleService implements CircleService {
 	async createMember(params: CreateMemberParams): Promise<CircleCallOutcome<CreateMemberResult>> {
 		let response: Response;
 		try {
-			response = await fetch(`${CIRCLE_ADMIN_BASE}/community_members`, {
+			response = await circleFetch(`${CIRCLE_ADMIN_BASE}/community_members`, {
 				method: "POST",
 				headers: {
 					Authorization: `Bearer ${this.adminToken}`,
@@ -196,7 +197,7 @@ export class RealCircleService implements CircleService {
 	async deactivateMember(circleMemberId: string): Promise<CircleCallOutcome<void>> {
 		let response: Response;
 		try {
-			response = await fetch(`${CIRCLE_ADMIN_BASE}/community_members/${circleMemberId}`, {
+			response = await circleFetch(`${CIRCLE_ADMIN_BASE}/community_members/${circleMemberId}`, {
 				method: "DELETE",
 				headers: {
 					Authorization: `Bearer ${this.adminToken}`,
@@ -232,7 +233,7 @@ export class RealCircleService implements CircleService {
 		// Re-provision with the same SSO ID — Circle matches the existing member.
 		let response: Response;
 		try {
-			response = await fetch(`${CIRCLE_ADMIN_BASE}/community_members`, {
+			response = await circleFetch(`${CIRCLE_ADMIN_BASE}/community_members`, {
 				method: "POST",
 				headers: {
 					Authorization: `Bearer ${this.adminToken}`,
@@ -272,7 +273,7 @@ export class RealCircleService implements CircleService {
 	async deleteMember(circleMemberId: string): Promise<CircleCallOutcome<void>> {
 		let response: Response;
 		try {
-			response = await fetch(
+			response = await circleFetch(
 				`${CIRCLE_ADMIN_BASE}/community_members/${circleMemberId}/delete_member`,
 				{
 					method: "PUT",
@@ -436,7 +437,7 @@ export class RealCircleService implements CircleService {
 
 		let res: Response;
 		try {
-			res = await fetch(url, {
+			res = await circleFetch(url, {
 				headers: {
 					Authorization: `Bearer ${accessToken}`,
 					"Content-Type": "application/json",
@@ -532,7 +533,7 @@ export class RealCircleService implements CircleService {
 		if (!tokenOutcome.ok) return tokenOutcome;
 		let response: Response;
 		try {
-			response = await fetch(`${CIRCLE_HEADLESS_BASE}/signup/profile`, {
+			response = await circleFetch(`${CIRCLE_HEADLESS_BASE}/signup/profile`, {
 				method: "PUT",
 				headers: {
 					Authorization: `Bearer ${tokenOutcome.data.accessToken}`,
@@ -634,7 +635,7 @@ export class RealCircleService implements CircleService {
 
 		let response: Response;
 		try {
-			response = await fetch(`${CIRCLE_ADMIN_BASE}/posts`, {
+			response = await circleFetch(`${CIRCLE_ADMIN_BASE}/posts`, {
 				method: "POST",
 				headers: this.adminHeaders(params.idempotencyKey),
 				body: JSON.stringify(body),
@@ -685,7 +686,7 @@ export class RealCircleService implements CircleService {
 	async deletePost(circlePostId: string): Promise<CircleCallOutcome<void>> {
 		let response: Response;
 		try {
-			response = await fetch(`${CIRCLE_ADMIN_BASE}/posts/${circlePostId}`, {
+			response = await circleFetch(`${CIRCLE_ADMIN_BASE}/posts/${circlePostId}`, {
 				method: "DELETE",
 				headers: {
 					Authorization: `Bearer ${this.adminToken}`,
@@ -719,7 +720,7 @@ export class RealCircleService implements CircleService {
 	async deleteComment(circleCommentId: string): Promise<CircleCallOutcome<void>> {
 		let response: Response;
 		try {
-			response = await fetch(`${CIRCLE_ADMIN_BASE}/comments/${circleCommentId}`, {
+			response = await circleFetch(`${CIRCLE_ADMIN_BASE}/comments/${circleCommentId}`, {
 				method: "DELETE",
 				headers: {
 					Authorization: `Bearer ${this.adminToken}`,
@@ -756,7 +757,7 @@ export class RealCircleService implements CircleService {
 		// failure); the caller supplies the base64-MD5 checksum of the bytes.
 		let regRes: Response;
 		try {
-			regRes = await fetch(`${CIRCLE_ADMIN_BASE}/direct_uploads`, {
+			regRes = await circleFetch(`${CIRCLE_ADMIN_BASE}/direct_uploads`, {
 				method: "POST",
 				headers: this.adminHeaders(),
 				body: JSON.stringify({
@@ -821,13 +822,15 @@ export class RealCircleService implements CircleService {
 
 		let putRes: Response;
 		try {
-			putRes = await fetch(reg.data.uploadUrl, {
+			putRes = await circleFetch(reg.data.uploadUrl, {
 				method: "PUT",
 				headers: reg.data.uploadHeaders,
 				// undici accepts a Uint8Array body at runtime; the DOM `BodyInit`
 				// type rejects `Uint8Array<ArrayBufferLike>` (TS 5.7 typed-array
 				// generics), so cast at this single boundary.
 				body: params.data as unknown as BodyInit,
+				// Media uploads can be large; the 8s Circle default is for API calls.
+				signal: AbortSignal.timeout(60_000),
 			});
 		} catch (err) {
 			return { ok: false, reason: "network", retriable: true, raw: err };
@@ -856,7 +859,7 @@ export class RealCircleService implements CircleService {
 	async createEmbed(params: CreateEmbedParams): Promise<CircleCallOutcome<CreateEmbedResult>> {
 		let response: Response;
 		try {
-			response = await fetch(`${CIRCLE_ADMIN_BASE}/embeds`, {
+			response = await circleFetch(`${CIRCLE_ADMIN_BASE}/embeds`, {
 				method: "POST",
 				headers: this.adminHeaders(),
 				body: JSON.stringify({ url: params.url }),
@@ -894,7 +897,7 @@ export class RealCircleService implements CircleService {
 	async createSpace(params: CreateSpaceParams): Promise<CircleCallOutcome<CreateSpaceResult>> {
 		let response: Response;
 		try {
-			response = await fetch(`${CIRCLE_ADMIN_BASE}/spaces`, {
+			response = await circleFetch(`${CIRCLE_ADMIN_BASE}/spaces`, {
 				method: "POST",
 				headers: this.adminHeaders(params.idempotencyKey),
 				body: JSON.stringify({
@@ -950,7 +953,7 @@ export class RealCircleService implements CircleService {
 	async listSpaceGroups(): Promise<CircleCallOutcome<CircleSpaceGroupSummary[]>> {
 		let response: Response;
 		try {
-			response = await fetch(`${CIRCLE_ADMIN_BASE}/space_groups?per_page=100`, {
+			response = await circleFetch(`${CIRCLE_ADMIN_BASE}/space_groups?per_page=100`, {
 				headers: this.adminHeaders(),
 			});
 		} catch (err) {
@@ -995,7 +998,7 @@ export class RealCircleService implements CircleService {
 
 		let response: Response;
 		try {
-			response = await fetch(url, { headers: this.adminHeaders() });
+			response = await circleFetch(url, { headers: this.adminHeaders() });
 		} catch (err) {
 			return { ok: false, reason: "network", retriable: true, raw: err };
 		}
@@ -1036,7 +1039,7 @@ export class RealCircleService implements CircleService {
 	}): Promise<CircleCallOutcome<{ circleSpaceId: string; isPrivate: boolean }>> {
 		let response: Response;
 		try {
-			response = await fetch(`${CIRCLE_ADMIN_BASE}/spaces/${params.spaceId}`, {
+			response = await circleFetch(`${CIRCLE_ADMIN_BASE}/spaces/${params.spaceId}`, {
 				method: "PUT",
 				headers: this.adminHeaders(),
 				body: JSON.stringify({ is_private: params.isPrivate }),
@@ -1068,7 +1071,7 @@ export class RealCircleService implements CircleService {
 	}): Promise<CircleCallOutcome<{ spaceId: string; email: string }>> {
 		let response: Response;
 		try {
-			response = await fetch(`${CIRCLE_ADMIN_BASE}/space_members`, {
+			response = await circleFetch(`${CIRCLE_ADMIN_BASE}/space_members`, {
 				method: "POST",
 				headers: this.adminHeaders(),
 				body: JSON.stringify({ email: params.email, space_id: Number(params.spaceId) }),
@@ -1101,7 +1104,7 @@ export class RealCircleService implements CircleService {
 	}): Promise<CircleCallOutcome<{ spaceId: string; email: string }>> {
 		let response: Response;
 		try {
-			response = await fetch(
+			response = await circleFetch(
 				`${CIRCLE_ADMIN_BASE}/space_members?email=${encodeURIComponent(params.email)}&space_id=${encodeURIComponent(params.spaceId)}`,
 				{
 					method: "DELETE",
@@ -1133,7 +1136,7 @@ export class RealCircleService implements CircleService {
 	async createEvent(params: CreateEventParams): Promise<CircleCallOutcome<CreateEventResult>> {
 		let response: Response;
 		try {
-			response = await fetch(`${CIRCLE_ADMIN_BASE}/events`, {
+			response = await circleFetch(`${CIRCLE_ADMIN_BASE}/events`, {
 				method: "POST",
 				headers: this.adminHeaders(params.idempotencyKey),
 				body: JSON.stringify({
@@ -1257,7 +1260,7 @@ export class RealCircleService implements CircleService {
 			events.map(async (event) => {
 				let response: Response;
 				try {
-					response = await fetch(
+					response = await circleFetch(
 						`${CIRCLE_ADMIN_BASE}/event_attendees?event_id=${encodeURIComponent(event.circleEventId)}&per_page=1`,
 						{ headers: this.adminHeaders() },
 					);
@@ -1307,7 +1310,7 @@ export class RealCircleService implements CircleService {
 		}
 		let response: Response;
 		try {
-			response = await fetch(`${CIRCLE_ADMIN_BASE}/events?${qs}`, {
+			response = await circleFetch(`${CIRCLE_ADMIN_BASE}/events?${qs}`, {
 				headers: this.adminHeaders(),
 			});
 		} catch (err) {
@@ -1368,7 +1371,7 @@ export class RealCircleService implements CircleService {
 		});
 		let response: Response;
 		try {
-			response = await fetch(`${CIRCLE_ADMIN_BASE}/event_attendees?${qs}`, {
+			response = await circleFetch(`${CIRCLE_ADMIN_BASE}/event_attendees?${qs}`, {
 				headers: this.adminHeaders(),
 			});
 		} catch (err) {
@@ -1431,7 +1434,7 @@ export class RealCircleService implements CircleService {
 		if (Object.keys(settings).length > 0) body.event_setting_attributes = settings;
 		let response: Response;
 		try {
-			response = await fetch(
+			response = await circleFetch(
 				`${CIRCLE_ADMIN_BASE}/events/${encodeURIComponent(params.eventId)}`,
 				{
 					method: "PUT",
@@ -1462,7 +1465,7 @@ export class RealCircleService implements CircleService {
 	}): Promise<CircleCallOutcome<void>> {
 		let response: Response;
 		try {
-			response = await fetch(
+			response = await circleFetch(
 				// Probed against staging (2026-08-27): DELETE /events/{id} 404s
 				// "Missing parameter: space_id" unless it's on the query string.
 				`${CIRCLE_ADMIN_BASE}/events/${encodeURIComponent(params.eventId)}?space_id=${Number(params.spaceId)}`,
@@ -1519,7 +1522,7 @@ export class RealCircleService implements CircleService {
 		if (!tokenOutcome.ok) return tokenOutcome;
 		let response: Response;
 		try {
-			response = await fetch(
+			response = await circleFetch(
 				`${CIRCLE_HEADLESS_BASE}/posts/${encodeURIComponent(params.circlePostId)}/comments`,
 				{
 					method: "POST",
@@ -1568,7 +1571,7 @@ export class RealCircleService implements CircleService {
 		if (!tokenOutcome.ok) return tokenOutcome;
 		let response: Response;
 		try {
-			response = await fetch(
+			response = await circleFetch(
 				`${CIRCLE_HEADLESS_BASE}/posts/${encodeURIComponent(params.circlePostId)}/user_likes`,
 				{
 					method: "POST",
@@ -1603,7 +1606,7 @@ export class RealCircleService implements CircleService {
 		if (!tokenOutcome.ok) return tokenOutcome;
 		let response: Response;
 		try {
-			response = await fetch(
+			response = await circleFetch(
 				`${CIRCLE_HEADLESS_BASE}/events/${encodeURIComponent(params.eventId)}/event_attendees`,
 				{
 					method: "POST",
@@ -1625,7 +1628,7 @@ export class RealCircleService implements CircleService {
 	async deleteSpace(spaceId: string): Promise<CircleCallOutcome<void>> {
 		let response: Response;
 		try {
-			response = await fetch(`${CIRCLE_ADMIN_BASE}/spaces/${encodeURIComponent(spaceId)}`, {
+			response = await circleFetch(`${CIRCLE_ADMIN_BASE}/spaces/${encodeURIComponent(spaceId)}`, {
 				method: "DELETE",
 				headers: this.adminHeaders(),
 			});

@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { logger } from "@repo/logs";
 
 import { tiptapDocToTrixBody } from "./event-body";
+import { circleFetch } from "./fetch";
 import {
 	applyNotificationsCursor,
 	classifyStatus,
@@ -75,7 +76,7 @@ export class MockServerCircleService implements CircleService {
 	async createMember(params: CreateMemberParams): Promise<CircleCallOutcome<CreateMemberResult>> {
 		let response: Response;
 		try {
-			response = await fetch(`${this.baseUrl}/api/admin/v2/community_members`, {
+			response = await circleFetch(`${this.baseUrl}/api/admin/v2/community_members`, {
 				method: "POST",
 				headers: {
 					Authorization: `Bearer ${this.adminToken}`,
@@ -115,7 +116,7 @@ export class MockServerCircleService implements CircleService {
 	async deactivateMember(circleMemberId: string): Promise<CircleCallOutcome<void>> {
 		let response: Response;
 		try {
-			response = await fetch(
+			response = await circleFetch(
 				`${this.baseUrl}/api/admin/v2/community_members/${circleMemberId}`,
 				{
 					method: "DELETE",
@@ -144,7 +145,7 @@ export class MockServerCircleService implements CircleService {
 	async reactivateMember(params: ReactivateMemberParams): Promise<CircleCallOutcome<void>> {
 		let tokenResponse: Response;
 		try {
-			tokenResponse = await fetch(`${this.baseUrl}/api/v1/headless/auth_token`, {
+			tokenResponse = await circleFetch(`${this.baseUrl}/api/v1/headless/auth_token`, {
 				method: "POST",
 				headers: {
 					Authorization: `Bearer ${this.appToken}`,
@@ -193,7 +194,7 @@ export class MockServerCircleService implements CircleService {
 
 		let updateResponse: Response;
 		try {
-			updateResponse = await fetch(
+			updateResponse = await circleFetch(
 				`${this.baseUrl}/api/admin/v2/community_members/${data.community_member_id}`,
 				{
 					method: "PUT",
@@ -227,7 +228,7 @@ export class MockServerCircleService implements CircleService {
 	async deleteMember(circleMemberId: string): Promise<CircleCallOutcome<void>> {
 		let response: Response;
 		try {
-			response = await fetch(
+			response = await circleFetch(
 				`${this.baseUrl}/api/admin/v2/community_members/${circleMemberId}/delete_member`,
 				{
 					method: "PUT",
@@ -252,7 +253,7 @@ export class MockServerCircleService implements CircleService {
 	async getMemberToken(circleMemberId: string): Promise<CircleCallOutcome<MemberTokenResult>> {
 		let response: Response;
 		try {
-			response = await fetch(`${this.baseUrl}/api/v1/headless/auth_token`, {
+			response = await circleFetch(`${this.baseUrl}/api/v1/headless/auth_token`, {
 				method: "POST",
 				headers: {
 					Authorization: `Bearer ${this.appToken}`,
@@ -343,7 +344,7 @@ export class MockServerCircleService implements CircleService {
 
 		let res: Response;
 		try {
-			res = await fetch(url, {
+			res = await circleFetch(url, {
 				headers: {
 					Authorization: `Bearer ${accessToken}`,
 					"Content-Type": "application/json",
@@ -447,7 +448,7 @@ export class MockServerCircleService implements CircleService {
 
 		let response: Response;
 		try {
-			response = await fetch(`${this.baseUrl}/api/admin/v2/posts`, {
+			response = await circleFetch(`${this.baseUrl}/api/admin/v2/posts`, {
 				method: "POST",
 				headers: this.adminHeaders(),
 				body: JSON.stringify(body),
@@ -480,7 +481,7 @@ export class MockServerCircleService implements CircleService {
 	async deletePost(circlePostId: string): Promise<CircleCallOutcome<void>> {
 		let response: Response;
 		try {
-			response = await fetch(`${this.baseUrl}/api/admin/v2/posts/${circlePostId}`, {
+			response = await circleFetch(`${this.baseUrl}/api/admin/v2/posts/${circlePostId}`, {
 				method: "DELETE",
 				headers: this.adminHeaders(),
 			});
@@ -500,7 +501,7 @@ export class MockServerCircleService implements CircleService {
 	async deleteComment(circleCommentId: string): Promise<CircleCallOutcome<void>> {
 		let response: Response;
 		try {
-			response = await fetch(`${this.baseUrl}/api/admin/v2/comments/${circleCommentId}`, {
+			response = await circleFetch(`${this.baseUrl}/api/admin/v2/comments/${circleCommentId}`, {
 				method: "DELETE",
 				headers: this.adminHeaders(),
 			});
@@ -522,7 +523,7 @@ export class MockServerCircleService implements CircleService {
 	): Promise<CircleCallOutcome<CreateDirectUploadResult>> {
 		let regRes: Response;
 		try {
-			regRes = await fetch(`${this.baseUrl}/api/admin/v2/direct_uploads`, {
+			regRes = await circleFetch(`${this.baseUrl}/api/admin/v2/direct_uploads`, {
 				method: "POST",
 				headers: this.adminHeaders(),
 				body: JSON.stringify({
@@ -587,11 +588,13 @@ export class MockServerCircleService implements CircleService {
 
 		let putRes: Response;
 		try {
-			putRes = await fetch(reg.data.uploadUrl, {
+			putRes = await circleFetch(reg.data.uploadUrl, {
 				method: "PUT",
 				headers: reg.data.uploadHeaders,
 				// See RealCircleService.uploadImage: cast at the binary-body boundary.
 				body: params.data as unknown as BodyInit,
+				// Media uploads can be large; the 8s Circle default is for API calls.
+				signal: AbortSignal.timeout(60_000),
 			});
 		} catch (err) {
 			return { ok: false, reason: "network", retriable: true, raw: err };
@@ -615,7 +618,7 @@ export class MockServerCircleService implements CircleService {
 	async createEmbed(params: CreateEmbedParams): Promise<CircleCallOutcome<CreateEmbedResult>> {
 		let response: Response;
 		try {
-			response = await fetch(`${this.baseUrl}/api/admin/v2/embeds`, {
+			response = await circleFetch(`${this.baseUrl}/api/admin/v2/embeds`, {
 				method: "POST",
 				headers: this.adminHeaders(),
 				body: JSON.stringify({ url: params.url }),
@@ -644,7 +647,7 @@ export class MockServerCircleService implements CircleService {
 	async createSpace(params: CreateSpaceParams): Promise<CircleCallOutcome<CreateSpaceResult>> {
 		let response: Response;
 		try {
-			response = await fetch(`${this.baseUrl}/api/admin/v2/spaces`, {
+			response = await circleFetch(`${this.baseUrl}/api/admin/v2/spaces`, {
 				method: "POST",
 				headers: this.adminHeaders(),
 				body: JSON.stringify({
@@ -681,7 +684,7 @@ export class MockServerCircleService implements CircleService {
 	async listSpaceGroups(): Promise<CircleCallOutcome<CircleSpaceGroupSummary[]>> {
 		let response: Response;
 		try {
-			response = await fetch(`${this.baseUrl}/api/admin/v2/space_groups?per_page=100`, {
+			response = await circleFetch(`${this.baseUrl}/api/admin/v2/space_groups?per_page=100`, {
 				headers: this.adminHeaders(),
 			});
 		} catch (err) {
@@ -722,7 +725,7 @@ export class MockServerCircleService implements CircleService {
 
 		let response: Response;
 		try {
-			response = await fetch(url, { headers: this.adminHeaders() });
+			response = await circleFetch(url, { headers: this.adminHeaders() });
 		} catch (err) {
 			return { ok: false, reason: "network", retriable: true, raw: err };
 		}
@@ -759,7 +762,7 @@ export class MockServerCircleService implements CircleService {
 	}): Promise<CircleCallOutcome<{ circleSpaceId: string; isPrivate: boolean }>> {
 		let response: Response;
 		try {
-			response = await fetch(`${this.baseUrl}/api/admin/v2/spaces/${params.spaceId}`, {
+			response = await circleFetch(`${this.baseUrl}/api/admin/v2/spaces/${params.spaceId}`, {
 				method: "PUT",
 				headers: this.adminHeaders(),
 				body: JSON.stringify({ is_private: params.isPrivate }),
@@ -782,7 +785,7 @@ export class MockServerCircleService implements CircleService {
 	}): Promise<CircleCallOutcome<{ spaceId: string; email: string }>> {
 		let response: Response;
 		try {
-			response = await fetch(`${this.baseUrl}/api/admin/v2/space_members`, {
+			response = await circleFetch(`${this.baseUrl}/api/admin/v2/space_members`, {
 				method: "POST",
 				headers: this.adminHeaders(),
 				body: JSON.stringify({ email: params.email, space_id: Number(params.spaceId) }),
@@ -805,7 +808,7 @@ export class MockServerCircleService implements CircleService {
 	}): Promise<CircleCallOutcome<{ spaceId: string; email: string }>> {
 		let response: Response;
 		try {
-			response = await fetch(
+			response = await circleFetch(
 				`${this.baseUrl}/api/admin/v2/space_members?email=${encodeURIComponent(params.email)}&space_id=${encodeURIComponent(params.spaceId)}`,
 				{
 					method: "DELETE",
@@ -827,7 +830,7 @@ export class MockServerCircleService implements CircleService {
 	async createEvent(params: CreateEventParams): Promise<CircleCallOutcome<CreateEventResult>> {
 		let response: Response;
 		try {
-			response = await fetch(`${this.baseUrl}/api/admin/v2/events`, {
+			response = await circleFetch(`${this.baseUrl}/api/admin/v2/events`, {
 				method: "POST",
 				headers: this.adminHeaders(),
 				body: JSON.stringify({
@@ -926,7 +929,7 @@ export class MockServerCircleService implements CircleService {
 			events.map(async (event) => {
 				let response: Response;
 				try {
-					response = await fetch(
+					response = await circleFetch(
 						`${this.baseUrl}/api/admin/v2/event_attendees?event_id=${encodeURIComponent(event.circleEventId)}&per_page=1`,
 						{ headers: this.adminHeaders() },
 					);
@@ -982,7 +985,7 @@ export class MockServerCircleService implements CircleService {
 		}
 		let response: Response;
 		try {
-			response = await fetch(`${this.baseUrl}/api/admin/v2/events?${qs}`, {
+			response = await circleFetch(`${this.baseUrl}/api/admin/v2/events?${qs}`, {
 				headers: this.adminHeaders(),
 			});
 		} catch (err) {
@@ -1038,7 +1041,7 @@ export class MockServerCircleService implements CircleService {
 		});
 		let response: Response;
 		try {
-			response = await fetch(`${this.baseUrl}/api/admin/v2/event_attendees?${qs}`, {
+			response = await circleFetch(`${this.baseUrl}/api/admin/v2/event_attendees?${qs}`, {
 				headers: this.adminHeaders(),
 			});
 		} catch (err) {
@@ -1096,7 +1099,7 @@ export class MockServerCircleService implements CircleService {
 		if (Object.keys(settings).length > 0) body.event_setting_attributes = settings;
 		let response: Response;
 		try {
-			response = await fetch(
+			response = await circleFetch(
 				`${this.baseUrl}/api/admin/v2/events/${encodeURIComponent(params.eventId)}`,
 				{
 					method: "PUT",
@@ -1121,7 +1124,7 @@ export class MockServerCircleService implements CircleService {
 	}): Promise<CircleCallOutcome<void>> {
 		let response: Response;
 		try {
-			response = await fetch(
+			response = await circleFetch(
 				// Mirrors RealCircleService: DELETE /events/{id} 404s "Missing
 				// parameter: space_id" unless it's on the query string.
 				`${this.baseUrl}/api/admin/v2/events/${encodeURIComponent(params.eventId)}?space_id=${Number(params.spaceId)}`,

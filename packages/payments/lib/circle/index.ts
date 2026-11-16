@@ -145,6 +145,8 @@ export type {
 	UploadImageResult,
 } from "./types";
 export { CircleApiError } from "./types";
+export { CIRCLE_FETCH_TIMEOUT_MS, circleFetch } from "./fetch";
+export { clearCachedMemberToken } from "./member-token-cache";
 export { decodeCircleInPersonLocation } from "./location";
 export { tiptapDocToTrixBody } from "./event-body";
 export { MockCircleService } from "./mock";

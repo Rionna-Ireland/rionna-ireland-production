@@ -1,7 +1,7 @@
 import { ORPCError } from "@orpc/server";
 import { db, parseOrgMetadata } from "@repo/database";
 import { logger } from "@repo/logs";
-import { createCircleService, getCircleHeadlessApiBaseUrl } from "@repo/payments/lib/circle";
+import { circleFetch, createCircleService, getCircleHeadlessApiBaseUrl } from "@repo/payments/lib/circle";
 import { z } from "zod";
 
 import { memberProcedure } from "../../../orpc/procedures";
@@ -38,7 +38,7 @@ async function fetchPinnedPost(
 	communityDomain: string | undefined,
 ): Promise<PinFetchOutcome> {
 	try {
-		const r = await fetch(
+		const r = await circleFetch(
 			`${base}/spaces/${encodeURIComponent(spaceId)}/posts/${encodeURIComponent(postId)}`,
 			{ headers: { Authorization: `Bearer ${accessToken}` } },
 		);
@@ -179,7 +179,7 @@ export const getInsideTrack = memberProcedure
 		const communityDomain = orgMetadata.circle?.communityDomain;
 		let items: MemberFeedItem[];
 		try {
-			const r = await fetch(
+			const r = await circleFetch(
 				`${base}/spaces/${encodeURIComponent(spaceId)}/posts?per_page=${POSTS_PER_PAGE}&sort=latest`,
 				{ headers: { Authorization: `Bearer ${tokenOutcome.data.accessToken}` } },
 			);

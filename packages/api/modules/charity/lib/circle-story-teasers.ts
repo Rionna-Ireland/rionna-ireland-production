@@ -1,6 +1,6 @@
 import { logger } from "@repo/logs";
-import { createCircleService, getCircleHeadlessApiBaseUrl } from "@repo/payments/lib/circle";
 
+import { memberCircleFetch } from "../../circle/lib/member-circle-fetch";
 import { readMemberFeedBuffer } from "../../circle/lib/member-feed-cache";
 import { type MemberFeedItem, extractPosts, objectValue, toFeedItem } from "../../circle/lib/parse-post";
 import type { CharityStoryTeaser } from "./charity-view";
@@ -43,13 +43,13 @@ export async function getCircleStoryTeasers(p: {
 				.slice(0, p.limit)
 				.map((i) => toTeaser(i, spaceId));
 		}
-		const token = await createCircleService(p.orgSlug).getMemberToken(p.circleMemberId);
-		if (!token.ok) return [];
-		const res = await fetch(
-			`${getCircleHeadlessApiBaseUrl()}/spaces/${encodeURIComponent(spaceId)}/posts?per_page=${p.limit}&sort=latest`,
-			{ headers: { Authorization: `Bearer ${token.data.accessToken}` } },
+		const res = await memberCircleFetch(
+			{ orgSlug: p.orgSlug, circleMemberId: p.circleMemberId },
+			`/spaces/${encodeURIComponent(spaceId)}/posts?per_page=${p.limit}&sort=latest`,
+			{},
+			{ surface: "charity.circle_stories", spaceId },
 		);
-		if (!res.ok) return [];
+		if (!res?.ok) return [];
 		return extractPosts(await res.json())
 			.map((post) =>
 				toFeedItem(

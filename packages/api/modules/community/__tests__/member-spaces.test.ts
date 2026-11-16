@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@repo/payments/lib/circle", () => ({
+	circleFetch: (url: string, init?: RequestInit) => fetch(url, init),
+	clearCachedMemberToken: vi.fn(),
 	getCircleHeadlessApiBaseUrl: () => "https://app.circle.so/api/headless/v1",
 }));
 vi.mock("@repo/logs", () => ({

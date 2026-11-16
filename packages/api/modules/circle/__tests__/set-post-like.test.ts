@@ -41,6 +41,8 @@ vi.mock("@repo/logs", () => ({
 }));
 
 vi.mock("@repo/payments/lib/circle", () => ({
+	circleFetch: (url: string, init?: RequestInit) => fetch(url, init),
+	clearCachedMemberToken: vi.fn(),
 	createCircleService: vi.fn(() => ({ getMemberToken: mockGetMemberToken })),
 	getCircleHeadlessApiBaseUrl: vi.fn(() => "https://app.circle.so/api/headless/v1"),
 }));

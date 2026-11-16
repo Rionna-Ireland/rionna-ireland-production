@@ -1,11 +1,11 @@
 import { ORPCError } from "@orpc/server";
 import { db } from "@repo/database";
 import { logger } from "@repo/logs";
-import { createCircleService, getCircleHeadlessApiBaseUrl } from "@repo/payments/lib/circle";
 import { z } from "zod";
 
 import { memberProcedure } from "../../../orpc/procedures";
 import { invalidateEventsCacheForMember } from "../lib/events-cache";
+import { memberCircleFetch } from "../lib/member-circle-fetch";
 
 export type RsvpEventResult =
 	| { ok: true; going: boolean }
@@ -44,35 +44,13 @@ export const rsvpEvent = memberProcedure
 			return { ok: false, reason: "not_a_member" };
 		}
 
-		const service = createCircleService(org.slug);
-		const tokenOutcome = await service.getMemberToken(member.circleMemberId);
-		if (!tokenOutcome.ok) {
-			logger.warn("[Circle] RSVP: token mint failed", {
-				surface: "circle.events",
-				userId: user.id,
-				reason: tokenOutcome.reason,
-			});
-			return { ok: false, reason: "circle_error" };
-		}
-
-		const base = getCircleHeadlessApiBaseUrl();
-		let response: Response;
-		try {
-			response = await fetch(
-				`${base}/events/${encodeURIComponent(input.eventId)}/event_attendees`,
-				{
-					method: input.going ? "POST" : "DELETE",
-					headers: { Authorization: `Bearer ${tokenOutcome.data.accessToken}` },
-				},
-			);
-		} catch (error) {
-			logger.warn("[Circle] RSVP: fetch threw", {
-				surface: "circle.events",
-				eventId: input.eventId,
-				error: String(error),
-			});
-			return { ok: false, reason: "circle_error" };
-		}
+		const response = await memberCircleFetch(
+			{ orgSlug: org.slug, circleMemberId: member.circleMemberId },
+			`/events/${encodeURIComponent(input.eventId)}/event_attendees`,
+			{ method: input.going ? "POST" : "DELETE" },
+			{ surface: "circle.events", userId: user.id, eventId: input.eventId },
+		);
+		if (!response) return { ok: false, reason: "circle_error" };
 
 		if (!response.ok && !(response.status === 404 && !input.going)) {
 			const raw = await response.text().catch(() => "");

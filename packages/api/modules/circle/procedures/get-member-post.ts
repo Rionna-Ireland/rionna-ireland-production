@@ -1,11 +1,10 @@
 import { ORPCError } from "@orpc/server";
 import { db, parseOrgMetadata } from "@repo/database";
-import { logger } from "@repo/logs";
-import { createCircleService, getCircleHeadlessApiBaseUrl } from "@repo/payments/lib/circle";
 import { z } from "zod";
 
 import { memberProcedure } from "../../../orpc/procedures";
 import { enrichPosts } from "../lib/author-identity";
+import { memberCircleFetch } from "../lib/member-circle-fetch";
 import { type CirclePostDetail, objectValue, toPostDetail } from "../lib/parse-post";
 
 export const getMemberPost = memberProcedure
@@ -36,28 +35,13 @@ export const getMemberPost = memberProcedure
 		if (!member?.circleMemberId) return null;
 		const memberCircleId = member.circleMemberId;
 
-		const service = createCircleService(org.slug);
-		const tokenOutcome = await service.getMemberToken(member.circleMemberId);
-		if (!tokenOutcome.ok) {
-			logger.warn("[Circle] Member post: token mint failed", {
-				surface: "circle.member_post",
-				userId: user.id,
-				organizationId: input.organizationId,
-				reason: tokenOutcome.reason,
-			});
-			return null;
-		}
-
-		let response: Response;
-		try {
-			response = await fetch(
-				`${getCircleHeadlessApiBaseUrl()}/spaces/${encodeURIComponent(input.spaceId)}/posts/${encodeURIComponent(input.postId)}`,
-				{ headers: { Authorization: `Bearer ${tokenOutcome.data.accessToken}` } },
-			);
-		} catch (error) {
-			logger.warn("[Circle] Member post: fetch threw", { surface: "circle.member_post", error: String(error) });
-			return null;
-		}
+		const response = await memberCircleFetch(
+			{ orgSlug: org.slug, circleMemberId: memberCircleId },
+			`/spaces/${encodeURIComponent(input.spaceId)}/posts/${encodeURIComponent(input.postId)}`,
+			{},
+			{ surface: "circle.member_post", userId: user.id, organizationId: input.organizationId },
+		);
+		if (!response) return null;
 		if (!response.ok) return null;
 
 		const data = await response.json();

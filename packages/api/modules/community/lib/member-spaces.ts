@@ -10,7 +10,7 @@
  */
 
 import { logger } from "@repo/logs";
-import { getCircleHeadlessApiBaseUrl } from "@repo/payments/lib/circle";
+import { circleFetch, getCircleHeadlessApiBaseUrl } from "@repo/payments/lib/circle";
 
 import { objectValue, textValue } from "../../circle/lib/parse-post";
 import { MEMBER_SPACES_CACHE_MAX_ENTRIES, MEMBER_SPACES_CACHE_TTL_MS } from "./limits";
@@ -55,7 +55,7 @@ export async function fetchMemberSpaces(p: {
 	const base = getCircleHeadlessApiBaseUrl();
 	let res: Response;
 	try {
-		res = await fetch(`${base}/spaces?per_page=100`, {
+		res = await circleFetch(`${base}/spaces?per_page=100`, {
 			headers: { Authorization: `Bearer ${p.accessToken}` },
 		});
 	} catch (error) {

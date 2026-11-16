@@ -1,12 +1,12 @@
 import { ORPCError } from "@orpc/server";
 import { db, parseOrgMetadata } from "@repo/database";
 import { logger } from "@repo/logs";
-import { createCircleService, getCircleHeadlessApiBaseUrl } from "@repo/payments/lib/circle";
 import { syncCircleSpaceMembership } from "@repo/payments/lib/circle-space-membership";
 import { z } from "zod";
 
 import { memberProcedure } from "../../../orpc/procedures";
 import { onPostLiked } from "../../inbox/activity-hooks";
+import { memberCircleFetch } from "../lib/member-circle-fetch";
 import { invalidateMemberFeedCache } from "../lib/member-feed-cache";
 
 export interface SetPostLikeResult {
@@ -68,36 +68,14 @@ export const setPostLike = memberProcedure
 			return fail();
 		}
 
-		const service = createCircleService(org.slug);
-		const tokenOutcome = await service.getMemberToken(member.circleMemberId);
-		if (!tokenOutcome.ok) {
-			logger.warn("[Circle] Post like: token mint failed", {
-				surface: "circle.post_like",
-				userId: user.id,
-				organizationId: input.organizationId,
-				reason: tokenOutcome.reason,
-			});
-			return fail();
-		}
-
-		const base = getCircleHeadlessApiBaseUrl();
-		const url = `${base}/posts/${encodeURIComponent(input.postId)}/user_likes`;
-		const headers = { Authorization: `Bearer ${tokenOutcome.data.accessToken}` };
-
-		const doLikeRequest = async (): Promise<Response | null> => {
-			try {
-				return await fetch(url, { method: input.liked ? "POST" : "DELETE", headers });
-			} catch (error) {
-				logger.warn("[Circle] Post like: request threw", {
-					surface: "circle.post_like",
-					userId: user.id,
-					postId: input.postId,
-					liked: input.liked,
-					error: String(error),
-				});
-				return null;
-			}
-		};
+		const circleMember = { orgSlug: org.slug, circleMemberId: member.circleMemberId };
+		const doLikeRequest = (): Promise<Response | null> =>
+			memberCircleFetch(
+				circleMember,
+				`/posts/${encodeURIComponent(input.postId)}/user_likes`,
+				{ method: input.liked ? "POST" : "DELETE" },
+				{ surface: "circle.post_like", userId: user.id, postId: input.postId, liked: input.liked },
+			);
 
 		const succeeded = async (res: Response): Promise<SetPostLikeResult> => {
 			// The 60s merged buffer would otherwise echo the stale count/flag back

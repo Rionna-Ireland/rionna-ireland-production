@@ -1,10 +1,10 @@
 import { ORPCError } from "@orpc/server";
 import { db } from "@repo/database";
 import { logger } from "@repo/logs";
-import { createCircleService, getCircleHeadlessApiBaseUrl } from "@repo/payments/lib/circle";
 import { z } from "zod";
 
 import { memberProcedure } from "../../../orpc/procedures";
+import { memberCircleFetch } from "../lib/member-circle-fetch";
 import { invalidateMemberFeedCache } from "../lib/member-feed-cache";
 
 export interface DeletePostCommentResult {
@@ -43,38 +43,18 @@ export const deletePostComment = memberProcedure
 			return { ok: false };
 		}
 
-		const service = createCircleService(org.slug);
-		const tokenOutcome = await service.getMemberToken(member.circleMemberId);
-		if (!tokenOutcome.ok) {
-			logger.warn("[Circle] Delete comment: token mint failed", {
-				surface: "circle.delete_post_comment",
-				userId: user.id,
-				organizationId: input.organizationId,
-				reason: tokenOutcome.reason,
-			});
-			return { ok: false };
-		}
-
-		const base = getCircleHeadlessApiBaseUrl();
-		let res: Response;
-		try {
-			res = await fetch(
-				`${base}/posts/${encodeURIComponent(input.postId)}/comments/${encodeURIComponent(input.commentId)}`,
-				{
-					method: "DELETE",
-					headers: { Authorization: `Bearer ${tokenOutcome.data.accessToken}` },
-				},
-			);
-		} catch (error) {
-			logger.warn("[Circle] Delete comment: request threw", {
+		const res = await memberCircleFetch(
+			{ orgSlug: org.slug, circleMemberId: member.circleMemberId },
+			`/posts/${encodeURIComponent(input.postId)}/comments/${encodeURIComponent(input.commentId)}`,
+			{ method: "DELETE" },
+			{
 				surface: "circle.delete_post_comment",
 				userId: user.id,
 				postId: input.postId,
 				commentId: input.commentId,
-				error: String(error),
-			});
-			return { ok: false };
-		}
+			},
+		);
+		if (!res) return { ok: false };
 
 		if (!res.ok) {
 			logger.warn("[Circle] Delete comment: rejected", {

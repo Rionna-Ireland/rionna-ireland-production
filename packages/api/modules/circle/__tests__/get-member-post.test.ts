@@ -22,6 +22,8 @@ vi.mock("@repo/logs", () => ({
 	logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), log: vi.fn() },
 }));
 vi.mock("@repo/payments/lib/circle", () => ({
+	circleFetch: (url: string, init?: RequestInit) => fetch(url, init),
+	clearCachedMemberToken: vi.fn(),
 	createCircleService: vi.fn(() => ({ getMemberToken: mockGetMemberToken })),
 	getCircleHeadlessApiBaseUrl: vi.fn(() => "https://app.circle.so/api/headless/v1"),
 	buildCircleCommunityTargetUrl: vi.fn(() => "https://community.rionna.com/c/x/y"),
