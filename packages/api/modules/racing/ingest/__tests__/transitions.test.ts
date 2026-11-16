@@ -473,4 +473,15 @@ describe("handleStatusTransition", () => {
 		expect(mockPostToCircle).toHaveBeenCalledOnce();
 		expect(mockPostToCircle.mock.calls[0][0].fieldSize).toBeUndefined();
 	});
+
+	it("W-11: a retried RAN post keeps the stored field size when the caller passes none", async () => {
+		await handleStatusTransition(
+			"org-1",
+			mockHorse,
+			mockRace,
+			{ ...makeEntry("RAN", ["RAN"], 2), fieldSize: 11 },
+			"RAN",
+		);
+		expect(mockPostToCircle.mock.calls[0][0].fieldSize).toBe(11);
+	});
 });

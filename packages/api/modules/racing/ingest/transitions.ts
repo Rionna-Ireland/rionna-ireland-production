@@ -46,6 +46,8 @@ interface TransitionRaceEntry {
 	notifiedStates: unknown;
 	finishingPosition: number | null;
 	jockeyName?: string | null;
+	/** Stored runner count; ingest-horse passes the DB row but no fieldSize argument. */
+	fieldSize?: number | null;
 }
 
 export async function handleStatusTransition(
@@ -80,7 +82,7 @@ export async function handleStatusTransition(
 				jockeyName: raceEntry.jockeyName ?? null,
 				notifiedStates: markers,
 			},
-			fieldSize,
+			fieldSize: fieldSize ?? raceEntry.fieldSize ?? undefined,
 		});
 
 	if (notifiedStates.includes(newStatus)) {
