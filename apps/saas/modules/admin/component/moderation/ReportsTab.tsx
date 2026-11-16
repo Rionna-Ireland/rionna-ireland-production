@@ -30,6 +30,26 @@ import { useMemo, useState } from "react";
 
 type ReportFilter = "open" | "resolved";
 
+/** W-06: what the reported content says in Circle now, next to the stored excerpt. */
+function LiveContent({ organizationId, flagId }: { organizationId: string; flagId: string }) {
+	const t = useTranslations();
+	const { data, isLoading } = useQuery(
+		orpc.admin.community.moderation.liveContent.queryOptions({
+			input: { organizationId, flagId },
+		}),
+	);
+	if (isLoading) return <Spinner className="mt-1 size-3" />;
+	const text =
+		data?.status === "ok"
+			? data.text
+			: t(data?.status === "not_found" ? "admin.moderation.live.gone" : "admin.moderation.live.error");
+	return (
+		<div className="text-muted-foreground mt-1 truncate text-xs" title={text}>
+			{t("admin.moderation.live.label")}: {text}
+		</div>
+	);
+}
+
 function reportInfiniteOptions(
 	organizationId: string,
 	status: "open" | "deleted" | "dismissed",
@@ -233,8 +253,13 @@ export function ReportsTab() {
 										<TableCell className="py-2">
 											{row.targetAuthorName ?? "—"}
 										</TableCell>
-										<TableCell className="py-2 max-w-xs truncate" title={row.contentExcerpt}>
-											{row.contentExcerpt}
+										<TableCell className="py-2 max-w-xs">
+											<div className="truncate" title={row.contentExcerpt}>
+												{row.contentExcerpt}
+											</div>
+											{row.status === "open" && (
+												<LiveContent organizationId={organizationId} flagId={row.id} />
+											)}
 										</TableCell>
 										<TableCell className="py-2">
 											<div className="flex flex-col gap-0.5">

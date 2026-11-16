@@ -828,6 +828,11 @@
 			},
 			"empty": "No moderation activity yet.",
 			"loadMore": "Load more",
+			"live": {
+				"label": "Now in Circle",
+				"gone": "No longer in Circle",
+				"error": "Could not load the current version"
+			},
 			"columns": {
 				"when": "When",
 				"reporter": "Reporter",
