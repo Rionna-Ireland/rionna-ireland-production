@@ -33,11 +33,13 @@ type ReportFilter = "open" | "resolved";
 /** W-06: what the reported content says in Circle now, next to the stored excerpt. */
 function LiveContent({ organizationId, flagId }: { organizationId: string; flagId: string }) {
 	const t = useTranslations();
-	const { data, isLoading } = useQuery(
-		orpc.admin.community.moderation.liveContent.queryOptions({
+	const { data, isLoading } = useQuery({
+		...orpc.admin.community.moderation.liveContent.queryOptions({
 			input: { organizationId, flagId },
 		}),
-	);
+		staleTime: Number.POSITIVE_INFINITY,
+		refetchOnWindowFocus: false,
+	});
 	if (isLoading) return <Spinner className="mt-1 size-3" />;
 	const text =
 		data?.status === "ok"
@@ -78,6 +80,8 @@ export function ReportsTab() {
 	const { organizationId: orgId, organization } = useAdminOrganization();
 	const organizationId = orgId ?? "";
 	const [filter, setFilter] = useState<ReportFilter>("open");
+	// One Circle call per row is too many for the queue; load on demand.
+	const [liveFlagIds, setLiveFlagIds] = useState<Set<string>>(() => new Set());
 
 	const openQuery = useInfiniteQuery({
 		...reportInfiniteOptions(organizationId, "open"),
@@ -257,9 +261,21 @@ export function ReportsTab() {
 											<div className="truncate" title={row.contentExcerpt}>
 												{row.contentExcerpt}
 											</div>
-											{row.status === "open" && (
-												<LiveContent organizationId={organizationId} flagId={row.id} />
-											)}
+											{row.status === "open" &&
+												(liveFlagIds.has(row.id) ? (
+													<LiveContent organizationId={organizationId} flagId={row.id} />
+												) : (
+													<Button
+														size="sm"
+														variant="link"
+														className="h-auto p-0 text-xs"
+														onClick={() =>
+															setLiveFlagIds((ids) => new Set(ids).add(row.id))
+														}
+													>
+														{t("admin.moderation.live.show")}
+													</Button>
+												))}
 										</TableCell>
 										<TableCell className="py-2">
 											<div className="flex flex-col gap-0.5">

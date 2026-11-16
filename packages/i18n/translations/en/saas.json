@@ -829,6 +829,7 @@
 			"empty": "No moderation activity yet.",
 			"loadMore": "Load more",
 			"live": {
+				"show": "Show current version",
 				"label": "Now in Circle",
 				"gone": "No longer in Circle",
 				"error": "Could not load the current version"
