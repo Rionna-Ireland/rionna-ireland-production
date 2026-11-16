@@ -30,7 +30,8 @@ export async function fetchReportedContent(p: {
 		};
 	}
 
-	if (!p.spaceId) return { status: "not_found" };
+	// Without the space Circle cannot be asked; that is not proof the post is gone.
+	if (!p.spaceId) return { status: "error" };
 	const res = await memberCircleFetch(
 		p,
 		`/spaces/${encodeURIComponent(p.spaceId)}/posts/${encodeURIComponent(p.postId)}`,

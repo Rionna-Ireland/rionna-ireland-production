@@ -42,12 +42,14 @@ describe("fetchReportedContent", () => {
 		});
 	});
 
-	it("is not_found on a Circle 404 or without a space id", async () => {
+	it("is not_found on a Circle 404", async () => {
 		mockMemberCircleFetch.mockResolvedValue(new Response("", { status: 404 }));
 		expect(await fetchReportedContent(BASE)).toEqual({ status: "not_found" });
-		expect(await fetchReportedContent({ ...BASE, spaceId: null })).toEqual({
-			status: "not_found",
-		});
+	});
+
+	it("is an error, not not_found, without a space id (a live post must not look gone)", async () => {
+		expect(await fetchReportedContent({ ...BASE, spaceId: null })).toEqual({ status: "error" });
+		expect(mockMemberCircleFetch).not.toHaveBeenCalled();
 	});
 
 	it("is a transient error when Circle fails or times out", async () => {
