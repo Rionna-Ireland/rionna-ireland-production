@@ -337,6 +337,14 @@ describe("community.createPost", () => {
 		expect(mockCreatePost).not.toHaveBeenCalled();
 	});
 
+	it("an hour-limited attempt does not spend the daily budget", async () => {
+		rateCounters.set("rl:community:post:hour|3600|m1", 5);
+		const result = await call(createPost, baseInput, ctx);
+		expect(result).toEqual({ ok: false, reason: "rate_limited" });
+		expect(mockCheckRateLimit).toHaveBeenCalledTimes(1);
+		expect(rateCounters.has("rl:community:post:day|86400|m1")).toBe(false);
+	});
+
 	it("W-17: two parallel posts at the cap: exactly one succeeds", async () => {
 		rateCounters.set("rl:community:post:hour|3600|m1", 4);
 		mockCreatePost.mockImplementation(async () => {
