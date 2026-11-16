@@ -822,69 +822,6 @@ describe("handleSubscriptionUpdated", () => {
 	});
 });
 
-describe("User deletion cascade", () => {
-	beforeEach(() => {
-		vi.clearAllMocks();
-	});
-
-	it("deletes Circle members for all user memberships", async () => {
-		const members = [
-			{
-				id: "member_1",
-				userId: "user_1",
-				circleMemberId: "circle_1",
-				circleStatus: "active",
-			},
-			{
-				id: "member_2",
-				userId: "user_1",
-				circleMemberId: "circle_2",
-				circleStatus: "deactivated",
-			},
-		];
-		mockMemberFindMany.mockResolvedValue(members);
-		mockDeleteCircleMember.mockResolvedValue(undefined);
-
-		// This tests the cascade logic directly
-		const foundMembers = await mockMemberFindMany({
-			where: { userId: "user_1" },
-		});
-
-		for (const member of foundMembers) {
-			if (member.circleMemberId) {
-				await mockDeleteCircleMember(member.circleMemberId);
-			}
-		}
-
-		expect(mockDeleteCircleMember).toHaveBeenCalledTimes(2);
-		expect(mockDeleteCircleMember).toHaveBeenCalledWith("circle_1");
-		expect(mockDeleteCircleMember).toHaveBeenCalledWith("circle_2");
-	});
-
-	it("skips Circle deletion for members without circleMemberId", async () => {
-		mockMemberFindMany.mockResolvedValue([
-			{
-				id: "member_1",
-				userId: "user_1",
-				circleMemberId: null,
-				circleStatus: null,
-			},
-		]);
-
-		const foundMembers = await mockMemberFindMany({
-			where: { userId: "user_1" },
-		});
-
-		for (const member of foundMembers) {
-			if (member.circleMemberId) {
-				await mockDeleteCircleMember(member.circleMemberId);
-			}
-		}
-
-		expect(mockDeleteCircleMember).not.toHaveBeenCalled();
-	});
-});
-
 describe("Checkout session metadata", () => {
 	it("metadata includes both userId and organizationId keys", () => {
 		const userId: string | undefined = "user_test_789";
