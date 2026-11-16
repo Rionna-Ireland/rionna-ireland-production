@@ -163,6 +163,8 @@ vi.mock("@repo/payments/lib/provider-price-ids", () => ({
 		mockGetPlanIdByProviderPriceId(...args),
 }));
 
+import { logger } from "@repo/logs";
+
 // Import the actual production functions under test
 import { isEventDuplicate } from "@repo/payments";
 import {
@@ -584,9 +586,40 @@ describe("handleSubscriptionDeleted", () => {
 		mockPurchaseCount.mockResolvedValue(0);
 	});
 
+	it("throws while young when deleted arrives before created (W-09)", async () => {
+		mockPurchaseUpdateMany.mockResolvedValue({ count: 0 });
+		mockPurchaseFindFirst.mockResolvedValue(null);
+
+		await expect(
+			handleSubscriptionDeleted(
+				makeStripeEvent({
+					type: "customer.subscription.deleted",
+					data: { object: makeSubscriptionObject({ status: "canceled" }) },
+				}),
+			),
+		).rejects.toThrow("No Purchase yet");
+	});
+
+	it("gives up on deleted for an orphan subscription once the event is old (W-09)", async () => {
+		mockPurchaseUpdateMany.mockResolvedValue({ count: 0 });
+		mockPurchaseFindFirst.mockResolvedValue(null);
+
+		await expect(
+			handleSubscriptionDeleted(
+				makeStripeEvent({
+					created: Math.floor(Date.now() / 1000) - 2 * 60 * 60,
+					type: "customer.subscription.deleted",
+					data: { object: makeSubscriptionObject({ status: "canceled" }) },
+				}),
+			),
+		).resolves.toBeUndefined();
+		expect(vi.mocked(logger.warn)).toHaveBeenCalled();
+		expect(mockDeactivateCircleMember).not.toHaveBeenCalled();
+	});
+
 	it("flips Purchase.status to 'canceled' instead of deleting", async () => {
 		mockPurchaseUpdateMany.mockResolvedValue({ count: 1 });
-		mockPurchaseFindFirst.mockResolvedValue(null);
+		mockPurchaseFindFirst.mockResolvedValue({ id: "purchase_1", userId: null });
 
 		const event = makeStripeEvent({
 			id: "evt_deleted_1",
@@ -764,7 +797,23 @@ describe("handleSubscriptionUpdated", () => {
 		expect(mockUpdatePurchase).not.toHaveBeenCalled();
 	});
 
-	it("reactivates Circle when status transitions from canceled to active", async () => {
+	it("gives up on an orphan subscription once the event is over an hour old (W-09)", async () => {
+		mockGetPurchaseBySubscriptionId.mockResolvedValue(null);
+
+		await expect(
+			handleSubscriptionUpdated(
+				makeStripeEvent({
+					created: Math.floor(Date.now() / 1000) - 2 * 60 * 60,
+					type: "customer.subscription.updated",
+					data: { object: makeSubscriptionObject({ status: "active" }) },
+				}),
+			),
+		).resolves.toBeUndefined();
+		expect(vi.mocked(logger.warn)).toHaveBeenCalled();
+		expect(mockUpdatePurchase).not.toHaveBeenCalled();
+	});
+
+	it("reactivates Circle when a re-subscribe goes incomplete -> active", async () => {
 		mockGetPurchaseBySubscriptionId.mockResolvedValue({
 			id: "purchase_1",
 			subscriptionId: "sub_test_123",
@@ -786,7 +835,7 @@ describe("handleSubscriptionUpdated", () => {
 			type: "customer.subscription.updated",
 			data: {
 				object: makeSubscriptionObject({ status: "active" }),
-				previous_attributes: { status: "canceled" },
+				previous_attributes: { status: "incomplete" },
 			} as StripeEvent["data"],
 		});
 
@@ -820,7 +869,7 @@ describe("handleSubscriptionUpdated", () => {
 			type: "customer.subscription.updated",
 			data: {
 				object: makeSubscriptionObject({ status: "active" }),
-				previous_attributes: { status: "canceled" },
+				previous_attributes: { status: "incomplete" },
 			} as StripeEvent["data"],
 		});
 
@@ -831,7 +880,7 @@ describe("handleSubscriptionUpdated", () => {
 		});
 	});
 
-	it("does not reactivate Circle when status change is not canceled->active", async () => {
+	it("does not reactivate Circle on active -> past_due", async () => {
 		mockGetPurchaseBySubscriptionId.mockResolvedValue({
 			id: "purchase_1",
 			subscriptionId: "sub_test_123",
@@ -876,7 +925,7 @@ describe("handleSubscriptionUpdated", () => {
 			type: "customer.subscription.updated",
 			data: {
 				object: makeSubscriptionObject({ status: "active" }),
-				previous_attributes: { status: "canceled" },
+				previous_attributes: { status: "incomplete" },
 			} as StripeEvent["data"],
 		});
 
@@ -907,7 +956,7 @@ describe("handleSubscriptionUpdated", () => {
 			type: "customer.subscription.updated",
 			data: {
 				object: makeSubscriptionObject({ status: "active" }),
-				previous_attributes: { status: "canceled" },
+				previous_attributes: { status: "incomplete" },
 			} as StripeEvent["data"],
 		});
 

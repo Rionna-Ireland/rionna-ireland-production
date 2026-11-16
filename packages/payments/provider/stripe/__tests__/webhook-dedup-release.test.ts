@@ -147,6 +147,7 @@ describe("webhookHandler dedup-claim release (C3)", () => {
 		mockConstructEvent.mockResolvedValue({
 			id: "evt_upd",
 			type: "customer.subscription.updated",
+			created: Math.floor(Date.now() / 1000),
 			data: { object: { id: "sub_1", status: "active", items: { data: [] } } },
 		});
 		mockGetPurchaseBySubscriptionId.mockResolvedValue(null);

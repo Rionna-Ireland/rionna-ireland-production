@@ -313,16 +313,27 @@ export async function handleSubscriptionCreated(event: Stripe.Event) {
 	}
 }
 
+// W-09: an event that beat `created` is retried for an hour (throw → claim released,
+// Stripe retries). Past that the subscription is an orphan, so log and accept it.
+const OUT_OF_ORDER_RETRY_WINDOW_S = 60 * 60;
+
+function retryWhileYoung(event: Stripe.Event, subscriptionId: string): void {
+	const message = `No Purchase yet for subscription ${subscriptionId}`;
+	if (Date.now() / 1000 - event.created < OUT_OF_ORDER_RETRY_WINDOW_S) {
+		throw new Error(message);
+	}
+	logger.warn(`${message}; giving up on ${event.type}`, { eventId: event.id, subscriptionId });
+}
+
 export async function handleSubscriptionUpdated(event: Stripe.Event) {
 	const subscription = event.data.object as Stripe.Subscription;
 	const subscriptionId = subscription.id;
 
 	const existingPurchase = await getPurchaseBySubscriptionId(subscriptionId);
 
-	// W-09: `updated` can beat `created`. Throw so the claim is released and
-	// Stripe retries once the Purchase row exists.
 	if (!existingPurchase) {
-		throw new Error(`No Purchase yet for subscription ${subscriptionId}`);
+		retryWhileYoung(event, subscriptionId);
+		return;
 	}
 
 	const priceId = subscription.items?.data[0].price?.id;
@@ -357,12 +368,12 @@ export async function handleSubscriptionUpdated(event: Stripe.Event) {
 		if (foundingCandidate) await assignFoundingMemberIfEligible(foundingCandidate.id);
 	}
 
-	// If transitioning from canceled to active, reactivate Circle member
-	// Stripe's previous_attributes is a webhook-specific field not in base types
-	const previousAttributes = (
-		event.data as unknown as { previous_attributes?: Record<string, unknown> }
-	).previous_attributes;
-	if (previousAttributes?.status === "canceled" && subscription.status === "active") {
+	// W-05: a re-subscribe that started incomplete reactivates Circle once it pays.
+	if (
+		prevStatus &&
+		!ACTIVE_SUBSCRIPTION_STATUSES.has(prevStatus) &&
+		ACTIVE_SUBSCRIPTION_STATUSES.has(subscription.status)
+	) {
 		const purchase = existingPurchase;
 		if (purchase.userId) {
 			const member = await db.member.findFirst({
@@ -394,7 +405,12 @@ export async function handleSubscriptionDeleted(event: Stripe.Event) {
 	const purchase = await db.purchase.findFirst({
 		where: { subscriptionId: subscription.id },
 	});
-	if (purchase?.userId) {
+	if (!purchase) {
+		// `deleted` beat `created`: a later `created` would leave a cancelled sub looking paid.
+		retryWhileYoung(event, subscription.id);
+		return;
+	}
+	if (purchase.userId) {
 		// W-10: a duplicate subscription being cancelled must not cut off Circle.
 		const stillActive = await db.purchase.count({
 			where: {
