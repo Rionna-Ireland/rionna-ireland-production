@@ -16,7 +16,7 @@ export const POST_IMAGE_CONTENT_TYPES = [
 	"image/heic",
 ] as const;
 
-/** Member post rate limits (`lib/rate-limit.ts`). */
+/** Member post rate limits (`lib/rate-limit.ts`, Redis-backed). */
 export const POSTS_PER_HOUR = 5;
 export const POSTS_PER_DAY = 20;
 

@@ -6,7 +6,7 @@ const {
 	mockOrgFindUnique,
 	mockMemberFindFirst,
 	mockUserFindUnique,
-	mockCountRecentCommunityPosts,
+	mockCheckRateLimit,
 	mockCreateCommunityPost,
 	mockCreateModerationFlag,
 	mockGetMemberToken,
@@ -27,7 +27,7 @@ const {
 	mockOrgFindUnique: vi.fn(),
 	mockMemberFindFirst: vi.fn(),
 	mockUserFindUnique: vi.fn(),
-	mockCountRecentCommunityPosts: vi.fn(),
+	mockCheckRateLimit: vi.fn(),
 	mockCreateCommunityPost: vi.fn(),
 	mockCreateModerationFlag: vi.fn(),
 	mockGetMemberToken: vi.fn(),
@@ -54,7 +54,6 @@ vi.mock("@repo/database", () => ({
 		user: { findUnique: mockUserFindUnique },
 	},
 	parseOrgMetadata: (raw: string | null) => (raw ? JSON.parse(raw) : {}),
-	countRecentCommunityPosts: mockCountRecentCommunityPosts,
 	createCommunityPost: mockCreateCommunityPost,
 	createModerationFlag: mockCreateModerationFlag,
 }));
@@ -77,6 +76,7 @@ vi.mock("../../member-posts/lib/fetch-image-bytes", () => ({
 vi.mock("../../inbox/activity-hooks", () => ({
 	onMemberPostCreated: mockOnMemberPostCreated,
 }));
+vi.mock("@repo/utils/lib/rate-limit", () => ({ checkRateLimit: mockCheckRateLimit }));
 vi.mock("@repo/logs", () => ({
 	logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), log: vi.fn() },
 }));
@@ -86,6 +86,8 @@ vi.mock("../../moderation/escalate-member", () => ({ maybeEscalateMember: vi.fn(
 
 import { signMediaToken } from "../lib/media-token";
 import { createPost } from "../procedures/create-post";
+
+const rateCounters = new Map<string, number>();
 
 const USER = { id: "u1", role: "user", name: "Jane" };
 const ctx = { context: { headers: new Headers() } };
@@ -134,7 +136,16 @@ beforeEach(() => {
 	mockMemberFindFirst.mockResolvedValue({ id: "m1", circleMemberId: "cm1" });
 	mockUserFindUnique.mockResolvedValue({ email: "jane@x.ie" });
 	mockGetMemberSpacesCached.mockReturnValue(SPACES);
-	mockCountRecentCommunityPosts.mockResolvedValue(0);
+	rateCounters.clear();
+	// An atomic counter per limiter key, like the Upstash sliding window.
+	mockCheckRateLimit.mockImplementation(
+		async (o: { prefix: string; key: string; limit: number; windowSeconds: number }) => {
+			const k = `${o.prefix}|${o.windowSeconds}|${o.key}`;
+			const used = (rateCounters.get(k) ?? 0) + 1;
+			rateCounters.set(k, used);
+			return { ok: used <= o.limit };
+		},
+	);
 	mockSerializeNovelDocToCircle.mockResolvedValue({
 		ok: true,
 		tiptapBody: { body: { type: "doc", content: [] } },
@@ -289,7 +300,7 @@ describe("community.createPost", () => {
 			targetSpaceId: SPACE_ID,
 		});
 		expect(mockAddSpaceMember).not.toHaveBeenCalled();
-		expect(mockCountRecentCommunityPosts).not.toHaveBeenCalled();
+		expect(mockCheckRateLimit).not.toHaveBeenCalled();
 		expect(mockCreatePost).not.toHaveBeenCalled();
 	});
 
@@ -311,24 +322,36 @@ describe("community.createPost", () => {
 	});
 
 	it("returns rate_limited at 5 posts in the last hour", async () => {
-		mockCountRecentCommunityPosts.mockImplementation((p: { since: Date }) => {
-			// hour window is the tighter one: since = now - 1h
-			const isHourWindow = Date.now() - p.since.getTime() <= 60 * 60 * 1000 + 1000;
-			return Promise.resolve(isHourWindow ? 5 : 5);
-		});
+		for (let i = 0; i < 5; i++) {
+			expect(await call(createPost, baseInput, ctx)).toMatchObject({ ok: true });
+		}
+		const result = await call(createPost, baseInput, ctx);
+		expect(result).toEqual({ ok: false, reason: "rate_limited" });
+		expect(mockCreatePost).toHaveBeenCalledTimes(5);
+	});
+
+	it("returns rate_limited at 20 posts in the last day", async () => {
+		rateCounters.set("rl:community:post:day|86400|m1", 20);
 		const result = await call(createPost, baseInput, ctx);
 		expect(result).toEqual({ ok: false, reason: "rate_limited" });
 		expect(mockCreatePost).not.toHaveBeenCalled();
 	});
 
-	it("returns rate_limited at 20 posts in the last day", async () => {
-		mockCountRecentCommunityPosts.mockImplementation((p: { since: Date }) => {
-			const isHourWindow = Date.now() - p.since.getTime() <= 60 * 60 * 1000 + 1000;
-			return Promise.resolve(isHourWindow ? 0 : 20);
+	it("W-17: two parallel posts at the cap: exactly one succeeds", async () => {
+		rateCounters.set("rl:community:post:hour|3600|m1", 4);
+		mockCreatePost.mockImplementation(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 5));
+			return { ok: true, data: { circlePostId: "cp1", status: "published" } };
 		});
-		const result = await call(createPost, baseInput, ctx);
-		expect(result).toEqual({ ok: false, reason: "rate_limited" });
-		expect(mockCreatePost).not.toHaveBeenCalled();
+
+		const results = await Promise.all([
+			call(createPost, baseInput, ctx),
+			call(createPost, baseInput, ctx),
+		]);
+
+		expect(results.filter((r) => r.ok)).toHaveLength(1);
+		expect(results).toContainEqual({ ok: false, reason: "rate_limited" });
+		expect(mockCreatePost).toHaveBeenCalledTimes(1);
 	});
 
 	it("happy path: creates the Circle post, the CommunityPost row, and invalidates the feed cache", async () => {

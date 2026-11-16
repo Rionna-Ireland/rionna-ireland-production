@@ -170,11 +170,7 @@ export const createPost = memberProcedure
 		}
 
 		// Rate limits.
-		const withinLimit = await checkPostRateLimit({
-			organizationId,
-			memberId: member.id,
-			now: new Date(),
-		});
+		const withinLimit = await checkPostRateLimit(member.id);
 		if (!withinLimit) {
 			return { ok: false, reason: "rate_limited" };
 		}
