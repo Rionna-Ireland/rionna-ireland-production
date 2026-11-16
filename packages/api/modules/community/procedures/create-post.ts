@@ -97,7 +97,10 @@ export const createPost = memberProcedure
 			if (!token.ok) {
 				return { ok: false, reason: "circle_failed" };
 			}
-			const fetched = await fetchMemberSpaces({ accessToken: token.data.accessToken });
+			const fetched = await fetchMemberSpaces({
+				...token.data,
+				circleMemberId: member.circleMemberId,
+			});
 			if (!fetched) {
 				return { ok: false, reason: "circle_failed" };
 			}
@@ -157,7 +160,9 @@ export const createPost = memberProcedure
 			// token would happily post into a space Circle forbids members from
 			// posting in, so this is the only honest check.
 			const token = await circle.getMemberToken(member.circleMemberId);
-			const refreshed = token.ok ? await fetchMemberSpaces({ accessToken: token.data.accessToken }) : null;
+			const refreshed = token.ok
+				? await fetchMemberSpaces({ ...token.data, circleMemberId: member.circleMemberId })
+				: null;
 			if (!refreshed) {
 				return { ok: false, reason: "circle_failed" };
 			}

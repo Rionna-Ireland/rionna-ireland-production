@@ -17,6 +17,7 @@ import {
 	writeMemberSpacesCache,
 } from "../lib/member-spaces";
 import type { MemberSpace } from "../lib/types";
+import { clearCachedMemberToken } from "@repo/payments/lib/circle";
 
 const RAW_SPACES = [
 	{
@@ -92,6 +93,12 @@ describe("fetchMemberSpaces", () => {
 			json: async () => ({}),
 		});
 		expect(await fetchMemberSpaces({ accessToken: "bad" })).toBeNull();
+	});
+
+	it("drops a cached member token Circle rejects with 401", async () => {
+		(fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: false, status: 401 });
+		await fetchMemberSpaces({ accessToken: "bad", fromCache: true, circleMemberId: "cm1" });
+		expect(vi.mocked(clearCachedMemberToken)).toHaveBeenCalledWith("cm1");
 	});
 
 	it("returns null when fetch throws (network error)", async () => {

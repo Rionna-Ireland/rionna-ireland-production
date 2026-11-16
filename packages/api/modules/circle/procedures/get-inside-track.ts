@@ -3,6 +3,7 @@ import { db, parseOrgMetadata } from "@repo/database";
 import { logger } from "@repo/logs";
 import {
 	circleFetch,
+	clearCachedMemberToken,
 	createCircleService,
 	getCircleHeadlessApiBaseUrl,
 } from "@repo/payments/lib/circle";
@@ -188,6 +189,9 @@ export const getInsideTrack = memberProcedure
 				`${base}/spaces/${encodeURIComponent(spaceId)}/posts?per_page=${POSTS_PER_PAGE}&sort=latest`,
 				{ headers: { Authorization: `Bearer ${tokenOutcome.data.accessToken}` } },
 			);
+			if (r.status === 401 && tokenOutcome.data.fromCache) {
+				await clearCachedMemberToken(member.circleMemberId);
+			}
 			if (!r.ok) {
 				logger.warn("[Circle] Inside Track: posts fetch failed", {
 					surface: "circle.inside_track",

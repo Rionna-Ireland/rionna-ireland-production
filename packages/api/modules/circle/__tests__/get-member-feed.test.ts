@@ -76,6 +76,7 @@ import {
 } from "../lib/member-feed-cache";
 import type { MemberFeedItem } from "../lib/parse-post";
 import { getMemberFeed } from "../procedures/get-member-feed";
+import { clearCachedMemberToken } from "@repo/payments/lib/circle";
 
 const ORG_ID = "org1";
 const USER = { id: "u1", email: "u1@test.com", name: "User One", role: "user" };
@@ -313,6 +314,13 @@ describe("getMemberFeed (spaces aggregation)", () => {
 			ctx,
 		);
 		expect(res).toMatchObject({ ok: false, items: [], hasNextPage: false });
+	});
+
+	it("drops a cached member token Circle rejects with 401", async () => {
+		mockGetMemberToken.mockResolvedValue({ ok: true, data: { accessToken: "jwt", fromCache: true } });
+		vi.stubGlobal("fetch", routeFetch({ ok: false, status: 401 }));
+		await call(getMemberFeed, { organizationId: ORG_ID, page: 1, perPage: 15 }, ctx);
+		expect(vi.mocked(clearCachedMemberToken)).toHaveBeenCalledWith("82236270");
 	});
 
 	it("returns ok:true items:[] when the member has no circleMemberId", async () => {
