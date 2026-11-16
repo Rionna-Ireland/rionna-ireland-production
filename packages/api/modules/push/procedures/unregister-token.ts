@@ -1,9 +1,13 @@
 import { db } from "@repo/database";
 import { z } from "zod";
 
-import { protectedProcedure } from "../../../orpc/procedures";
+import { publicProcedure } from "../../../orpc/procedures";
 
-export const unregisterPushToken = protectedProcedure
+// S17-03 / M-06: no session needed, so a device whose session already expired
+// (the app's 401 tear-down) can still stop receiving the old member's pushes.
+// Expo push tokens are unguessable and the only effect is removal; the
+// per-IP limiter on the whole /api surface (checkApiRateLimit) applies.
+export const unregisterPushToken = publicProcedure
 	.route({
 		method: "POST",
 		path: "/push/unregister",
@@ -12,14 +16,12 @@ export const unregisterPushToken = protectedProcedure
 	})
 	.input(
 		z.object({
-			expoPushToken: z.string(),
+			expoPushToken: z.string().min(1).max(255),
 		}),
 	)
-	.handler(async ({ input, context: { user } }) => {
-		// Scope to the caller's own token — a session must not be able to delete
-		// another user's push registration by token value.
+	.handler(async ({ input }) => {
 		await db.pushToken.deleteMany({
-			where: { expoPushToken: input.expoPushToken, userId: user.id },
+			where: { expoPushToken: input.expoPushToken },
 		});
 
 		return { success: true };

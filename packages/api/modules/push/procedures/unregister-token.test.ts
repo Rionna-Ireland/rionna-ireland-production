@@ -1,8 +1,6 @@
 /**
- * unregisterPushToken ownership scoping (S5-07 item 5).
- *
- * A caller may only unregister their OWN push token — the delete must be scoped
- * to the session user, not just the token value.
+ * unregisterPushToken (S17-03 / M-06): works without a session so the mobile
+ * app's 401 tear-down can still stop pushes to a signed-out device.
  */
 
 import { call } from "@orpc/server";
@@ -21,22 +19,29 @@ vi.mock("@repo/database", () => ({
 
 import { unregisterPushToken } from "./unregister-token";
 
-const USER = { id: "user-1", role: "member" };
-const SESSION = { id: "s1", activeOrganizationId: "org1" };
 const ctx = { context: { headers: new Headers() } };
 
 beforeEach(() => {
 	vi.clearAllMocks();
-	mockGetSession.mockResolvedValue({ user: USER, session: SESSION });
+	mockGetSession.mockResolvedValue(null);
 	mockPushTokenDeleteMany.mockResolvedValue({ count: 1 });
 });
 
-describe("unregisterPushToken (S5-07)", () => {
-	it("scopes the delete to the caller's own userId", async () => {
-		await call(unregisterPushToken, { expoPushToken: "ExpoTok[abc]" }, ctx);
+describe("unregisterPushToken (S17-03)", () => {
+	it("deletes by token alone when there is no session", async () => {
+		await expect(
+			call(unregisterPushToken, { expoPushToken: "ExpoTok[abc]" }, ctx),
+		).resolves.toEqual({
+			success: true,
+		});
 
 		expect(mockPushTokenDeleteMany).toHaveBeenCalledWith({
-			where: { expoPushToken: "ExpoTok[abc]", userId: "user-1" },
+			where: { expoPushToken: "ExpoTok[abc]" },
 		});
+	});
+
+	it("rejects an empty token without touching the database", async () => {
+		await expect(call(unregisterPushToken, { expoPushToken: "" }, ctx)).rejects.toThrow();
+		expect(mockPushTokenDeleteMany).not.toHaveBeenCalled();
 	});
 });
