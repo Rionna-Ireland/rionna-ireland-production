@@ -4,6 +4,7 @@ import { logger } from "@repo/logs";
 import { syncCircleSpaceMembership } from "@repo/payments/lib/circle-space-membership";
 import { z } from "zod";
 
+import { runAfterResponse } from "../../../lib/after-response";
 import { memberProcedure } from "../../../orpc/procedures";
 import { onPostLiked } from "../../inbox/activity-hooks";
 import { memberCircleFetch } from "../lib/member-circle-fetch";
@@ -92,11 +93,11 @@ export const setPostLike = memberProcedure
 				// No parseable body — the like still landed; count stays null.
 			}
 			if (input.liked) {
-				void onPostLiked({
+				runAfterResponse(onPostLiked({
 					organizationId: input.organizationId,
 					circlePostId: input.postId,
 					actor: { userId: user.id, name: user.name ?? null },
-				});
+				}));
 			}
 			return result;
 		};

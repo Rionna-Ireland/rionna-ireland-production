@@ -2,6 +2,7 @@ import { createModerationFlag, db } from "@repo/database";
 import { logger } from "@repo/logs";
 import { z } from "zod";
 
+import { runAfterResponse } from "../../../lib/after-response";
 import { memberProcedure } from "../../../orpc/procedures";
 import { excerptOf } from "../../moderation/excerpt";
 import { EXCERPT_CHARS, MAX_NOTE_CHARS } from "../lib/limits";
@@ -79,7 +80,7 @@ export const reportContent = memberProcedure
 			return { ok: true };
 		}
 
-		void notifyAdminsOfReport({ organizationId, reason, excerpt: contentExcerpt });
+		runAfterResponse(notifyAdminsOfReport({ organizationId, reason, excerpt: contentExcerpt }));
 
 		logger.info("moderation.reported", {
 			organizationId,

@@ -3,6 +3,7 @@ import { db } from "@repo/database";
 import { logger } from "@repo/logs";
 import { z } from "zod";
 
+import { runAfterResponse } from "../../../lib/after-response";
 import { memberProcedure } from "../../../orpc/procedures";
 import { enrichComments } from "../../circle/lib/author-identity";
 import { canPinAnswers, fetchPostComment } from "../../circle/lib/pinned-answer";
@@ -74,13 +75,13 @@ export const pinAnswer = memberProcedure
 		if (previous?.circleCommentId !== commentId) {
 			// Name the answer's author (trainer-attributed answers show the trainer).
 			await enrichComments(organizationId, [fetched.comment]);
-			void onAnswerPinned({
+			runAfterResponse(onAnswerPinned({
 				organizationId,
 				circlePostId: postId,
 				pinner: { userId: user.id },
 				answererName: fetched.comment.authorName,
 				answerBody: fetched.comment.bodyText ?? "",
-			});
+			}));
 		}
 		return { ok: true as const };
 	});

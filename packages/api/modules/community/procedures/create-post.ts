@@ -5,6 +5,7 @@ import { createCommunityPost, db, parseOrgMetadata } from "@repo/database";
 import { createCircleService, serializeNovelDocToCircle } from "@repo/payments/lib/circle";
 import { z } from "zod";
 
+import { runAfterResponse } from "../../../lib/after-response";
 import { memberProcedure } from "../../../orpc/procedures";
 import { invalidateMemberFeedCache } from "../../circle/lib/member-feed-cache";
 import { onMemberPostCreated } from "../../inbox/activity-hooks";
@@ -112,14 +113,14 @@ export const createPost = memberProcedure
 		const screenSubject = `${title ?? ""}\n${body}`;
 		const screen = screenText(screenSubject, metadata.moderation?.extraBlockedWords);
 		if (!screen.allowed) {
-			void recordBlock({
+			runAfterResponse(recordBlock({
 				organizationId,
 				memberId: member.id,
 				surface: "post",
 				text: screenSubject,
 				matches: screen.matches,
 				targetSpaceId: spaceId,
-			});
+			}));
 			return { ok: false, reason: "blocked" };
 		}
 
@@ -128,7 +129,7 @@ export const createPost = memberProcedure
 		if (metadata.features?.autoModeration !== false) {
 			const auto = await screenAuto(screenSubject, { organizationId, memberId: member.id, surface: "post" });
 			if (!auto.allowed) {
-				void recordAutoBlock({
+				runAfterResponse(recordAutoBlock({
 					organizationId,
 					memberId: member.id,
 					surface: "post",
@@ -136,7 +137,7 @@ export const createPost = memberProcedure
 					categories: auto.categories,
 					scores: auto.scores,
 					targetSpaceId: spaceId,
-				});
+				}));
 				return { ok: false, reason: "blocked" };
 			}
 		}
@@ -214,12 +215,12 @@ export const createPost = memberProcedure
 
 		invalidateMemberFeedCache(user.id, organizationId);
 
-		void onMemberPostCreated({
+		runAfterResponse(onMemberPostCreated({
 			organizationId,
 			circleSpaceId: spaceId,
 			circlePostId: created.data.circlePostId,
 			author: { userId: user.id, name: user.name ?? null },
-		});
+		}));
 
 		logger.info("community.post.created", {
 			organizationId,

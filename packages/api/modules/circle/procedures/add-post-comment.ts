@@ -3,6 +3,7 @@ import { db, parseOrgMetadata } from "@repo/database";
 import { logger } from "@repo/logs";
 import { z } from "zod";
 
+import { runAfterResponse } from "../../../lib/after-response";
 import { memberProcedure } from "../../../orpc/procedures";
 import { onPostCommented } from "../../inbox/activity-hooks";
 import { recordAutoBlock } from "../../moderation/record-auto-block";
@@ -63,14 +64,14 @@ export const addPostComment = memberProcedure
 		const metadata = parseOrgMetadata(org.metadata);
 		const screen = screenText(input.body, metadata.moderation?.extraBlockedWords);
 		if (!screen.allowed) {
-			void recordBlock({
+			runAfterResponse(recordBlock({
 				organizationId: input.organizationId,
 				memberId: member.id,
 				surface: "comment",
 				text: input.body,
 				matches: screen.matches,
 				targetPostId: input.postId,
-			});
+			}));
 			return { ok: false, blocked: true, comment: null };
 		}
 
@@ -78,7 +79,7 @@ export const addPostComment = memberProcedure
 		if (metadata.features?.autoModeration !== false) {
 			const auto = await screenAuto(input.body, { organizationId: input.organizationId, memberId: member.id, surface: "comment" });
 			if (!auto.allowed) {
-				void recordAutoBlock({
+				runAfterResponse(recordAutoBlock({
 					organizationId: input.organizationId,
 					memberId: member.id,
 					surface: "comment",
@@ -86,7 +87,7 @@ export const addPostComment = memberProcedure
 					categories: auto.categories,
 					scores: auto.scores,
 					targetPostId: input.postId,
-				});
+				}));
 				return { ok: false, blocked: true, comment: null };
 			}
 		}
@@ -131,12 +132,12 @@ export const addPostComment = memberProcedure
 		// Comment counts on feed cards come from the 60s merged buffer.
 		invalidateMemberFeedCache(user.id, input.organizationId);
 
-		void onPostCommented({
+		runAfterResponse(onPostCommented({
 			organizationId: input.organizationId,
 			circlePostId: input.postId,
 			commentBody: input.body,
 			actor: { userId: user.id, name: user.name ?? null },
-		});
+		}));
 
 		try {
 			const payload = objectValue(await res.json());

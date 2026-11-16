@@ -1,12 +1,17 @@
 import { ORPCError } from "@orpc/server";
 import { db, parseOrgMetadata } from "@repo/database";
 import { logger } from "@repo/logs";
-import { circleFetch, createCircleService, getCircleHeadlessApiBaseUrl } from "@repo/payments/lib/circle";
+import {
+	circleFetch,
+	createCircleService,
+	getCircleHeadlessApiBaseUrl,
+} from "@repo/payments/lib/circle";
 import { z } from "zod";
 
+import { runAfterResponse } from "../../../lib/after-response";
 import { memberProcedure } from "../../../orpc/procedures";
-import { loadInsideTrackDurations, applyVideoDurations } from "../lib/inside-track-meta";
 import { readInsideTrackCache, writeInsideTrackCache } from "../lib/inside-track-cache";
+import { loadInsideTrackDurations, applyVideoDurations } from "../lib/inside-track-meta";
 import { type MemberFeedItem, extractPosts, objectValue, toFeedItem } from "../lib/parse-post";
 
 const POSTS_PER_PAGE = 30;
@@ -261,12 +266,16 @@ export const getInsideTrack = memberProcedure
 		// Lazy prune: only confirmed-404 ids, re-reading fresh metadata at write
 		// time (Finding B2). Fire-and-forget; last-write-wins is fine single-club.
 		if (confirmedDeletedIds.size > 0) {
-			void pruneConfirmedDeletedPins(input.organizationId, confirmedDeletedIds).catch((error) => {
-				logger.warn("[Circle] Inside Track: pin prune failed", {
-					organizationId: input.organizationId,
-					error: String(error),
-				});
-			});
+			runAfterResponse(
+				pruneConfirmedDeletedPins(input.organizationId, confirmedDeletedIds).catch(
+					(error) => {
+						logger.warn("[Circle] Inside Track: pin prune failed", {
+							organizationId: input.organizationId,
+							error: String(error),
+						});
+					},
+				),
+			);
 		}
 
 		writeInsideTrackCache(input.organizationId, { configured: true, pinned, latest });
