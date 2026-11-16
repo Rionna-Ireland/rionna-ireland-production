@@ -16,6 +16,8 @@ const {
 	mockSessionsRetrieve,
 	mockIsDuplicate,
 	mockClearDedup,
+	mockMarkCompleted,
+	mockGetPurchaseBySubscriptionId,
 	mockGetPlanId,
 	mockCreatePurchase,
 	mockSetCustomerId,
@@ -25,6 +27,8 @@ const {
 	mockSessionsRetrieve: vi.fn(),
 	mockIsDuplicate: vi.fn(),
 	mockClearDedup: vi.fn(),
+	mockMarkCompleted: vi.fn(),
+	mockGetPurchaseBySubscriptionId: vi.fn(),
 	mockGetPlanId: vi.fn(),
 	mockCreatePurchase: vi.fn(),
 	mockSetCustomerId: vi.fn(),
@@ -43,13 +47,14 @@ vi.mock("@repo/logs", () => ({ logger: mockLogger }));
 vi.mock("@repo/database", () => ({
 	createPurchase: mockCreatePurchase,
 	db: {},
-	getPurchaseBySubscriptionId: vi.fn(),
+	getPurchaseBySubscriptionId: mockGetPurchaseBySubscriptionId,
 	updatePurchase: vi.fn(),
 }));
 
 vi.mock("../../../lib/stripe-dedup", () => ({
 	isEventDuplicate: mockIsDuplicate,
 	clearEventDedup: mockClearDedup,
+	markEventCompleted: mockMarkCompleted,
 }));
 
 vi.mock("../../../lib/provider-price-ids", () => ({
@@ -124,6 +129,7 @@ describe("webhookHandler dedup-claim release (C3)", () => {
 
 		expect(res.status).toBe(204);
 		expect(mockClearDedup).not.toHaveBeenCalled();
+		expect(mockMarkCompleted).toHaveBeenCalledWith("evt_1");
 	});
 
 	it("still releases the claim when processing throws (existing behavior)", async () => {
@@ -134,5 +140,21 @@ describe("webhookHandler dedup-claim release (C3)", () => {
 
 		expect(res.status).toBe(500);
 		expect(mockClearDedup).toHaveBeenCalledWith("evt_1");
+		expect(mockMarkCompleted).not.toHaveBeenCalled();
+	});
+
+	it("releases the claim when subscription.updated arrives before created (W-09)", async () => {
+		mockConstructEvent.mockResolvedValue({
+			id: "evt_upd",
+			type: "customer.subscription.updated",
+			data: { object: { id: "sub_1", status: "active", items: { data: [] } } },
+		});
+		mockGetPurchaseBySubscriptionId.mockResolvedValue(null);
+
+		const res = await webhookHandler(makeReq());
+
+		expect(res.status).toBe(500);
+		expect(mockClearDedup).toHaveBeenCalledWith("evt_upd");
+		expect(mockMarkCompleted).not.toHaveBeenCalled();
 	});
 });

@@ -54,6 +54,7 @@ const {
 	mockPurchaseUpdateMany,
 	mockPurchaseFindFirst,
 	mockPurchaseDelete,
+	mockPurchaseCount,
 	mockCreatePurchase,
 	mockGetPurchaseBySubscriptionId,
 	mockUpdatePurchase,
@@ -84,6 +85,7 @@ const {
 		mockPurchaseUpdateMany: vi.fn(),
 		mockPurchaseFindFirst: vi.fn(),
 		mockPurchaseDelete: vi.fn(),
+		mockPurchaseCount: vi.fn(),
 		mockCreatePurchase: vi.fn(),
 		mockGetPurchaseBySubscriptionId: vi.fn(),
 		mockUpdatePurchase: vi.fn(),
@@ -100,7 +102,11 @@ const {
 
 vi.mock("@repo/database", () => ({
 	db: {
-		stripeEventLog: { create: mockStripeEventLogCreate },
+		stripeEventLog: {
+			create: mockStripeEventLogCreate,
+			// W-08: no stale incomplete claim to re-take.
+			updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+		},
 		member: {
 			findFirst: mockMemberFindFirst,
 			create: mockMemberCreate,
@@ -113,6 +119,7 @@ vi.mock("@repo/database", () => ({
 			updateMany: mockPurchaseUpdateMany,
 			findFirst: mockPurchaseFindFirst,
 			delete: mockPurchaseDelete,
+			count: mockPurchaseCount,
 		},
 		$transaction: mockTransaction,
 	},
@@ -495,6 +502,48 @@ describe("handleSubscriptionCreated", () => {
 		expect(mockProvisionCircleMember).not.toHaveBeenCalled();
 	});
 
+	it("reactivates a deactivated Circle member on re-subscribe (W-05)", async () => {
+		setupTransaction({
+			id: "member_1",
+			userId: "user_test_789",
+			organizationId: "org_test_abc",
+			circleMemberId: "circle_member_123",
+			circleStatus: "deactivated",
+		});
+		mockPurchaseUpsert.mockResolvedValue({ id: "purchase_1" });
+
+		await handleSubscriptionCreated(
+			makeStripeEvent({
+				type: "customer.subscription.created",
+				data: { object: makeSubscriptionObject({ status: "active" }) },
+			}),
+		);
+
+		expect(mockReactivateCircleMember).toHaveBeenCalledWith(
+			{ id: "member_1", circleMemberId: "circle_member_123" },
+			"sub_test_123",
+		);
+		expect(mockProvisionCircleMember).not.toHaveBeenCalled();
+	});
+
+	it("does not reactivate Circle for an incomplete re-subscribe (W-05)", async () => {
+		setupTransaction({
+			id: "member_1",
+			circleMemberId: "circle_member_123",
+			circleStatus: "deactivated",
+		});
+		mockPurchaseUpsert.mockResolvedValue({ id: "purchase_1" });
+
+		await handleSubscriptionCreated(
+			makeStripeEvent({
+				type: "customer.subscription.created",
+				data: { object: makeSubscriptionObject({ status: "incomplete" }) },
+			}),
+		);
+
+		expect(mockReactivateCircleMember).not.toHaveBeenCalled();
+	});
+
 	it("throws when plan ID cannot be resolved from price", async () => {
 		mockGetPlanIdByProviderPriceId.mockReturnValue(null);
 
@@ -532,6 +581,7 @@ describe("handleSubscriptionCreated", () => {
 describe("handleSubscriptionDeleted", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mockPurchaseCount.mockResolvedValue(0);
 	});
 
 	it("flips Purchase.status to 'canceled' instead of deleting", async () => {
@@ -581,6 +631,38 @@ describe("handleSubscriptionDeleted", () => {
 			id: "member_1",
 			circleMemberId: "circle_member_123",
 		});
+	});
+
+	it("keeps Circle active when another subscription is still active (W-10)", async () => {
+		mockPurchaseUpdateMany.mockResolvedValue({ count: 1 });
+		mockPurchaseFindFirst.mockResolvedValue({
+			id: "purchase_1",
+			subscriptionId: "sub_test_123",
+			userId: "user_test_789",
+			organizationId: "org_test_abc",
+		});
+		mockPurchaseCount.mockResolvedValue(1);
+		mockMemberFindFirst.mockResolvedValue({
+			id: "member_1",
+			circleMemberId: "circle_member_123",
+			circleStatus: "active",
+		});
+
+		await handleSubscriptionDeleted(
+			makeStripeEvent({
+				type: "customer.subscription.deleted",
+				data: { object: makeSubscriptionObject({ status: "canceled" }) },
+			}),
+		);
+
+		expect(mockPurchaseCount).toHaveBeenCalledWith({
+			where: {
+				userId: "user_test_789",
+				organizationId: "org_test_abc",
+				status: { in: ["active", "trialing", "past_due"] },
+			},
+		});
+		expect(mockDeactivateCircleMember).not.toHaveBeenCalled();
 	});
 
 	it("scopes Member lookup by organizationId from purchase", async () => {
@@ -668,6 +750,20 @@ describe("handleSubscriptionUpdated", () => {
 		});
 	});
 
+	it("throws when no Purchase exists yet so Stripe retries (W-09)", async () => {
+		mockGetPurchaseBySubscriptionId.mockResolvedValue(null);
+
+		await expect(
+			handleSubscriptionUpdated(
+				makeStripeEvent({
+					type: "customer.subscription.updated",
+					data: { object: makeSubscriptionObject({ status: "active" }) },
+				}),
+			),
+		).rejects.toThrow("No Purchase yet");
+		expect(mockUpdatePurchase).not.toHaveBeenCalled();
+	});
+
 	it("reactivates Circle when status transitions from canceled to active", async () => {
 		mockGetPurchaseBySubscriptionId.mockResolvedValue({
 			id: "purchase_1",
@@ -696,10 +792,10 @@ describe("handleSubscriptionUpdated", () => {
 
 		await handleSubscriptionUpdated(event);
 
-		expect(mockReactivateCircleMember).toHaveBeenCalledWith({
-			id: "member_1",
-			circleMemberId: "circle_member_123",
-		});
+		expect(mockReactivateCircleMember).toHaveBeenCalledWith(
+			{ id: "member_1", circleMemberId: "circle_member_123" },
+			"sub_test_123",
+		);
 	});
 
 	it("scopes Member lookup by organizationId from purchase during reactivation", async () => {

@@ -1,9 +1,12 @@
 import { db } from "@repo/database";
 
+// A claim this old with no completedAt belongs to a killed function (W-08).
+const STALE_CLAIM_MS = 5 * 60 * 1000;
+
 /**
- * Returns true if the event has already been processed.
- * Inserts the event ID atomically -- if the insert fails on unique
- * constraint, the event was already seen.
+ * Returns true if the event is already processed or being processed.
+ * Inserts the event ID atomically; on a unique-constraint hit, a stale
+ * incomplete claim is re-taken so Stripe's retry can finish the work.
  */
 export async function isEventDuplicate(eventId: string, eventType: string): Promise<boolean> {
 	try {
@@ -19,10 +22,26 @@ export async function isEventDuplicate(eventId: string, eventType: string): Prom
 			"code" in error &&
 			error.code === "P2002"
 		) {
-			return true; // Unique constraint violation — already processed
+			const now = Date.now();
+			const { count } = await db.stripeEventLog.updateMany({
+				where: {
+					id: eventId,
+					completedAt: null,
+					processedAt: { lt: new Date(now - STALE_CLAIM_MS) },
+				},
+				data: { processedAt: new Date(now) },
+			});
+			return count === 0;
 		}
 		throw error; // Unexpected error — let it bubble
 	}
+}
+
+export async function markEventCompleted(eventId: string): Promise<void> {
+	await db.stripeEventLog.updateMany({
+		where: { id: eventId },
+		data: { completedAt: new Date() },
+	});
 }
 
 export async function clearEventDedup(eventId: string): Promise<void> {
