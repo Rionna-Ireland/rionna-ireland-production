@@ -21,7 +21,7 @@ export default async function AppStartPage() {
 			organizations[0];
 
 		if (!organization) {
-			redirect("/new-organization");
+			redirect("/subscribe");
 		}
 
 		redirect(`/${organization.slug}`);

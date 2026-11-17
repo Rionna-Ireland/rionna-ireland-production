@@ -5,9 +5,8 @@
  * `CharityConfig` so member reads of the charity total never call Stripe. The
  * admin "Recalculate now" button hits the same `syncCharityRevenue` function.
  *
- * Registered in `apps/saas/vercel.json` as a native Vercel Cron (daily, 02:00),
- * which invokes with `GET` + `Authorization: Bearer $CRON_SECRET` — hence the
- * `GET` alias below.
+ * Fired daily by the external scheduler (cron-job.eu) with
+ * `Authorization: Bearer $CRON_SECRET`; accepts `GET` or `POST`.
  *
  * @see Architecture/specs/S12-01-paddock-build.md
  */
@@ -30,7 +29,5 @@ export async function POST(request: Request) {
 	return Response.json({ ok: true, summary });
 }
 
-// Native Vercel Cron invokes registered paths with GET, not POST — without
-// this alias the vercel.json entry would 405 and the daily sync would
-// silently never run.
+// Kept so a scheduler job configured with GET keeps working.
 export { POST as GET };

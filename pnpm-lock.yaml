@@ -72,9 +72,6 @@ catalogs:
     '@types/node':
       specifier: 25.5.2
       version: 25.5.2
-    '@types/nodemailer':
-      specifier: ^8.0.0
-      version: 8.0.0
     '@types/nprogress':
       specifier: ^0.2.3
       version: 0.2.3
@@ -1052,9 +1049,6 @@ importers:
       next-intl:
         specifier: 'catalog:'
         version: 4.9.0(next@16.2.2(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(@playwright/test@1.59.1)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)(typescript@6.0.2)
-      nodemailer:
-        specifier: ^8.0.5
-        version: 8.0.5
       react:
         specifier: 'catalog:'
         version: 19.2.4
@@ -1080,9 +1074,6 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 25.5.2
-      '@types/nodemailer':
-        specifier: 'catalog:'
-        version: 8.0.0
       '@types/react':
         specifier: 'catalog:'
         version: 19.2.14
@@ -1117,12 +1108,6 @@ importers:
       '@circleco/headless-server-sdk':
         specifier: ^0.0.5
         version: 0.0.5
-      '@lemonsqueezy/lemonsqueezy.js':
-        specifier: ^4.0.0
-        version: 4.0.0
-      '@polar-sh/sdk':
-        specifier: ^0.47.0
-        version: 0.47.0
       '@repo/database':
         specifier: workspace:*
         version: link:../database
@@ -1132,9 +1117,6 @@ importers:
       '@repo/mail':
         specifier: workspace:*
         version: link:../mail
-      dodopayments:
-        specifier: ^2.26.0
-        version: 2.26.0
       stripe:
         specifier: ^22.0.0
         version: 22.0.0(@types/node@25.5.2)
@@ -2701,10 +2683,6 @@ packages:
   '@kurkle/color@0.3.4':
     resolution: {integrity: sha512-M5UknZPHRu3DEDWoipU6sE8PdkZ6Z/S+v4dD+Ke8IaNlpdSQah50lz1KtcFBa2vsdOnwbbnxJwVM4wty6udA5w==}
 
-  '@lemonsqueezy/lemonsqueezy.js@4.0.0':
-    resolution: {integrity: sha512-xcY1/lDrY7CpIF98WKiL1ElsfoVhddP7FT0fw7ssOzrFqQsr44HgolKrQZxd9SywsCPn12OTOUieqDIokI3mFg==}
-    engines: {node: '>=20'}
-
   '@levischuck/tiny-cbor@0.2.11':
     resolution: {integrity: sha512-llBRm4dT4Z89aRsm6u2oEZ8tfwL/2l6BwpZ7JcyieouniDECM5AqNgr/y08zalEIvW3RSK4upYyybDcmjXqAow==}
 
@@ -3516,9 +3494,6 @@ packages:
     resolution: {integrity: sha512-PG6q63nQg5c9rIi4/Z5lR5IVF7yU5MqmKaPOe0HSc0O2cX1fPi96sUQu5j7eo4gKCkB2AnNGoWt7y4/Xx3Kcqg==}
     engines: {node: '>=18'}
     hasBin: true
-
-  '@polar-sh/sdk@0.47.0':
-    resolution: {integrity: sha512-tZEt8eLWsQVhmyfUQzXhnN84e5Cnu/JsYFnCci1ranWkIGveQc+wTiyzDCG9Tl1xiz1Y/ztPsAJ1fevj6ExdAA==}
 
   '@popperjs/core@2.11.8':
     resolution: {integrity: sha512-P1st0aksCrn9sGZhp8GMYwBnQsbvAWsZAX44oXNNvLHGqAOcoVxmjZiohstwQ7SqKnbR47akdNi+uleWD8+g6A==}
@@ -5525,9 +5500,6 @@ packages:
   '@types/node@25.5.2':
     resolution: {integrity: sha512-tO4ZIRKNC+MDWV4qKVZe3Ql/woTnmHDr5JD8UI5hn2pwBrHEwOEMZK7WlNb5RKB6EoJ02gwmQS9OrjuFnZYdpg==}
 
-  '@types/nodemailer@8.0.0':
-    resolution: {integrity: sha512-fyf8jWULsCo0d0BuoQ75i6IeoHs47qcqxWc7yUdUcV0pOZGjUTTOvwdG1PRXUDqN/8A64yQdQdnA2pZgcdi+cA==}
-
   '@types/nprogress@0.2.3':
     resolution: {integrity: sha512-k7kRA033QNtC+gLc4VPlfnue58CM1iQLgn1IMAU8VPHGOj7oIHPp9UlhedEnD/Gl8evoCjwkZjlBORtZ3JByUA==}
 
@@ -6346,10 +6318,6 @@ packages:
 
   devlop@1.1.0:
     resolution: {integrity: sha512-RWmIqhcFf1lRYBvNmr7qTNuyCt/7/ns2jbpp1+PalgE/rDQcBT0fioSMUpJ93irlUhC5hrg4cYqe6U+0ImW0rA==}
-
-  dodopayments@2.26.0:
-    resolution: {integrity: sha512-PdFfzu1qtisoecoYArcfAlYybizRO4i+xeDLyoK+dGGTOpSNexSzbZ0tmMvAd0HRYqILS1lWzyJeNwS0iwS8nA==}
-    hasBin: true
 
   dom-serializer@2.0.0:
     resolution: {integrity: sha512-wIkAryiqt/nV5EQKqQpo3SToSOV9J0DnbJqwK7Wv/Trc92zIAYZ4FlMu+JPFW1DfGFt81ZTCGgDEabffXeLyJg==}
@@ -7847,10 +7815,6 @@ packages:
 
   node-releases@2.0.27:
     resolution: {integrity: sha512-nmh3lCkYZ3grZvqcCH+fjmQ7X+H0OeZgP40OierEaAptX4XofMh5kwNbWh7lBduUzCcV/8kZ+NDLCwm2iorIlA==}
-
-  nodemailer@8.0.5:
-    resolution: {integrity: sha512-0PF8Yb1yZuQfQbq+5/pZJrtF6WQcjTd5/S4JOHs9PGFxuTqoB/icwuB44pOdURHJbRKX1PPoJZtY7R4VUoCC8w==}
-    engines: {node: '>=6.0.0'}
 
   normalize-package-data@2.5.0:
     resolution: {integrity: sha512-/5CMN3T0R4XTj4DcGaexo+roZSdSFW/0AOOTROrjxzCG1wrWXEsGbRKevjlIL+ZDE4sZlJr5ED4YW0yqmkK+eA==}
@@ -10884,8 +10848,6 @@ snapshots:
 
   '@kurkle/color@0.3.4': {}
 
-  '@lemonsqueezy/lemonsqueezy.js@4.0.0': {}
-
   '@levischuck/tiny-cbor@0.2.11': {}
 
   '@mdx-js/esbuild@3.1.1(esbuild@0.25.12)':
@@ -11595,11 +11557,6 @@ snapshots:
   '@playwright/test@1.59.1':
     dependencies:
       playwright: 1.59.1
-
-  '@polar-sh/sdk@0.47.0':
-    dependencies:
-      standardwebhooks: 1.0.0
-      zod: 4.3.6
 
   '@popperjs/core@2.11.8': {}
 
@@ -13753,10 +13710,6 @@ snapshots:
     dependencies:
       undici-types: 7.18.2
 
-  '@types/nodemailer@8.0.0':
-    dependencies:
-      '@types/node': 25.5.2
-
   '@types/nprogress@0.2.3': {}
 
   '@types/pg@8.20.0':
@@ -14568,10 +14521,6 @@ snapshots:
   devlop@1.1.0:
     dependencies:
       dequal: 2.0.3
-
-  dodopayments@2.26.0:
-    dependencies:
-      standardwebhooks: 1.0.0
 
   dom-serializer@2.0.0:
     dependencies:
@@ -16489,8 +16438,6 @@ snapshots:
       formdata-polyfill: 4.0.10
 
   node-releases@2.0.27: {}
-
-  nodemailer@8.0.5: {}
 
   normalize-package-data@2.5.0:
     dependencies:

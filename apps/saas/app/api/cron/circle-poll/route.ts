@@ -38,3 +38,6 @@ export async function POST(request: Request) {
 
 	return Response.json({ ok: true, metrics });
 }
+
+// cron-job.eu jobs fire with GET.
+export { POST as GET };

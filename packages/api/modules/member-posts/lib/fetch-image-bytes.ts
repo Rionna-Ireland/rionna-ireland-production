@@ -1,19 +1,10 @@
 import type { SerializeImageBytes } from "@repo/payments/lib/circle";
 import { getSignedUrl } from "@repo/storage";
-import { config as storageConfig } from "@repo/storage/config";
+import { resolveLogicalBucket } from "@repo/storage/logical-bucket";
 import { getBaseUrl } from "@repo/utils";
-
-const ALLOWED_BUCKETS = ["avatars", "media"] as const;
-type LogicalBucket = (typeof ALLOWED_BUCKETS)[number];
 
 // Matches the in-app proxy URLs stored on image nodes: `/image-proxy/{bucket}/{key...}`.
 const PROXY_RE = /^\/image-proxy\/([^/]+)\/(.+)$/;
-
-function resolveLogicalBucket(segment: string): LogicalBucket | undefined {
-	return ALLOWED_BUCKETS.find(
-		(key) => key === segment || storageConfig.bucketNames[key] === segment,
-	);
-}
 
 /**
  * Origins this helper is allowed to fetch from (S5-09 Task 3.3, audit F4): the

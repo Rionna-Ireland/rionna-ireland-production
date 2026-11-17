@@ -10,8 +10,6 @@ import { cn } from "@repo/ui";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
-	DropdownMenuGroup,
-	DropdownMenuItem,
 	DropdownMenuLabel,
 	DropdownMenuRadioGroup,
 	DropdownMenuRadioItem,
@@ -27,9 +25,8 @@ import {
 import { UserAvatar } from "@shared/components/UserAvatar";
 import { useRouter } from "@shared/hooks/router";
 import { clearCache } from "@shared/lib/cache";
-import { ChevronsUpDownIcon, PlusIcon } from "lucide-react";
+import { ChevronsUpDownIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import Link from "next/link";
 
 import { OrganizationLogo } from "./OrganizationLogo";
 
@@ -199,17 +196,6 @@ export function OrganzationSelect({
 					</DropdownMenuRadioItem>
 				))}
 			</DropdownMenuRadioGroup>
-
-			{authConfig.organizations.enableUsersToCreateOrganizations && (
-				<DropdownMenuGroup>
-					<DropdownMenuItem asChild className="text-sm cursor-pointer text-primary!">
-						<Link href="/new-organization">
-							<PlusIcon className="mr-2 size-6 p-1 rounded-md bg-primary/20" />
-							{t("organizations.organizationSelect.createNewOrganization")}
-						</Link>
-					</DropdownMenuItem>
-				</DropdownMenuGroup>
-			)}
 		</DropdownMenuContent>
 	);
 
