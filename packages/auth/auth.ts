@@ -9,6 +9,7 @@ import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { createAuthMiddleware } from "better-auth/api";
 import { admin, magicLink, openAPI, organization } from "better-auth/plugins";
+import { adminAc, userAc } from "better-auth/plugins/admin/access";
 import { parse as parseCookies } from "cookie";
 
 import { config } from "./config";
@@ -125,8 +126,9 @@ export const auth = betterAuth({
 				required: false,
 			},
 			// D28: "platformAdmin" gives access to /platform (cross-org tooling).
-			// "admin" is the better-auth global admin role used by /admin. Both are
-			// stored in the User.role column managed by better-auth's admin() plugin.
+			// "admin" is club staff, used by /admin. Both are stored in the User.role
+			// column managed by better-auth's admin() plugin (only platformAdmin is a
+			// plugin admin, see W-20 below).
 			role: {
 				type: "string",
 				required: false,
@@ -229,7 +231,13 @@ export const auth = betterAuth({
 	// D36/D39: signup is open after launch (config.enableSignup); before launch the
 	// hooks.before sign-up guard restricts it to invitees. The paywall is the real gate.
 	plugins: [
-		admin(),
+		// W-20: only platformAdmin may use /api/auth/admin/*. Club staff ("admin") get
+		// no plugin permissions; our own adminProcedure gates /admin. The roles keys are
+		// also the only values set-role accepts.
+		admin({
+			adminRoles: ["platformAdmin"],
+			roles: { platformAdmin: adminAc, admin: userAc, user: userAc },
+		}),
 		magicLink({
 			disableSignUp: true,
 			sendMagicLink: async ({ email, url }, ctx) => {

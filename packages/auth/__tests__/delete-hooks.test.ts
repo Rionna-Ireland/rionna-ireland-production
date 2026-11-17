@@ -1,7 +1,7 @@
 /**
- * S17-01 (W-01, W-02, W-03, W-15): drives the real `auth` instance. Prisma is
- * swapped for better-auth's in-memory adapter so endpoints, hooks and session
- * checks run exactly as configured in auth.ts.
+ * S17-01 (W-01, W-02, W-03, W-15) and S17-08 (W-20): drives the real `auth`
+ * instance. Prisma is swapped for better-auth's in-memory adapter so endpoints,
+ * hooks and session checks run exactly as configured in auth.ts.
  */
 
 import { memoryAdapter } from "better-auth/adapters/memory";
@@ -228,5 +228,64 @@ describe("organization creation and deletion", () => {
 			auth.api.deleteOrganization({ headers, body: { organizationId: ORG_ID } }),
 		).rejects.toMatchObject({ status: "NOT_FOUND" });
 		expect(store.organization).toHaveLength(1);
+	});
+});
+
+describe("admin plugin endpoints (S17-08 / W-20)", () => {
+	const CALLER_ID = "caller_1";
+
+	async function callerHeaders(role: string) {
+		store.user.push({
+			id: CALLER_ID,
+			name: "Caller",
+			email: "caller@example.com",
+			emailVerified: true,
+			role,
+			createdAt: new Date(),
+			updatedAt: new Date(),
+		});
+		return sessionHeaders(CALLER_ID);
+	}
+
+	const calls = {
+		"set-role on self": (headers: Headers) =>
+			auth.api.setRole({ headers, body: { userId: CALLER_ID, role: "platformAdmin" } }),
+		"remove-user": (headers: Headers) =>
+			auth.api.removeUser({ headers, body: { userId: USER_ID } }),
+		"impersonate-user": (headers: Headers) =>
+			auth.api.impersonateUser({ headers, body: { userId: USER_ID } }),
+		"set-user-password": (headers: Headers) =>
+			auth.api.setUserPassword({
+				headers,
+				body: { userId: USER_ID, newPassword: "hijacked-123" },
+			}),
+	};
+	const cases = ["admin", "user"].flatMap((role) =>
+		Object.keys(calls).map((endpoint) => [role, endpoint] as const),
+	);
+
+	it.each(cases)("refuses %s calling %s", async (role, endpoint) => {
+		const headers = await callerHeaders(role);
+
+		await expect(calls[endpoint as keyof typeof calls](headers)).rejects.toMatchObject({
+			status: "FORBIDDEN",
+		});
+
+		expect(store.user.find((u) => u.id === CALLER_ID)?.role).toBe(role);
+		expect(store.user.find((u) => u.id === USER_ID)).toBeDefined();
+		expect(store.session).toHaveLength(1);
+		expect(store.account).toHaveLength(0);
+	});
+
+	it("lets a platformAdmin set an allowed role but not an unknown one", async () => {
+		const headers = await callerHeaders("platformAdmin");
+
+		await auth.api.setRole({ headers, body: { userId: USER_ID, role: "admin" } });
+		expect(store.user.find((u) => u.id === USER_ID)?.role).toBe("admin");
+
+		await expect(
+			auth.api.setRole({ headers, body: { userId: USER_ID, role: "superuser" as "admin" } }),
+		).rejects.toMatchObject({ status: "BAD_REQUEST" });
+		expect(store.user.find((u) => u.id === USER_ID)?.role).toBe("admin");
 	});
 });
