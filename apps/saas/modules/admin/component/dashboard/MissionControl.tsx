@@ -23,7 +23,6 @@ import {
 	PlusIcon,
 	TagIcon,
 	TriangleAlertIcon,
-	TypeIcon,
 	UsersIcon,
 	VoteIcon,
 } from "lucide-react";
@@ -123,13 +122,7 @@ export function MissionControl() {
 		{
 			key: "website",
 			actions: [
-				{
-					key: "pageCopy",
-					audience: "public" as const,
-					href: "/website?tab=text",
-					icon: TypeIcon,
-				},
-				{ key: "website", audience: "public" as const, href: "/website?tab=media", icon: GlobeIcon },
+				{ key: "website", audience: "public" as const, href: "/website", icon: GlobeIcon },
 				{ key: "waitlist", href: "/waitlist", icon: ListIcon },
 			],
 		},

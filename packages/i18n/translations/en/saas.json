@@ -56,8 +56,7 @@
 				"members": "Members & expert tags",
 				"soon": "Coming soon",
 				"horse": "Add a horse",
-				"pageCopy": "Edit website text",
-				"website": "Homepage, membership and About",
+				"website": "Edit the website",
 				"waitlist": "View the waitlist"
 			},
 			"recent": {
@@ -1093,14 +1092,10 @@
 				"title": "Link previews",
 				"image": "Share image (JPEG, PNG or WebP, 1200 × 630 works best)",
 				"hint": "Shown when someone shares a link to the website on WhatsApp, LinkedIn, Facebook and similar. News articles use their own image."
-			},
-			"tabs": {
-				"text": "Page text",
-				"media": "Photos, video & key sections"
 			}
 		},
 		"pageCopy": {
-			"intro": "Change the text on any page of the public website. Edits go live as soon as you save. Hero text, membership price, inclusions and FAQ are in <link>Photos, video & key sections</link>.",
+			"intro": "Change the words, photos and video on any page of the public website, section by section. Everything goes live when you save.",
 			"search": "Search all pages for text",
 			"pages": "Pages",
 			"noResults": "No text matches your search.",
@@ -1116,8 +1111,8 @@
 			"allSaved": "All changes saved",
 			"discard": "Discard changes",
 			"save": "Save changes",
-			"saved": "Page copy saved. It's live on the website now.",
-			"saveError": "Could not save page copy.",
+			"saved": "Website saved. It's live now.",
+			"saveError": "Could not save the website.",
 			"brokenTitle": "Some text needs fixing",
 			"brokenHint": "A field highlighted in red is missing a placeholder or tag. Put it back, or reset the field.",
 			"page": {
@@ -1135,18 +1130,25 @@
 				"preview": "Preview gate"
 			},
 			"pageHint": {
-				"home": "The homepage, from the intro animation down to the final call to action.",
-				"about": "The About page: story, values, chapters and people.",
-				"membership": "The Membership page. Price, inclusions and FAQ are in Photos, video & key sections.",
+				"home": "The homepage, from the intro animation down to the final call to action, including the hero photo or video, featured horses and stats.",
+				"about": "The About page: story photo and club video, values, chapters and the people behind the club.",
+				"membership": "The Membership page: price, what's included, the FAQ and the text around them.",
 				"appPage": "The page that shows off the app and links to the stores.",
 				"news": "Labels and buttons around news articles. Articles themselves are in News.",
 				"events": "Labels and buttons on the Events page. Events themselves are in Events.",
 				"waitlist": "The waitlist sign-up page, its form, success message and unsubscribe page.",
 				"contact": "The Contact page and its form.",
-				"common": "Text shown on every page: menu, footer and cookie banner.",
+				"common": "Shown on every page: the join button, link previews, menu, footer and cookie banner.",
 				"legal": "The headings around Terms, Privacy and Cookie pages. The legal text itself is managed by the team.",
 				"notFound": "Shown when someone opens a link that doesn't exist.",
 				"preview": "The password page shown on the staging site before launch."
+			},
+			"unsavedSome": "Unsaved changes",
+			"sections": {
+				"stats": "Stats",
+				"people": "People",
+				"join": "Join button: waitlist or sign-up",
+				"share": "Link previews"
 			}
 		}
 	},

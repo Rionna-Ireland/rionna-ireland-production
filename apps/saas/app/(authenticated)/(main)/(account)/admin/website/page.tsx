@@ -1,10 +1,5 @@
-import { WebsiteTabs } from "@admin/component/website/WebsiteTabs";
-import { Suspense } from "react";
+import { WebsiteEditor } from "@admin/component/website/WebsiteEditor";
 
 export default function AdminWebsitePage() {
-	return (
-		<Suspense>
-			<WebsiteTabs />
-		</Suspense>
-	);
+	return <WebsiteEditor />;
 }

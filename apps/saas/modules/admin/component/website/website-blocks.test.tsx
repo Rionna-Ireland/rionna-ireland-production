@@ -32,8 +32,8 @@ vi.mock("next/link", () => ({
 
 import { websiteSchema } from "@repo/api/modules/settings/procedures/website-schema";
 
+import { useWebsiteBlocks } from "./website-blocks";
 import { atCap, CAP, fromWebsite, MAX_STATS, moveItem, toWebsitePayload } from "./website-form";
-import { WebsiteForm } from "./WebsiteForm";
 
 describe("website form helpers", () => {
 	it("submits the whole website object", () => {
@@ -123,11 +123,27 @@ describe("caps match the server schema", () => {
 	});
 });
 
-describe("WebsiteForm", () => {
-	it("renders the six cards", () => {
-		const html = renderToStaticMarkup(<WebsiteForm />);
-		for (const c of ["hero", "horses", "stats", "membership", "about", "join"]) {
-			expect(html).toContain(`admin.website.${c}.title`);
+function AllBlocks() {
+	const { blocks } = useWebsiteBlocks();
+	return <>{Object.values(blocks)}</>;
+}
+
+describe("useWebsiteBlocks", () => {
+	it("renders every website slot", () => {
+		const html = renderToStaticMarkup(<AllBlocks />);
+		for (const k of [
+			"hero.heading",
+			"horses.hint",
+			"stats.add",
+			"membership.price",
+			"membership.addFaq",
+			"about.storyTitle",
+			"about.video",
+			"about.addFounder",
+			"share.image",
+			"join.waitlist",
+		]) {
+			expect(html).toContain(`admin.website.${k}`);
 		}
 	});
 });
