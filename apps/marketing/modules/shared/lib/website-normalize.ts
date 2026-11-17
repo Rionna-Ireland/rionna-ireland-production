@@ -24,9 +24,15 @@ export interface WebsiteContent {
 		inclusions: string[];
 		faq: { question: string; answer: string }[];
 	};
-	about: { storyTitle?: string; photoUrl?: string; founders: WebsiteFounder[] };
+	about: {
+		storyTitle?: string;
+		photoUrl?: string;
+		videoUrl?: string;
+		founders: WebsiteFounder[];
+	};
 	/** Default "signup" so the launch env flip alone opens Join. */
 	joinMode: JoinMode;
+	shareImageUrl?: string;
 }
 
 type Obj = Record<string, unknown>;
@@ -81,10 +87,11 @@ export function normalizeWebsite(raw: unknown): WebsiteContent {
 			faq: items(membership.faq, ["question", "answer"]),
 		},
 		about: {
-			...pickStrings(about, ["storyTitle", "photoUrl"]),
+			...pickStrings(about, ["storyTitle", "photoUrl", "videoUrl"]),
 			founders: items(about.founders, ["name", "role", "bio"], ["photoUrl"]),
 		},
 		joinMode: w.joinMode === "waitlist" ? "waitlist" : "signup",
+		...pickStrings(w, ["shareImageUrl"]),
 	};
 }
 

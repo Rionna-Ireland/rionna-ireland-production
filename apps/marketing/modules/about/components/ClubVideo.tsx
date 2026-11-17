@@ -10,7 +10,7 @@ import { useEffect, useRef, useState } from "react";
  * poster). The video mounts after motion is allowed, fades in on canplay, and
  * plays only while the chapter is on screen.
  */
-export function ClubVideo({ src, poster }: { src: string; poster: string }) {
+export function ClubVideo({ src, poster }: { src: string; poster?: string }) {
 	const motionOk = useMotionOk();
 	const [ready, setReady] = useState(false);
 	const wrapRef = useRef<HTMLDivElement>(null);
@@ -20,21 +20,32 @@ export function ClubVideo({ src, poster }: { src: string; poster: string }) {
 	useEffect(() => {
 		const video = videoRef.current;
 		if (!video) return;
-		if (playing) void video.play().catch(() => {});
+		if (playing && motionOk) void video.play().catch(() => {});
 		else video.pause();
 	}, [playing, motionOk]);
 
 	return (
 		<div ref={wrapRef} aria-hidden="true" className="relative size-full">
-			<Image src={poster} alt="" fill sizes="100vw" loading="lazy" className="object-cover" />
-			{motionOk && (
+			{poster && (
+				<Image
+					unoptimized={poster.startsWith("http")}
+					src={poster}
+					alt=""
+					fill
+					sizes="100vw"
+					loading="lazy"
+					className="object-cover"
+				/>
+			)}
+			{/* Without a poster the video's first frame stands in, so it mounts even when motion is off. */}
+			{(motionOk || !poster) && (
 				<video
 					ref={videoRef}
-					className={`inset-0 absolute size-full object-cover transition-opacity duration-(--dur-reveal) ease-(--ease-out-editorial) ${ready ? "opacity-100" : "opacity-0"}`}
+					className={`inset-0 absolute size-full object-cover transition-opacity duration-(--dur-reveal) ease-(--ease-out-editorial) ${ready || !poster ? "opacity-100" : "opacity-0"}`}
 					src={src}
 					poster={poster}
 					preload="metadata"
-					autoPlay
+					autoPlay={motionOk}
 					muted
 					loop
 					playsInline

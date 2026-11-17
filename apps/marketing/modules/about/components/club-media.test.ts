@@ -9,6 +9,20 @@ describe("pickClubMedia", () => {
 			src: "https://x/y.jpg",
 		});
 	});
+	it("prefers an admin video, using the admin photo as poster", () => {
+		expect(pickClubMedia({ photoUrl: "https://x/p.jpg", videoUrl: "https://x/v.mp4" })).toEqual(
+			{
+				kind: "video",
+				src: "https://x/v.mp4",
+				poster: "https://x/p.jpg",
+			},
+		);
+		expect(pickClubMedia({ videoUrl: "https://x/v.mp4" })).toEqual({
+			kind: "video",
+			src: "https://x/v.mp4",
+			poster: undefined,
+		});
+	});
 	it.each([undefined, null, "", "  "])("falls back to the stable video for %j", (photoUrl) => {
 		expect(pickClubMedia({ photoUrl })).toEqual({
 			kind: "video",

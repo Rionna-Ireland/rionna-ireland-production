@@ -22,8 +22,7 @@
 			"charity": "Charity",
 			"moderation": "Moderation",
 			"waitlist": "Waitlist",
-			"website": "Website",
-			"pageCopy": "Page copy"
+			"website": "Website"
 		},
 		"dashboard": {
 			"health": {
@@ -1069,7 +1068,8 @@
 				"addFounder": "Add founder",
 				"name": "Name",
 				"role": "Role",
-				"bio": "Bio"
+				"bio": "Bio",
+				"video": "Club video (MP4, up to 25MB). Plays in the About page's club section; the photo is used as its poster."
 			},
 			"join": {
 				"title": "Join button",
@@ -1088,10 +1088,19 @@
 			},
 			"moveUp": "Move up",
 			"moveDown": "Move down",
-			"remove": "Remove"
+			"remove": "Remove",
+			"share": {
+				"title": "Link previews",
+				"image": "Share image (JPEG, PNG or WebP, 1200 × 630 works best)",
+				"hint": "Shown when someone shares a link to the website on WhatsApp, LinkedIn, Facebook and similar. News articles use their own image."
+			},
+			"tabs": {
+				"text": "Page text",
+				"media": "Photos, video & key sections"
+			}
 		},
 		"pageCopy": {
-			"intro": "Change the text on any page of the public website. Edits go live as soon as you save. Hero text, membership price, inclusions and FAQ are set in <link>Website</link>.",
+			"intro": "Change the text on any page of the public website. Edits go live as soon as you save. Hero text, membership price, inclusions and FAQ are in <link>Photos, video & key sections</link>.",
 			"search": "Search all pages for text",
 			"pages": "Pages",
 			"noResults": "No text matches your search.",
@@ -1128,7 +1137,7 @@
 			"pageHint": {
 				"home": "The homepage, from the intro animation down to the final call to action.",
 				"about": "The About page: story, values, chapters and people.",
-				"membership": "The Membership page. Price, inclusions and FAQ live in Website.",
+				"membership": "The Membership page. Price, inclusions and FAQ are in Photos, video & key sections.",
 				"appPage": "The page that shows off the app and links to the stores.",
 				"news": "Labels and buttons around news articles. Articles themselves are in News.",
 				"events": "Labels and buttons on the Events page. Events themselves are in Events.",

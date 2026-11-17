@@ -38,9 +38,11 @@ export type WebsiteFormValues = {
 	about: {
 		storyTitle: string;
 		photoUrl: string;
+		videoUrl: string;
 		founders: { name: string; role: string; bio: string; photoUrl: string }[];
 	};
 	joinMode: "waitlist" | "signup";
+	shareImageUrl: string;
 };
 
 export const atCap = (list: readonly unknown[], max: number) => list.length >= max;
@@ -94,7 +96,11 @@ export function toWebsitePayload(v: WebsiteFormValues): OrganizationWebsiteMetad
 		...(faq.length && { faq }),
 	});
 	const about = nonEmpty({
-		...pick({ storyTitle: v.about.storyTitle, photoUrl: v.about.photoUrl }),
+		...pick({
+			storyTitle: v.about.storyTitle,
+			photoUrl: v.about.photoUrl,
+			videoUrl: v.about.videoUrl,
+		}),
 		...(founders.length && { founders }),
 	});
 
@@ -105,6 +111,7 @@ export function toWebsitePayload(v: WebsiteFormValues): OrganizationWebsiteMetad
 		...(membership && { membership }),
 		...(about && { about }),
 		joinMode: v.joinMode,
+		...(clean(v.shareImageUrl) && { shareImageUrl: clean(v.shareImageUrl) }),
 	};
 }
 
@@ -129,8 +136,10 @@ export function fromWebsite(w: OrganizationWebsiteMetadata | undefined): Website
 		about: {
 			storyTitle: w?.about?.storyTitle ?? "",
 			photoUrl: w?.about?.photoUrl ?? "",
+			videoUrl: w?.about?.videoUrl ?? "",
 			founders: (w?.about?.founders ?? []).map((f) => ({ ...f, photoUrl: f.photoUrl ?? "" })),
 		},
 		joinMode: w?.joinMode ?? "signup",
+		shareImageUrl: w?.shareImageUrl ?? "",
 	};
 }

@@ -31,7 +31,7 @@ import {
 	type WebsiteFormValues,
 } from "./website-form";
 
-type Kind = "hero" | "about" | "founder";
+type Kind = "hero" | "about" | "founder" | "share";
 
 function ListControls({
 	index,
@@ -482,6 +482,12 @@ export function WebsiteForm() {
 						{...up("about", "about.photoUrl")}
 						value={v.about.photoUrl}
 					/>
+					<Upload
+						label={t("admin.website.about.video")}
+						accept="video/mp4"
+						{...up("about", "about.videoUrl")}
+						value={v.about.videoUrl}
+					/>
 					<p className="text-sm text-muted-foreground">
 						{t("admin.website.about.storyText")}{" "}
 						<Link href="/admin/settings/general" className="underline">
@@ -527,6 +533,21 @@ export function WebsiteForm() {
 						v.about.founders,
 						() => founders.add({ name: "", role: "", bio: "", photoUrl: "" }),
 					)}
+				</CardContent>
+			</Card>
+
+			<Card>
+				<CardHeader>
+					<CardTitle>{t("admin.website.share.title")}</CardTitle>
+				</CardHeader>
+				<CardContent className="gap-2 grid">
+					<Upload
+						label={t("admin.website.share.image")}
+						accept="image/jpeg,image/png,image/webp"
+						{...up("share", "shareImageUrl")}
+						value={v.shareImageUrl}
+					/>
+					<p className="text-sm text-muted-foreground">{t("admin.website.share.hint")}</p>
 				</CardContent>
 			</Card>
 

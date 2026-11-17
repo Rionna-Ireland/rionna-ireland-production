@@ -33,6 +33,7 @@ export const websiteSchema = z.object({
 		.object({
 			storyTitle: text(120).optional(),
 			photoUrl: z.string().trim().optional(),
+			videoUrl: z.string().trim().optional(),
 			founders: z
 				.array(
 					z.object({
@@ -47,4 +48,5 @@ export const websiteSchema = z.object({
 		})
 		.optional(),
 	joinMode: z.enum(["waitlist", "signup"]).optional(),
+	shareImageUrl: z.string().trim().optional(),
 });

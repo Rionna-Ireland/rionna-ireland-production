@@ -96,7 +96,7 @@ export function PageCopyForm() {
 			<p className="text-sm text-muted-foreground">
 				{t.rich("intro", {
 					link: (chunks) => (
-						<Link href="/admin/website" className="underline">
+						<Link href="/admin/website?tab=media" className="underline">
 							{chunks}
 						</Link>
 					),

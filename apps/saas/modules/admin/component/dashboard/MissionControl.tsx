@@ -126,10 +126,10 @@ export function MissionControl() {
 				{
 					key: "pageCopy",
 					audience: "public" as const,
-					href: "/page-copy",
+					href: "/website?tab=text",
 					icon: TypeIcon,
 				},
-				{ key: "website", audience: "public" as const, href: "/website", icon: GlobeIcon },
+				{ key: "website", audience: "public" as const, href: "/website?tab=media", icon: GlobeIcon },
 				{ key: "waitlist", href: "/waitlist", icon: ListIcon },
 			],
 		},

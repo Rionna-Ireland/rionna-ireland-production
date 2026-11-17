@@ -35,10 +35,14 @@ export interface OrganizationWebsiteMetadata {
 	about?: {
 		storyTitle?: string;
 		photoUrl?: string;
+		/** Optional mp4 for the About club section; wins over photoUrl there. */
+		videoUrl?: string;
 		/** Max 6. */
 		founders?: { name: string; role: string; bio: string; photoUrl?: string }[];
 	};
 	joinMode?: "waitlist" | "signup";
+	/** Social share (og:image) for every page without its own; mediaPublic URL. */
+	shareImageUrl?: string;
 }
 
 export interface OrganizationMetadata {

@@ -50,6 +50,18 @@ describe("website form helpers", () => {
 		expect(w.joinMode).toBe("signup");
 	});
 
+	it("round-trips the about video and share image", () => {
+		const w = {
+			about: { videoUrl: "https://cdn/v.mp4" },
+			shareImageUrl: "https://cdn/s.jpg",
+			joinMode: "signup" as const,
+		};
+		const out = toWebsitePayload(fromWebsite(w));
+		expect(out.about?.videoUrl).toBe("https://cdn/v.mp4");
+		expect(out.shareImageUrl).toBe("https://cdn/s.jpg");
+		expect(toWebsitePayload(fromWebsite(undefined)).shareImageUrl).toBeUndefined();
+	});
+
 	it("defaults join mode to signup like the site", () => {
 		expect(fromWebsite(undefined).joinMode).toBe("signup");
 	});
@@ -89,6 +101,7 @@ describe("caps match the server schema", () => {
 		v.about = {
 			storyTitle: x(CAP.storyTitle),
 			photoUrl: "",
+			videoUrl: "",
 			founders: [
 				{
 					name: x(CAP.founderName),
