@@ -1,6 +1,7 @@
 import { hasMemberAccess } from "@repo/api/modules/members/lib/membership-status";
 import { auth } from "@repo/auth";
 import { getSignedUrl } from "@repo/storage";
+import { config as storageConfig } from "@repo/storage/config";
 import { resolveLogicalBucket } from "@repo/storage/logical-bucket";
 
 export const GET = async (req: Request, { params }: { params: Promise<{ path: string[] }> }) => {
@@ -29,9 +30,15 @@ export const GET = async (req: Request, { params }: { params: Promise<{ path: st
 	}
 
 	// W-04: club media (member posts, updates) is for paying members and staff;
-	// avatars stay session-only.
+	// avatars stay session-only. Staging and prod point both logical buckets at
+	// one physical bucket, so there the key decides: avatars and org logos are
+	// root-level `{id}.png`, club media always sits under `{orgId}/...`.
+	const isClubMedia =
+		bucket === "media" ||
+		(storageConfig.bucketNames.avatars === storageConfig.bucketNames.media &&
+			filePath.includes("/"));
 	if (
-		bucket === "media" &&
+		isClubMedia &&
 		!(await hasMemberAccess(session.user, session.session.activeOrganizationId ?? undefined))
 	) {
 		return new Response("Forbidden", { status: 403 });

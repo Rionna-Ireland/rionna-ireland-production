@@ -12,10 +12,11 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockGetSession, mockGetSignedUrl, mockMemberFindFirst } = vi.hoisted(() => ({
+const { mockGetSession, mockGetSignedUrl, mockMemberFindFirst, bucketNames } = vi.hoisted(() => ({
 	mockGetSession: vi.fn(),
 	mockGetSignedUrl: vi.fn(),
 	mockMemberFindFirst: vi.fn(),
+	bucketNames: { avatars: "Avatars_Bucket", media: "Media_Bucket" },
 }));
 
 vi.mock("@repo/database", () => ({ db: { member: { findFirst: mockMemberFindFirst } } }));
@@ -29,9 +30,7 @@ vi.mock("@repo/storage", () => ({
 }));
 
 vi.mock("@repo/storage/config", () => ({
-	config: {
-		bucketNames: { avatars: "Avatars_Bucket", media: "Media_Bucket" },
-	},
+	config: { bucketNames },
 }));
 
 import { GET } from "../[...path]/route";
@@ -46,6 +45,7 @@ function params(path: string[]) {
 
 beforeEach(() => {
 	vi.clearAllMocks();
+	Object.assign(bucketNames, { avatars: "Avatars_Bucket", media: "Media_Bucket" });
 	mockGetSession.mockResolvedValue({ user: { id: "u1" }, session: { id: "s1" } });
 	mockGetSignedUrl.mockResolvedValue("https://signed.test/x.png");
 	mockMemberFindFirst.mockResolvedValue({ id: "m1" });
@@ -120,6 +120,30 @@ describe("image proxy GET", () => {
 		const res = await GET(makeReq(), params(["avatars", "u1.png"]));
 
 		expect(res.status).toBe(401);
+	});
+
+	describe("when avatars and media share one physical bucket (staging, prod)", () => {
+		beforeEach(() => {
+			Object.assign(bucketNames, { avatars: "Shared_Bucket", media: "Shared_Bucket" });
+			mockMemberFindFirst.mockResolvedValue(null);
+		});
+
+		it.each([
+			[["avatars", "org1", "member-posts", "x.png"]],
+			[["Shared_Bucket", "org1", "member-posts", "x.png"]],
+		])("returns 403 for club media requested as %j", async (path) => {
+			const res = await GET(makeReq(), params(path));
+
+			expect(res.status).toBe(403);
+			expect(mockGetSignedUrl).not.toHaveBeenCalled();
+		});
+
+		it("still serves root-level avatars and logos to non-members", async () => {
+			const res = await GET(makeReq(), params(["Shared_Bucket", "u2.png"]));
+
+			expect(res.status).toBe(200);
+			expect(mockMemberFindFirst).not.toHaveBeenCalled();
+		});
 	});
 
 	it("keeps rejecting unknown buckets", async () => {
