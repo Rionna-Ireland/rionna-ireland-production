@@ -30,3 +30,6 @@ export async function POST(request: Request) {
   await runIngestForAllOrgs();
   return Response.json({ ok: true });
 }
+
+// cron-job.eu jobs fire with GET.
+export { POST as GET };

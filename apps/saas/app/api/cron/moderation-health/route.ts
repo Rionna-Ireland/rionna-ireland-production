@@ -52,3 +52,6 @@ export async function POST(request: Request) {
 
 	return Response.json({ ok: false, ...failure });
 }
+
+// cron-job.eu jobs fire with GET.
+export { POST as GET };
