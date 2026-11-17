@@ -1092,7 +1092,12 @@
 				"title": "Link previews",
 				"image": "Share image (JPEG, PNG or WebP, 1200 × 630 works best)",
 				"hint": "Shown when someone shares a link to the website on WhatsApp, LinkedIn, Facebook and similar. News articles use their own image."
-			}
+			},
+			"currentFile": "Live on the site: {name}",
+			"placeholderInUse": "The site is showing this placeholder. Upload a file to replace it.",
+			"noFile": "No file uploaded.",
+			"pendingFile": "Uploaded, goes live when you save: {name}",
+			"previewUnavailable": "Preview not available here. While the site is in waitlist mode, placeholders only load for people with the preview password."
 		},
 		"pageCopy": {
 			"intro": "Change the words, photos and video on any page of the public website, section by section. Everything goes live when you save.",

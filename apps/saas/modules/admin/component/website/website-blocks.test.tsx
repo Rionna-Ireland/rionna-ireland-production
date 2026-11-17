@@ -32,7 +32,7 @@ vi.mock("next/link", () => ({
 
 import { websiteSchema } from "@repo/api/modules/settings/procedures/website-schema";
 
-import { useWebsiteBlocks } from "./website-blocks";
+import { uploadedFileName, useWebsiteBlocks } from "./website-blocks";
 import { atCap, CAP, fromWebsite, MAX_STATS, moveItem, toWebsitePayload } from "./website-form";
 
 describe("website form helpers", () => {
@@ -128,6 +128,16 @@ function AllBlocks() {
 	return <>{Object.values(blocks)}</>;
 }
 
+describe("uploadedFileName", () => {
+	it("strips the storage path and uuid prefix", () => {
+		expect(
+			uploadedFileName(
+				"https://x.supabase.co/storage/v1/object/public/media-public/org1/website/hero/0f8fad5b-d9cb-469f-a165-70867728950e-my%20photo.jpg",
+			),
+		).toBe("my photo.jpg");
+	});
+});
+
 describe("useWebsiteBlocks", () => {
 	it("renders every website slot", () => {
 		const html = renderToStaticMarkup(<AllBlocks />);
@@ -145,5 +155,9 @@ describe("useWebsiteBlocks", () => {
 		]) {
 			expect(html).toContain(`admin.website.${k}`);
 		}
+		// Empty hero + about slots preview the site's built-in placeholders.
+		expect(html).toContain("https://rionna.test/hero/temp-hero.mp4");
+		expect(html).toContain("https://rionna.test/media/about/club-stable.mp4");
+		expect(html).toContain("placeholderInUse");
 	});
 });

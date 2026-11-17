@@ -1,6 +1,7 @@
 "use client";
 
 import { useAdminOrganization } from "@admin/hooks/use-admin-organization";
+import { config } from "@config";
 import { Button } from "@repo/ui/components/button";
 import { Input } from "@repo/ui/components/input";
 import { Label } from "@repo/ui/components/label";
@@ -12,7 +13,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { ArrowDownIcon, ArrowUpIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { type FieldPath, useForm } from "react-hook-form";
 
 import {
@@ -84,25 +85,87 @@ function ListControls({
 	);
 }
 
+// Built-in media the marketing site shows while a slot is empty (apps/marketing public/).
+const PLACEHOLDER_MEDIA = {
+	heroImage: "/hero/temp-hero.webp",
+	heroVideo: "/hero/temp-hero.mp4",
+	aboutVideo: "/media/about/club-stable.mp4",
+} as const;
+
+const placeholderUrl = (key: keyof typeof PLACEHOLDER_MEDIA) =>
+	config.marketingUrl ? `${config.marketingUrl}${PLACEHOLDER_MEDIA[key]}` : undefined;
+
+/** "…/website/hero/<uuid>-my-photo.jpg" → "my-photo.jpg". */
+export const uploadedFileName = (url: string) =>
+	decodeURIComponent(url.split("/").pop() ?? "").replace(/^[0-9a-f-]{36}-/, "");
+
+/** Thumbnail of the current file; says so instead of an empty box when it can't load. */
+function MediaPreview({ src, isVideo }: { src: string; isVideo: boolean }) {
+	const t = useTranslations("admin.website");
+	const [failed, setFailed] = useState(false);
+	const cls = "h-32 max-w-xs rounded-md border bg-muted object-cover";
+	if (failed) {
+		return (
+			<p className="h-32 max-w-xs p-3 text-xs flex items-center rounded-md border bg-muted text-muted-foreground">
+				{t("previewUnavailable")}
+			</p>
+		);
+	}
+	return isVideo ? (
+		<video
+			src={src}
+			muted
+			playsInline
+			controls
+			preload="metadata"
+			className={cls}
+			onError={() => setFailed(true)}
+		/>
+	) : (
+		// Public bucket URL; plain <img> like the rest of the admin (no optimizer).
+		<img src={src} alt="" className={cls} onError={() => setFailed(true)} />
+	);
+}
+
 function Upload({
 	label,
 	accept,
 	value,
+	fallback,
+	pending,
 	onFile,
 	onClear,
 }: {
 	label: string;
 	accept: string;
 	value: string;
+	/** What the site shows while this slot is empty, if anything. */
+	fallback?: string;
+	/** Changed since the last save, so not live yet. */
+	pending?: boolean;
 	onFile: (file: File | undefined) => void;
 	onClear: () => void;
 }) {
 	const t = useTranslations("admin.website");
+	const src = value || fallback;
+	const isVideo = accept.startsWith("video/");
 	return (
-		<div className="gap-1 grid">
+		<div className="gap-2 grid">
 			<Label>{label}</Label>
+			{src && (
+				<div className="gap-3 flex items-end">
+					<MediaPreview key={src} src={src} isVideo={isVideo} />
+					<p className="text-xs text-muted-foreground">
+						{value
+							? t(pending ? "pendingFile" : "currentFile", {
+									name: uploadedFileName(value),
+								})
+							: t("placeholderInUse")}
+					</p>
+				</div>
+			)}
+			{!src && <p className="text-xs text-muted-foreground">{t("noFile")}</p>}
 			<div className="gap-3 flex items-center">
-				{value && <span className="text-xs truncate text-muted-foreground">{value}</span>}
 				<Input type="file" accept={accept} onChange={(e) => onFile(e.target.files?.[0])} />
 				{value && (
 					<Button type="button" variant="outline" onClick={onClear}>
@@ -200,6 +263,7 @@ export function useWebsiteBlocks() {
 	const up = (kind: Kind, target: FieldPath<WebsiteFormValues>) => ({
 		onFile: (f: File | undefined) => upload(f, kind, target),
 		onClear: () => set(target, ""),
+		pending: form.getFieldState(target, form.formState).isDirty,
 	});
 
 	const field = (
@@ -255,6 +319,8 @@ export function useWebsiteBlocks() {
 	);
 
 	const isDirty = form.formState.isDirty;
+	// Mirrors HeroSection: the temporary clip shows only while both hero slots are empty.
+	const heroEmpty = !v.hero.imageUrl && !v.hero.videoUrl;
 	const blocks = {
 		hero: (
 			<>
@@ -272,12 +338,14 @@ export function useWebsiteBlocks() {
 					accept="image/jpeg,image/png,image/webp"
 					{...up("hero", "hero.imageUrl")}
 					value={v.hero.imageUrl}
+					fallback={heroEmpty ? placeholderUrl("heroImage") : undefined}
 				/>
 				<Upload
 					label={t("admin.website.hero.video")}
 					accept="video/mp4"
 					{...up("hero", "hero.videoUrl")}
 					value={v.hero.videoUrl}
+					fallback={heroEmpty ? placeholderUrl("heroVideo") : undefined}
 				/>
 			</>
 		),
@@ -450,6 +518,7 @@ export function useWebsiteBlocks() {
 					accept="video/mp4"
 					{...up("about", "about.videoUrl")}
 					value={v.about.videoUrl}
+					fallback={v.about.photoUrl ? undefined : placeholderUrl("aboutVideo")}
 				/>
 				<p className="text-sm text-muted-foreground">
 					{t("admin.website.about.storyText")}{" "}
