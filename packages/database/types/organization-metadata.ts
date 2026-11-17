@@ -134,6 +134,8 @@ export interface OrganizationMetadata {
 	moderation?: { extraBlockedWords?: string[] };
 	/** S16-01: editable marketing-site content slots. */
 	website?: OrganizationWebsiteMetadata;
+	/** S17-09: admin overrides of marketing copy, keyed by dotted message path. */
+	pageCopy?: Record<string, string>;
 }
 
 export function parseOrgMetadata(raw: string | null): OrganizationMetadata {
