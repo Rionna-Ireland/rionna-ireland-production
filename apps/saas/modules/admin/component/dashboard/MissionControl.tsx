@@ -2,6 +2,7 @@
 
 import { useAdminOrganization } from "@admin/hooks/use-admin-organization";
 import { getAdminPath } from "@admin/lib/links";
+import { config } from "@config";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@repo/ui/components/card";
@@ -13,12 +14,16 @@ import {
 	CreditCardIcon,
 	ExternalLinkIcon,
 	FlagIcon,
+	GlobeIcon,
 	HeartHandshakeIcon,
 	HeartIcon,
+	ListIcon,
 	MegaphoneIcon,
 	NewspaperIcon,
+	PlusIcon,
 	TagIcon,
 	TriangleAlertIcon,
+	TypeIcon,
 	UsersIcon,
 	VoteIcon,
 } from "lucide-react";
@@ -112,6 +117,20 @@ export function MissionControl() {
 			actions: [
 				{ key: "event", audience: members, href: "/events/new", icon: CalendarPlusIcon },
 				{ key: "poll", audience: members, href: "/polls/new", icon: VoteIcon },
+				{ key: "horse", href: "/horses/new", icon: PlusIcon },
+			],
+		},
+		{
+			key: "website",
+			actions: [
+				{
+					key: "pageCopy",
+					audience: "public" as const,
+					href: "/page-copy",
+					icon: TypeIcon,
+				},
+				{ key: "website", audience: "public" as const, href: "/website", icon: GlobeIcon },
+				{ key: "waitlist", href: "/waitlist", icon: ListIcon },
 			],
 		},
 		{
@@ -133,6 +152,7 @@ export function MissionControl() {
 	const deepLinks = [
 		{ key: "stripe", href: STRIPE_DASHBOARD_URL },
 		{ key: "circleAdmin", href: CIRCLE_ADMIN_URL },
+		...(config.marketingUrl ? [{ key: "website", href: config.marketingUrl }] : []),
 	];
 
 	return (
@@ -185,7 +205,7 @@ export function MissionControl() {
 												<span className="flex-1 text-left text-foreground">
 													{t(`admin.dashboard.actions.${action.key}`)}
 												</span>
-												{"audience" in action && (
+												{"audience" in action && action.audience && (
 													<AudienceTag audience={action.audience} />
 												)}
 												{"badge" in action && !!action.badge && (
