@@ -52,7 +52,7 @@ In a browser signed in as a regular member (not platform admin):
 
 In a browser signed in as a platform admin (and with no Member row in any org):
 
-- [ ] `GET /platform` renders the dashboard (NOT redirected to `/new-organization`)
+- [ ] `GET /platform` renders the dashboard (NOT redirected to `/subscribe`)
 - [ ] Dashboard cards show counts for orgs, members, active subscriptions
 - [ ] `GET /platform/orgs` lists all orgs
 - [ ] `GET /platform/orgs/<id>` renders the detail page for a real org id
