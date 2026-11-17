@@ -259,6 +259,8 @@ describe("admin plugin endpoints (S17-08 / W-20)", () => {
 				headers,
 				body: { userId: USER_ID, newPassword: "hijacked-123" },
 			}),
+		// Read-only, so it catches a future partial grant to club admins.
+		"list-users": (headers: Headers) => auth.api.listUsers({ headers, query: {} }),
 	};
 	const cases = ["admin", "user"].flatMap((role) =>
 		Object.keys(calls).map((endpoint) => [role, endpoint] as const),
