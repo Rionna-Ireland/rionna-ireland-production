@@ -1,6 +1,5 @@
 import { getActiveOrganization, getSession } from "@auth/lib/server";
 import { ChangeOrganizationNameForm } from "@organizations/components/ChangeOrganizationNameForm";
-import { DeleteOrganizationForm } from "@organizations/components/DeleteOrganizationForm";
 import { OrganizationLogoForm } from "@organizations/components/OrganizationLogoForm";
 import { isOrganizationAdmin } from "@repo/auth/lib/helper";
 import { PageHeader } from "@shared/components/PageHeader";
@@ -40,7 +39,6 @@ export default async function OrganizationSettingsPage({
 			<SettingsList>
 				{isOrgAdmin && <OrganizationLogoForm />}
 				<ChangeOrganizationNameForm />
-				{isOrgAdmin && <DeleteOrganizationForm />}
 			</SettingsList>
 		</>
 	);

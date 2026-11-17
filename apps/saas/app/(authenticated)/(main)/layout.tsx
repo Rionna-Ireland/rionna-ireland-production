@@ -65,7 +65,7 @@ export default async function MainLayout({ children }: PropsWithChildren) {
 			if (isPlatformAdmin && session?.session.activeOrganizationId) {
 				// fall through
 			} else {
-				redirect(isPlatformAdmin ? "/platform" : "/new-organization");
+				redirect(isPlatformAdmin ? "/platform" : "/subscribe");
 			}
 		}
 	}

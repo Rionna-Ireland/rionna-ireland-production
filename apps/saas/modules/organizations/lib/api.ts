@@ -81,39 +81,6 @@ export const useFullOrganizationQuery = (id: string) => {
 };
 
 /*
- * Create organization
- */
-export const createOrganizationMutationKey = ["create-organization"] as const;
-export const useCreateOrganizationMutation = () => {
-	return useMutation({
-		mutationKey: createOrganizationMutationKey,
-		mutationFn: async ({
-			name,
-			metadata,
-		}: {
-			name: string;
-			metadata?: OrganizationMetadata;
-		}) => {
-			const { slug } = await orpcClient.organizations.generateSlug({
-				name,
-			});
-
-			const { error, data } = await authClient.organization.create({
-				name,
-				slug,
-				metadata,
-			});
-
-			if (error) {
-				throw error;
-			}
-
-			return data;
-		},
-	});
-};
-
-/*
  * Update organization
  */
 export const updateOrganizationMutationKey = ["update-organization"] as const;

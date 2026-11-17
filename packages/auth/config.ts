@@ -18,7 +18,6 @@ export const config = {
 	organizations: {
 		enable: true,
 		hideOrganization: true,
-		enableUsersToCreateOrganizations: false,
 		requireOrganization: true,
 		forbiddenOrganizationSlugs: [
 			"new-organization",

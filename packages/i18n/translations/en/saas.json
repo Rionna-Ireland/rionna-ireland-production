@@ -1349,16 +1349,6 @@
 		"title": "Set up your account"
 	},
 	"organizations": {
-		"createForm": {
-			"name": "Organization name",
-			"notifications": {
-				"error": "We are sorry, but we were unable to create your organization. Please try again later.",
-				"success": "Your organization has been created. You can now invite members."
-			},
-			"submit": "Create organization",
-			"subtitle": "Enter a name for your organization to get started. You can change the name later in the organization settings.",
-			"title": "Create an organization"
-		},
 		"invitationAlert": {
 			"description": "You need to sign in or create an account to join the organization.",
 			"title": "You have been invited to join an organization."
@@ -1370,12 +1360,10 @@
 			"title": "Join the organization"
 		},
 		"organizationSelect": {
-			"createNewOrganization": "Create new organization",
 			"organizations": "Organizations",
 			"personalAccount": "Personal account"
 		},
 		"organizationsGrid": {
-			"createNewOrganization": "Create new organization",
 			"title": "Your organizations"
 		},
 		"roles": {
@@ -1386,12 +1374,6 @@
 		"settings": {
 			"changeName": {
 				"title": "Organization name"
-			},
-			"deleteOrganization": {
-				"confirmation": "Are you sure you want to delete your organization?",
-				"description": "Permanently delete your organization. Once you delete your organization, there is no going back. To confirm, please enter your password below:",
-				"submit": "Delete organization",
-				"title": "Delete organization"
 			},
 			"logo": {
 				"description": "Upload a logo for your organization.",
