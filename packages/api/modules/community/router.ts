@@ -2,7 +2,7 @@ import { attributePost } from "./procedures/admin/attribute-post";
 import { listModeration } from "./procedures/admin/list-moderation";
 import { listModerationAttention } from "./procedures/admin/list-moderation-attention";
 import { listSpaces } from "./procedures/admin/list-spaces";
-import { resolveModeration } from "./procedures/admin/resolve-moderation";
+import { moderationLiveContent, resolveModeration } from "./procedures/admin/resolve-moderation";
 import { setSpaceSettings } from "./procedures/admin/set-space-settings";
 import {
 	clearPinnedAnswerAdmin,
@@ -28,6 +28,7 @@ export const communityAdminRouter = {
 	moderation: {
 		list: listModeration,
 		resolve: resolveModeration,
+		liveContent: moderationLiveContent,
 		attention: listModerationAttention,
 	},
 };

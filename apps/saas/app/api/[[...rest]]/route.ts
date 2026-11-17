@@ -1,5 +1,9 @@
-import { app } from "@repo/api";
+import { app, setAfterResponse } from "@repo/api";
 import { handle } from "hono/vercel";
+import { after } from "next/server";
+
+// Background work in procedures (notifications, admin emails) must outlive the response.
+setAfterResponse(after);
 
 // FABLE_AUDIT P2: headroom for the heavier RPCs behind this catch-all
 // (news publish fan-out, feed fan-out) beyond the platform default.

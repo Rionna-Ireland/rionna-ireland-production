@@ -1,25 +1,40 @@
 import { call } from "@orpc/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockGetSession, mockMemberFindFirst, mockCreateModerationFlag, mockNotifyAdminsOfReport } =
-	vi.hoisted(() => ({
-		mockGetSession: vi.fn(),
-		mockMemberFindFirst: vi.fn(),
-		mockCreateModerationFlag: vi.fn(),
-		mockNotifyAdminsOfReport: vi.fn(),
-	}));
+const {
+	mockGetSession,
+	mockMemberFindFirst,
+	mockOrgFindUnique,
+	mockCreateModerationFlag,
+	mockNotifyAdminsOfReport,
+	mockFetchReportedContent,
+	mockCheckRateLimit,
+} = vi.hoisted(() => ({
+	mockGetSession: vi.fn(),
+	mockMemberFindFirst: vi.fn(),
+	mockOrgFindUnique: vi.fn(),
+	mockCreateModerationFlag: vi.fn(),
+	mockNotifyAdminsOfReport: vi.fn(),
+	mockFetchReportedContent: vi.fn(),
+	mockCheckRateLimit: vi.fn(),
+}));
 
 vi.mock("@repo/auth", () => ({ auth: { api: { getSession: mockGetSession } } }));
 // Mock @repo/database wholesale (no importActual) — the real module needs DATABASE_URL.
 vi.mock("@repo/database", () => ({
 	db: {
 		member: { findFirst: mockMemberFindFirst },
+		organization: { findUnique: mockOrgFindUnique },
 	},
 	createModerationFlag: mockCreateModerationFlag,
 }));
 vi.mock("../lib/notify-admins-of-report", () => ({
 	notifyAdminsOfReport: mockNotifyAdminsOfReport,
 }));
+vi.mock("../lib/reported-content", () => ({
+	fetchReportedContent: mockFetchReportedContent,
+}));
+vi.mock("@repo/utils/lib/rate-limit", () => ({ checkRateLimit: mockCheckRateLimit }));
 vi.mock("@repo/logs", () => ({
 	logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), log: vi.fn() },
 }));
@@ -37,14 +52,21 @@ const baseInput = {
 	organizationId: ORG_ID,
 	surface: "post" as const,
 	postId: POST_ID,
-	excerpt: "This post is spammy and unpleasant.",
+	spaceId: "space1",
 	reason: "spam" as const,
 };
 
 beforeEach(() => {
 	vi.clearAllMocks();
 	mockGetSession.mockResolvedValue({ session: { id: "s1" }, user: USER });
-	mockMemberFindFirst.mockResolvedValue({ id: "m1" });
+	mockMemberFindFirst.mockResolvedValue({ id: "m1", circleMemberId: "cm1" });
+	mockOrgFindUnique.mockResolvedValue({ slug: "club" });
+	mockCheckRateLimit.mockResolvedValue({ ok: true });
+	mockFetchReportedContent.mockResolvedValue({
+		status: "ok",
+		text: "This post is spammy and unpleasant.",
+		authorName: "Real Author",
+	});
 	mockCreateModerationFlag.mockResolvedValue({
 		id: "flag1",
 		contentExcerpt: "This post is spammy and unpleasant.",
@@ -103,5 +125,54 @@ describe("community.reportContent", () => {
 		});
 		expect(mockCreateModerationFlag).not.toHaveBeenCalled();
 		expect(mockNotifyAdminsOfReport).not.toHaveBeenCalled();
+	});
+
+	it("W-06: rejects a post id that does not resolve in Circle, without a flag or email", async () => {
+		mockFetchReportedContent.mockResolvedValue({ status: "not_found" });
+
+		await expect(call(reportContent, baseInput, ctx)).rejects.toMatchObject({ code: "NOT_FOUND" });
+		expect(mockCreateModerationFlag).not.toHaveBeenCalled();
+		expect(mockNotifyAdminsOfReport).not.toHaveBeenCalled();
+	});
+
+	it("W-06: stores the excerpt and author read from Circle, ignoring client-sent ones", async () => {
+		mockFetchReportedContent.mockResolvedValue({
+			status: "ok",
+			text: "What the post really says",
+			authorName: "Trainer Tom",
+		});
+
+		await call(
+			reportContent,
+			{ ...baseInput, excerpt: "Fake abusive text", authorName: "Someone Else" } as never,
+			ctx,
+		);
+
+		expect(mockFetchReportedContent).toHaveBeenCalledWith({
+			orgSlug: "club",
+			circleMemberId: "cm1",
+			postId: POST_ID,
+			commentId: null,
+			spaceId: "space1",
+		});
+		expect(mockCreateModerationFlag).toHaveBeenCalledWith(
+			expect.objectContaining({
+				contentExcerpt: "What the post really says",
+				targetAuthorName: "Trainer Tom",
+			}),
+		);
+	});
+
+	it("W-06: caps reports per member per day", async () => {
+		mockCheckRateLimit.mockResolvedValue({ ok: false, retryAfter: 3600 });
+
+		await expect(call(reportContent, baseInput, ctx)).rejects.toMatchObject({
+			code: "TOO_MANY_REQUESTS",
+		});
+		expect(mockCheckRateLimit).toHaveBeenCalledWith(
+			expect.objectContaining({ key: "m1", windowSeconds: 24 * 60 * 60 }),
+		);
+		expect(mockFetchReportedContent).not.toHaveBeenCalled();
+		expect(mockCreateModerationFlag).not.toHaveBeenCalled();
 	});
 });

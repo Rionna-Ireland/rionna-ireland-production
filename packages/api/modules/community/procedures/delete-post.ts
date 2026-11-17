@@ -1,9 +1,9 @@
 import { db, findOwnCommunityPost, markCommunityPostDeleted, parseOrgMetadata } from "@repo/database";
 import { logger } from "@repo/logs";
-import { createCircleService, getCircleHeadlessApiBaseUrl } from "@repo/payments/lib/circle";
 import { z } from "zod";
 
 import { memberProcedure } from "../../../orpc/procedures";
+import { memberCircleFetch } from "../../circle/lib/member-circle-fetch";
 import { invalidateMemberFeedCache } from "../../circle/lib/member-feed-cache";
 import type { DeletePostResult } from "../lib/types";
 
@@ -52,38 +52,13 @@ export const deletePost = memberProcedure
 			return { ok: false };
 		}
 
-		const service = createCircleService(org.slug);
-		const tokenOutcome = await service.getMemberToken(member.circleMemberId);
-		if (!tokenOutcome.ok) {
-			logger.warn("[Community] Delete post: token mint failed", {
-				surface: "community.delete_post",
-				userId: user.id,
-				organizationId,
-				reason: tokenOutcome.reason,
-			});
-			return { ok: false };
-		}
-
-		const base = getCircleHeadlessApiBaseUrl();
-		let res: Response;
-		try {
-			res = await fetch(
-				`${base}/spaces/${encodeURIComponent(spaceId)}/posts/${encodeURIComponent(postId)}`,
-				{
-					method: "DELETE",
-					headers: { Authorization: `Bearer ${tokenOutcome.data.accessToken}` },
-				},
-			);
-		} catch (error) {
-			logger.warn("[Community] Delete post: request threw", {
-				surface: "community.delete_post",
-				userId: user.id,
-				spaceId,
-				postId,
-				error: String(error),
-			});
-			return { ok: false };
-		}
+		const res = await memberCircleFetch(
+			{ orgSlug: org.slug, circleMemberId: member.circleMemberId },
+			`/spaces/${encodeURIComponent(spaceId)}/posts/${encodeURIComponent(postId)}`,
+			{ method: "DELETE" },
+			{ surface: "community.delete_post", userId: user.id, spaceId, postId },
+		);
+		if (!res) return { ok: false };
 
 		if (!res.ok) {
 			logger.warn("[Community] Delete post: rejected", {

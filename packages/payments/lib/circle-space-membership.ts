@@ -20,7 +20,7 @@
 import { db } from "@repo/database";
 import { logger } from "@repo/logs";
 
-import { createCircleService, getCircleHeadlessApiBaseUrl } from "./circle";
+import { circleFetch, createCircleService, getCircleHeadlessApiBaseUrl } from "./circle";
 
 export interface SyncCircleSpaceMembershipParams {
 	organizationId: string;
@@ -107,7 +107,7 @@ export async function syncCircleSpaceMembership(
 
 		let response: Response;
 		try {
-			response = await fetch(url, {
+			response = await circleFetch(url, {
 				method: "POST",
 				headers: { Authorization: `Bearer ${tokenOutcome.data.accessToken}` },
 			});

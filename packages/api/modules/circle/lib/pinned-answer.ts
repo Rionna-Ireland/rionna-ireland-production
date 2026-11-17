@@ -1,8 +1,8 @@
 import { db } from "@repo/database";
 import { logger } from "@repo/logs";
-import { createCircleService, getCircleHeadlessApiBaseUrl } from "@repo/payments/lib/circle";
 import { STAFF_MEMBER_ROLES, STAFF_USER_ROLES } from "@repo/payments/lib/founding-member";
 
+import { memberCircleFetch } from "./member-circle-fetch";
 import { type PostComment, toPostComment } from "./parse-comment";
 import { objectValue } from "./parse-post";
 
@@ -73,12 +73,13 @@ export async function fetchPostComment(p: {
 	commentId: string;
 }): Promise<FetchedComment> {
 	try {
-		const token = await createCircleService(p.orgSlug).getMemberToken(p.circleMemberId);
-		if (!token.ok) return { status: "error" };
-		const res = await fetch(
-			`${getCircleHeadlessApiBaseUrl()}/posts/${encodeURIComponent(p.postId)}/comments/${encodeURIComponent(p.commentId)}`,
-			{ headers: { Authorization: `Bearer ${token.data.accessToken}` } },
+		const res = await memberCircleFetch(
+			p,
+			`/posts/${encodeURIComponent(p.postId)}/comments/${encodeURIComponent(p.commentId)}`,
+			{},
+			{ surface: "circle.pinned_answer", postId: p.postId, commentId: p.commentId },
 		);
+		if (!res) return { status: "error" };
 		if (res.status === 404) return { status: "not_found" };
 		if (!res.ok) return { status: "error" };
 		const envelope = objectValue(await res.json());

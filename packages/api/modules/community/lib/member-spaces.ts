@@ -10,7 +10,11 @@
  */
 
 import { logger } from "@repo/logs";
-import { getCircleHeadlessApiBaseUrl } from "@repo/payments/lib/circle";
+import {
+	circleFetch,
+	clearCachedMemberToken,
+	getCircleHeadlessApiBaseUrl,
+} from "@repo/payments/lib/circle";
 
 import { objectValue, textValue } from "../../circle/lib/parse-post";
 import { MEMBER_SPACES_CACHE_MAX_ENTRIES, MEMBER_SPACES_CACHE_TTL_MS } from "./limits";
@@ -51,11 +55,14 @@ function parseMemberSpace(raw: Record<string, unknown>): MemberSpace | null {
  */
 export async function fetchMemberSpaces(p: {
 	accessToken: string;
+	/** Pass both to drop a cached token Circle rejects with 401. */
+	fromCache?: boolean;
+	circleMemberId?: string;
 }): Promise<MemberSpace[] | null> {
 	const base = getCircleHeadlessApiBaseUrl();
 	let res: Response;
 	try {
-		res = await fetch(`${base}/spaces?per_page=100`, {
+		res = await circleFetch(`${base}/spaces?per_page=100`, {
 			headers: { Authorization: `Bearer ${p.accessToken}` },
 		});
 	} catch (error) {
@@ -64,6 +71,9 @@ export async function fetchMemberSpaces(p: {
 			error: String(error),
 		});
 		return null;
+	}
+	if (res.status === 401 && p.fromCache && p.circleMemberId) {
+		await clearCachedMemberToken(p.circleMemberId);
 	}
 	if (!res.ok) {
 		logger.warn("[Community] Member spaces fetch failed", {

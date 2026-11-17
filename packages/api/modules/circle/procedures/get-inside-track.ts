@@ -1,12 +1,18 @@
 import { ORPCError } from "@orpc/server";
 import { db, parseOrgMetadata } from "@repo/database";
 import { logger } from "@repo/logs";
-import { createCircleService, getCircleHeadlessApiBaseUrl } from "@repo/payments/lib/circle";
+import {
+	circleFetch,
+	clearCachedMemberToken,
+	createCircleService,
+	getCircleHeadlessApiBaseUrl,
+} from "@repo/payments/lib/circle";
 import { z } from "zod";
 
+import { runAfterResponse } from "../../../lib/after-response";
 import { memberProcedure } from "../../../orpc/procedures";
-import { loadInsideTrackDurations, applyVideoDurations } from "../lib/inside-track-meta";
 import { readInsideTrackCache, writeInsideTrackCache } from "../lib/inside-track-cache";
+import { loadInsideTrackDurations, applyVideoDurations } from "../lib/inside-track-meta";
 import { type MemberFeedItem, extractPosts, objectValue, toFeedItem } from "../lib/parse-post";
 
 const POSTS_PER_PAGE = 30;
@@ -38,7 +44,7 @@ async function fetchPinnedPost(
 	communityDomain: string | undefined,
 ): Promise<PinFetchOutcome> {
 	try {
-		const r = await fetch(
+		const r = await circleFetch(
 			`${base}/spaces/${encodeURIComponent(spaceId)}/posts/${encodeURIComponent(postId)}`,
 			{ headers: { Authorization: `Bearer ${accessToken}` } },
 		);
@@ -179,10 +185,13 @@ export const getInsideTrack = memberProcedure
 		const communityDomain = orgMetadata.circle?.communityDomain;
 		let items: MemberFeedItem[];
 		try {
-			const r = await fetch(
+			const r = await circleFetch(
 				`${base}/spaces/${encodeURIComponent(spaceId)}/posts?per_page=${POSTS_PER_PAGE}&sort=latest`,
 				{ headers: { Authorization: `Bearer ${tokenOutcome.data.accessToken}` } },
 			);
+			if (r.status === 401 && tokenOutcome.data.fromCache) {
+				await clearCachedMemberToken(member.circleMemberId);
+			}
 			if (!r.ok) {
 				logger.warn("[Circle] Inside Track: posts fetch failed", {
 					surface: "circle.inside_track",
@@ -261,12 +270,16 @@ export const getInsideTrack = memberProcedure
 		// Lazy prune: only confirmed-404 ids, re-reading fresh metadata at write
 		// time (Finding B2). Fire-and-forget; last-write-wins is fine single-club.
 		if (confirmedDeletedIds.size > 0) {
-			void pruneConfirmedDeletedPins(input.organizationId, confirmedDeletedIds).catch((error) => {
-				logger.warn("[Circle] Inside Track: pin prune failed", {
-					organizationId: input.organizationId,
-					error: String(error),
-				});
-			});
+			runAfterResponse(
+				pruneConfirmedDeletedPins(input.organizationId, confirmedDeletedIds).catch(
+					(error) => {
+						logger.warn("[Circle] Inside Track: pin prune failed", {
+							organizationId: input.organizationId,
+							error: String(error),
+						});
+					},
+				),
+			);
 		}
 
 		writeInsideTrackCache(input.organizationId, { configured: true, pinned, latest });

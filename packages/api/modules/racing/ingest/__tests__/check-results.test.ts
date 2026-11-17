@@ -11,6 +11,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const mockRaceFindMany = vi.fn();
 const mockRaceEntryUpdate = vi.fn();
 const mockRaceEntryFindUnique = vi.fn().mockResolvedValue(null);
+const mockRaceEntryFindMany = vi.fn().mockResolvedValue([]);
 const mockHorseFindUnique = vi.fn();
 const mockHorseUpdate = vi.fn().mockResolvedValue({});
 
@@ -22,6 +23,7 @@ vi.mock("@repo/database", () => ({
 		raceEntry: {
 			update: (...args: unknown[]) => mockRaceEntryUpdate(...args),
 			findUnique: (...args: unknown[]) => mockRaceEntryFindUnique(...args),
+			findMany: (...args: unknown[]) => mockRaceEntryFindMany(...args),
 		},
 		horse: {
 			findUnique: (...args: unknown[]) => mockHorseFindUnique(...args),
@@ -48,6 +50,7 @@ import { checkForResults } from "../check-results";
 describe("checkForResults", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mockRaceEntryFindMany.mockResolvedValue([]);
 	});
 
 	it("continues after a failed entry and restores the original row state", async () => {
@@ -351,5 +354,51 @@ describe("checkForResults", () => {
 		expect(raceEntryPassed).toMatchObject({
 			jockeyName: "Eoghan Finegan",
 		});
+	});
+
+	it("W-11: retries the Circle post for recent RAN entries missing circle:RAN after they leave the racecards", async () => {
+		mockRaceFindMany.mockResolvedValue([]);
+		const race = {
+			id: "race-9",
+			name: "Old Race",
+			postTime: new Date("2026-04-12T15:00:00Z"),
+			distanceFurlongs: 8,
+			goingDescription: "Good",
+			meeting: { course: { name: "Naas" } },
+		};
+		mockRaceEntryFindMany.mockResolvedValue([
+			{
+				id: "e-posted",
+				status: "RAN",
+				notifiedStates: ["RAN", "circle:RAN"],
+				finishingPosition: 1,
+				horse: { id: "h1", name: "A" },
+				jockey: null,
+				race,
+			},
+			{
+				id: "e-missing",
+				status: "RAN",
+				notifiedStates: ["DECLARED", "RAN"],
+				finishingPosition: 3,
+				fieldSize: 12,
+				horse: { id: "h2", name: "B", photos: null },
+				jockey: { name: "J Doe" },
+				race,
+			},
+		]);
+
+		await checkForResults("org-1", { getRaceResult: vi.fn() } as never);
+
+		const where = mockRaceEntryFindMany.mock.calls[0][0].where;
+		expect(where).toMatchObject({ organizationId: "org-1", status: "RAN" });
+		expect(where.race.postTime.gte).toBeInstanceOf(Date);
+		expect(mockHandleStatusTransition).toHaveBeenCalledOnce();
+		const [orgId, horse, raceArg, entry, previous] = mockHandleStatusTransition.mock.calls[0];
+		expect(orgId).toBe("org-1");
+		expect(horse).toMatchObject({ id: "h2", name: "B" });
+		expect(raceArg).toMatchObject({ id: "race-9", courseName: "Naas" });
+		expect(entry).toMatchObject({ id: "e-missing", fieldSize: 12, jockeyName: "J Doe" });
+		expect(previous).toBe("RAN");
 	});
 });

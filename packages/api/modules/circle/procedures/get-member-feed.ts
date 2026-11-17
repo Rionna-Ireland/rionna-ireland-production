@@ -1,7 +1,12 @@
 import { ORPCError } from "@orpc/server";
 import { db, getVisiblePolls, parseOrgMetadata } from "@repo/database";
 import { logger } from "@repo/logs";
-import { createCircleService, getCircleHeadlessApiBaseUrl } from "@repo/payments/lib/circle";
+import {
+	circleFetch,
+	clearCachedMemberToken,
+	createCircleService,
+	getCircleHeadlessApiBaseUrl,
+} from "@repo/payments/lib/circle";
 import { z } from "zod";
 
 import { memberProcedure } from "../../../orpc/procedures";
@@ -163,6 +168,13 @@ export const getMemberFeed = memberProcedure
 		}
 		const base = getCircleHeadlessApiBaseUrl();
 		const authHeaders = { Authorization: `Bearer ${tokenOutcome.data.accessToken}` };
+		// A cached token Circle rejects would fail every feed load until it expires.
+		const circleMemberId = member.circleMemberId;
+		const dropRejectedToken = async (res: Response) => {
+			if (res.status === 401 && tokenOutcome.data.fromCache) {
+				await clearCachedMemberToken(circleMemberId);
+			}
+		};
 
 		// Single-space feed (horse discussion): one Circle call, paged by Circle
 		// itself. Deliberately bypasses the merged buffer (never read or written)
@@ -209,10 +221,11 @@ export const getMemberFeed = memberProcedure
 				return fail();
 			}
 			try {
-				const r = await fetch(
+				const r = await circleFetch(
 					`${base}/spaces/${encodeURIComponent(input.spaceId)}/posts?per_page=${input.perPage}&page=${input.page}&sort=latest`,
 					{ headers: authHeaders },
 				);
+				await dropRejectedToken(r);
 				if (!r.ok) {
 					logger.warn("[Circle] Member feed: space posts fetch failed", {
 						surface: "circle.member_feed",
@@ -289,7 +302,7 @@ export const getMemberFeed = memberProcedure
 		// 1. The member's accessible post-bearing spaces.
 		let spacesRes: Response;
 		try {
-			spacesRes = await fetch(`${base}/spaces?per_page=100`, { headers: authHeaders });
+			spacesRes = await circleFetch(`${base}/spaces?per_page=100`, { headers: authHeaders });
 		} catch (error) {
 			logger.warn("[Circle] Member feed: spaces fetch threw", {
 				surface: "circle.member_feed",
@@ -297,6 +310,7 @@ export const getMemberFeed = memberProcedure
 			});
 			return fail();
 		}
+		await dropRejectedToken(spacesRes);
 		if (!spacesRes.ok) {
 			logger.warn("[Circle] Member feed: spaces fetch failed", {
 				surface: "circle.member_feed",
@@ -414,7 +428,7 @@ export const getMemberFeed = memberProcedure
 					slug: textValue(space.slug),
 				};
 				try {
-					const r = await fetch(
+					const r = await circleFetch(
 						`${base}/spaces/${encodeURIComponent(String(space.id))}/posts?per_page=${POSTS_PER_SPACE}&sort=latest`,
 						{ headers: authHeaders },
 					);

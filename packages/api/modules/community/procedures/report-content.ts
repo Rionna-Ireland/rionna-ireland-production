@@ -1,11 +1,15 @@
+import { ORPCError } from "@orpc/server";
 import { createModerationFlag, db } from "@repo/database";
 import { logger } from "@repo/logs";
+import { checkRateLimit } from "@repo/utils/lib/rate-limit";
 import { z } from "zod";
 
+import { runAfterResponse } from "../../../lib/after-response";
 import { memberProcedure } from "../../../orpc/procedures";
 import { excerptOf } from "../../moderation/excerpt";
-import { EXCERPT_CHARS, MAX_NOTE_CHARS } from "../lib/limits";
+import { EXCERPT_CHARS, MAX_NOTE_CHARS, REPORTS_PER_DAY } from "../lib/limits";
 import { notifyAdminsOfReport } from "../lib/notify-admins-of-report";
+import { fetchReportedContent } from "../lib/reported-content";
 import type { ReportContentResult } from "../lib/types";
 
 const inputSchema = z
@@ -15,8 +19,6 @@ const inputSchema = z
 		postId: z.string().min(1),
 		commentId: z.string().min(1).optional(),
 		spaceId: z.string().min(1).optional(),
-		excerpt: z.string().trim().max(500),
-		authorName: z.string().trim().max(120).optional(),
 		reason: z.enum(["spam", "abusive", "off_topic", "other"]),
 		note: z.string().trim().max(MAX_NOTE_CHARS).optional(),
 	})
@@ -37,6 +39,9 @@ const inputSchema = z
  * partial unique index on member+post/comment) is a quiet `{ ok: true }` with
  * no admin email; every other successful report fans out one email per
  * club admin/owner (fire-and-forget, never blocks the response).
+ *
+ * W-06: the excerpt and author are read from Circle with the reporter's own
+ * token, never taken from the client; an id that does not resolve is refused.
  */
 export const reportContent = memberProcedure
 	.route({
@@ -47,18 +52,50 @@ export const reportContent = memberProcedure
 	})
 	.input(inputSchema)
 	.handler(async ({ input, context: { user } }): Promise<ReportContentResult> => {
-		const { organizationId, surface, postId, commentId, spaceId, excerpt, authorName, reason, note } =
-			input;
+		const { organizationId, surface, postId, commentId, spaceId, reason, note } = input;
 
 		const member = await db.member.findFirst({
 			where: { userId: user.id, organizationId },
-			select: { id: true },
+			select: { id: true, circleMemberId: true },
 		});
-		if (!member) {
+		if (!member?.circleMemberId) {
 			return { ok: false };
 		}
 
-		const contentExcerpt = excerptOf(excerpt, EXCERPT_CHARS);
+		// Fails open when Upstash is unavailable (see checkRateLimit).
+		const limit = await checkRateLimit({
+			prefix: "rl:community:report",
+			key: member.id,
+			limit: REPORTS_PER_DAY,
+			windowSeconds: 24 * 60 * 60,
+		});
+		if (!limit.ok) {
+			throw new ORPCError("TOO_MANY_REQUESTS");
+		}
+
+		const org = await db.organization.findUnique({
+			where: { id: organizationId },
+			select: { slug: true },
+		});
+		if (!org?.slug) {
+			return { ok: false };
+		}
+
+		const target = await fetchReportedContent({
+			orgSlug: org.slug,
+			circleMemberId: member.circleMemberId,
+			postId,
+			commentId: surface === "comment" ? (commentId ?? null) : null,
+			spaceId: spaceId ?? null,
+		});
+		if (target.status === "not_found") {
+			throw new ORPCError("NOT_FOUND", { message: "Reported content not found" });
+		}
+		if (target.status === "error") {
+			return { ok: false };
+		}
+
+		const contentExcerpt = excerptOf(target.text, EXCERPT_CHARS);
 
 		const flag = await createModerationFlag({
 			organizationId,
@@ -68,7 +105,7 @@ export const reportContent = memberProcedure
 			targetPostId: postId,
 			targetCommentId: commentId ?? null,
 			targetSpaceId: spaceId ?? null,
-			targetAuthorName: authorName ?? null,
+			targetAuthorName: target.authorName,
 			contentExcerpt,
 			reason,
 			note: note ?? null,
@@ -79,7 +116,7 @@ export const reportContent = memberProcedure
 			return { ok: true };
 		}
 
-		void notifyAdminsOfReport({ organizationId, reason, excerpt: contentExcerpt });
+		runAfterResponse(notifyAdminsOfReport({ organizationId, reason, excerpt: contentExcerpt }));
 
 		logger.info("moderation.reported", {
 			organizationId,

@@ -10,6 +10,8 @@ const {
 	mockDeletePost,
 	mockDeleteComment,
 	mockOnCommunityPostRemoved,
+	mockMemberFindUnique,
+	mockFetchReportedContent,
 } = vi.hoisted(() => ({
 	mockGetSession: vi.fn(),
 	mockModerationFlagFindUnique: vi.fn(),
@@ -19,6 +21,8 @@ const {
 	mockDeletePost: vi.fn(),
 	mockDeleteComment: vi.fn(),
 	mockOnCommunityPostRemoved: vi.fn(),
+	mockMemberFindUnique: vi.fn(),
+	mockFetchReportedContent: vi.fn(),
 }));
 
 vi.mock("@repo/auth", () => ({ auth: { api: { getSession: mockGetSession } } }));
@@ -27,6 +31,7 @@ vi.mock("@repo/database", () => ({
 	db: {
 		moderationFlag: { findUnique: mockModerationFlagFindUnique },
 		organization: { findUnique: mockOrgFindUnique },
+		member: { findUnique: mockMemberFindUnique },
 	},
 	resolveModerationFlag: mockResolveModerationFlag,
 	markCommunityPostDeleted: mockMarkCommunityPostDeleted,
@@ -37,11 +42,12 @@ vi.mock("@repo/payments/lib/circle", () => ({
 vi.mock("@repo/logs", () => ({
 	logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), log: vi.fn() },
 }));
+vi.mock("../lib/reported-content", () => ({ fetchReportedContent: mockFetchReportedContent }));
 vi.mock("../../inbox/activity-hooks", () => ({
 	onCommunityPostRemoved: mockOnCommunityPostRemoved,
 }));
 
-import { resolveModeration } from "../procedures/admin/resolve-moderation";
+import { moderationLiveContent, resolveModeration } from "../procedures/admin/resolve-moderation";
 
 const ADMIN = { id: "u1", role: "admin", name: "Emma" };
 const SESSION = { id: "s1", activeOrganizationId: "org1" };
@@ -228,5 +234,31 @@ describe("admin.community.moderation.resolve (S12-02a)", () => {
 			call(resolveModeration, { organizationId: "other-org", flagId: FLAG_ID, action: "dismiss" }, ctx),
 		).rejects.toThrow();
 		expect(mockModerationFlagFindUnique).not.toHaveBeenCalled();
+	});
+});
+
+describe("admin.community.moderation.liveContent (W-06)", () => {
+	it("reads the reported post live from Circle with the reporter's token", async () => {
+		mockModerationFlagFindUnique.mockResolvedValue({ ...openPostFlag, targetSpaceId: "space-1" });
+		mockMemberFindUnique.mockResolvedValue({ circleMemberId: "cm-reporter" });
+		mockFetchReportedContent.mockResolvedValue({ status: "ok", text: "live text", authorName: "A" });
+
+		const result = await call(moderationLiveContent, { organizationId: ORG_ID, flagId: FLAG_ID }, ctx);
+
+		expect(mockFetchReportedContent).toHaveBeenCalledWith({
+			orgSlug: "rionna",
+			circleMemberId: "cm-reporter",
+			postId: "post-1",
+			commentId: null,
+			spaceId: "space-1",
+		});
+		expect(result).toEqual({ status: "ok", text: "live text", authorName: "A" });
+	});
+
+	it("is not_found for a flag in another org", async () => {
+		mockModerationFlagFindUnique.mockResolvedValue({ ...openPostFlag, organizationId: "other" });
+		const result = await call(moderationLiveContent, { organizationId: ORG_ID, flagId: FLAG_ID }, ctx);
+		expect(result).toEqual({ status: "not_found" });
+		expect(mockFetchReportedContent).not.toHaveBeenCalled();
 	});
 });

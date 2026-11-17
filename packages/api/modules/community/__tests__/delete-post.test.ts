@@ -31,6 +31,8 @@ vi.mock("@repo/database", () => ({
 	markCommunityPostDeleted: mockMarkCommunityPostDeleted,
 }));
 vi.mock("@repo/payments/lib/circle", () => ({
+	circleFetch: (url: string, init?: RequestInit) => fetch(url, init),
+	clearCachedMemberToken: vi.fn(),
 	createCircleService: () => ({ getMemberToken: mockGetMemberToken }),
 	getCircleHeadlessApiBaseUrl: () => "https://app.circle.so/api/headless/v1",
 }));

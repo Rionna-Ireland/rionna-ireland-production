@@ -1,8 +1,8 @@
 import { logger } from "@repo/logs";
-import { createCircleService, getCircleHeadlessApiBaseUrl } from "@repo/payments/lib/circle";
 
 import { withEventTypes } from "../../events/lib/event-meta";
 import { readEventsCache, writeEventsCache } from "./events-cache";
+import { memberCircleFetch } from "./member-circle-fetch";
 import { type ClubEvent, type ClubEventsResult, toClubEvent } from "./parse-event";
 
 const EVENTS_PER_PAGE = 50;
@@ -32,25 +32,15 @@ export async function loadMemberEvents(input: {
 		return { ...cached, events: await withEventTypes(organizationId, cached.events) };
 	}
 
-	const service = createCircleService(input.orgSlug);
-	const tokenOutcome = await service.getMemberToken(input.circleMemberId);
-	if (!tokenOutcome.ok) {
-		logger.warn("[Circle] Events: token mint failed", {
-			surface: "circle.events",
-			userId,
-			organizationId,
-			reason: tokenOutcome.reason,
-		});
-		return fail();
-	}
-
-	const base = getCircleHeadlessApiBaseUrl();
 	let events: ClubEvent[];
 	try {
-		const r = await fetch(
-			`${base}/community_events?past_events=${scope === "past"}&per_page=${EVENTS_PER_PAGE}`,
-			{ headers: { Authorization: `Bearer ${tokenOutcome.data.accessToken}` } },
+		const r = await memberCircleFetch(
+			input,
+			`/community_events?past_events=${scope === "past"}&per_page=${EVENTS_PER_PAGE}`,
+			{},
+			{ surface: "circle.events", userId, organizationId },
 		);
+		if (!r) return fail();
 		if (!r.ok) {
 			logger.warn("[Circle] Events: fetch failed", {
 				surface: "circle.events",

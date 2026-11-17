@@ -1,11 +1,11 @@
 import { ORPCError } from "@orpc/server";
 import { db } from "@repo/database";
 import { logger } from "@repo/logs";
-import { createCircleService, getCircleHeadlessApiBaseUrl } from "@repo/payments/lib/circle";
 import { z } from "zod";
 
 import { memberProcedure } from "../../../orpc/procedures";
 import { enrichComments } from "../lib/author-identity";
+import { memberCircleFetch } from "../lib/member-circle-fetch";
 import { extractComments, type PostComment } from "../lib/parse-comment";
 import { objectValue } from "../lib/parse-post";
 import { canPinAnswers, fetchPostComment, splitPinnedComment } from "../lib/pinned-answer";
@@ -63,34 +63,13 @@ export const getPostComments = memberProcedure
 			return fail();
 		}
 
-		const service = createCircleService(org.slug);
-		const tokenOutcome = await service.getMemberToken(member.circleMemberId);
-		if (!tokenOutcome.ok) {
-			logger.warn("[Circle] Post comments: token mint failed", {
-				surface: "circle.post_comments",
-				userId: user.id,
-				organizationId: input.organizationId,
-				reason: tokenOutcome.reason,
-			});
-			return fail();
-		}
-
-		const base = getCircleHeadlessApiBaseUrl();
-		let res: Response;
-		try {
-			res = await fetch(
-				`${base}/posts/${encodeURIComponent(input.postId)}/comments?page=${input.page}&per_page=60&sort=oldest`,
-				{ headers: { Authorization: `Bearer ${tokenOutcome.data.accessToken}` } },
-			);
-		} catch (error) {
-			logger.warn("[Circle] Post comments: request threw", {
-				surface: "circle.post_comments",
-				userId: user.id,
-				postId: input.postId,
-				error: String(error),
-			});
-			return fail();
-		}
+		const res = await memberCircleFetch(
+			{ orgSlug: org.slug, circleMemberId: member.circleMemberId },
+			`/posts/${encodeURIComponent(input.postId)}/comments?page=${input.page}&per_page=60&sort=oldest`,
+			{},
+			{ surface: "circle.post_comments", userId: user.id, postId: input.postId },
+		);
+		if (!res) return fail();
 
 		if (!res.ok) {
 			logger.warn("[Circle] Post comments: request failed", {

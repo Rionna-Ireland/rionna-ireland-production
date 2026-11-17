@@ -46,6 +46,8 @@ interface TransitionRaceEntry {
 	notifiedStates: unknown;
 	finishingPosition: number | null;
 	jockeyName?: string | null;
+	/** Stored runner count; ingest-horse passes the DB row but no fieldSize argument. */
+	fieldSize?: number | null;
 }
 
 export async function handleStatusTransition(
@@ -61,7 +63,33 @@ export async function handleStatusTransition(
 	if (!PUSH_WORTHY_STATUSES.includes(newStatus)) return;
 
 	const notifiedStates = (raceEntry.notifiedStates as string[]) ?? [];
-	if (notifiedStates.includes(newStatus)) return;
+	const postToCircle = (markers: string[]) =>
+		postRaceUpdateToCircle({
+			organizationId,
+			status: newStatus,
+			horse: { id: horse.id, name: horse.name },
+			race: {
+				id: race.id,
+				name: race.name,
+				postTime: race.postTime,
+				courseName: race.courseName,
+				distanceFurlongs: race.distanceFurlongs ?? null,
+				goingDescription: race.goingDescription ?? null,
+			},
+			raceEntry: {
+				id: raceEntry.id,
+				finishingPosition: raceEntry.finishingPosition,
+				jockeyName: raceEntry.jockeyName ?? null,
+				notifiedStates: markers,
+			},
+			fieldSize: fieldSize ?? raceEntry.fieldSize ?? undefined,
+		});
+
+	if (notifiedStates.includes(newStatus)) {
+		// W-11: the push went out but the Circle post failed; retry only the post.
+		if (!notifiedStates.includes(`circle:${newStatus}`)) await postToCircle(notifiedStates);
+		return;
+	}
 
 	const pushContent = buildPushContent(
 		newStatus as "DECLARED" | "NON_RUNNER" | "RAN",
@@ -115,26 +143,7 @@ export async function handleStatusTransition(
 		},
 	});
 
-	await postRaceUpdateToCircle({
-		organizationId,
-		status: newStatus,
-		horse: { id: horse.id, name: horse.name },
-		race: {
-			id: race.id,
-			name: race.name,
-			postTime: race.postTime,
-			courseName: race.courseName,
-			distanceFurlongs: race.distanceFurlongs ?? null,
-			goingDescription: race.goingDescription ?? null,
-		},
-		raceEntry: {
-			id: raceEntry.id,
-			finishingPosition: raceEntry.finishingPosition,
-			jockeyName: raceEntry.jockeyName ?? null,
-			notifiedStates: [...notifiedStates, newStatus],
-		},
-		fieldSize,
-	});
+	await postToCircle([...notifiedStates, newStatus]);
 
 	// Update denormalized fields on Horse
 	if (newStatus === "DECLARED") {

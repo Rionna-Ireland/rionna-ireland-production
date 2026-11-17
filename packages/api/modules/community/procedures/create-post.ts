@@ -5,6 +5,7 @@ import { createCommunityPost, db, parseOrgMetadata } from "@repo/database";
 import { createCircleService, serializeNovelDocToCircle } from "@repo/payments/lib/circle";
 import { z } from "zod";
 
+import { runAfterResponse } from "../../../lib/after-response";
 import { memberProcedure } from "../../../orpc/procedures";
 import { invalidateMemberFeedCache } from "../../circle/lib/member-feed-cache";
 import { onMemberPostCreated } from "../../inbox/activity-hooks";
@@ -96,7 +97,10 @@ export const createPost = memberProcedure
 			if (!token.ok) {
 				return { ok: false, reason: "circle_failed" };
 			}
-			const fetched = await fetchMemberSpaces({ accessToken: token.data.accessToken });
+			const fetched = await fetchMemberSpaces({
+				...token.data,
+				circleMemberId: member.circleMemberId,
+			});
 			if (!fetched) {
 				return { ok: false, reason: "circle_failed" };
 			}
@@ -112,14 +116,14 @@ export const createPost = memberProcedure
 		const screenSubject = `${title ?? ""}\n${body}`;
 		const screen = screenText(screenSubject, metadata.moderation?.extraBlockedWords);
 		if (!screen.allowed) {
-			void recordBlock({
+			runAfterResponse(recordBlock({
 				organizationId,
 				memberId: member.id,
 				surface: "post",
 				text: screenSubject,
 				matches: screen.matches,
 				targetSpaceId: spaceId,
-			});
+			}));
 			return { ok: false, reason: "blocked" };
 		}
 
@@ -128,7 +132,7 @@ export const createPost = memberProcedure
 		if (metadata.features?.autoModeration !== false) {
 			const auto = await screenAuto(screenSubject, { organizationId, memberId: member.id, surface: "post" });
 			if (!auto.allowed) {
-				void recordAutoBlock({
+				runAfterResponse(recordAutoBlock({
 					organizationId,
 					memberId: member.id,
 					surface: "post",
@@ -136,7 +140,7 @@ export const createPost = memberProcedure
 					categories: auto.categories,
 					scores: auto.scores,
 					targetSpaceId: spaceId,
-				});
+				}));
 				return { ok: false, reason: "blocked" };
 			}
 		}
@@ -156,7 +160,9 @@ export const createPost = memberProcedure
 			// token would happily post into a space Circle forbids members from
 			// posting in, so this is the only honest check.
 			const token = await circle.getMemberToken(member.circleMemberId);
-			const refreshed = token.ok ? await fetchMemberSpaces({ accessToken: token.data.accessToken }) : null;
+			const refreshed = token.ok
+				? await fetchMemberSpaces({ ...token.data, circleMemberId: member.circleMemberId })
+				: null;
 			if (!refreshed) {
 				return { ok: false, reason: "circle_failed" };
 			}
@@ -169,11 +175,7 @@ export const createPost = memberProcedure
 		}
 
 		// Rate limits.
-		const withinLimit = await checkPostRateLimit({
-			organizationId,
-			memberId: member.id,
-			now: new Date(),
-		});
+		const withinLimit = await checkPostRateLimit(member.id);
 		if (!withinLimit) {
 			return { ok: false, reason: "rate_limited" };
 		}
@@ -214,12 +216,12 @@ export const createPost = memberProcedure
 
 		invalidateMemberFeedCache(user.id, organizationId);
 
-		void onMemberPostCreated({
+		runAfterResponse(onMemberPostCreated({
 			organizationId,
 			circleSpaceId: spaceId,
 			circlePostId: created.data.circlePostId,
 			author: { userId: user.id, name: user.name ?? null },
-		});
+		}));
 
 		logger.info("community.post.created", {
 			organizationId,

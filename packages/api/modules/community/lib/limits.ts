@@ -16,7 +16,7 @@ export const POST_IMAGE_CONTENT_TYPES = [
 	"image/heic",
 ] as const;
 
-/** Member post rate limits (`lib/rate-limit.ts`). */
+/** Member post rate limits (`lib/rate-limit.ts`, Redis-backed). */
 export const POSTS_PER_HOUR = 5;
 export const POSTS_PER_DAY = 20;
 
@@ -27,6 +27,8 @@ export const MAX_BODY_CHARS = 2000;
 
 /** Longest note a member can add when reporting a post or comment. */
 export const MAX_NOTE_CHARS = 500;
+/** Reports one member can file per day (W-06: each one emails every admin). */
+export const REPORTS_PER_DAY = 20;
 /** Longest content excerpt stored on a moderation flag. */
 export const EXCERPT_CHARS = 200;
 

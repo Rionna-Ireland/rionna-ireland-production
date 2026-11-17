@@ -5,8 +5,10 @@ import { logger } from "@repo/logs";
 import { createCircleService } from "@repo/payments/lib/circle";
 import { z } from "zod";
 
+import { runAfterResponse } from "../../../../lib/after-response";
 import { adminProcedure } from "../../../../orpc/procedures";
 import { onCommunityPostRemoved } from "../../../inbox/activity-hooks";
+import { fetchReportedContent, type ReportedContent } from "../../lib/reported-content";
 
 export interface ResolveModerationResult {
 	ok: boolean;
@@ -78,7 +80,7 @@ export async function runResolveModeration(
 			return { ok: false, status: "open" };
 		}
 		await markCommunityPostDeleted({ circlePostId: targetId, deletedBy: "admin" });
-		void onCommunityPostRemoved({ organizationId: p.organizationId, circlePostId: targetId });
+		runAfterResponse(onCommunityPostRemoved({ organizationId: p.organizationId, circlePostId: targetId }));
 	}
 	else {
 		const outcome = await circle.deleteComment(targetId);
@@ -127,4 +129,41 @@ export const resolveModeration = adminProcedure
 			throw new ORPCError("FORBIDDEN");
 		}
 		return runResolveModeration(input, context.user.id);
+	});
+
+/**
+ * W-06: the reported content as it is in Circle now, read with the
+ * reporter's member token, so the admin acts on what is actually there and
+ * not only on the excerpt stored at report time.
+ */
+export const moderationLiveContent = adminProcedure
+	.route({
+		method: "GET",
+		path: "/admin/community/moderation/live-content",
+		tags: ["Community"],
+		summary: "Read the reported post or comment live from Circle",
+	})
+	.input(z.object({ organizationId: z.string(), flagId: z.string().min(1) }))
+	.handler(async ({ input, context }): Promise<ReportedContent> => {
+		if (context.session.activeOrganizationId !== input.organizationId) {
+			throw new ORPCError("FORBIDDEN");
+		}
+		const flag = await db.moderationFlag.findUnique({ where: { id: input.flagId } });
+		if (!flag || flag.organizationId !== input.organizationId || !flag.targetPostId) {
+			return { status: "not_found" };
+		}
+		const [org, reporter] = await Promise.all([
+			db.organization.findUnique({ where: { id: input.organizationId }, select: { slug: true } }),
+			db.member.findUnique({ where: { id: flag.memberId }, select: { circleMemberId: true } }),
+		]);
+		if (!org?.slug || !reporter?.circleMemberId) {
+			return { status: "error" };
+		}
+		return fetchReportedContent({
+			orgSlug: org.slug,
+			circleMemberId: reporter.circleMemberId,
+			postId: flag.targetPostId,
+			commentId: flag.surface === "comment" ? flag.targetCommentId : null,
+			spaceId: flag.targetSpaceId,
+		});
 	});

@@ -1,15 +1,5 @@
 import { db } from "../client";
 
-/**
- * Deleted posts still count toward the rate-limit window (no `deletedAt: null` filter) —
- * otherwise a member could delete-and-repost past the cap.
- */
-export async function countRecentCommunityPosts(p: { organizationId: string; memberId: string; since: Date }) {
-	return db.communityPost.count({
-		where: { organizationId: p.organizationId, memberId: p.memberId, createdAt: { gte: p.since } },
-	});
-}
-
 export async function createCommunityPost(p: {
 	organizationId: string;
 	memberId: string;

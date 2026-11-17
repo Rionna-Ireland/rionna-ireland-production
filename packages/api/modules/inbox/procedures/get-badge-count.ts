@@ -3,18 +3,13 @@ import { z } from "zod";
 
 import { memberProcedure } from "../../../orpc/procedures";
 
-/** Shared by inbox.badgeCount and the legacy Circle badge route. Returns the raw, uncapped count. */
+/** The member's raw, uncapped unseen count (inbox.badgeCount). */
 export async function readUnseenCount(userId: string, organizationId: string): Promise<number> {
 	const member = await db.member.findUnique({
 		where: { organizationId_userId: { organizationId, userId } },
 		select: { inboxUnseenCount: true },
 	});
 	return Math.max(0, member?.inboxUnseenCount ?? 0);
-}
-
-/** Clamps a raw unseen count to the legacy Circle badge route's 0..99 display range. */
-export function clampBadge(count: number): number {
-	return Math.max(0, Math.min(99, count));
 }
 
 export const getBadgeCount = memberProcedure

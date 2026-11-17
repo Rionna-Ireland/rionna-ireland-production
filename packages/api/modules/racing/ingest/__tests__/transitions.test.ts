@@ -415,16 +415,36 @@ describe("handleStatusTransition", () => {
 		});
 	});
 
-	it("already-notified bare status short-circuits both push and post", async () => {
-		const entry = {
-			id: "entry-1",
-			status: "DECLARED" as const,
-			notifiedStates: ["DECLARED"],
-			finishingPosition: null,
-		};
-		await handleStatusTransition("org-1", mockHorse, mockRace, entry, "ENTERED");
+	it("push and Circle markers both present short-circuits both push and post", async () => {
+		await handleStatusTransition(
+			"org-1",
+			mockHorse,
+			mockRace,
+			makeEntry("DECLARED", ["DECLARED", "circle:DECLARED"]),
+			"ENTERED",
+		);
 		expect(mockSendPush).not.toHaveBeenCalled();
 		expect(mockPostToCircle).not.toHaveBeenCalled();
+	});
+
+	it("W-11: push marker present but Circle marker missing retries the post, not the push", async () => {
+		await handleStatusTransition(
+			"org-1",
+			mockHorse,
+			mockRace,
+			makeEntry("RAN", ["DECLARED", "RAN"], 1),
+			"RAN",
+			9,
+		);
+		expect(mockSendPush).not.toHaveBeenCalled();
+		expect(mockRecordInbox).not.toHaveBeenCalled();
+		expect(mockRaceEntryUpdate).not.toHaveBeenCalled();
+		expect(mockPostToCircle).toHaveBeenCalledOnce();
+		expect(mockPostToCircle.mock.calls[0][0]).toMatchObject({
+			status: "RAN",
+			fieldSize: 9,
+			raceEntry: { id: "entry-1", finishingPosition: 1, notifiedStates: ["DECLARED", "RAN"] },
+		});
 	});
 
 	it("passes fieldSize through to postRaceUpdateToCircle when provided", async () => {
@@ -452,5 +472,16 @@ describe("handleStatusTransition", () => {
 		);
 		expect(mockPostToCircle).toHaveBeenCalledOnce();
 		expect(mockPostToCircle.mock.calls[0][0].fieldSize).toBeUndefined();
+	});
+
+	it("W-11: a retried RAN post keeps the stored field size when the caller passes none", async () => {
+		await handleStatusTransition(
+			"org-1",
+			mockHorse,
+			mockRace,
+			{ ...makeEntry("RAN", ["RAN"], 2), fieldSize: 11 },
+			"RAN",
+		);
+		expect(mockPostToCircle.mock.calls[0][0].fieldSize).toBe(11);
 	});
 });

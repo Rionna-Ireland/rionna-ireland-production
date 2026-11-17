@@ -9,6 +9,7 @@ import { logger as honoLogger } from "hono/logger";
 import { checkApiRateLimit, checkAuthRateLimit } from "./lib/rate-limit";
 import { openApiHandler, rpcHandler } from "./orpc/handler";
 
+export { setAfterResponse } from "./lib/after-response";
 export { router } from "./orpc/router";
 
 export const app = new Hono()

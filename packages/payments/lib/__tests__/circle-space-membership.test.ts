@@ -48,6 +48,7 @@ vi.mock("@repo/logs", () => ({
 }));
 
 vi.mock("../circle", () => ({
+	circleFetch: (url: string, init?: RequestInit) => fetch(url, init),
 	createCircleService: mockCreateCircleService,
 	getCircleHeadlessApiBaseUrl: mockGetCircleHeadlessApiBaseUrl,
 }));

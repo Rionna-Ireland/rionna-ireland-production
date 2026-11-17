@@ -39,6 +39,7 @@ vi.mock("@repo/database", () => ({
 
 vi.mock("@repo/logs", () => ({ logger: mockLogger }));
 
+import { CIRCLE_FETCH_TIMEOUT_MS } from "../fetch";
 import { clearCachedMemberToken } from "../member-token-cache";
 import { RealCircleService } from "../real";
 
@@ -234,5 +235,25 @@ describe("RealCircleService.getMemberNotifications cache invalidation", () => {
 			([args]) => args?.data?.circleAccessToken === null,
 		);
 		expect(clearingCalls).toHaveLength(0);
+	});
+});
+
+describe("RealCircleService.getMemberToken timeout", () => {
+	afterEach(() => vi.useRealTimers());
+
+	it("gives up on a hanging SDK mint after the Circle timeout", async () => {
+		vi.useFakeTimers();
+		mockMemberFindFirst.mockResolvedValue(null);
+		mockMint.mockReturnValue(new Promise(() => {}));
+
+		const pending = makeService().getMemberToken(CIRCLE_MEMBER_ID);
+		await vi.advanceTimersByTimeAsync(CIRCLE_FETCH_TIMEOUT_MS);
+
+		await expect(pending).resolves.toMatchObject({
+			ok: false,
+			reason: "server_error",
+			retriable: true,
+		});
+		expect(mockMemberUpdateMany).not.toHaveBeenCalled();
 	});
 });

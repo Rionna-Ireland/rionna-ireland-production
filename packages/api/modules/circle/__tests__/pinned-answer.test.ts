@@ -34,6 +34,8 @@ vi.mock("@repo/logs", () => ({
 	logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), log: vi.fn() },
 }));
 vi.mock("@repo/payments/lib/circle", () => ({
+	circleFetch: (url: string, init?: RequestInit) => fetch(url, init),
+	clearCachedMemberToken: vi.fn(),
 	createCircleService: vi.fn(() => ({
 		getMemberToken: vi.fn(async () => ({ ok: true, data: { accessToken: "jwt" } })),
 	})),

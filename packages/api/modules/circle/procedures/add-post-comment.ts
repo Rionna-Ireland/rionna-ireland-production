@@ -1,15 +1,16 @@
 import { ORPCError } from "@orpc/server";
 import { db, parseOrgMetadata } from "@repo/database";
 import { logger } from "@repo/logs";
-import { createCircleService, getCircleHeadlessApiBaseUrl } from "@repo/payments/lib/circle";
 import { z } from "zod";
 
+import { runAfterResponse } from "../../../lib/after-response";
 import { memberProcedure } from "../../../orpc/procedures";
 import { onPostCommented } from "../../inbox/activity-hooks";
 import { recordAutoBlock } from "../../moderation/record-auto-block";
 import { recordBlock } from "../../moderation/record-block";
 import { screenAuto } from "../../moderation/screen-auto";
 import { screenText } from "../../moderation/screen-text";
+import { memberCircleFetch } from "../lib/member-circle-fetch";
 import { invalidateMemberFeedCache } from "../lib/member-feed-cache";
 import { type PostComment, toPostComment } from "../lib/parse-comment";
 import { objectValue } from "../lib/parse-post";
@@ -63,14 +64,14 @@ export const addPostComment = memberProcedure
 		const metadata = parseOrgMetadata(org.metadata);
 		const screen = screenText(input.body, metadata.moderation?.extraBlockedWords);
 		if (!screen.allowed) {
-			void recordBlock({
+			runAfterResponse(recordBlock({
 				organizationId: input.organizationId,
 				memberId: member.id,
 				surface: "comment",
 				text: input.body,
 				matches: screen.matches,
 				targetPostId: input.postId,
-			});
+			}));
 			return { ok: false, blocked: true, comment: null };
 		}
 
@@ -78,7 +79,7 @@ export const addPostComment = memberProcedure
 		if (metadata.features?.autoModeration !== false) {
 			const auto = await screenAuto(input.body, { organizationId: input.organizationId, memberId: member.id, surface: "comment" });
 			if (!auto.allowed) {
-				void recordAutoBlock({
+				runAfterResponse(recordAutoBlock({
 					organizationId: input.organizationId,
 					memberId: member.id,
 					surface: "comment",
@@ -86,32 +87,17 @@ export const addPostComment = memberProcedure
 					categories: auto.categories,
 					scores: auto.scores,
 					targetPostId: input.postId,
-				});
+				}));
 				return { ok: false, blocked: true, comment: null };
 			}
 		}
 
-		const service = createCircleService(org.slug);
-		const tokenOutcome = await service.getMemberToken(member.circleMemberId);
-		if (!tokenOutcome.ok) {
-			logger.warn("[Circle] Add comment: token mint failed", {
-				surface: "circle.add_post_comment",
-				userId: user.id,
-				organizationId: input.organizationId,
-				reason: tokenOutcome.reason,
-			});
-			return fail();
-		}
-
-		const base = getCircleHeadlessApiBaseUrl();
-		let res: Response;
-		try {
-			res = await fetch(`${base}/posts/${encodeURIComponent(input.postId)}/comments`, {
+		const res = await memberCircleFetch(
+			{ orgSlug: org.slug, circleMemberId: member.circleMemberId },
+			`/posts/${encodeURIComponent(input.postId)}/comments`,
+			{
 				method: "POST",
-				headers: {
-					Authorization: `Bearer ${tokenOutcome.data.accessToken}`,
-					"Content-Type": "application/json",
-				},
+				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({
 					comment: {
 						body: input.body,
@@ -128,16 +114,10 @@ export const addPostComment = memberProcedure
 						},
 					},
 				}),
-			});
-		} catch (error) {
-			logger.warn("[Circle] Add comment: request threw", {
-				surface: "circle.add_post_comment",
-				userId: user.id,
-				postId: input.postId,
-				error: String(error),
-			});
-			return fail();
-		}
+			},
+			{ surface: "circle.add_post_comment", userId: user.id, postId: input.postId },
+		);
+		if (!res) return fail();
 
 		if (!res.ok) {
 			logger.warn("[Circle] Add comment: rejected", {
@@ -152,12 +132,12 @@ export const addPostComment = memberProcedure
 		// Comment counts on feed cards come from the 60s merged buffer.
 		invalidateMemberFeedCache(user.id, input.organizationId);
 
-		void onPostCommented({
+		runAfterResponse(onPostCommented({
 			organizationId: input.organizationId,
 			circlePostId: input.postId,
 			commentBody: input.body,
 			actor: { userId: user.id, name: user.name ?? null },
-		});
+		}));
 
 		try {
 			const payload = objectValue(await res.json());
