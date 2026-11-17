@@ -1721,5 +1721,8 @@
 		"title": "Processing your purchase",
 		"description": "Please wait while we confirm your payment.",
 		"loading": "Confirming your purchase, please wait..."
+	},
+	"subscribe": {
+		"membershipPending": "Your membership is being set up. If this doesn't change in a few minutes, email hello@rionna.com."
 	}
 }

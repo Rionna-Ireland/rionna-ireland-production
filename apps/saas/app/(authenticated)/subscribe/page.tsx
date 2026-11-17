@@ -1,5 +1,5 @@
 import { MembershipsClosedNotice } from "@auth/components/MembershipsClosedNotice";
-import { getSession } from "@auth/lib/server";
+import { getOrganizationList, getSession } from "@auth/lib/server";
 import { requireTermsAccepted } from "@auth/lib/terms-gate";
 import { listPurchases } from "@payments/lib/server";
 import { canCheckoutBeforeLaunch } from "@repo/api/modules/payments/lib/checkout-eligibility";
@@ -7,6 +7,7 @@ import { db } from "@repo/database";
 import { config as paymentsConfig } from "@repo/payments/config";
 import { createPurchasesHelper } from "@repo/payments/lib/helper";
 import { AuthWrapper } from "@shared/components/AuthWrapper";
+import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 
 import { SubscribeButton } from "./SubscribeButton";
@@ -26,7 +27,17 @@ export default async function SubscribePage() {
 	const { activePlan } = createPurchasesHelper(purchases);
 
 	if (activePlan) {
-		redirect("/");
+		// Mirrors the (main) layout's org gate: redirecting without a Member row would loop.
+		if ((await getOrganizationList()).length > 0) {
+			redirect("/");
+		}
+
+		const t = await getTranslations("subscribe");
+		return (
+			<AuthWrapper>
+				<p className="text-center">{t("membershipPending")}</p>
+			</AuthWrapper>
+		);
 	}
 
 	// Phase 1: resolve the single organization (Pink Connections)
