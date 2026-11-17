@@ -22,7 +22,8 @@
 			"charity": "Charity",
 			"moderation": "Moderation",
 			"waitlist": "Waitlist",
-			"website": "Website"
+			"website": "Website",
+			"pageCopy": "Page copy"
 		},
 		"dashboard": {
 			"health": {
@@ -40,7 +41,8 @@
 				"groups": {
 					"post": "Post",
 					"plan": "Plan",
-					"care": "Look after"
+					"care": "Look after",
+					"website": "Website"
 				},
 				"horseUpdate": "Post a horse update",
 				"news": "Publish website news",
@@ -53,7 +55,11 @@
 				"offer": "Add a partner offer",
 				"charityTotal": "Update the charity total",
 				"members": "Members & expert tags",
-				"soon": "Coming soon"
+				"soon": "Coming soon",
+				"horse": "Add a horse",
+				"pageCopy": "Edit website text",
+				"website": "Homepage, membership and About",
+				"waitlist": "View the waitlist"
 			},
 			"recent": {
 				"title": "Recent activity",
@@ -64,7 +70,8 @@
 			"links": {
 				"title": "Jump to",
 				"stripe": "Open Stripe",
-				"circleAdmin": "Open Circle admin"
+				"circleAdmin": "Open Circle admin",
+				"website": "Open the website"
 			}
 		},
 		"members": {
@@ -1082,6 +1089,56 @@
 			"moveUp": "Move up",
 			"moveDown": "Move down",
 			"remove": "Remove"
+		},
+		"pageCopy": {
+			"intro": "Change the text on any page of the public website. Edits go live as soon as you save. Hero text, membership price, inclusions and FAQ are set in <link>Website</link>.",
+			"search": "Search all pages for text",
+			"pages": "Pages",
+			"noResults": "No text matches your search.",
+			"viewPage": "View page",
+			"main": "Main text",
+			"meta": "Search engines and sharing",
+			"edited": "Edited",
+			"unsavedBadge": "Unsaved",
+			"reset": "Reset to original",
+			"original": "Original:",
+			"tokens": "Keep these exactly as they are: {tokens}",
+			"unsaved": "{count, plural, one {# unsaved change} other {# unsaved changes}}",
+			"allSaved": "All changes saved",
+			"discard": "Discard changes",
+			"save": "Save changes",
+			"saved": "Page copy saved. It's live on the website now.",
+			"saveError": "Could not save page copy.",
+			"brokenTitle": "Some text needs fixing",
+			"brokenHint": "A field highlighted in red is missing a placeholder or tag. Put it back, or reset the field.",
+			"page": {
+				"home": "Home",
+				"about": "About",
+				"membership": "Membership",
+				"appPage": "App",
+				"news": "News",
+				"events": "Events",
+				"waitlist": "Waitlist",
+				"contact": "Contact",
+				"common": "Site-wide",
+				"legal": "Legal pages",
+				"notFound": "Page not found",
+				"preview": "Preview gate"
+			},
+			"pageHint": {
+				"home": "The homepage, from the intro animation down to the final call to action.",
+				"about": "The About page: story, values, chapters and people.",
+				"membership": "The Membership page. Price, inclusions and FAQ live in Website.",
+				"appPage": "The page that shows off the app and links to the stores.",
+				"news": "Labels and buttons around news articles. Articles themselves are in News.",
+				"events": "Labels and buttons on the Events page. Events themselves are in Events.",
+				"waitlist": "The waitlist sign-up page, its form, success message and unsubscribe page.",
+				"contact": "The Contact page and its form.",
+				"common": "Text shown on every page: menu, footer and cookie banner.",
+				"legal": "The headings around Terms, Privacy and Cookie pages. The legal text itself is managed by the team.",
+				"notFound": "Shown when someone opens a link that doesn't exist.",
+				"preview": "The password page shown on the staging site before launch."
+			}
 		}
 	},
 	"app": {
