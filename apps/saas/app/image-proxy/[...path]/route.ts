@@ -1,16 +1,7 @@
 import { hasMemberAccess } from "@repo/api/modules/members/lib/membership-status";
 import { auth } from "@repo/auth";
 import { getSignedUrl } from "@repo/storage";
-import { config as storageConfig } from "@repo/storage/config";
-
-// Logical buckets this proxy is allowed to sign reads for. The first path
-// segment may be either the logical key ("avatars" | "media") or the resolved
-// bucket name (e.g. "Staging_Bucket"), so callers can pass either form.
-const ALLOWED_BUCKETS = ["avatars", "media"] as const;
-type LogicalBucket = (typeof ALLOWED_BUCKETS)[number];
-
-const resolveLogicalBucket = (segment: string): LogicalBucket | undefined =>
-	ALLOWED_BUCKETS.find((key) => key === segment || storageConfig.bucketNames[key] === segment);
+import { resolveLogicalBucket } from "@repo/storage/logical-bucket";
 
 export const GET = async (req: Request, { params }: { params: Promise<{ path: string[] }> }) => {
 	const { path } = await params;
