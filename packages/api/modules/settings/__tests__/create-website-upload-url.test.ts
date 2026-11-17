@@ -52,6 +52,26 @@ describe("createWebsiteUploadUrl", () => {
 		expect(mockGetSignedUploadUrl).toHaveBeenCalled();
 	});
 
+	it("accepts an about mp4 and a share image", async () => {
+		await call(
+			createWebsiteUploadUrl,
+			{ ...ok, kind: "about", filename: "a.mp4", contentType: "video/mp4" },
+			ctx,
+		);
+		const res = await call(createWebsiteUploadUrl, { ...ok, kind: "share" }, ctx);
+		expect(res.path).toMatch(/^org1\/website\/share\//);
+	});
+
+	it("rejects video for the share image", async () => {
+		await expect(
+			call(
+				createWebsiteUploadUrl,
+				{ ...ok, kind: "share", filename: "a.mp4", contentType: "video/mp4" },
+				ctx,
+			),
+		).rejects.toMatchObject({ code: "BAD_REQUEST" });
+	});
+
 	it("rejects video for founder kind", async () => {
 		await expect(
 			call(

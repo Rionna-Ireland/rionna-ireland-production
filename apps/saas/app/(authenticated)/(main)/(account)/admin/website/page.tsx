@@ -1,5 +1,5 @@
-import { WebsiteForm } from "@admin/component/website/WebsiteForm";
+import { WebsiteEditor } from "@admin/component/website/WebsiteEditor";
 
 export default function AdminWebsitePage() {
-	return <WebsiteForm />;
+	return <WebsiteEditor />;
 }

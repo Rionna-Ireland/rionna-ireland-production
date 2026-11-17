@@ -11,13 +11,15 @@ export function GrowPhoto({
 	index,
 	caption,
 	photoUrl,
+	videoUrl,
 }: {
 	label: string;
 	index: number;
 	caption: string;
 	photoUrl?: string | null;
+	videoUrl?: string | null;
 }) {
-	const media = pickClubMedia({ photoUrl });
+	const media = pickClubMedia({ photoUrl, videoUrl });
 	return (
 		<PlayWhenVisible id="club" data-chapter="" data-nav-tone="dark">
 			<PinnedStage

@@ -10,7 +10,8 @@ import { Footer } from "@shared/components/Footer";
 import { NavBar } from "@shared/components/NavBar";
 import { getClubOrganization } from "@shared/lib/club";
 import { isWaitlistView } from "@shared/lib/waitlist-view";
-import { getSiteJoinCta } from "@shared/lib/website";
+import { getSiteJoinCta, normalizeWebsite } from "@shared/lib/website";
+import type { Metadata } from "next";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages, setRequestLocale } from "next-intl/server";
 import { ThemeProvider } from "next-themes";
@@ -42,6 +43,17 @@ const ibmPlexMono = localFont({
 });
 
 const locales = Object.keys(i18nConfig.locales) as string[];
+
+/** Site-wide link preview image from Admin → Website; pages with their own openGraph (news) override it. */
+export async function generateMetadata(): Promise<Metadata> {
+	const image = normalizeWebsite((await getClubOrganization()).metadata?.website).shareImageUrl;
+	return image
+		? {
+				openGraph: { images: [image] },
+				twitter: { card: "summary_large_image", images: [image] },
+			}
+		: {};
+}
 
 export function generateStaticParams() {
 	return locales.map((locale) => ({ locale }));

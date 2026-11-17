@@ -15,17 +15,26 @@ import { orpc } from "@shared/lib/orpc-query-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ExternalLinkIcon, RotateCcwIcon, SearchIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
-import { groupCopy, humanize, PAGES, type PageId } from "./page-copy-groups";
+import {
+	groupCopy,
+	humanize,
+	layoutPage,
+	PAGES,
+	type PageId,
+	type PageSection,
+} from "./page-sections";
+import { useWebsiteBlocks, type WebsiteBlockId } from "./website-blocks";
 
 type Copy = Record<string, string>;
 
 const withDefaults = (saved: Copy | undefined): Copy => ({ ...marketingCopyDefaults, ...saved });
 
-export function PageCopyForm() {
+/** Admin → Website: every page's text, photos, video and settings, section by section, one Save. */
+export function WebsiteEditor() {
 	const t = useTranslations("admin.pageCopy");
+	const website = useWebsiteBlocks();
 	const queryClient = useQueryClient();
 	const { organizationId } = useAdminOrganization();
 
@@ -47,12 +56,14 @@ export function PageCopyForm() {
 		(k) => copyTokens(values[k]).join() !== copyTokens(marketingCopyDefaults[k]).join(),
 	);
 
+	const dirty = unsaved.length > 0 || website.isDirty;
+
 	useEffect(() => {
-		if (unsaved.length === 0) return;
+		if (!dirty) return;
 		const warn = (e: BeforeUnloadEvent) => e.preventDefault();
 		window.addEventListener("beforeunload", warn);
 		return () => window.removeEventListener("beforeunload", warn);
-	}, [unsaved.length]);
+	}, [dirty]);
 
 	const q = query.trim().toLowerCase();
 	const keys = Object.keys(marketingCopyDefaults).filter((k) =>
@@ -61,7 +72,9 @@ export function PageCopyForm() {
 				marketingCopyDefaults[k].toLowerCase().includes(q)
 			: k.split(".")[0] === page,
 	);
-	const groups = groupCopy(keys);
+	const sections: PageSection[] = q
+		? groupCopy(keys).map((g) => ({ ...g, blocks: [] }))
+		: layoutPage(page, keys);
 	const editedOn = (p: PageId) =>
 		Object.keys(values).filter(
 			(k) => k.startsWith(`${p}.`) && values[k] !== marketingCopyDefaults[k],
@@ -79,7 +92,8 @@ export function PageCopyForm() {
 			),
 		);
 		try {
-			await updateMutation.mutateAsync({ organizationId, pageCopy });
+			await website.save();
+			if (unsaved.length > 0) await updateMutation.mutateAsync({ organizationId, pageCopy });
 			await queryClient.invalidateQueries({ queryKey: orpc.settings.get.key() });
 			toastSuccess(t("saved"));
 		} catch {
@@ -93,15 +107,7 @@ export function PageCopyForm() {
 
 	return (
 		<div className="gap-4 pb-24 grid grid-cols-1">
-			<p className="text-sm text-muted-foreground">
-				{t.rich("intro", {
-					link: (chunks) => (
-						<Link href="/admin/website" className="underline">
-							{chunks}
-						</Link>
-					),
-				})}
-			</p>
+			<p className="text-sm text-muted-foreground">{t("intro")}</p>
 
 			<div className="relative">
 				<SearchIcon className="size-4 left-3 absolute top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -156,19 +162,26 @@ export function PageCopyForm() {
 				<p className="text-sm text-muted-foreground">{t("noResults")}</p>
 			)}
 
-			{groups.map((group) => (
+			{sections.map((group) => (
 				<Card key={group.id}>
 					<CardHeader>
 						<CardTitle>
 							{q && `${t(`page.${group.id.split(".")[0] as PageId}`)} · `}
-							{group.id.endsWith(".meta")
-								? t("meta")
-								: group.id.includes(".")
-									? humanize(group.id.split(".")[1])
-									: t("main")}
+							{group.extra
+								? t(`sections.${group.id as "stats"}`)
+								: group.id.endsWith(".meta")
+									? t("meta")
+									: group.id.includes(".")
+										? humanize(group.id.split(".")[1])
+										: t("main")}
 						</CardTitle>
 					</CardHeader>
 					<CardContent className="gap-5 grid">
+						{group.blocks.map((b) => (
+							<div key={b} className="gap-4 grid">
+								{website.blocks[b as WebsiteBlockId]}
+							</div>
+						))}
 						{group.keys.map((key) => (
 							<CopyField
 								key={key}
@@ -192,20 +205,27 @@ export function PageCopyForm() {
 				)}
 			>
 				<span className="text-sm mr-auto text-muted-foreground" aria-live="polite">
-					{unsaved.length > 0 ? t("unsaved", { count: unsaved.length }) : t("allSaved")}
+					{website.isDirty
+						? t("unsavedSome")
+						: unsaved.length > 0
+							? t("unsaved", { count: unsaved.length })
+							: t("allSaved")}
 				</span>
 				<Button
 					type="button"
 					variant="outline"
-					disabled={unsaved.length === 0}
-					onClick={() => setValues(saved)}
+					disabled={!dirty}
+					onClick={() => {
+						setValues(saved);
+						website.discard();
+					}}
 				>
 					{t("discard")}
 				</Button>
 				<Button
 					type="button"
-					loading={updateMutation.isPending}
-					disabled={unsaved.length === 0}
+					loading={updateMutation.isPending || website.saving}
+					disabled={!dirty}
 					onClick={save}
 				>
 					{t("save")}

@@ -33,6 +33,8 @@ export const updateWebsite = adminProcedure
 			website.hero?.imageUrl,
 			website.hero?.videoUrl,
 			website.about?.photoUrl,
+			website.about?.videoUrl,
+			website.shareImageUrl,
 			...(website.about?.founders ?? []).map((f) => f.photoUrl),
 		];
 		if (urls.some((u) => u && !isUnderPrefix(u, prefix))) {

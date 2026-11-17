@@ -32,8 +32,8 @@ vi.mock("next/link", () => ({
 
 import { websiteSchema } from "@repo/api/modules/settings/procedures/website-schema";
 
+import { uploadedFileName, useWebsiteBlocks } from "./website-blocks";
 import { atCap, CAP, fromWebsite, MAX_STATS, moveItem, toWebsitePayload } from "./website-form";
-import { WebsiteForm } from "./WebsiteForm";
 
 describe("website form helpers", () => {
 	it("submits the whole website object", () => {
@@ -48,6 +48,18 @@ describe("website form helpers", () => {
 		expect(w.hero?.eyebrow).toBeUndefined();
 		expect(w.stats).toHaveLength(1);
 		expect(w.joinMode).toBe("signup");
+	});
+
+	it("round-trips the about video and share image", () => {
+		const w = {
+			about: { videoUrl: "https://cdn/v.mp4" },
+			shareImageUrl: "https://cdn/s.jpg",
+			joinMode: "signup" as const,
+		};
+		const out = toWebsitePayload(fromWebsite(w));
+		expect(out.about?.videoUrl).toBe("https://cdn/v.mp4");
+		expect(out.shareImageUrl).toBe("https://cdn/s.jpg");
+		expect(toWebsitePayload(fromWebsite(undefined)).shareImageUrl).toBeUndefined();
 	});
 
 	it("defaults join mode to signup like the site", () => {
@@ -89,6 +101,7 @@ describe("caps match the server schema", () => {
 		v.about = {
 			storyTitle: x(CAP.storyTitle),
 			photoUrl: "",
+			videoUrl: "",
 			founders: [
 				{
 					name: x(CAP.founderName),
@@ -110,11 +123,41 @@ describe("caps match the server schema", () => {
 	});
 });
 
-describe("WebsiteForm", () => {
-	it("renders the six cards", () => {
-		const html = renderToStaticMarkup(<WebsiteForm />);
-		for (const c of ["hero", "horses", "stats", "membership", "about", "join"]) {
-			expect(html).toContain(`admin.website.${c}.title`);
+function AllBlocks() {
+	const { blocks } = useWebsiteBlocks();
+	return <>{Object.values(blocks)}</>;
+}
+
+describe("uploadedFileName", () => {
+	it("strips the storage path and uuid prefix", () => {
+		expect(
+			uploadedFileName(
+				"https://x.supabase.co/storage/v1/object/public/media-public/org1/website/hero/0f8fad5b-d9cb-469f-a165-70867728950e-my%20photo.jpg",
+			),
+		).toBe("my photo.jpg");
+	});
+});
+
+describe("useWebsiteBlocks", () => {
+	it("renders every website slot", () => {
+		const html = renderToStaticMarkup(<AllBlocks />);
+		for (const k of [
+			"hero.heading",
+			"horses.hint",
+			"stats.add",
+			"membership.price",
+			"membership.addFaq",
+			"about.storyTitle",
+			"about.video",
+			"about.addFounder",
+			"share.image",
+			"join.waitlist",
+		]) {
+			expect(html).toContain(`admin.website.${k}`);
 		}
+		// Empty hero + about slots preview the site's built-in placeholders.
+		expect(html).toContain("/website-placeholders/temp-hero.mp4");
+		expect(html).toContain("/website-placeholders/club-stable.mp4");
+		expect(html).toContain("placeholderInUse");
 	});
 });

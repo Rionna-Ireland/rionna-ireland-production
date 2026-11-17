@@ -69,6 +69,7 @@ export default async function AboutPage(props: { params: Promise<{ locale: strin
 					index={club_.index}
 					caption={t("caption")}
 					photoUrl={about.photoUrl}
+					videoUrl={about.videoUrl}
 				/>
 			)}
 			{people && (

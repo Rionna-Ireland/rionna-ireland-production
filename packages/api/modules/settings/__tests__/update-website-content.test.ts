@@ -89,6 +89,16 @@ describe("updateWebsite", () => {
 		).rejects.toMatchObject({ code: "BAD_REQUEST" });
 	});
 
+	it.each([
+		["about video", { about: { videoUrl: "https://evil.example/x.mp4" } }],
+		["share image", { shareImageUrl: "https://evil.example/x.jpg" }],
+	])("rejects a foreign %s URL", async (_n, website) => {
+		mockFindUnique.mockResolvedValue({ metadata: null });
+		await expect(call(updateWebsite, input(website), ctx)).rejects.toMatchObject({
+			code: "BAD_REQUEST",
+		});
+	});
+
 	it("accepts an image URL under the org website prefix", async () => {
 		mockFindUnique.mockResolvedValue({ metadata: null });
 		await call(

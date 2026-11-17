@@ -21,7 +21,7 @@ export const createWebsiteUploadUrl = adminProcedure
 	.input(
 		z.object({
 			organizationId: z.string(),
-			kind: z.enum(["hero", "about", "founder"]),
+			kind: z.enum(["hero", "about", "founder", "share"]),
 			filename: z.string(),
 			fileSize: z.number().int().positive(),
 			contentType: z.string(),
@@ -31,7 +31,7 @@ export const createWebsiteUploadUrl = adminProcedure
 		assertSafeFilename(filename);
 
 		const isVideo = contentType === "video/mp4";
-		if (isVideo ? kind !== "hero" : !IMAGE_TYPES.includes(contentType)) {
+		if (isVideo ? kind !== "hero" && kind !== "about" : !IMAGE_TYPES.includes(contentType)) {
 			throw new ORPCError("BAD_REQUEST", { message: "Unsupported content type" });
 		}
 		if (fileSize > (isVideo ? MAX_VIDEO_BYTES : MAX_IMAGE_UPLOAD_BYTES)) {
