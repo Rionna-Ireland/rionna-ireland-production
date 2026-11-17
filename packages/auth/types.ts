@@ -17,9 +17,6 @@ export interface AuthOrganizationsConfig {
 	 */
 	hideOrganization: boolean;
 	/**
-	 * Allows non-admin users to create new organizations from the product UI.
-	 */
-	/**
 	 * Forces users into an organization context after sign-in when set to true.
 	 */
 	requireOrganization: boolean;
