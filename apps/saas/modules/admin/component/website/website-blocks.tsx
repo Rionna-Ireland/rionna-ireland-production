@@ -1,7 +1,6 @@
 "use client";
 
 import { useAdminOrganization } from "@admin/hooks/use-admin-organization";
-import { config } from "@config";
 import { Button } from "@repo/ui/components/button";
 import { Input } from "@repo/ui/components/input";
 import { Label } from "@repo/ui/components/label";
@@ -85,15 +84,15 @@ function ListControls({
 	);
 }
 
-// Built-in media the marketing site shows while a slot is empty (apps/marketing public/).
+// shortcut: admin copies of the marketing site's temporary placeholders (apps/marketing public/hero,
+// public/media/about), served from this app so previews skip the site's waitlist gate; delete both
+// copies once real footage is uploaded.
+const PLACEHOLDER = "/website-placeholders";
 const PLACEHOLDER_MEDIA = {
-	heroImage: "/hero/temp-hero.webp",
-	heroVideo: "/hero/temp-hero.mp4",
-	aboutVideo: "/media/about/club-stable.mp4",
+	heroImage: `${PLACEHOLDER}/temp-hero.webp`,
+	heroVideo: `${PLACEHOLDER}/temp-hero.mp4`,
+	aboutVideo: `${PLACEHOLDER}/club-stable.mp4`,
 } as const;
-
-const placeholderUrl = (key: keyof typeof PLACEHOLDER_MEDIA) =>
-	config.marketingUrl ? `${config.marketingUrl}${PLACEHOLDER_MEDIA[key]}` : undefined;
 
 /** "…/website/hero/<uuid>-my-photo.jpg" → "my-photo.jpg". */
 export const uploadedFileName = (url: string) =>
@@ -338,14 +337,14 @@ export function useWebsiteBlocks() {
 					accept="image/jpeg,image/png,image/webp"
 					{...up("hero", "hero.imageUrl")}
 					value={v.hero.imageUrl}
-					fallback={heroEmpty ? placeholderUrl("heroImage") : undefined}
+					fallback={heroEmpty ? PLACEHOLDER_MEDIA.heroImage : undefined}
 				/>
 				<Upload
 					label={t("admin.website.hero.video")}
 					accept="video/mp4"
 					{...up("hero", "hero.videoUrl")}
 					value={v.hero.videoUrl}
-					fallback={heroEmpty ? placeholderUrl("heroVideo") : undefined}
+					fallback={heroEmpty ? PLACEHOLDER_MEDIA.heroVideo : undefined}
 				/>
 			</>
 		),
@@ -518,7 +517,7 @@ export function useWebsiteBlocks() {
 					accept="video/mp4"
 					{...up("about", "about.videoUrl")}
 					value={v.about.videoUrl}
-					fallback={v.about.photoUrl ? undefined : placeholderUrl("aboutVideo")}
+					fallback={v.about.photoUrl ? undefined : PLACEHOLDER_MEDIA.aboutVideo}
 				/>
 				<p className="text-sm text-muted-foreground">
 					{t("admin.website.about.storyText")}{" "}

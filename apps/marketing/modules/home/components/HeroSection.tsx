@@ -13,7 +13,7 @@ import { pickNextEvent } from "../lib/next-event";
 import { HeroEventCard } from "./HeroEventCard";
 import { HeroMedia } from "./HeroMedia";
 
-// shortcut: temporary hero clip until the club supplies footage; upload via Admin → Website → Hero video, then delete public/hero/
+// shortcut: temporary hero clip until the club supplies footage; upload via Admin → Website → Hero video, then delete public/hero/ and apps/saas/public/website-placeholders/
 const TEMP_HERO = { videoUrl: "/hero/temp-hero.mp4", imageUrl: "/hero/temp-hero.webp" };
 
 async function readNextEvent(): Promise<PublicClubEvent | null> {

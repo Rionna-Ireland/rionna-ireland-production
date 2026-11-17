@@ -1097,7 +1097,7 @@
 			"placeholderInUse": "The site is showing this placeholder. Upload a file to replace it.",
 			"noFile": "No file uploaded.",
 			"pendingFile": "Uploaded, goes live when you save: {name}",
-			"previewUnavailable": "Preview not available here. While the site is in waitlist mode, placeholders only load for people with the preview password."
+			"previewUnavailable": "Preview not available. The file may have been removed from storage."
 		},
 		"pageCopy": {
 			"intro": "Change the words, photos and video on any page of the public website, section by section. Everything goes live when you save.",

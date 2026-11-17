@@ -156,8 +156,8 @@ describe("useWebsiteBlocks", () => {
 			expect(html).toContain(`admin.website.${k}`);
 		}
 		// Empty hero + about slots preview the site's built-in placeholders.
-		expect(html).toContain("https://rionna.test/hero/temp-hero.mp4");
-		expect(html).toContain("https://rionna.test/media/about/club-stable.mp4");
+		expect(html).toContain("/website-placeholders/temp-hero.mp4");
+		expect(html).toContain("/website-placeholders/club-stable.mp4");
 		expect(html).toContain("placeholderInUse");
 	});
 });

@@ -1,4 +1,4 @@
-// shortcut: temporary club footage (Pexels, see Architecture/design/s16-about/SOURCE.md); replace via admin/real footage, then delete public/media/about.
+// shortcut: temporary club footage (Pexels, see Architecture/design/s16-about/SOURCE.md); replace via admin/real footage, then delete public/media/about and apps/saas/public/website-placeholders/.
 export const CLUB_STABLE_VIDEO = "/media/about/club-stable.mp4";
 export const CLUB_STABLE_POSTER = "/media/about/club-stable.webp";
 
