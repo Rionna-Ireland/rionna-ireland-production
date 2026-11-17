@@ -156,7 +156,7 @@ describe("POST /api/cron/reconcile-space-memberships", () => {
 	});
 });
 
-describe("GET /api/cron/reconcile-space-memberships (native Vercel Cron)", () => {
+describe("GET /api/cron/reconcile-space-memberships (GET alias)", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		process.env.CRON_SECRET = "test-secret";
@@ -166,7 +166,7 @@ describe("GET /api/cron/reconcile-space-memberships (native Vercel Cron)", () =>
 		process.env.CRON_SECRET = ORIGINAL_CRON_SECRET;
 	});
 
-	it("is aliased to the same handler as POST — Vercel Cron invokes with GET", () => {
+	it("is aliased to the same handler as POST", () => {
 		expect(GET).toBe(POST);
 	});
 

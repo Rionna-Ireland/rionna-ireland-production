@@ -8,12 +8,9 @@
  * healing any drift in the `circleSpaceVisibility` mirror — this is the one
  * source of DB writes in an otherwise read-only membership pass.
  *
- * Registered in `apps/saas/vercel.json` as a native Vercel Cron, which
- * invokes with `GET` (and, when `CRON_SECRET` is set, an
- * `Authorization: Bearer $CRON_SECRET` header Vercel adds automatically) —
- * hence the `GET` alias below. It can also be driven by the external
- * scheduler (cron-job.org) the way `/api/cron/circle-poll` is for its
- * sub-daily ticks, since both methods hit the same authenticated handler.
+ * Fired by the external scheduler (cron-job.eu) with
+ * `Authorization: Bearer $CRON_SECRET`; accepts `GET` or `POST`, both hit the
+ * same authenticated handler.
  *
  * Org iteration, the §5 kill-switch skip, and per-follow concurrency all
  * live inside `reconcileSpaceMemberships`. This route is just the
@@ -58,7 +55,5 @@ export async function POST(request: Request) {
 	});
 }
 
-// Native Vercel Cron invokes registered paths with GET, not POST — without
-// this alias the vercel.json entry would 405 and the daily reconcile would
-// silently never run.
+// Kept so a scheduler job configured with GET keeps working.
 export { POST as GET };
